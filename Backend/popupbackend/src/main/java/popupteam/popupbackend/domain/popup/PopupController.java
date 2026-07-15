@@ -56,4 +56,13 @@ public class PopupController {
         popupService.delete(id, businessId);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/{id}/images")
+    public ResponseEntity<?> uploadImage(@PathVariable Long id,
+                                         Authentication authentication,
+                                         @org.springframework.web.bind.annotation.RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        Long businessId = getBusinessId(authentication);
+        String imageUrl = popupService.uploadImage(id, businessId, file);
+        return ResponseEntity.ok(java.util.Map.of("imageUrl", imageUrl));
+    }
 }

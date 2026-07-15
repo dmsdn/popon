@@ -14,6 +14,8 @@ public class PopupService {
 
     private final PopupRepository popupRepository;
     private final BusinessRepository businessRepository;
+    private final PopupImageRepository popupImageRepository;
+    private final popupteam.popupbackend.common.storage.FileStorageService fileStorageService;
 
     public PopupResponse create(Long businessId, PopupCreateRequest request) {
         Business business = businessRepository.findById(businessId)
@@ -71,5 +73,23 @@ public class PopupService {
         }
 
         popupRepository.delete(popup);
+    }
+
+    public String uploadImage(Long popupId, Long businessId, org.springframework.web.multipart.MultipartFile file) {
+        Popup popup = popupRepository.findById(popupId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 팝업입니다."));
+
+        if (!popup.getBusiness().getId().equals(businessId)) {
+            throw new IllegalArgumentException("본인이 등록한 팝업에만 이미지를 추가할 수 있습니다.");
+        }
+
+        String imageUrl = fileStorageService.store(file);
+
+        PopupImage image = new PopupImage();
+        image.setPopup(popup);
+        image.setImageUrl(imageUrl);
+
+        popupImageRepository.save(image);
+        return imageUrl;
     }
 }
