@@ -33,8 +33,11 @@ public class PopupController {
     }
 
     @GetMapping
-    public ResponseEntity<List<PopupResponse>> findAll() {
-        return ResponseEntity.ok(popupService.findAll());
+    public ResponseEntity<List<PopupResponse>> search(
+            @RequestParam(required = false) String location,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String keyword) {
+        return ResponseEntity.ok(popupService.search(location, status, keyword));
     }
 
     @GetMapping("/{id}")

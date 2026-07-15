@@ -33,10 +33,17 @@ public class PopupService {
         return PopupResponse.from(popupRepository.save(popup));
     }
 
-    public List<PopupResponse> findAll() {
-        return popupRepository.findAll().stream()
+    public List<PopupResponse> search(String location, String status, String keyword) {
+        PopupStatus statusEnum = (status != null && !status.isBlank())
+                ? PopupStatus.valueOf(status)
+                : null;
+
+        String locationParam = (location != null && !location.isBlank()) ? location : null;
+        String keywordParam = (keyword != null && !keyword.isBlank()) ? keyword : null;
+
+        return popupRepository.search(locationParam, statusEnum, keywordParam).stream()
                 .map(PopupResponse::from)
-                .collect(Collectors.toList());
+                .collect(java.util.stream.Collectors.toList());
     }
 
     public PopupResponse findById(Long id) {
