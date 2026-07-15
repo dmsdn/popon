@@ -1,0 +1,34 @@
+package popupteam.popupbackend.domain.popup.dto;
+
+import lombok.*;
+import popupteam.popupbackend.domain.popup.Popup;
+import java.time.LocalDateTime;
+
+@Getter @Builder
+public class PopupResponse {
+    private Long id;
+    private Long businessId;
+    private String companyName;
+    private String title;
+    private String description;
+    private String location;
+    private LocalDateTime startDate;
+    private LocalDateTime endDate;
+    private String status;
+    private LocalDateTime createdAt;
+
+    public static PopupResponse from(Popup popup) {
+        return PopupResponse.builder()
+                .id(popup.getId())
+                .businessId(popup.getBusiness().getId())
+                .companyName(popup.getBusiness().getCompanyName())
+                .title(popup.getTitle())
+                .description(popup.getDescription())
+                .location(popup.getLocation())
+                .startDate(popup.getStartDate())
+                .endDate(popup.getEndDate())
+                .status(popup.getStatus().name())
+                .createdAt(popup.getCreatedAt())
+                .build();
+    }
+}
