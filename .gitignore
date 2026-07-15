@@ -1,0 +1,7 @@
+node_modules/
+.env
+application.yml
+*.log
+.DS_Store
+target/
+build/
