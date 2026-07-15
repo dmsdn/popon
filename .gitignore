@@ -4,4 +4,5 @@ application.yml
 *.log
 .DS_Store
 target/
+.idea/
 build/
