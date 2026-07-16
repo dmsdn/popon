@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Search, SlidersHorizontal, ChevronRight, Timer, Gift } from "lucide-react";
-import { POPUPS, CATEGORIES, MY_RESERVATIONS, EVENTS } from "../data";
+import { CATEGORIES, MY_RESERVATIONS, EVENTS, Popup } from "../data";
 import { PopupCard, Stars } from "../components/PopupCard";
 import { useAuth } from "../context/AuthContext";
+import { fetchPopups, toUiPopup } from "../lib/api";
 
 const FILTERS = ["전체", "예약 가능", "무료입장", "오늘 오픈", "인기순"];
 
@@ -13,12 +14,21 @@ export default function Home() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const searched = q ? POPUPS.filter((p) => p.name.includes(q) || p.brand.includes(q)) : null;
-  const nextReservation = MY_RESERVATIONS.find((r) => r.status === "확정");
+  // 주최자측 백엔드(:8080)의 공개 팝업 API에서 실제 데이터 로드
+  const [popups, setPopups] = useState<Popup[]>([]);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    fetchPopups()
+      .then((list) => setPopups(list.map(toUiPopup)))
+      .catch((e) => setError(e instanceof Error ? e.message : "팝업을 불러오지 못했어요."));
+  }, []);
+
+  const searched = q ? popups.filter((p) => p.name.includes(q) || p.brand.includes(q)) : null;
+  const nextReservation = user ? MY_RESERVATIONS.find((r) => r.status === "확정") : undefined;
   const recommend = user
-    ? POPUPS.filter((p) => user.interests.includes(p.category)).concat(POPUPS.filter((p) => !user.interests.includes(p.category)))
-    : POPUPS;
-  const hotList = POPUPS.filter((p) => p.hot).concat(POPUPS.filter((p) => !p.hot)).slice(0, 5);
+    ? popups.filter((p) => user.interests.includes(p.category)).concat(popups.filter((p) => !user.interests.includes(p.category)))
+    : popups;
+  const hotList = popups.filter((p) => p.hot).concat(popups.filter((p) => !p.hot)).slice(0, 5);
 
   return (
     <div className="flex flex-col gap-6 pt-4">
@@ -51,6 +61,12 @@ export default function Home() {
           ))}
         </div>
       </div>
+
+      {error && (
+        <div className="mx-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-600">
+          {error} — 백엔드 서버(8080)가 실행 중인지 확인해 주세요.
+        </div>
+      )}
 
       {/* ── 검색 결과 ── */}
       {searched && (

@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MapPin, Search, LocateFixed } from "lucide-react";
-import { POPUPS, CATEGORIES } from "../data";
+import { CATEGORIES, Popup } from "../data";
 import { PopupCard } from "../components/PopupCard";
 import { useAuth } from "../context/AuthContext";
+import { fetchPopups, toUiPopup } from "../lib/api";
 
 const AREAS = ["전체", "성수", "홍대", "여의도", "잠실", "한남"];
 const THEMES = ["운영중", "사전예약", "실시간 예약", "후기 많은 순", "혜택", "웨이팅 짧은 순"];
@@ -13,7 +14,12 @@ export default function Explore() {
   const [q, setQ] = useState("");
   const { user } = useAuth();
 
-  const results = POPUPS.filter(
+  const [popups, setPopups] = useState<Popup[]>([]);
+  useEffect(() => {
+    fetchPopups().then((list) => setPopups(list.map(toUiPopup))).catch(() => setPopups([]));
+  }, []);
+
+  const results = popups.filter(
     (p) =>
       (area === "전체" || p.area === area) &&
       (cat === "전체" || p.category === cat) &&

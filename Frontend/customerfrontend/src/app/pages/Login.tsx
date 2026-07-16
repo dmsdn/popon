@@ -1,25 +1,33 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
 import { MessageCircle, Check } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
 import { CATEGORIES } from "../data";
+import { KAKAO_LOGIN_URL } from "../lib/api";
 
 type Provider = "kakao" | "google";
 type Step = "login" | "terms" | "survey";
 
 export default function Login() {
-  const { login } = useAuth();
-  const navigate = useNavigate();
   const [step, setStep] = useState<Step>("login");
-  const [provider, setProvider] = useState<Provider>("kakao");
   const [terms, setTerms] = useState({ service: false, privacy: false, location: false, marketing: false });
   const [interests, setInterests] = useState<string[]>([]);
 
   const requiredOk = terms.service && terms.privacy && terms.location;
   const allChecked = Object.values(terms).every(Boolean);
 
-  const pick = (p: Provider) => { setProvider(p); setStep("terms"); };
-  const finish = () => { login(provider, interests); navigate("/"); };
+  const pick = (p: Provider) => {
+    if (p === "google") {
+      alert("구글 로그인은 준비 중이에요. 카카오로 시작해 주세요!");
+      return;
+    }
+    setStep("terms");
+  };
+
+  // 설문까지 마치면 관심사를 저장하고 백엔드 카카오 OAuth로 이동
+  // → 로그인 성공 시 백엔드가 /login/success?token=... 으로 되돌려 줌
+  const finish = () => {
+    localStorage.setItem("interests", JSON.stringify(interests));
+    window.location.href = KAKAO_LOGIN_URL;
+  };
 
   return (
     <div className="px-6 pt-10 pb-8 flex flex-col">
