@@ -3,6 +3,9 @@ node_modules/
 
 # ── 민감 정보 (비밀번호·시크릿 포함) ──
 .env
+.env.*
+!.env.example
+*.local
 application.yml
 
 # ── 빌드 산출물 ──
@@ -24,3 +27,4 @@ uploads/
 # ── 기타 ──
 *.log
 .DS_Store
+Thumbs.db
