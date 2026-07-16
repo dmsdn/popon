@@ -3,26 +3,18 @@
 # 이 파일을 같은 폴더에 application.yml로 복사한 뒤 아래 값을 채워 주세요.
 # application.yml은 .gitignore에 등록되어 있어 커밋되지 않습니다.
 # ─────────────────────────────────────────────────────────────
-server:
-  port: 8080
 
 spring:
-  servlet:
-    multipart:
-      max-file-size: 10MB
-      max-request-size: 10MB
-
   datasource:
-    url: jdbc:mysql://localhost:3306/popupdb
+    # popupdb가 없으면 첫 실행 때 자동 생성됩니다 (createDatabaseIfNotExist)
+    url: jdbc:mysql://localhost:3306/popupdb?createDatabaseIfNotExist=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
     username: root
-    password: 1234
+    password: "여기에-본인-MySQL-비밀번호"
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
     hibernate:
-      ddl-auto: none
-    show-sql: true
-
+      ddl-auto: update   # 엔티티 기준으로 테이블 자동 생성/변경
 
   servlet:
     multipart:
@@ -31,9 +23,9 @@ spring:
 
 jwt:
   # 충분히 긴 랜덤 문자열 (예: openssl rand -base64 64 로 생성)
-  secret: popup-team-secret-key-change-this-later-1234567890
+  secret: "여기에-랜덤-시크릿-키"
   expiration: 86400000   # 토큰 유효기간 24시간 (ms)
 
 file:
-  upload-dir: C:/project1/uploads
-  base-url: http://localhost:8080/uploads
+  upload-dir: uploads                        # 업로드 이미지 저장 폴더 (실행 위치 기준)
+  base-url: http://localhost:8080/uploads    # 이미지 접근 URL
