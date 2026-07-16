@@ -35,6 +35,3 @@ out/
 
 ### VS Code ###
 .vscode/
-
-### 로컬 설정 (비밀번호·시크릿 포함 — 커밋 금지) ###
-application.yml

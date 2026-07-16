@@ -1,7 +1,0 @@
-@import './fonts.css';
-@import './tailwind.css';
-@import './theme.css';
-
-/* 가로 스크롤 영역의 스크롤바 숨김 */
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-.no-scrollbar::-webkit-scrollbar { display: none; }

@@ -1,6 +1,7 @@
 package popupteam.popupbackend.domain.popup;
 
 import popupteam.popupbackend.domain.popup.dto.*;
+import popupteam.popupbackend.domain.reservation.ReservationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.util.List;
@@ -12,6 +13,7 @@ public class PopupSlotService {
 
     private final PopupSlotRepository popupSlotRepository;
     private final PopupRepository popupRepository;
+    private final ReservationRepository reservationRepository;
 
     public PopupSlotResponse create(Long popupId, Long businessId, PopupSlotCreateRequest request) {
         Popup popup = popupRepository.findById(popupId)
@@ -34,7 +36,12 @@ public class PopupSlotService {
 
     public List<PopupSlotResponse> findByPopup(Long popupId) {
         return popupSlotRepository.findByPopupId(popupId).stream()
-                .map(slot -> PopupSlotResponse.from(slot, 0))
+                .map(slot -> {
+                    int reserved = reservationRepository.findBySlotId(slot.getId()).stream()
+                            .mapToInt(r -> r.getPartySize())
+                            .sum();
+                    return PopupSlotResponse.from(slot, reserved);
+                })
                 .collect(Collectors.toList());
     }
 }
