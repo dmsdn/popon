@@ -12,6 +12,7 @@ import Events from "./pages/Events";
 import Brand from "./pages/Brand";
 import MyPage from "./pages/MyPage";
 import Login from "./pages/Login";
+import LoginSuccess from "./pages/LoginSuccess";
 import Support from "./pages/Support";
 
 export const router = createBrowserRouter([
@@ -31,6 +32,7 @@ export const router = createBrowserRouter([
       { path: "brand/:id", Component: Brand },               // 브랜드 페이지
       { path: "my", Component: MyPage },                     // 마이페이지·설정
       { path: "login", Component: Login },                   // 소셜 로그인·가입 설문
+      { path: "login/success", Component: LoginSuccess },    // 카카오 로그인 콜백 (토큰 수신)
       { path: "support", Component: Support },               // 문의하기·FAQ
     ],
   },

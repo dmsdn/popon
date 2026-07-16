@@ -1,18 +1,40 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router";
 import {
   Heart, Share2, MapPin, CalendarDays, Clock, AlertCircle, Ticket,
   Users, ChevronRight, ThumbsUp, BadgeCheck, ExternalLink, Camera,
 } from "lucide-react";
-import { POPUPS, REVIEWS, BLOG_REVIEWS, CONGESTION_COLOR, RESERVATION_HINT } from "../data";
+import { Popup, REVIEWS, BLOG_REVIEWS, CONGESTION_COLOR, RESERVATION_HINT } from "../data";
 import { Stars } from "../components/PopupCard";
+import { fetchPopup, toUiPopup } from "../lib/api";
 
 export default function PopupDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const popup = POPUPS.find((p) => p.id === id) ?? POPUPS[0];
+  const [popup, setPopup] = useState<Popup | null>(null);
+  const [loadError, setLoadError] = useState("");
   const [liked, setLiked] = useState(false);
   const [shared, setShared] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    fetchPopup(id)
+      .then((p) => setPopup(toUiPopup(p)))
+      .catch((e) => setLoadError(e instanceof Error ? e.message : "팝업을 불러오지 못했어요."));
+  }, [id]);
+
+  if (loadError) {
+    return (
+      <div className="px-6 pt-20 text-center">
+        <AlertCircle size={32} className="mx-auto text-red-400 mb-3" />
+        <p className="text-sm text-muted-foreground">{loadError}</p>
+        <Link to="/" className="inline-block mt-5 text-sm px-6 py-3 rounded-lg bg-accent text-white font-medium">홈으로</Link>
+      </div>
+    );
+  }
+  if (!popup) {
+    return <div className="px-6 pt-20 text-center text-sm text-muted-foreground">불러오는 중…</div>;
+  }
   const reviews = REVIEWS.filter((r) => r.popupId === popup.id);
 
   return (
@@ -90,6 +112,9 @@ export default function PopupDetail() {
               <AlertCircle size={12} className="shrink-0 mt-0.5 text-amber-500" /> {n}
             </li>
           ))}
+          {popup.notice.length === 0 && (
+            <li className="text-xs text-muted-foreground">등록된 유의사항이 없어요.</li>
+          )}
         </ul>
       </div>
 

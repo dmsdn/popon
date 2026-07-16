@@ -33,4 +33,16 @@ export default defineConfig({
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
+
+  server: {
+    // customerbackend(:8081)의 카카오 로그인 성공 리다이렉트가
+    // http://localhost:5173/login/success 로 하드코딩되어 있어 5173 고정
+    port: 5173,
+    strictPort: true,
+    proxy: {
+      // 팝업 공개 조회는 주최자측 백엔드(popupbackend :8080)
+      '/api': { target: 'http://localhost:8080', changeOrigin: true },
+      '/uploads': { target: 'http://localhost:8080', changeOrigin: true },
+    },
+  },
 })
