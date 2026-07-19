@@ -14,7 +14,6 @@ const WEEKLY = [
 
 const PENDING = [
   { icon: ShieldCheck, label: "팝업 심사 대기", value: 6, to: "/admin/review", color: "text-accent" },
-  { icon: Handshake, label: "파트너 승인 대기", value: 4, to: "/admin/partners", color: "text-blue-600" },
   { icon: Headphones, label: "미처리 문의", value: 12, to: "/admin/cs", color: "text-amber-600" },
   { icon: Activity, label: "후기 신고 접수", value: 3, to: "/admin/cs", color: "text-red-500" },
 ];
@@ -22,7 +21,6 @@ const PENDING = [
 const RECENT_CS = [
   { time: "10:42", type: "예약", text: "QR코드가 열리지 않아요 (소비자 · 무너 팝업)", state: "미배정" },
   { time: "10:15", type: "정산", text: "6월 정산서 세부 항목 문의 (주최자 · 레코드랩)", state: "처리중" },
-  { time: "09:58", type: "계정", text: "파트너 계정 접근권한 추가 요청 (주최자 · 글로우랩)", state: "미배정" },
   { time: "09:31", type: "신고", text: "후기 부적절 사진 신고 3건 접수 (자동)", state: "미처리" },
 ];
 
@@ -35,7 +33,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* 승인 대기 요약 */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
         {PENDING.map(({ icon: Icon, label, value, to, color }) => (
           <Link key={label} to={to} className="bg-white border border-border rounded-sm p-4 hover:border-accent/50 transition-colors group">
             <div className="flex items-center justify-between mb-2">
