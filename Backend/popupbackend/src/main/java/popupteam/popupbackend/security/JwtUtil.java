@@ -5,7 +5,7 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import javax.crypto.SecretKey;
+import java.security.Key;
 import java.util.Date;
 
 @Component
@@ -17,7 +17,7 @@ public class JwtUtil {
     @Value("${jwt.expiration}")
     private long expiration;
 
-    private SecretKey getSigningKey() {
+    private Key getSigningKey() {
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
@@ -26,25 +26,25 @@ public class JwtUtil {
         Date expiry = new Date(now.getTime() + expiration);
 
         return Jwts.builder()
-                .subject(email)
-                .issuedAt(now)
-                .expiration(expiry)
-                .signWith(getSigningKey(), Jwts.SIG.HS256)
+                .setSubject(email)
+                .setIssuedAt(now)
+                .setExpiration(expiry)
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
     public String getEmailFromToken(String token) {
-        return Jwts.parser()
-                .verifyWith(getSigningKey())
+        return Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
                 .build()
-                .parseSignedClaims(token)
-                .getPayload()
+                .parseClaimsJws(token)
+                .getBody()
                 .getSubject();
     }
 
     public boolean validateToken(String token) {
         try {
-            Jwts.parser().verifyWith(getSigningKey()).build().parseSignedClaims(token);
+            Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(token);
             return true;
         } catch (JwtException | IllegalArgumentException e) {
             return false;
