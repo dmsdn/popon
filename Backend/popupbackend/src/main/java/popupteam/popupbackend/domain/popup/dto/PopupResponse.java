@@ -15,6 +15,7 @@ public class PopupResponse {
     private LocalDateTime startDate;
     private LocalDateTime endDate;
     private String status;
+    private String rejectReason;
     private LocalDateTime createdAt;
 
     public static PopupResponse from(Popup popup) {
@@ -28,6 +29,7 @@ public class PopupResponse {
                 .startDate(popup.getStartDate())
                 .endDate(popup.getEndDate())
                 .status(popup.getStatus().name())
+                .rejectReason(popup.getRejectReason())
                 .createdAt(popup.getCreatedAt())
                 .build();
     }

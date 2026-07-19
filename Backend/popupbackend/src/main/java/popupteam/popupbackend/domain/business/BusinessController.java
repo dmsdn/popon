@@ -16,7 +16,7 @@ public class BusinessController {
     @PostMapping("/signup")
     public ResponseEntity<?> signup(@Valid @RequestBody BusinessSignupRequest request) {
         Business business = businessService.signup(request);
-        return ResponseEntity.status(201).body(business);
+        return ResponseEntity.status(201).body(BusinessInfoResponse.from(business));
     }
 
     @PostMapping("/login")

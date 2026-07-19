@@ -28,7 +28,7 @@ public class PopupService {
         popup.setLocation(request.getLocation());
         popup.setStartDate(request.getStartDate());
         popup.setEndDate(request.getEndDate());
-        popup.setStatus(PopupStatus.BEFOR);
+        popup.setStatus(PopupStatus.PENDING);
 
         return PopupResponse.from(popupRepository.save(popup));
     }
@@ -98,5 +98,33 @@ public class PopupService {
 
         popupImageRepository.save(image);
         return imageUrl;
+    }
+
+    public PopupResponse approve(Long popupId) {
+        Popup popup = popupRepository.findById(popupId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 팝업입니다."));
+
+        popup.setStatus(PopupStatus.BEFOR);
+        popup.setRejectReason(null);
+        popup.setUpdatedAt(java.time.LocalDateTime.now());
+
+        return PopupResponse.from(popupRepository.save(popup));
+    }
+
+    public PopupResponse reject(Long popupId, String reason) {
+        Popup popup = popupRepository.findById(popupId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 팝업입니다."));
+
+        popup.setStatus(PopupStatus.REJECTED);
+        popup.setRejectReason(reason);
+        popup.setUpdatedAt(java.time.LocalDateTime.now());
+
+        return PopupResponse.from(popupRepository.save(popup));
+    }
+
+    public List<PopupResponse> getMyPopups(Long businessId) {
+        return popupRepository.findByBusinessIdOrderByCreatedAtDesc(businessId).stream()
+                .map(PopupResponse::from)
+                .collect(Collectors.toList());
     }
 }
