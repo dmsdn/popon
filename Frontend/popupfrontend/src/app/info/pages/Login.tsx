@@ -140,8 +140,8 @@ export default function Login() {
             주최자 가입 신청이 완료되었습니다
           </h1>
           <p className="text-sm text-muted-foreground leading-relaxed mb-6">
-            <strong className="text-foreground">{signupForm.email}</strong>으로 확인 메일을 발송했습니다.<br />
-            플랫폼 관리자의 파트너 승인(1영업일 이내) 후<br />모든 주최자센터 기능을 사용할 수 있습니다.
+            <strong className="text-foreground">{signupForm.email}</strong> 계정이 활성화되었습니다.<br />
+            지금 바로 주최자센터에서 팝업을 등록할 수 있으며,<br />등록한 팝업은 관리자 심사 후 게시됩니다.
           </p>
           <div className="flex gap-3 justify-center">
             <button onClick={() => navigate("/")} className="text-sm border border-border px-5 py-2.5 rounded-sm hover:border-foreground transition-colors">
@@ -534,7 +534,7 @@ export default function Login() {
             </div>
 
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              입력한 상세 정보는 플랫폼 관리자의 파트너 심사에 사용되며, 승인 완료 시 주최자센터 계정이 활성화됩니다.
+              가입 즉시 주최자센터 계정이 활성화됩니다. 등록하는 팝업은 게시 전 플랫폼 관리자의 건별 심사를 거칩니다.
             </p>
 
             <div className="flex gap-3">

@@ -79,9 +79,21 @@ export function getMyInfo() {
   return request<BusinessInfo>("/api/business/auth/me");
 }
 
+// ── 관리자 인증 ──
+
+export type AdminLoginResponse = { accessToken: string; adminId: number; name: string };
+
+export function adminLogin(email: string, password: string) {
+  return request<AdminLoginResponse>("/api/admin/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+}
+
 // ── 팝업 ──
 
-export type PopupStatusCode = "BEFOR" | "OPEN" | "CLOSED";
+// PENDING(심사 대기) → BEFOR(승인·오픈예정) / REJECTED(반려) → OPEN → CLOSED
+export type PopupStatusCode = "PENDING" | "REJECTED" | "BEFOR" | "OPEN" | "CLOSED";
 
 export type Popup = {
   id: number;
@@ -93,6 +105,7 @@ export type Popup = {
   startDate: string | null; // ISO LocalDateTime
   endDate: string | null;
   status: PopupStatusCode;
+  rejectReason: string | null;
   createdAt: string;
 };
 
@@ -141,4 +154,67 @@ export function uploadPopupImage(id: number | string, file: File) {
   const form = new FormData();
   form.append("file", file);
   return request<{ imageUrl: string }>(`/api/popups/${id}/images`, { method: "POST", body: form });
+}
+
+// 내(로그인한 사업자) 팝업 목록 — 심사 상태(PENDING/REJECTED) 포함
+export function getMyPopups() {
+  return request<Popup[]>("/api/popups/my");
+}
+
+// ── 팝업 심사 (관리자 전용) ──
+
+export function approvePopup(id: number | string) {
+  return request<Popup>(`/api/admin/popups/${id}/approve`, { method: "PUT" });
+}
+
+export function rejectPopup(id: number | string, reason: string) {
+  return request<Popup>(`/api/admin/popups/${id}/reject`, {
+    method: "PUT",
+    body: JSON.stringify({ reason }),
+  });
+}
+
+// ── 예약 슬롯 ──
+
+export type PopupSlot = {
+  id: number;
+  popupId: number;
+  slotDate: string; // yyyy-MM-dd
+  startTime: string; // HH:mm:ss
+  endTime: string;
+  capacity: number;
+  reservedCount: number;
+  remaining: number;
+};
+
+export function getSlots(popupId: number | string) {
+  return request<PopupSlot[]>(`/api/popups/${popupId}/slots`);
+}
+
+export function createSlot(
+  popupId: number | string,
+  data: { slotDate: string; startTime: string; endTime: string; capacity: number },
+) {
+  return request<PopupSlot>(`/api/popups/${popupId}/slots`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+// ── 예약자 명단 (해당 팝업 주최자 또는 관리자) ──
+
+export type ReservationDetail = {
+  id: number;
+  slotId: number;
+  slotDate: string;
+  startTime: string;
+  endTime: string;
+  customerId: number;
+  customerNickname: string;
+  partySize: number;
+  createdAt: string;
+};
+
+export function getPopupReservations(popupId: number | string) {
+  return request<ReservationDetail[]>(`/api/reservations/popup/${popupId}`);
 }
