@@ -13,6 +13,7 @@ build/
 target/
 dist/
 out/
+.vite/
 
 # ── 업로드된 사용자 데이터 ──
 uploads/
