@@ -1,6 +1,6 @@
 import { Outlet, NavLink, Link } from "react-router";
 import {
-  LayoutDashboard, ShieldCheck, Handshake, KeyRound, Database,
+  LayoutDashboard, ShieldCheck, KeyRound, Database,
   LineChart, Newspaper, Headphones, Bell, ExternalLink,
 } from "lucide-react";
 
@@ -11,7 +11,6 @@ const MENU = [
   ]},
   { group: "심사·승인", items: [
     { to: "/admin/review", icon: ShieldCheck, label: "팝업 심사·게시 승인" },
-    { to: "/admin/partners", icon: Handshake, label: "파트너 신청 승인" },
   ]},
   { group: "운영 관리", items: [
     { to: "/admin/accounts", icon: KeyRound, label: "계정·권한(RBAC)" },

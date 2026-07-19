@@ -23,7 +23,6 @@ import Notices from "./seller/pages/Notices";
 import AdminRoot from "./admin/AdminRoot";
 import AdminDashboard from "./admin/pages/AdminDashboard";
 import PopupReview from "./admin/pages/PopupReview";
-import Partners from "./admin/pages/Partners";
 import Accounts from "./admin/pages/Accounts";
 import Masters from "./admin/pages/Masters";
 import PlatformStats from "./admin/pages/PlatformStats";
@@ -67,7 +66,6 @@ export const router = createBrowserRouter([
     children: [
       { index: true, Component: AdminDashboard },
       { path: "review", Component: PopupReview },
-      { path: "partners", Component: Partners },
       { path: "accounts", Component: Accounts },
       { path: "masters", Component: Masters },
       { path: "stats", Component: PlatformStats },
