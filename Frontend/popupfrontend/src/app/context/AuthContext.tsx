@@ -1,11 +1,14 @@
 import { createContext, useContext, useState, ReactNode } from "react";
 import * as api from "../lib/api";
 
-type User = { name: string; email: string; businessId: number };
+type User =
+  | { role: "business"; name: string; email: string; businessId: number }
+  | { role: "admin"; name: string; email: string; adminId: number };
 
 type AuthContextType = {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
+  adminLogin: (email: string, password: string) => Promise<void>;
   logout: () => void;
 };
 
@@ -17,7 +20,11 @@ function loadUser(): User | null {
   if (!api.getToken()) return null;
   try {
     const raw = localStorage.getItem(USER_KEY);
-    return raw ? (JSON.parse(raw) as User) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // 구버전 저장분(role 없음)은 사업자 계정으로 간주
+    if (!parsed.role) parsed.role = "business";
+    return parsed as User;
   } catch {
     return null;
   }
@@ -29,7 +36,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     const res = await api.login(email, password);
     api.setToken(res.accessToken);
-    const u: User = { name: res.companyName, email, businessId: res.businessId };
+    const u: User = { role: "business", name: res.companyName, email, businessId: res.businessId };
+    localStorage.setItem(USER_KEY, JSON.stringify(u));
+    setUser(u);
+  };
+
+  const adminLogin = async (email: string, password: string) => {
+    const res = await api.adminLogin(email, password);
+    api.setToken(res.accessToken);
+    const u: User = { role: "admin", name: res.name, email, adminId: res.adminId };
     localStorage.setItem(USER_KEY, JSON.stringify(u));
     setUser(u);
   };
@@ -41,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, adminLogin, logout }}>
       {children}
     </AuthContext.Provider>
   );

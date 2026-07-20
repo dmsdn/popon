@@ -1,8 +1,37 @@
+# ── 의존성 ──
 node_modules/
+
+# ── 민감 정보 (비밀번호·시크릿 포함) ──
 .env
+.env.*
+!.env.example
+*.local
 application.yml
+
+# ── 빌드 산출물 ──
+build/
+target/
+dist/
+out/
+.vite/
+
+# ── 업로드된 사용자 데이터 ──
+uploads/
+
+# ── IDE / 도구 로컬 설정 ──
+.idea/
+*.iml
+.vscode/
+.claude/
+.gradle/
+
+# ── ML 서비스 (공유 보류 중 — 공개 시 이 줄 삭제) ──
+MLService/
+
+# ── 기타 ──
 *.log
 .DS_Store
 target/
 build/
 *.class
+Thumbs.db
