@@ -1,36 +1,36 @@
-# 팝업온 — 소비자 서비스 (Popup Store Consumer Platform)
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-요구사항정의서(애지중지 1차 프로젝트.xlsx)의 **「소비자 관련 기능」** 시트를 기반으로 만든
-팝업스토어 탐색·예약·웨이팅 소비자용 React 앱입니다. 주최자/관리자 웹(`Popup Store Registration Platform`)과 별개의 프로젝트입니다.
+## Getting Started
 
-## 실행
+First, run the development server:
 
 ```bash
-npm install
-npm run dev        # 기본 5173, 주최자 앱과 동시 실행 시 --port 5174
-npm run build
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-## 화면 구성 (src/app/pages)
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-| 경로 | 화면 | 요구사항 No |
-|---|---|---|
-| `/` | 메인: 검색창·필터·맞춤 추천·프로모션·인기 리스트·예약 안내 배너 | 19–24 |
-| `/explore` | 탐색: 지도(연동 예정)·지역/카테고리/테마 필터·검색·맞춤 정렬 | 39–42 |
-| `/popup/:id` | 팝업 상세: 이미지·운영정보·별점·입장방식·유의사항·혼잡도·후기·블로그 후기·찜·공유 | 25–38 |
-| `/popup/:id/reserve` | 예약: 날짜/시간/인원 선택·약관 동의·함께보기·QR 티켓 발급 | 43–46 |
-| `/reservations` | 예약 관리: 목록·상세·취소·변경·상태 표시 | 47–51 |
-| `/waiting` | 웨이팅: 원격 줄서기·대기 순서·임박 알림·취소 | 52–55 |
-| `/popup/:id/review` | 후기 작성: 방문 인증·별점·사진 첨부·본문 | 56–59 |
-| `/notifications` | 알림 목록: 예약/웨이팅/오픈/이벤트 알림 | 62–65 |
-| `/events` | 프로모션: 이벤트 조회·참여·인증 업로드·당첨자 발표·쿠폰 자동 지급 | 66–70 |
-| `/brand/:id` | 브랜드: 소개·이전 팝업 히스토리·브랜드 찜·SNS 연동 | 71–74 |
-| `/my` | 마이페이지: 방문이력·찜·관심 키워드·내 리뷰·쿠폰함·알림/계정 설정·약관 조회·탈퇴 | 9–18, 4 |
-| `/login` | 소셜 로그인(카카오/구글)·약관 동의·관심 카테고리 설문 | 1–3, 5–8 |
-| `/support` | 문의하기·FAQ | 75–76 |
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-## 참고
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-- 모든 데이터는 `src/app/data.ts`의 목업이며, 백엔드 API 연동 시 교체합니다.
-- 소셜 로그인·지도·푸시 알림은 UI만 구현된 상태로, 실제 API(카카오/구글/지도) 연동 지점이 표시되어 있습니다.
-- 모바일 우선(max-w-md 앱 프레임) 레이아웃이며 하단 탭 내비게이션(홈/탐색/예약·웨이팅/마이)을 사용합니다.
+## Learn More
+
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
