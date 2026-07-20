@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { CheckCircle, XCircle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { saveInterests } from "../lib/api";
 
 // 카카오 로그인 성공 시 customerbackend(:8081)가
 // /login/success?token=<JWT> 로 리다이렉트해 주는 수신 페이지
@@ -14,6 +15,13 @@ export default function LoginSuccess() {
   useEffect(() => {
     const token = searchParams.get("token");
     if (token && loginWithToken(token)) {
+      // 가입 설문에서 고른 관심 카테고리를 백엔드에 저장 (실패해도 로그인은 유지)
+      try {
+        const interests = JSON.parse(localStorage.getItem("interests") ?? "[]") as string[];
+        if (interests.length > 0) saveInterests(interests).catch(() => {});
+      } catch {
+        // 무시
+      }
       navigate("/", { replace: true });
     } else {
       setFailed(true);

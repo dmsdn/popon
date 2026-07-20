@@ -1,11 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import {
   ChevronRight, MapPin, Heart, Tag, MessageSquare, TicketPercent,
   Bell, UserCog, FileText, LogOut, UserX, CalendarCheck, Pencil,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { VISIT_HISTORY, COUPONS, POPUPS, REVIEWS, CATEGORIES } from "../data";
+import { VISIT_HISTORY, COUPONS, CATEGORIES, Popup } from "../data";
+import {
+  fetchPopups, toUiPopup, getWishlist, getMyReviews, deleteReview,
+  saveInterests, CustomerReview,
+} from "../lib/api";
 
 type Sheet = "visits" | "likes" | "keywords" | "reviews" | "coupons" | "notif" | "account" | "terms" | null;
 
@@ -13,8 +17,53 @@ export default function MyPage() {
   const { user, logout, withdraw } = useAuth();
   const navigate = useNavigate();
   const [sheet, setSheet] = useState<Sheet>(null);
-  const [keywords, setKeywords] = useState(["캐릭터", "F&B"]);
+  const [keywords, setKeywords] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("interests") ?? "[]");
+    } catch {
+      return [];
+    }
+  });
   const [notif, setNotif] = useState({ tag: true, ad: false, schedule: true });
+  const [likedPopups, setLikedPopups] = useState<Popup[]>([]);
+  const [myReviews, setMyReviews] = useState<CustomerReview[]>([]);
+  const [popupNames, setPopupNames] = useState<Record<number, string>>({});
+
+  // 찜 목록·내 리뷰 실데이터 로드 (찜 ID → 팝업 정보 매핑)
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    Promise.all([getWishlist(), getMyReviews(), fetchPopups()])
+      .then(([wishIds, reviews, popups]) => {
+        if (!alive) return;
+        const byId = new Map(popups.map((p) => [p.id, p]));
+        setLikedPopups(wishIds.map((id) => byId.get(id)).filter(Boolean).map((p) => toUiPopup(p!)));
+        setMyReviews(reviews);
+        setPopupNames(Object.fromEntries(popups.map((p) => [p.id, p.title])));
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [user]);
+
+  // 관심 키워드 토글 → 로컬 + 백엔드 저장
+  const toggleKeyword = (c: string) => {
+    const next = keywords.includes(c) ? keywords.filter((x) => x !== c) : [...keywords, c];
+    setKeywords(next);
+    localStorage.setItem("interests", JSON.stringify(next));
+    saveInterests(next).catch(() => {});
+  };
+
+  const removeMyReview = async (id: number) => {
+    if (!window.confirm("리뷰를 삭제할까요?")) return;
+    try {
+      await deleteReview(id);
+      setMyReviews((prev) => prev.filter((r) => r.id !== id));
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "삭제에 실패했어요.");
+    }
+  };
 
   if (!user) {
     return (
@@ -27,9 +76,6 @@ export default function MyPage() {
       </div>
     );
   }
-
-  const myReviews = REVIEWS.filter((r) => r.author === user.nickname);
-  const likedPopups = POPUPS.slice(0, 3);
 
   const MENUS: { icon: typeof MapPin; label: string; sub: string; key: Sheet }[] = [
     { icon: MapPin, label: "방문 이력", sub: `${VISIT_HISTORY.length}곳 방문`, key: "visits" },
@@ -101,6 +147,7 @@ export default function MyPage() {
                 )}
                 {key === "likes" && (
                   <div className="flex flex-col gap-2.5">
+                    {likedPopups.length === 0 && <p className="text-[11px] text-muted-foreground">찜한 팝업이 없어요. 팝업 상세에서 하트를 눌러보세요.</p>}
                     {likedPopups.map((p) => (
                       <Link key={p.id} to={`/popup/${p.id}`} className="flex items-center gap-2.5">
                         <img src={p.image} alt={p.name} className="w-10 h-10 rounded-md object-cover" />
@@ -119,7 +166,7 @@ export default function MyPage() {
                     <div className="flex flex-wrap gap-2">
                       {CATEGORIES.map((c) => (
                         <button key={c}
-                          onClick={() => setKeywords((prev) => prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c])}
+                          onClick={() => toggleKeyword(c)}
                           className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
                             keywords.includes(c) ? "bg-accent text-white border-accent" : "border-border text-muted-foreground"
                           }`}>
@@ -136,9 +183,8 @@ export default function MyPage() {
                       <div key={r.id}>
                         <p className="leading-relaxed">"{r.content}"</p>
                         <div className="flex items-center gap-3 mt-1 text-[11px] text-muted-foreground">
-                          {r.date} · 공감 {r.likes}
-                          <button className="text-accent">수정</button>
-                          <button className="text-red-500">삭제</button>
+                          <span>{popupNames[r.popupId] ?? `팝업 #${r.popupId}`} · ★{r.rating} · {r.createdAt.slice(0, 10)}</span>
+                          <button onClick={() => removeMyReview(r.id)} className="text-red-500">삭제</button>
                         </div>
                       </div>
                     ))}

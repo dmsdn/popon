@@ -1,29 +1,69 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router";
 import { Minus, Plus, UserPlus, CheckCircle2, QrCode } from "lucide-react";
-import { POPUPS, RESERVATION_HINT, CONGESTION_COLOR } from "../data";
+import { Popup, RESERVATION_HINT, CONGESTION_COLOR } from "../data";
 import { useAuth } from "../context/AuthContext";
+import { fetchPopup, toUiPopup, createReservation } from "../lib/api";
 
-const DATES = [
-  { d: "07.16", day: "목" }, { d: "07.17", day: "금" }, { d: "07.18", day: "토" },
-  { d: "07.19", day: "일" }, { d: "07.20", day: "월" }, { d: "07.21", day: "화" },
-];
+// 오늘부터 6일치 날짜 생성
+const DAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
+const DATES = Array.from({ length: 6 }, (_, i) => {
+  const dt = new Date();
+  dt.setDate(dt.getDate() + i);
+  const mm = String(dt.getMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getDate()).padStart(2, "0");
+  return { d: `${mm}.${dd}`, day: DAY_KO[dt.getDay()], iso: `${dt.getFullYear()}-${mm}-${dd}` };
+});
 
 export default function Reserve() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const popup = POPUPS.find((p) => p.id === id) ?? POPUPS[0];
+  const [popup, setPopup] = useState<Popup | null>(null);
 
-  const [date, setDate] = useState(DATES[2].d);
+  const [date, setDate] = useState(DATES[0].d);
   const [time, setTime] = useState<string | null>(null);
   const [count, setCount] = useState(2);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [agreePolicy, setAgreePolicy] = useState(false);
   const [invited, setInvited] = useState(false);
   const [done, setDone] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
-  const canSubmit = time !== null && agreePrivacy && agreePolicy;
+  useEffect(() => {
+    if (!id) return;
+    fetchPopup(id).then((p) => setPopup(toUiPopup(p))).catch(() => setPopup(null));
+  }, [id]);
+
+  const canSubmit = time !== null && agreePrivacy && agreePolicy && !submitting;
+
+  const submit = async () => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    if (!time) return;
+    setSubmitting(true);
+    setError("");
+    try {
+      await createReservation({
+        popupId: Number(id),
+        visitDate: DATES.find((x) => x.d === date)!.iso,
+        visitTime: time,
+        partySize: count,
+      });
+      setDone(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "예약에 실패했어요. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!popup) {
+    return <div className="px-6 pt-20 text-center text-sm text-muted-foreground">불러오는 중…</div>;
+  }
 
   if (done) {
     return (
@@ -124,11 +164,12 @@ export default function Reserve() {
       </section>
 
       <div className="px-4">
-        <button disabled={!canSubmit} onClick={() => setDone(true)}
+        {error && <p className="text-[11px] text-red-500 text-center mb-2">{error}</p>}
+        <button disabled={!canSubmit} onClick={submit}
           className="w-full text-sm py-3.5 rounded-lg bg-accent text-white font-medium disabled:opacity-40 hover:bg-accent/90">
-          {time ? `${date} ${time} · ${count}명 예약하기` : "시간을 선택해 주세요"}
+          {submitting ? "예약 처리 중…" : time ? `${date} ${time} · ${count}명 예약하기` : "시간을 선택해 주세요"}
         </button>
-        {!user && <p className="text-[11px] text-muted-foreground text-center mt-2">비회원 예약은 지원하지 않아요. 예약 시 로그인 화면으로 이동할 수 있어요.</p>}
+        {!user && <p className="text-[11px] text-muted-foreground text-center mt-2">비회원 예약은 지원하지 않아요. 예약하기를 누르면 로그인 화면으로 이동해요.</p>}
       </div>
     </div>
   );

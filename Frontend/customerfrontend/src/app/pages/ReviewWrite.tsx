@@ -1,17 +1,43 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router";
 import { Star, Camera, X, BadgeCheck, CheckCircle2 } from "lucide-react";
-import { POPUPS } from "../data";
+import { useAuth } from "../context/AuthContext";
+import { fetchPopup, createReview } from "../lib/api";
 
 export default function ReviewWrite() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const popup = POPUPS.find((p) => p.id === id) ?? POPUPS[0];
+  const { user } = useAuth();
+  const [popupName, setPopupName] = useState("");
 
   const [rating, setRating] = useState(0);
   const [photos, setPhotos] = useState<string[]>([]);
   const [text, setText] = useState("");
   const [done, setDone] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!id) return;
+    fetchPopup(id).then((p) => setPopupName(p.title)).catch(() => setPopupName(""));
+  }, [id]);
+
+  const submit = async () => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    setSubmitting(true);
+    setError("");
+    try {
+      await createReview({ popupId: Number(id), rating, content: text.trim() });
+      setDone(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "후기 등록에 실패했어요.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (done) {
     return (
@@ -19,7 +45,7 @@ export default function ReviewWrite() {
         <CheckCircle2 size={44} className="text-emerald-500 mb-4" />
         <h1 className="text-lg font-semibold mb-1">후기가 등록되었어요!</h1>
         <p className="text-sm text-muted-foreground mb-6">소중한 후기 감사해요. 리워드 쿠폰이 쿠폰함으로 지급됐어요.</p>
-        <button onClick={() => navigate(`/popup/${popup.id}`)} className="text-sm px-6 py-3 rounded-lg bg-accent text-white font-medium">팝업으로 돌아가기</button>
+        <button onClick={() => navigate(`/popup/${id}`)} className="text-sm px-6 py-3 rounded-lg bg-accent text-white font-medium">팝업으로 돌아가기</button>
       </div>
     );
   }
@@ -28,7 +54,7 @@ export default function ReviewWrite() {
     <div className="flex flex-col pt-4 pb-8 px-4 gap-5">
       <div>
         <h1 className="text-lg font-semibold" style={{ fontFamily: "'Noto Serif KR', serif" }}>후기 작성</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">{popup.name}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{popupName || `팝업 #${id}`}</p>
       </div>
 
       {/* 방문 인증 */}
@@ -91,12 +117,13 @@ export default function ReviewWrite() {
         <div className="text-right text-[11px] text-muted-foreground mt-1">{text.length}/1,000</div>
       </div>
 
+      {error && <p className="text-[11px] text-red-500 text-center">{error}</p>}
       <button
-        disabled={rating === 0 || text.length < 10}
-        onClick={() => setDone(true)}
+        disabled={rating === 0 || text.length < 10 || submitting}
+        onClick={submit}
         className="w-full text-sm py-3.5 rounded-lg bg-accent text-white font-medium disabled:opacity-40"
       >
-        후기 등록하기
+        {submitting ? "등록 중…" : "후기 등록하기"}
       </button>
     </div>
   );

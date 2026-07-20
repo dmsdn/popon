@@ -85,6 +85,114 @@ const STATUS_LABEL: Record<BackendPopup["status"], string> = {
 const fmtMD = (iso: string | null) => (iso ? `${iso.slice(5, 7)}.${iso.slice(8, 10)}` : "미정");
 const fmtHM = (iso: string | null) => (iso ? iso.slice(11, 16) : "00:00");
 
+// ── 소비자 기능 API (customerbackend :8081, vite 프록시 /api/customer) ──
+// 모든 요청은 Authorization: Bearer <JWT> 필요 (컨트롤러가 직접 파싱)
+
+class CustomerApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
+async function customerRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = getToken();
+  if (!token) throw new CustomerApiError(401, "로그인이 필요해요.");
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+    ...(options.body ? { "Content-Type": "application/json" } : {}),
+    ...(options.headers as Record<string, string>),
+  };
+  let res: Response;
+  try {
+    res = await fetch(path, { ...options, headers });
+  } catch {
+    throw new CustomerApiError(0, "서버에 연결할 수 없어요. 소비자 백엔드(8081)가 실행 중인지 확인해 주세요.");
+  }
+  if (!res.ok) throw new CustomerApiError(res.status, `요청에 실패했어요. (${res.status})`);
+  const text = await res.text();
+  return (text ? JSON.parse(text) : undefined) as T;
+}
+
+// 찜 목록
+export function getWishlist() {
+  return customerRequest<number[]>("/api/customer/wishlist");
+}
+export function addWishlist(popupId: number) {
+  return customerRequest<{ success: boolean }>("/api/customer/wishlist", {
+    method: "POST",
+    body: JSON.stringify({ popupId }),
+  });
+}
+export function removeWishlist(popupId: number) {
+  return customerRequest<{ success: boolean }>(`/api/customer/wishlist/${popupId}`, { method: "DELETE" });
+}
+
+// 예약
+export type CustomerReservation = {
+  id: number;
+  customerId: number;
+  popupId: number;
+  visitDate: string; // yyyy-MM-dd
+  visitTime: string; // HH:mm:ss
+  partySize: number;
+  status: "CONFIRMED" | "WAITING" | "CANCELLED" | "VISITED";
+  createdAt: string;
+};
+
+export function createReservation(data: { popupId: number; visitDate: string; visitTime: string; partySize: number }) {
+  return customerRequest<CustomerReservation>("/api/customer/reservations", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+export function getMyReservations() {
+  return customerRequest<CustomerReservation[]>("/api/customer/reservations");
+}
+export function cancelReservation(id: number) {
+  return customerRequest<{ success: boolean }>(`/api/customer/reservations/${id}/cancel`, { method: "PATCH" });
+}
+
+// 리뷰
+export type CustomerReview = {
+  id: number;
+  customerId: number;
+  popupId: number;
+  rating: number;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export function createReview(data: { popupId: number; rating: number; content: string }) {
+  return customerRequest<CustomerReview>("/api/customer/reviews", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+export function getMyReviews() {
+  return customerRequest<CustomerReview[]>("/api/customer/reviews");
+}
+export function deleteReview(id: number) {
+  return customerRequest<{ success: boolean }>(`/api/customer/reviews/${id}`, { method: "DELETE" });
+}
+
+// 관심 카테고리 (키워드)
+// 키워드 목록 조회 API가 없어 keyword 테이블 시드 순서(id 1~8)와 짝을 맞춘 고정 매핑 사용
+// (data.ts CATEGORIES 순서와 동일: 패션=1, 뷰티=2, F&B=3, 캐릭터=4, 라이프스타일=5, 아트=6, 테크=7, 엔터테인먼트=8)
+export const KEYWORD_IDS: Record<string, number> = {
+  패션: 1, 뷰티: 2, "F&B": 3, 캐릭터: 4, 라이프스타일: 5, 아트: 6, 테크: 7, 엔터테인먼트: 8,
+};
+
+export function saveInterests(categoryNames: string[]) {
+  const keywordIds = categoryNames.map((n) => KEYWORD_IDS[n]).filter(Boolean);
+  return customerRequest<{ success: boolean; count: number }>("/api/customer/interests", {
+    method: "POST",
+    body: JSON.stringify({ keywordIds }),
+  });
+}
+
 export function toUiPopup(p: BackendPopup): Popup {
   return {
     id: String(p.id),

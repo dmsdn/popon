@@ -6,11 +6,13 @@ import {
 } from "lucide-react";
 import { Popup, REVIEWS, BLOG_REVIEWS, CONGESTION_COLOR, RESERVATION_HINT } from "../data";
 import { Stars } from "../components/PopupCard";
-import { fetchPopup, toUiPopup } from "../lib/api";
+import { fetchPopup, toUiPopup, getWishlist, addWishlist, removeWishlist } from "../lib/api";
+import { useAuth } from "../context/AuthContext";
 
 export default function PopupDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [popup, setPopup] = useState<Popup | null>(null);
   const [loadError, setLoadError] = useState("");
   const [liked, setLiked] = useState(false);
@@ -21,7 +23,28 @@ export default function PopupDetail() {
     fetchPopup(id)
       .then((p) => setPopup(toUiPopup(p)))
       .catch((e) => setLoadError(e instanceof Error ? e.message : "팝업을 불러오지 못했어요."));
-  }, [id]);
+    // 로그인 상태면 찜 여부 로드 (customerbackend)
+    if (user) {
+      getWishlist()
+        .then((ids) => setLiked(ids.includes(Number(id))))
+        .catch(() => {});
+    }
+  }, [id, user]);
+
+  const toggleLike = async () => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    const next = !liked;
+    setLiked(next); // 낙관적 갱신
+    try {
+      if (next) await addWishlist(Number(id));
+      else await removeWishlist(Number(id));
+    } catch {
+      setLiked(!next); // 실패 시 롤백
+    }
+  };
 
   if (loadError) {
     return (
@@ -61,7 +84,7 @@ export default function PopupDetail() {
             </div>
           </div>
           <div className="flex gap-1.5 shrink-0">
-            <button onClick={() => setLiked(!liked)}
+            <button onClick={toggleLike}
               className={`w-9 h-9 rounded-full border flex items-center justify-center transition-colors ${liked ? "border-accent bg-accent/5 text-accent" : "border-border text-muted-foreground"}`}>
               <Heart size={16} className={liked ? "fill-accent" : ""} />
             </button>
