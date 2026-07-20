@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, XCircle, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import AdminLoginGate from "../components/AdminLoginGate";
 import { getPopups, approvePopup, rejectPopup, Popup, PopupStatusCode, ApiError } from "../../lib/api";
 
 const STATE_LABEL: Record<PopupStatusCode, string> = {
@@ -34,8 +33,8 @@ export default function PopupReview() {
   const [reason, setReason] = useState("");
   const [actingId, setActingId] = useState<number | null>(null);
 
+  // 미로그인 접근은 AdminRoot에서 /admin/login으로 리다이렉트되므로 여기선 항상 관리자
   useEffect(() => {
-    if (!isAdmin) return;
     let alive = true;
     setLoading(true);
     getPopups()
@@ -55,7 +54,7 @@ export default function PopupReview() {
     return () => {
       alive = false;
     };
-  }, [isAdmin]);
+  }, []);
 
   const decide = async (p: Popup, action: "approve" | "reject") => {
     if (action === "reject" && !reason.trim()) {
@@ -99,10 +98,7 @@ export default function PopupReview() {
         )}
       </div>
 
-      {!isAdmin ? (
-        <AdminLoginGate />
-      ) : (
-        <>
+      <>
           {error && <div className="bg-red-50 border border-red-200 rounded-sm px-4 py-3 text-xs text-red-600">{error}</div>}
           {loading && (
             <div className="text-center text-xs text-muted-foreground py-10">
@@ -181,8 +177,7 @@ export default function PopupReview() {
               </div>
             )}
           </div>
-        </>
-      )}
+      </>
     </div>
   );
 }
