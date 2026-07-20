@@ -1,6 +1,8 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { ArrowUpRight, ShieldCheck, Handshake, Headphones, Activity, Store, Users } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { getPopups } from "../../lib/api";
 
 const WEEKLY = [
   { date: "07-09", visitors: 18200, popups: 42 },
@@ -12,11 +14,8 @@ const WEEKLY = [
   { date: "07-15", visitors: 11300, popups: 48 },
 ];
 
-const PENDING = [
-  { icon: ShieldCheck, label: "팝업 심사 대기", value: 6, to: "/admin/review", color: "text-accent" },
-  { icon: Headphones, label: "미처리 문의", value: 12, to: "/admin/cs", color: "text-amber-600" },
-  { icon: Activity, label: "후기 신고 접수", value: 3, to: "/admin/cs", color: "text-red-500" },
-];
+// 미처리 문의·후기 신고는 CS 백엔드 API가 아직 없음 → value: null 로 표기
+const NOT_CONNECTED = null;
 
 const RECENT_CS = [
   { time: "10:42", type: "예약", text: "QR코드가 열리지 않아요 (소비자 · 무너 팝업)", state: "미배정" },
@@ -25,6 +24,28 @@ const RECENT_CS = [
 ];
 
 export default function AdminDashboard() {
+  const [pendingCount, setPendingCount] = useState<number | null>(null);
+  const [publishedCount, setPublishedCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    getPopups()
+      .then((all) => {
+        setPendingCount(all.filter((p) => p.status === "PENDING").length);
+        // 게시중 = 승인되어 소비자에게 노출되는 팝업 (오픈예정 + 진행중)
+        setPublishedCount(all.filter((p) => p.status === "BEFOR" || p.status === "OPEN").length);
+      })
+      .catch(() => {
+        setPendingCount(null);
+        setPublishedCount(null);
+      });
+  }, []);
+
+  const pendingCards = [
+    { icon: ShieldCheck, label: "팝업 심사 대기", value: pendingCount, to: "/admin/review", color: "text-accent" },
+    { icon: Headphones, label: "미처리 문의", value: NOT_CONNECTED, to: "/admin/cs", color: "text-amber-600" },
+    { icon: Activity, label: "후기 신고 접수", value: NOT_CONNECTED, to: "/admin/cs", color: "text-red-500" },
+  ];
+
   return (
     <div className="flex flex-col gap-5">
       <div>
@@ -34,13 +55,17 @@ export default function AdminDashboard() {
 
       {/* 승인 대기 요약 */}
       <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
-        {PENDING.map(({ icon: Icon, label, value, to, color }) => (
+        {pendingCards.map(({ icon: Icon, label, value, to, color }) => (
           <Link key={label} to={to} className="bg-white border border-border rounded-sm p-4 hover:border-accent/50 transition-colors group">
             <div className="flex items-center justify-between mb-2">
               <span className="flex items-center gap-2 text-xs text-muted-foreground"><Icon size={13} /> {label}</span>
               <ArrowUpRight size={13} className="text-muted-foreground group-hover:text-accent" />
             </div>
-            <div className={`text-2xl font-semibold ${color}`}>{value}<span className="text-sm font-normal text-muted-foreground ml-1">건</span></div>
+            {value !== null ? (
+              <div className={`text-2xl font-semibold ${color}`}>{value}<span className="text-sm font-normal text-muted-foreground ml-1">건</span></div>
+            ) : (
+              <div className="text-[11px] text-muted-foreground leading-relaxed pt-1.5">백엔드 구성 후 연동 필요</div>
+            )}
           </Link>
         ))}
       </div>
@@ -71,9 +96,9 @@ export default function AdminDashboard() {
           </div>
           <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-border">
             {[
-              { icon: Store, label: "게시중 팝업", value: "48개" },
-              { icon: Users, label: "누적 회원", value: "84,210명" },
-              { icon: Handshake, label: "활성 파트너", value: "126사" },
+              { icon: Store, label: "게시중 팝업", value: publishedCount !== null ? `${publishedCount}개` : "—" },
+              { icon: Users, label: "누적 회원", value: "백엔드 구성 후 연동 필요" },
+              { icon: Handshake, label: "활성 파트너", value: "백엔드 구성 후 연동 필요" },
             ].map(({ icon: Icon, label, value }) => (
               <div key={label} className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-sm bg-secondary flex items-center justify-center"><Icon size={14} className="text-muted-foreground" /></div>
