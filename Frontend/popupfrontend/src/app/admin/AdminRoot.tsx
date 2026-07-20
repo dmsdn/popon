@@ -195,7 +195,9 @@ export default function AdminRoot() {
                 <span className="text-border">|</span>
                 <span>로그인 {fmtHM(times.iat)}</span>
                 {remaining !== null && (
-                  <span className="flex items-center gap-1 text-foreground/70">
+                  <>
+                    <span className="text-border">|</span>
+                    <span className="flex items-center gap-1 text-foreground/70">
                     <Clock3 size={11} />
                     자동 로그아웃까지{" "}
                     <span
@@ -204,7 +206,8 @@ export default function AdminRoot() {
                     >
                       {fmtRemaining(remaining)}
                     </span>
-                  </span>
+                    </span>
+                  </>
                 )}
               </>
             )}
