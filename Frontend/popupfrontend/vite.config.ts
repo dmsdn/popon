@@ -36,6 +36,9 @@ export default defineConfig({
 
   // 백엔드(Spring Boot :8080)에 CORS 설정이 없으므로 개발 서버 프록시로 우회
   server: {
+    // 소비자 프론트(customerfrontend)가 5173 고정이므로 주최자·관리자 프론트는 5174 고정
+    port: 5174,
+    strictPort: true,
     proxy: {
       '/api': { target: 'http://localhost:8080', changeOrigin: true },
       '/uploads': { target: 'http://localhost:8080', changeOrigin: true },
