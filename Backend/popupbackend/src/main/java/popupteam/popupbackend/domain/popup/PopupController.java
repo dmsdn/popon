@@ -68,4 +68,10 @@ public class PopupController {
         String imageUrl = popupService.uploadImage(id, businessId, file);
         return ResponseEntity.ok(java.util.Map.of("imageUrl", imageUrl));
     }
+
+    @GetMapping("/my")
+    public ResponseEntity<List<PopupResponse>> getMyPopups(Authentication authentication) {
+        Long businessId = getBusinessId(authentication);
+        return ResponseEntity.ok(popupService.getMyPopups(businessId));
+    }
 }

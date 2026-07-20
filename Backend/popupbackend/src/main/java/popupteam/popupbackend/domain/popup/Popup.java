@@ -36,6 +36,9 @@ public class Popup {
     @Enumerated(EnumType.STRING)
     private PopupStatus status;
 
+    @Column(name = "reject_reason", columnDefinition = "TEXT")
+    private String rejectReason;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 

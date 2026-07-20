@@ -1,4 +1,3 @@
-// Source code is decompiled from a .class file using FernFlower decompiler (from Intellij IDEA).
 package com.popupplatform.backend.config;
 
 import com.popupplatform.backend.handler.OAuth2SuccessHandler;

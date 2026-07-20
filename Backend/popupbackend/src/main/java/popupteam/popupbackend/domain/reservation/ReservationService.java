@@ -46,4 +46,10 @@ public class ReservationService {
                 .map(ReservationResponse::from)
                 .collect(Collectors.toList());
     }
+
+    public List<ReservationDetailResponse> getByPopup(Long popupId) {
+        return reservationRepository.findByPopupId(popupId).stream()
+                .map(ReservationDetailResponse::from)
+                .collect(Collectors.toList());
+    }
 }

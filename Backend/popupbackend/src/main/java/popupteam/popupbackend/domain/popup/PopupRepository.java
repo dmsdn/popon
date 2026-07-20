@@ -7,7 +7,7 @@ import java.util.List;
 
 public interface PopupRepository extends JpaRepository<Popup, Long> {
 
-    List<Popup> findByBusinessId(Long businessId);
+    List<Popup> findByBusinessIdOrderByCreatedAtDesc(Long businessId);
 
     @Query("SELECT p FROM Popup p WHERE " +
             "(:location IS NULL OR p.location = :location) AND " +
