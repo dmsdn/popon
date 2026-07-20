@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Outlet, NavLink, Link, Navigate, useLocation, ScrollRestoration } from "react-router";
 import {
-  LayoutDashboard, ShieldCheck, KeyRound, Database,
+  LayoutDashboard, KeyRound, Database,
   LineChart, Newspaper, Headphones, Bell, ExternalLink, Users, LogIn, Store, Building2, X, Clock3,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -12,17 +12,14 @@ const MENU = [
     { to: "/admin", end: true, icon: LayoutDashboard, label: "대시보드 홈" },
     { to: "/admin/stats", icon: LineChart, label: "플랫폼 종합 성과" },
   ]},
-  { group: "심사·승인", items: [
-    { to: "/admin/review", icon: ShieldCheck, label: "팝업 심사·게시 승인" },
-  ]},
-  { group: "팝업 관리", items: [
+  { group: "운영 관리", items: [
     { to: "/admin/popups", icon: Store, label: "팝업 관리" },
     { to: "/admin/cs", icon: Headphones, label: "CS·리뷰 모더레이션" },
     { to: "/admin/masters", icon: Database, label: "공간·카테고리 마스터" },
     { to: "/admin/content", icon: Newspaper, label: "배너·콘텐츠 관리" },
   ]},
   { group: "계정 관리", items: [
-    { to: "/admin/accounts", icon: KeyRound, label: "계정·권한(RBAC)" },
+    { to: "/admin/accounts", icon: KeyRound, label: "관리자 계정 리스트" },
     { to: "/admin/businesses", icon: Building2, label: "주최자 회원 관리" },
     { to: "/admin/members", icon: Users, label: "소비자 회원 관리" },
   ]},
@@ -276,7 +273,7 @@ export default function AdminRoot() {
                 {visiblePopups.map((p) => (
                   <li key={p.id}>
                     <Link
-                      to="/admin/review"
+                      to="/admin/popups"
                       onClick={() => { dismissNotif(p.id); setNotifOpen(false); }}
                       className="block px-4 py-3.5 hover:bg-secondary/50 transition-colors"
                     >

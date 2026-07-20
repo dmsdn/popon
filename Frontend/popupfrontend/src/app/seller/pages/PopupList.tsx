@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { Search, Pencil, Trash2, Loader2 } from "lucide-react";
+import { Search, Pencil, Trash2, Loader2, ShieldAlert, ChevronDown, ChevronUp } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { getPopups, getMyPopups, deletePopup, Popup, PopupStatusCode } from "../../lib/api";
+import { loadAllMeta, isSuspended } from "../../lib/adminPopupMeta";
 
 // 백엔드 PopupStatus → 화면 표기 (등록 직후 PENDING, 관리자 승인 시 BEFOR, 반려 시 REJECTED)
 const STATUS_LABEL: Record<PopupStatusCode, string> = {
@@ -33,6 +34,9 @@ export default function PopupList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  // 관리자 수정 이력(수정사항·사유, 상태 확정일) — 관리자 콘솔에서 기록한 값
+  const [adminMeta] = useState(loadAllMeta);
+  const [openAdminEditId, setOpenAdminEditId] = useState<number | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -123,11 +127,11 @@ export default function PopupList() {
         <table className="w-full text-[13px] min-w-[760px]">
           <thead>
             <tr className="border-b border-border bg-secondary/60 text-xs text-muted-foreground">
-              <th className="text-left font-medium px-4 py-2.5">ID</th>
-              <th className="text-left font-medium px-4 py-2.5">팝업명 / 브랜드</th>
+              <th className="text-left font-medium px-4 py-2.5">팝업명</th>
               <th className="text-left font-medium px-4 py-2.5">운영 기간</th>
               <th className="text-left font-medium px-4 py-2.5">공간</th>
               <th className="text-left font-medium px-4 py-2.5">상태</th>
+              <th className="text-left font-medium px-4 py-2.5">상태 확정일</th>
               <th className="text-left font-medium px-4 py-2.5">등록일</th>
               <th className="text-center font-medium px-4 py-2.5">관리</th>
             </tr>
@@ -140,37 +144,75 @@ export default function PopupList() {
                 </td>
               </tr>
             )}
-            {!loading && rows.map((p) => (
-              <tr key={p.id} className="hover:bg-secondary/40">
-                <td className="px-4 py-3 text-xs text-muted-foreground" style={{ fontFamily: "'DM Mono', monospace" }}>{p.id}</td>
-                <td className="px-4 py-3">
-                  <div className="font-medium">{p.title}</div>
-                  <div className="text-xs text-muted-foreground">{p.companyName}</div>
-                </td>
-                <td className="px-4 py-3 text-xs">{fmtDate(p.startDate)} ~ {fmtDate(p.endDate)}</td>
-                <td className="px-4 py-3 text-xs">{p.location ?? "-"}</td>
-                <td className="px-4 py-3">
-                  <span className={`text-[11px] px-2 py-0.5 rounded-full border ${STATUS_BADGE[p.status]}`}>{STATUS_LABEL[p.status]}</span>
-                  {p.status === "REJECTED" && p.rejectReason && (
-                    <div className="text-[11px] text-red-500 mt-1 max-w-[180px]">사유: {p.rejectReason}</div>
+            {!loading && rows.map((p) => {
+              const meta = adminMeta[String(p.id)] ?? {};
+              const suspended = isSuspended(p.status, p.rejectReason);
+              const adminEditOpen = openAdminEditId === p.id;
+              return (
+                <>
+                  <tr key={p.id} className="hover:bg-secondary/40">
+                    <td className="px-4 py-3">
+                      <div className="font-medium">{p.title}</div>
+                    </td>
+                    <td className="px-4 py-3 text-xs">{fmtDate(p.startDate)} ~ {fmtDate(p.endDate)}</td>
+                    <td className="px-4 py-3 text-xs">{p.location ?? "-"}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {suspended ? (
+                          <span className="text-[11px] px-2 py-0.5 rounded-full border bg-slate-800 text-white border-slate-800">게시중지</span>
+                        ) : (
+                          <span className={`text-[11px] px-2 py-0.5 rounded-full border ${STATUS_BADGE[p.status]}`}>{STATUS_LABEL[p.status]}</span>
+                        )}
+                        {/* 관리자가 상세를 수정한 경우: 배지 옆 버튼 → 아래로 확장해 수정사항·사유 확인 */}
+                        {meta.editNote && (
+                          <button
+                            onClick={() => setOpenAdminEditId(adminEditOpen ? null : p.id)}
+                            className={`inline-flex items-center gap-0.5 text-[11px] px-2 py-0.5 rounded-full border transition-colors ${
+                              adminEditOpen ? "bg-accent text-white border-accent" : "border-accent/40 text-accent hover:bg-accent/5"
+                            }`}
+                          >
+                            <ShieldAlert size={10} /> 관리자 수정 {adminEditOpen ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+                          </button>
+                        )}
+                      </div>
+                      {p.status === "REJECTED" && !suspended && p.rejectReason && (
+                        <div className="text-[11px] text-red-500 mt-1 max-w-[180px]">사유: {p.rejectReason}</div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-xs">{meta.statusDate ?? "-"}</td>
+                    <td className="px-4 py-3 text-xs">{fmtDate(p.createdAt)}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                        <Link to={`/seller/popups/new?id=${p.id}`} title="수정" className="hover:text-foreground"><Pencil size={14} /></Link>
+                        <button
+                          title="삭제"
+                          disabled={deletingId === p.id}
+                          onClick={() => handleDelete(p)}
+                          className="hover:text-red-500 disabled:opacity-40"
+                        >
+                          {deletingId === p.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  {/* 관리자 수정사항·사유 확장 행 */}
+                  {adminEditOpen && meta.editNote && (
+                    <tr key={`admin-edit-${p.id}`} className="bg-secondary/30">
+                      <td colSpan={7} className="px-6 py-4">
+                        <div className="max-w-2xl bg-white border border-accent/30 rounded-sm p-4">
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-accent mb-2">
+                            <ShieldAlert size={12} /> 관리자 수정사항 및 사유
+                            {meta.editDate && <span className="font-normal text-muted-foreground">· {meta.editDate}</span>}
+                          </div>
+                          <p className="text-[13px] leading-relaxed whitespace-pre-wrap">{meta.editNote}</p>
+                        </div>
+                      </td>
+                    </tr>
                   )}
-                </td>
-                <td className="px-4 py-3 text-xs">{fmtDate(p.createdAt)}</td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                    <Link to={`/seller/popups/new?id=${p.id}`} title="수정" className="hover:text-foreground"><Pencil size={14} /></Link>
-                    <button
-                      title="삭제"
-                      disabled={deletingId === p.id}
-                      onClick={() => handleDelete(p)}
-                      className="hover:text-red-500 disabled:opacity-40"
-                    >
-                      {deletingId === p.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                </>
+              );
+            })}
             {!loading && rows.length === 0 && (
               <tr><td colSpan={7} className="px-4 py-10 text-center text-xs text-muted-foreground">조건에 맞는 팝업이 없습니다.</td></tr>
             )}

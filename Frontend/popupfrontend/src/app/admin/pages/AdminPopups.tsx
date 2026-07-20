@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
-import { Search, Loader2, ShieldCheck, Info } from "lucide-react";
-import { getPopups, Popup, PopupStatusCode } from "../../lib/api";
+import { useNavigate } from "react-router";
+import { Search, Loader2, Info, CheckCircle2, XCircle, ShieldCheck, PauseCircle, Pencil, ChevronUp } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import { getPopups, approvePopup, rejectPopup, Popup, PopupStatusCode, ApiError } from "../../lib/api";
+import { setMeta, today, SUSPEND_MARKER, isSuspended } from "../../lib/adminPopupMeta";
 
-// 플랫폼에 등록된 전체 팝업 관리 (관리자용)
-// 연동됨: 목록 조회·상태 필터·검색 (GET /api/popups 실데이터)
-// 연동 필요: 관리자 권한의 팝업 강제 수정/게시중지/삭제 — 현재 백엔드는 주최자 본인만 수정/삭제 가능
+// 플랫폼 전체 팝업 관리 (심사·게시중지·수정 통합)
+// 심사·게시중지: 관리자 승인/반려 API 실연동 / 내용 수정: /admin/popups/edit (실반영은 관리자 수정 API 백엔드 구성 후)
 
 const STATUS_LABEL: Record<PopupStatusCode, string> = {
   PENDING: "심사 대기",
@@ -28,18 +29,28 @@ const FILTERS: ("전체" | PopupStatusCode)[] = ["전체", "PENDING", "REJECTED"
 const fmtDate = (iso: string | null) => (iso ? iso.slice(0, 10) : "-");
 
 export default function AdminPopups() {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
   const [popups, setPopups] = useState<Popup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("전체");
   const [q, setQ] = useState("");
+  const [openReviewId, setOpenReviewId] = useState<number | null>(null); // 심사 확장 행
+  const [reason, setReason] = useState("");
+  const [actingId, setActingId] = useState<number | null>(null);
 
   useEffect(() => {
     let alive = true;
     getPopups()
       .then((all) => {
         if (!alive) return;
-        setPopups([...all].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+        // 심사 대기 우선, 이후 최근 등록순
+        const sorted = [...all].sort((a, b) => {
+          if ((a.status === "PENDING") !== (b.status === "PENDING")) return a.status === "PENDING" ? -1 : 1;
+          return b.createdAt.localeCompare(a.createdAt);
+        });
+        setPopups(sorted);
         setError("");
       })
       .catch((e) => alive && setError(e instanceof Error ? e.message : "팝업 목록을 불러오지 못했습니다."))
@@ -49,24 +60,75 @@ export default function AdminPopups() {
     };
   }, []);
 
+  const handleAuthError = (e: unknown, fallback: string) => {
+    if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
+      alert("관리자 인증이 만료되었거나 권한이 없습니다. 다시 로그인해 주세요.");
+      logout();
+    } else {
+      alert(e instanceof Error ? e.message : fallback);
+    }
+  };
+
+  // 심사: 승인 / 반려
+  const decide = async (p: Popup, action: "approve" | "reject") => {
+    if (action === "reject" && !reason.trim()) {
+      alert("반려 사유를 입력해 주세요. (주최자에게 전달됩니다)");
+      return;
+    }
+    setActingId(p.id);
+    try {
+      const updated = action === "approve" ? await approvePopup(p.id) : await rejectPopup(p.id, reason.trim());
+      setPopups((prev) => prev.map((x) => (x.id === p.id ? updated : x)));
+      setMeta(p.id, { statusDate: today() });
+      setOpenReviewId(null);
+      setReason("");
+    } catch (e) {
+      handleAuthError(e, "처리에 실패했습니다.");
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  // 게시중지 ↔ 게시재개 (반려 API를 [게시중지] 마커와 함께 재사용 → 소비자 화면에서 즉시 숨김)
+  const toggleSuspend = async (p: Popup) => {
+    const suspended = isSuspended(p.status, p.rejectReason);
+    if (!window.confirm(suspended ? `「${p.title}」 게시를 재개할까요?` : `「${p.title}」 게시를 중지할까요? 소비자 화면에서 즉시 숨겨집니다.`)) return;
+    setActingId(p.id);
+    try {
+      const updated = suspended
+        ? await approvePopup(p.id)
+        : await rejectPopup(p.id, `${SUSPEND_MARKER} 관리자에 의해 게시가 중지되었습니다.`);
+      setPopups((prev) => prev.map((x) => (x.id === p.id ? updated : x)));
+      setMeta(p.id, { statusDate: today() });
+    } catch (e) {
+      handleAuthError(e, "처리에 실패했습니다.");
+    } finally {
+      setActingId(null);
+    }
+  };
+
   const rows = popups.filter(
     (p) =>
       (filter === "전체" || p.status === filter) &&
       (q === "" || p.title.includes(q) || p.companyName.includes(q) || (p.location ?? "").includes(q)),
   );
 
+  const pendingCount = popups.filter((p) => p.status === "PENDING").length;
+
   return (
     <div className="flex flex-col gap-4">
       <div>
         <h1 className="text-lg font-semibold">팝업 관리</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">플랫폼에 등록된 전체 팝업을 조회·관리합니다. (심사 처리는 팝업 심사·게시 승인 메뉴)</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          전체 팝업 조회·심사·게시중지·수정을 한 화면에서 처리합니다. 심사 대기 {pendingCount}건
+        </p>
       </div>
 
       <div className="flex items-start gap-2.5 bg-blue-50 border border-blue-200 rounded-sm px-4 py-3">
         <Info size={14} className="text-blue-500 shrink-0 mt-0.5" />
         <div className="text-xs text-blue-800 leading-relaxed">
-          목록·필터·검색은 실데이터 연동 완료. 관리자 권한의 <strong>팝업 강제 수정·게시중지·삭제</strong>는
-          백엔드에 관리자용 API가 없어 연동 필요 상태입니다 (현재는 주최자 본인만 수정/삭제 가능).
+          심사(승인/반려)·게시중지는 실데이터로 즉시 반영됩니다. <strong>수정</strong>은 수정사항·사유가 주최자에게
+          전달되며, 팝업 내용의 실제 반영은 관리자용 수정 API 백엔드 구성 후 연동됩니다.
         </div>
       </div>
 
@@ -101,7 +163,7 @@ export default function AdminPopups() {
 
       {/* 목록 테이블 */}
       <div className="bg-white border border-border rounded-sm overflow-x-auto">
-        <table className="w-full text-[13px] min-w-[820px]">
+        <table className="w-full text-[13px] min-w-[880px]">
           <thead>
             <tr className="border-b border-border bg-secondary/60 text-xs text-muted-foreground">
               <th className="text-left font-medium px-4 py-2.5">ID</th>
@@ -121,42 +183,125 @@ export default function AdminPopups() {
                 </td>
               </tr>
             )}
-            {!loading && rows.map((p) => (
-              <tr key={p.id} className="hover:bg-secondary/40">
-                <td className="px-4 py-3 text-xs text-muted-foreground" style={{ fontFamily: "'DM Mono', monospace" }}>{p.id}</td>
-                <td className="px-4 py-3">
-                  <div className="font-medium">{p.title}</div>
-                  <div className="text-xs text-muted-foreground">{p.companyName}</div>
-                </td>
-                <td className="px-4 py-3 text-xs">{fmtDate(p.startDate)} ~ {fmtDate(p.endDate)}</td>
-                <td className="px-4 py-3 text-xs">{p.location ?? "-"}</td>
-                <td className="px-4 py-3">
-                  <span className={`text-[11px] px-2 py-0.5 rounded-full border ${STATUS_BADGE[p.status]}`}>{STATUS_LABEL[p.status]}</span>
-                  {p.status === "REJECTED" && p.rejectReason && (
-                    <div className="text-[11px] text-red-500 mt-1 max-w-[180px]">사유: {p.rejectReason}</div>
+            {!loading && rows.map((p) => {
+              const suspended = isSuspended(p.status, p.rejectReason);
+              const reviewed = !suspended && (p.status === "BEFOR" || p.status === "OPEN" || p.status === "CLOSED");
+              const reviewable = !suspended && (p.status === "PENDING" || p.status === "REJECTED");
+              const reviewOpen = openReviewId === p.id;
+              return (
+                <>
+                  <tr key={p.id} className="hover:bg-secondary/40">
+                    <td className="px-4 py-3 text-xs text-muted-foreground" style={{ fontFamily: "'DM Mono', monospace" }}>{p.id}</td>
+                    <td className="px-4 py-3">
+                      <div className="font-medium">{p.title}</div>
+                      <div className="text-xs text-muted-foreground">{p.companyName}</div>
+                    </td>
+                    <td className="px-4 py-3 text-xs">{fmtDate(p.startDate)} ~ {fmtDate(p.endDate)}</td>
+                    <td className="px-4 py-3 text-xs">{p.location ?? "-"}</td>
+                    <td className="px-4 py-3">
+                      {suspended ? (
+                        <span className="text-[11px] px-2 py-0.5 rounded-full border bg-slate-800 text-white border-slate-800">게시중지</span>
+                      ) : (
+                        <span className={`text-[11px] px-2 py-0.5 rounded-full border ${STATUS_BADGE[p.status]}`}>{STATUS_LABEL[p.status]}</span>
+                      )}
+                      {p.status === "REJECTED" && !suspended && p.rejectReason && (
+                        <div className="text-[11px] text-red-500 mt-1 max-w-[180px]">사유: {p.rejectReason}</div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-xs">{fmtDate(p.createdAt)}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-center gap-1.5">
+                        {/* ① 심사 — 대기/반려 상태는 확장 심사, 승인 완료면 '심사완료' */}
+                        {reviewable ? (
+                          <button
+                            onClick={() => { setOpenReviewId(reviewOpen ? null : p.id); setReason(""); }}
+                            className={`inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-sm border transition-colors ${
+                              reviewOpen ? "border-accent text-accent bg-accent/5" : "border-border hover:border-accent hover:text-accent"
+                            }`}
+                          >
+                            <ShieldCheck size={10} /> 심사 {reviewOpen ? <ChevronUp size={10} /> : null}
+                          </button>
+                        ) : (
+                          <button
+                            disabled
+                            title={suspended ? "게시중지 상태에서는 심사할 수 없습니다" : "승인·게시가 완료된 팝업입니다"}
+                            className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-sm border border-emerald-200 bg-emerald-50 text-emerald-600 cursor-default"
+                          >
+                            <CheckCircle2 size={10} /> 심사완료
+                          </button>
+                        )}
+                        {/* ② 게시중지 토글 — 게시 상태(오픈예정/게시중)에서만 중지 가능 */}
+                        <button
+                          onClick={() => toggleSuspend(p)}
+                          disabled={actingId === p.id || (!suspended && !(p.status === "BEFOR" || p.status === "OPEN"))}
+                          title={suspended ? "누르면 게시를 재개합니다" : "게시 상태의 팝업을 소비자 화면에서 숨깁니다"}
+                          className={`inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-sm border transition-colors disabled:opacity-40 ${
+                            suspended
+                              ? "bg-slate-800 text-white border-slate-800 hover:bg-slate-700"
+                              : "border-border hover:border-red-400 hover:text-red-500"
+                          }`}
+                        >
+                          <PauseCircle size={10} /> {suspended ? "게시중지됨" : "게시중지"}
+                        </button>
+                        {/* ③ 수정 */}
+                        <button
+                          onClick={() => navigate(`/admin/popups/edit?id=${p.id}`)}
+                          className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-sm border border-border hover:border-accent hover:text-accent"
+                        >
+                          <Pencil size={10} /> 수정
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  {/* 심사 확장 행 */}
+                  {reviewOpen && (
+                    <tr key={`review-${p.id}`} className="bg-secondary/30">
+                      <td colSpan={7} className="px-6 py-4">
+                        <div className="flex flex-col gap-3 max-w-3xl">
+                          <div className="bg-white border border-border rounded-sm p-3">
+                            <div className="text-[11px] text-muted-foreground mb-1">소개글</div>
+                            <div className="text-[13px] whitespace-pre-wrap">{p.description || "(소개글 없음)"}</div>
+                          </div>
+                          {p.status === "REJECTED" && p.rejectReason && (
+                            <div className="bg-red-50 border border-red-200 rounded-sm px-3 py-2 text-xs text-red-600">
+                              기존 반려 사유: {p.rejectReason}
+                            </div>
+                          )}
+                          <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-end">
+                            <div className="flex-1">
+                              <label className="block text-xs font-medium mb-1.5">반려 사유 (반려 시 필수 · 주최자에게 전달됨)</label>
+                              <input
+                                value={reason}
+                                onChange={(e) => setReason(e.target.value)}
+                                placeholder="예: 대표 이미지 화질 기준 미달"
+                                className="w-full px-3 py-2 text-[13px] border border-border rounded-sm bg-white focus:outline-none focus:border-accent"
+                              />
+                            </div>
+                            <div className="flex gap-2 shrink-0">
+                              <button
+                                onClick={() => decide(p, "reject")}
+                                disabled={actingId === p.id}
+                                className="flex items-center gap-1.5 text-xs px-4 py-2.5 rounded-sm border border-red-300 text-red-500 hover:bg-red-50 disabled:opacity-50 bg-white"
+                              >
+                                {actingId === p.id ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />} 반려
+                              </button>
+                              <button
+                                onClick={() => decide(p, "approve")}
+                                disabled={actingId === p.id}
+                                className="flex items-center gap-1.5 text-xs px-5 py-2.5 rounded-sm bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+                              >
+                                {actingId === p.id ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />} 승인·게시
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
                   )}
-                </td>
-                <td className="px-4 py-3 text-xs">{fmtDate(p.createdAt)}</td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center justify-center gap-1.5">
-                    <Link
-                      to="/admin/review"
-                      className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-sm border border-border hover:border-accent hover:text-accent"
-                      title="심사 화면으로 이동"
-                    >
-                      <ShieldCheck size={10} /> 심사
-                    </Link>
-                    <button
-                      disabled
-                      title="관리자용 수정/삭제 API 백엔드 구성 후 연동 필요"
-                      className="text-[11px] px-2 py-1 rounded-sm border border-border text-muted-foreground opacity-40 cursor-not-allowed"
-                    >
-                      게시중지 (연동 필요)
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                </>
+              );
+            })}
             {!loading && rows.length === 0 && (
               <tr><td colSpan={7} className="px-4 py-10 text-center text-xs text-muted-foreground">조건에 맞는 팝업이 없습니다.</td></tr>
             )}

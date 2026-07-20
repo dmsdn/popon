@@ -23,8 +23,8 @@ import Notices from "./seller/pages/Notices";
 import AdminRoot from "./admin/AdminRoot";
 import AdminDashboard from "./admin/pages/AdminDashboard";
 import AdminLogin from "./admin/pages/AdminLogin";
-import PopupReview from "./admin/pages/PopupReview";
 import AdminPopups from "./admin/pages/AdminPopups";
+import AdminPopupEdit from "./admin/pages/AdminPopupEdit";
 import Accounts from "./admin/pages/Accounts";
 import Businesses from "./admin/pages/Businesses";
 import Members from "./admin/pages/Members";
@@ -70,8 +70,8 @@ export const router = createBrowserRouter([
     children: [
       { index: true, Component: AdminDashboard },
       { path: "login", Component: AdminLogin },
-      { path: "review", Component: PopupReview },
       { path: "popups", Component: AdminPopups },
+      { path: "popups/edit", Component: AdminPopupEdit },
       { path: "accounts", Component: Accounts },
       { path: "businesses", Component: Businesses },
       { path: "members", Component: Members },
