@@ -24,12 +24,23 @@ public class SecurityConfig {
                         .requestMatchers("/api/business/auth/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/popups/my").authenticated()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/popups/*/contract").authenticated()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/popups/**").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/popups/*/slots").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/reservations/popup/**").authenticated()
+                        .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/reservations/*/cancel").authenticated()
                         .requestMatchers("/api/reservations/**").permitAll()
                         .requestMatchers("/api/admin/auth/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/reservations/*/cancel").authenticated()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/reservations/checkin/qr").authenticated()
+                        .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/reservations/*/checkin").authenticated()
+                        .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/reservations/*/no-show").authenticated()
+                        .requestMatchers("/api/reservations/**").permitAll()
+                        .requestMatchers("/api/cs/**").permitAll()   // 참가자용, 팀 예약 API와 동일한 정책
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/reports").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/visits/log").permitAll()   // === 추가 ===
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/venues/**").permitAll()   // === 추가 ===
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

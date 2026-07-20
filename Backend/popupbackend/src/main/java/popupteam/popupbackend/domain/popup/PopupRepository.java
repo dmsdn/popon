@@ -17,4 +17,9 @@ public interface PopupRepository extends JpaRepository<Popup, Long> {
     List<Popup> search(@Param("location") String location,
                        @Param("status") PopupStatus status,
                        @Param("keyword") String keyword);
+
+    List<Popup> findByStatusAndStartDateLessThanEqual(PopupStatus status, java.time.LocalDateTime startDate);
+    List<Popup> findByStatusAndEndDateLessThanEqual(PopupStatus status, java.time.LocalDateTime endDate);
+
+    long countByStatus(PopupStatus status);
 }

@@ -30,6 +30,24 @@ public class PopupService {
         popup.setEndDate(request.getEndDate());
         popup.setStatus(PopupStatus.PENDING);
 
+        // 면적 기반 권장 수용인원 자동계산 (면적 ÷ 4.5)
+        Integer recommendedCapacity = null;
+        if (request.getAreaSqm() != null) {
+            recommendedCapacity = (int) Math.round(request.getAreaSqm() / 4.5);
+        }
+        popup.setAreaSqm(request.getAreaSqm());
+        popup.setRecommendedCapacity(recommendedCapacity);
+
+        // 최종 수용인원: 직접 입력값 우선, 없으면 추천값 사용
+        Integer finalCapacity = request.getCapacity() != null ? request.getCapacity() : recommendedCapacity;
+        if (finalCapacity == null) {
+            throw new IllegalArgumentException("capacity 또는 areaSqm 중 하나는 반드시 입력해야 합니다.");
+        }
+        popup.setCapacity(finalCapacity);
+
+        popup.setReservationMode(ReservationMode.valueOf(request.getReservationMode()));
+        popup.setAvgExperienceMinutes(request.getAvgExperienceMinutes());
+
         return PopupResponse.from(popupRepository.save(popup));
     }
 
@@ -66,6 +84,25 @@ public class PopupService {
         if (request.getStartDate() != null) popup.setStartDate(request.getStartDate());
         if (request.getEndDate() != null) popup.setEndDate(request.getEndDate());
         if (request.getStatus() != null) popup.setStatus(PopupStatus.valueOf(request.getStatus()));
+
+        // 면적이 바뀌면 권장 수용인원 재계산
+        if (request.getAreaSqm() != null) {
+            popup.setAreaSqm(request.getAreaSqm());
+            popup.setRecommendedCapacity((int) Math.round(request.getAreaSqm() / 4.5));
+        }
+
+        if (request.getCapacity() != null) {
+            popup.setCapacity(request.getCapacity());
+        }
+
+        if (request.getReservationMode() != null) {
+            popup.setReservationMode(ReservationMode.valueOf(request.getReservationMode()));
+        }
+
+        if (request.getAvgExperienceMinutes() != null) {
+            popup.setAvgExperienceMinutes(request.getAvgExperienceMinutes());
+        }
+
         popup.setUpdatedAt(java.time.LocalDateTime.now());
 
         return PopupResponse.from(popupRepository.save(popup));
