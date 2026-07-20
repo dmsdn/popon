@@ -60,11 +60,12 @@ const fmtRemaining = (sec: number) => {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 };
 
-// 확인한 알림(팝업 id) 저장 키
+// 확인한 알림(배지 해제용) / 클릭해서 목록에서 지운 알림 저장 키
 const SEEN_KEY = "adminSeenPopupNotifs";
-const loadSeen = (): number[] => {
+const DISMISSED_KEY = "adminDismissedPopupNotifs";
+const loadIds = (key: string): number[] => {
   try {
-    return JSON.parse(localStorage.getItem(SEEN_KEY) ?? "[]");
+    return JSON.parse(localStorage.getItem(key) ?? "[]");
   } catch {
     return [];
   }
@@ -100,8 +101,18 @@ export default function AdminRoot() {
   // ── 알림: 새로 등록된(심사 대기) 팝업 ──
   const [notifOpen, setNotifOpen] = useState(false);
   const [pendingPopups, setPendingPopups] = useState<Popup[]>([]);
-  const [seenIds, setSeenIds] = useState<number[]>(loadSeen);
-  const unseen = pendingPopups.filter((p) => !seenIds.includes(p.id));
+  const [seenIds, setSeenIds] = useState<number[]>(() => loadIds(SEEN_KEY));
+  const [dismissedIds, setDismissedIds] = useState<number[]>(() => loadIds(DISMISSED_KEY));
+  // 패널 목록: 클릭해서 지운 항목은 제외 / 배지: 아직 확인 안 한 항목 수
+  const visiblePopups = pendingPopups.filter((p) => !dismissedIds.includes(p.id));
+  const unseen = visiblePopups.filter((p) => !seenIds.includes(p.id));
+
+  // 항목 클릭 → 목록에서 제거 (localStorage에 기억, 새로고침해도 유지)
+  const dismissNotif = (id: number) => {
+    const ids = [...new Set([...dismissedIds, id])];
+    setDismissedIds(ids);
+    localStorage.setItem(DISMISSED_KEY, JSON.stringify(ids));
+  };
 
   useEffect(() => {
     if (!admin) return;
@@ -121,7 +132,7 @@ export default function AdminRoot() {
   // 패널을 열면 현재 목록을 '확인함'으로 기록 → 배지 해제
   const openNotif = () => {
     setNotifOpen(true);
-    const ids = [...new Set([...seenIds, ...pendingPopups.map((p) => p.id)])];
+    const ids = [...new Set([...seenIds, ...visiblePopups.map((p) => p.id)])];
     setSeenIds(ids);
     localStorage.setItem(SEEN_KEY, JSON.stringify(ids));
   };
@@ -246,24 +257,24 @@ export default function AdminRoot() {
             <div className="h-14 px-4 border-b border-border flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2 text-sm font-semibold">
                 <Bell size={15} className="text-accent" /> 새 알림
-                <span className="text-xs font-normal text-muted-foreground">심사 대기 {pendingPopups.length}건</span>
+                <span className="text-xs font-normal text-muted-foreground">심사 대기 {visiblePopups.length}건</span>
               </div>
               <button onClick={() => setNotifOpen(false)} className="text-muted-foreground hover:text-foreground">
                 <X size={16} />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto">
-              {pendingPopups.length === 0 && (
+              {visiblePopups.length === 0 && (
                 <div className="px-4 py-12 text-center text-xs text-muted-foreground">
                   새로 등록된 항목이 없습니다.
                 </div>
               )}
               <ul className="divide-y divide-border">
-                {pendingPopups.map((p) => (
+                {visiblePopups.map((p) => (
                   <li key={p.id}>
                     <Link
                       to="/admin/review"
-                      onClick={() => setNotifOpen(false)}
+                      onClick={() => { dismissNotif(p.id); setNotifOpen(false); }}
                       className="block px-4 py-3.5 hover:bg-secondary/50 transition-colors"
                     >
                       <div className="flex items-center gap-2 mb-1">
