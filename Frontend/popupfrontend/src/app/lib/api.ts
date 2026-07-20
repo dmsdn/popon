@@ -11,6 +11,42 @@ export class ApiError extends Error {
 
 const TOKEN_KEY = "accessToken";
 
+// ── 플랫폼 방문 로그 (관리자 대시보드 방문자 추이 집계용) ──
+// 앱 최초 마운트 시 1회만 호출한다. 집계용 fire-and-forget이라 실패는 무시(콘솔만).
+// visitorKey: 관리자 "admin:{id}" / 주최자 "business:{id}" / 비로그인은 localStorage에 보관하는 UUID 재사용
+export function logVisit() {
+  let visitorKey = "";
+  try {
+    const raw = localStorage.getItem("authUser");
+    const u = raw ? JSON.parse(raw) : null;
+    if (u?.role === "admin" && u.adminId != null) {
+      visitorKey = `admin:${u.adminId}`;
+    } else if (u?.businessId != null) {
+      // role 없는 구버전 저장분도 사업자 계정으로 간주 (AuthContext와 동일 규칙)
+      visitorKey = `business:${u.businessId}`;
+    }
+  } catch {
+    // 손상된 authUser는 비회원으로 처리
+  }
+  if (!visitorKey) {
+    let anon = localStorage.getItem("visitor_id");
+    if (!anon) {
+      anon = crypto.randomUUID();
+      localStorage.setItem("visitor_id", anon);
+    }
+    visitorKey = anon;
+  }
+  fetch("/api/visits/log", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ visitorKey, appSource: "POPUP" }),
+  })
+    .then((res) => {
+      if (!res.ok) console.debug(`[visit-log] 응답 ${res.status} (백엔드 미구현이면 무시해도 됨)`);
+    })
+    .catch(() => console.debug("[visit-log] 전송 실패 — 무시"));
+}
+
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
 }
