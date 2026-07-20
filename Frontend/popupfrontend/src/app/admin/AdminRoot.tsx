@@ -1,4 +1,4 @@
-import { Outlet, NavLink, Link } from "react-router";
+import { Outlet, NavLink, Link, Navigate, useLocation } from "react-router";
 import {
   LayoutDashboard, ShieldCheck, KeyRound, Database,
   LineChart, Newspaper, Headphones, Bell, ExternalLink, Users, LogIn, Store, Building2,
@@ -38,8 +38,14 @@ function todayLabel() {
 
 export default function AdminRoot() {
   const { user, logout } = useAuth();
+  const location = useLocation();
   const admin = user?.role === "admin" ? user : null;
   const accountName = admin ? admin.email.split("@")[0] : null;
+
+  // 미로그인 시 어떤 관리자 라우트로 접근해도 로그인 페이지로 이동
+  if (!admin && location.pathname !== "/admin/login") {
+    return <Navigate to="/admin/login" replace state={{ from: location.pathname }} />;
+  }
 
   return (
     <div className="min-h-screen bg-[#f4f5f7] text-foreground flex" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>
