@@ -40,6 +40,9 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     proxy: {
+      // 소비자 기능(찜·예약·리뷰·관심)은 소비자측 백엔드(customerbackend :8081)
+      // ※ '/api'보다 먼저 선언해야 우선 매칭됨
+      '/api/customer': { target: 'http://localhost:8081', changeOrigin: true },
       // 팝업 공개 조회는 주최자측 백엔드(popupbackend :8080)
       '/api': { target: 'http://localhost:8080', changeOrigin: true },
       '/uploads': { target: 'http://localhost:8080', changeOrigin: true },
