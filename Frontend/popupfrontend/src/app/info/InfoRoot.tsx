@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Menu, X, LogOut, User } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
-const EXTERNAL_SERVICE_URL = "https://example.com/b2c"; // B2C 소비자 페이지 연결 예정
+const EXTERNAL_SERVICE_URL = "http://localhost:5173"; // 소비자 프론트엔드(customerfrontend) 루트
 
 export default function Root() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -44,7 +44,7 @@ export default function Root() {
           <nav className="hidden md:flex items-center gap-8">
             <NavLink to="/" end className={navLinkClass}>서비스 소개</NavLink>
             <NavLink to="/content-register" className={navLinkClass}>팝업콘텐츠 등록</NavLink>
-            <NavLink to="/info-center" className={navLinkClass}>정보센터</NavLink>
+            <NavLink to="/waiting-management" className={navLinkClass}>예약·웨이팅 통합관리</NavLink>
             <a
               href={EXTERNAL_SERVICE_URL}
               target="_blank"
@@ -109,7 +109,7 @@ export default function Root() {
           <div className="md:hidden border-t border-border bg-background px-6 py-5 flex flex-col gap-4">
             <NavLink to="/" end className={navLinkClass} onClick={() => setMenuOpen(false)}>서비스 소개</NavLink>
             <NavLink to="/content-register" className={navLinkClass} onClick={() => setMenuOpen(false)}>팝업콘텐츠 등록</NavLink>
-            <NavLink to="/info-center" className={navLinkClass} onClick={() => setMenuOpen(false)}>정보센터</NavLink>
+            <NavLink to="/waiting-management" className={navLinkClass} onClick={() => setMenuOpen(false)}>예약·웨이팅 통합관리</NavLink>
             <a
               href={EXTERNAL_SERVICE_URL}
               target="_blank"

@@ -4,7 +4,7 @@ import { createBrowserRouter } from "react-router";
 import InfoRoot from "./info/InfoRoot";
 import Home from "./info/pages/Home";
 import ContentRegister from "./info/pages/ContentRegister";
-import InfoCenter from "./info/pages/InfoCenter";
+import WaitingManagement from "./info/pages/WaitingManagement";
 import Login from "./info/pages/Login";
 
 // ── 주최자 팝업등록 콘솔 (판매자센터, 쿠팡 윙 스타일) ──
@@ -41,7 +41,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, Component: Home },
       { path: "content-register", Component: ContentRegister },
-      { path: "info-center", Component: InfoCenter },
+      { path: "waiting-management", Component: WaitingManagement },
       { path: "login", Component: Login },
     ],
   },
