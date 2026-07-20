@@ -17,6 +17,11 @@ public class PopupResponse {
     private String status;
     private String rejectReason;
     private LocalDateTime createdAt;
+    private Double areaSqm;
+    private Integer recommendedCapacity;
+    private Integer capacity;
+    private String reservationMode;
+    private Integer avgExperienceMinutes;
 
     public static PopupResponse from(Popup popup) {
         return PopupResponse.builder()
@@ -31,6 +36,11 @@ public class PopupResponse {
                 .status(popup.getStatus().name())
                 .rejectReason(popup.getRejectReason())
                 .createdAt(popup.getCreatedAt())
+                .areaSqm(popup.getAreaSqm())
+                .recommendedCapacity(popup.getRecommendedCapacity())
+                .capacity(popup.getCapacity())
+                .reservationMode(popup.getReservationMode() != null ? popup.getReservationMode().name() : null)
+                .avgExperienceMinutes(popup.getAvgExperienceMinutes())
                 .build();
     }
 }

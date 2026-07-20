@@ -51,4 +51,41 @@ public class ReservationController {
 
         return ResponseEntity.ok(reservationService.getByPopup(popupId));
     }
+
+    // === 예약 취소 (주최자/관리자용) ===
+    @PatchMapping("/{id}/cancel")
+    public ResponseEntity<?> cancel(@PathVariable Long id,
+                                    Authentication authentication,
+                                    @RequestBody(required = false) ReservationCancelRequest request) {
+        String name = authentication.getName();
+        boolean isAdmin = name != null && name.startsWith("admin:");
+        String reason = (request != null) ? request.getCancelReason() : null;
+
+        return ResponseEntity.ok(reservationService.cancel(id, name, isAdmin, reason));
+    }
+
+    // === QR 스캔 입장확인 ===
+    @PostMapping("/checkin/qr")
+    public ResponseEntity<?> checkinByQr(Authentication authentication,
+                                         @Valid @RequestBody QrCheckinRequest request) {
+        String name = authentication.getName();
+        boolean isAdmin = name != null && name.startsWith("admin:");
+        return ResponseEntity.ok(reservationService.checkinByQr(request.getQrToken(), name, isAdmin));
+    }
+
+    // === 수동 입장확인 (QR 인식 안 될 때 대비) ===
+    @PatchMapping("/{id}/checkin")
+    public ResponseEntity<?> checkinManual(@PathVariable Long id, Authentication authentication) {
+        String name = authentication.getName();
+        boolean isAdmin = name != null && name.startsWith("admin:");
+        return ResponseEntity.ok(reservationService.checkinManual(id, name, isAdmin));
+    }
+
+    // === 노쇼 처리 ===
+    @PatchMapping("/{id}/no-show")
+    public ResponseEntity<?> markNoShow(@PathVariable Long id, Authentication authentication) {
+        String name = authentication.getName();
+        boolean isAdmin = name != null && name.startsWith("admin:");
+        return ResponseEntity.ok(reservationService.markNoShow(id, name, isAdmin));
+    }
 }

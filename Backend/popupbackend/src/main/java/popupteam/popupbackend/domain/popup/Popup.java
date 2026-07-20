@@ -39,6 +39,22 @@ public class Popup {
     @Column(name = "reject_reason", columnDefinition = "TEXT")
     private String rejectReason;
 
+    @Column(name = "area_sqm")
+    private Double areaSqm;
+
+    @Column(name = "recommended_capacity")
+    private Integer recommendedCapacity;
+
+    @Column(name = "capacity", nullable = false)
+    private Integer capacity;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "reservation_mode", nullable = false)
+    private ReservationMode reservationMode;
+
+    @Column(name = "avg_experience_minutes", nullable = false)
+    private Integer avgExperienceMinutes;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 

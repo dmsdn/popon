@@ -28,8 +28,14 @@ public class SecurityConfig {
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/popups/*/slots").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/reservations/popup/**").authenticated()
+                        .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/reservations/*/cancel").authenticated() // === 추가 ===
                         .requestMatchers("/api/reservations/**").permitAll()
                         .requestMatchers("/api/admin/auth/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/reservations/*/cancel").authenticated()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/reservations/checkin/qr").authenticated()   // === 추가 ===
+                        .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/reservations/*/checkin").authenticated()   // === 추가 ===
+                        .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/reservations/*/no-show").authenticated()   // === 추가 ===
+                        .requestMatchers("/api/reservations/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
