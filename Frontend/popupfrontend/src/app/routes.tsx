@@ -22,8 +22,10 @@ import Notices from "./seller/pages/Notices";
 // ── 플랫폼 관리자 UI ──
 import AdminRoot from "./admin/AdminRoot";
 import AdminDashboard from "./admin/pages/AdminDashboard";
+import AdminLogin from "./admin/pages/AdminLogin";
 import PopupReview from "./admin/pages/PopupReview";
 import Accounts from "./admin/pages/Accounts";
+import Members from "./admin/pages/Members";
 import Masters from "./admin/pages/Masters";
 import PlatformStats from "./admin/pages/PlatformStats";
 import ContentManage from "./admin/pages/ContentManage";
@@ -65,8 +67,10 @@ export const router = createBrowserRouter([
     Component: AdminRoot,
     children: [
       { index: true, Component: AdminDashboard },
+      { path: "login", Component: AdminLogin },
       { path: "review", Component: PopupReview },
       { path: "accounts", Component: Accounts },
+      { path: "members", Component: Members },
       { path: "masters", Component: Masters },
       { path: "stats", Component: PlatformStats },
       { path: "content", Component: ContentManage },

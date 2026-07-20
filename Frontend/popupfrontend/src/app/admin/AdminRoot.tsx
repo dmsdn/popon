@@ -1,8 +1,9 @@
 import { Outlet, NavLink, Link } from "react-router";
 import {
   LayoutDashboard, ShieldCheck, KeyRound, Database,
-  LineChart, Newspaper, Headphones, Bell, ExternalLink,
+  LineChart, Newspaper, Headphones, Bell, ExternalLink, Users, LogIn,
 } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 const MENU = [
   { group: "모니터링", items: [
@@ -14,13 +15,28 @@ const MENU = [
   ]},
   { group: "운영 관리", items: [
     { to: "/admin/accounts", icon: KeyRound, label: "계정·권한(RBAC)" },
+    { to: "/admin/members", icon: Users, label: "소비자 회원 관리" },
     { to: "/admin/masters", icon: Database, label: "공간·카테고리 마스터" },
     { to: "/admin/content", icon: Newspaper, label: "배너·콘텐츠 관리" },
     { to: "/admin/cs", icon: Headphones, label: "CS·리뷰 모더레이션" },
   ]},
 ];
 
+// 오늘 날짜 → "2026-07-20 (월)" 형식
+function todayLabel() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  const day = ["일", "월", "화", "수", "목", "금", "토"][now.getDay()];
+  return `${y}-${m}-${d} (${day})`;
+}
+
 export default function AdminRoot() {
+  const { user, logout } = useAuth();
+  const admin = user?.role === "admin" ? user : null;
+  const accountName = admin ? admin.email.split("@")[0] : null;
+
   return (
     <div className="min-h-screen bg-[#f4f5f7] text-foreground flex" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>
       {/* ── 좌측 다크 사이드바 ── */}
@@ -67,19 +83,30 @@ export default function AdminRoot() {
       <div className="flex-1 min-w-0 flex flex-col">
         <header className="h-14 bg-white border-b border-border flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40">
           <div className="text-sm font-medium lg:hidden">팝업온 Admin</div>
-          <div className="hidden lg:block text-xs text-muted-foreground">2026-07-15 (화) · 정상 운영 중</div>
+          <div className="hidden lg:block text-xs text-muted-foreground">{todayLabel()} · 정상 운영 중</div>
           <div className="flex items-center gap-4">
             <Link to="/" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
               서비스 홈 <ExternalLink size={12} />
             </Link>
             <button className="relative text-muted-foreground hover:text-foreground">
               <Bell size={17} />
-              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center">7</span>
             </button>
-            <div className="flex items-center gap-2 text-xs border-l border-border pl-4">
-              <div className="w-6 h-6 rounded-full bg-[#191d24] text-white flex items-center justify-center font-semibold text-[10px]">관</div>
-              <span className="hidden sm:inline">플랫폼운영팀 · 슈퍼관리자</span>
-            </div>
+            {admin ? (
+              <div className="flex items-center gap-2 text-xs border-l border-border pl-4">
+                <div className="w-6 h-6 rounded-full bg-[#191d24] text-white flex items-center justify-center font-semibold text-[10px] uppercase">
+                  {accountName!.slice(0, 1)}
+                </div>
+                <span className="hidden sm:inline">{accountName} · 슈퍼관리자</span>
+                <button onClick={logout} className="text-muted-foreground underline underline-offset-2 hover:text-foreground">로그아웃</button>
+              </div>
+            ) : (
+              <Link
+                to="/admin/login"
+                className="flex items-center gap-1.5 text-xs border-l border-border pl-4 text-accent hover:underline underline-offset-2"
+              >
+                <LogIn size={13} /> 관리자 로그인
+              </Link>
+            )}
           </div>
         </header>
         <main className="flex-1 p-4 lg:p-6">
