@@ -1,4 +1,4 @@
-import { Outlet, NavLink, Link, Navigate, useLocation } from "react-router";
+import { Outlet, NavLink, Link, Navigate, useLocation, ScrollRestoration } from "react-router";
 import {
   LayoutDashboard, ShieldCheck, KeyRound, Database,
   LineChart, Newspaper, Headphones, Bell, ExternalLink, Users, LogIn, Store, Building2,
@@ -120,6 +120,7 @@ export default function AdminRoot() {
           </div>
         </header>
         <main className="flex-1 p-4 lg:p-6">
+          <ScrollRestoration />
           <Outlet />
         </main>
       </div>
