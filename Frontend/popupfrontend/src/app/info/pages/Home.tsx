@@ -1,6 +1,31 @@
 import { useNavigate } from "react-router";
-import { CheckCircle, ArrowRight, MapPin, Calendar, Users, TrendingUp, Shield, Headphones } from "lucide-react";
+import {
+  CheckCircle, ArrowRight, MapPin, Calendar, Users, TrendingUp, Shield, Headphones,
+  Store, CalendarClock,
+} from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+
+// 2번째 섹션: 핵심 기능 2종 요약 카드 (좌: 팝업콘텐츠 등록 / 우: 예약·웨이팅 통합관리)
+const CORE_FEATURES = [
+  {
+    icon: Store,
+    label: "Popup Contents",
+    title: "팝업콘텐츠 등록",
+    desc: "팝업 정보·이미지를 등록하면 관리자 심사를 거쳐 소비자 서비스에 바로 게시됩니다. 주소는 지도 좌표로 자동 변환되어 탐색 지도에 노출돼요.",
+    points: ["팝업 정보·이미지 등록 폼", "심사/게시 상태 실시간 확인", "게시 즉시 소비자 앱 노출"],
+    to: "/content-register",
+    cta: "팝업콘텐츠 등록 안내",
+  },
+  {
+    icon: CalendarClock,
+    label: "Reservation & Waiting",
+    title: "예약·웨이팅 통합관리",
+    desc: "사전예약·현장 예약·비회원 예약을 하나의 시스템으로 받고, 실시간 대기열 현황과 재고 데이터까지 한 화면에서 관리합니다.",
+    points: ["사전·현장·비회원 예약 통합", "실시간 대기열 관제·호출", "슬롯 정원·재고 데이터 관리"],
+    to: "/waiting-management",
+    cta: "예약·웨이팅 통합관리 안내",
+  },
+];
 
 const SERVICES = [
   {
@@ -186,6 +211,47 @@ export default function Home() {
           </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-px bg-border" />
+      </section>
+
+      {/* ── CORE FEATURES (팝업콘텐츠 등록 / 예약·웨이팅 통합관리) ── */}
+      <section className="py-24 lg:py-28 bg-secondary">
+        <div className="max-w-7xl mx-auto px-6 lg:px-10">
+          <div className="mb-14">
+            <div className="text-xs font-medium tracking-widest uppercase text-muted-foreground mb-4" style={{ fontFamily: "'DM Mono', monospace" }}>Core Features</div>
+            <h2 className="text-3xl lg:text-5xl font-semibold leading-tight" style={{ fontFamily: "'Noto Serif KR', serif" }}>
+              팝업 운영의 시작과 현장,<br />두 가지 도구로 해결하세요
+            </h2>
+          </div>
+          <div className="grid md:grid-cols-2 gap-6">
+            {CORE_FEATURES.map(({ icon: Icon, label, title, desc, points, to, cta }) => (
+              <div key={title} className="bg-card border border-border rounded-sm p-8 lg:p-10 flex flex-col hover:border-accent/40 transition-colors duration-300">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="w-11 h-11 rounded-sm bg-accent/10 flex items-center justify-center">
+                    <Icon size={20} className="text-accent" />
+                  </div>
+                  <span className="text-xs font-medium tracking-widest uppercase text-muted-foreground" style={{ fontFamily: "'DM Mono', monospace" }}>{label}</span>
+                </div>
+                <h3 className="text-xl lg:text-2xl font-semibold mb-3" style={{ fontFamily: "'Noto Serif KR', serif" }}>{title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed mb-6">{desc}</p>
+                <ul className="flex flex-col gap-2.5 mb-8 flex-1">
+                  {points.map((p) => (
+                    <li key={p} className="flex items-start gap-2 text-sm">
+                      <CheckCircle size={14} className="shrink-0 mt-0.5 text-accent" />
+                      <span className="text-muted-foreground">{p}</span>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  onClick={() => navigate(to)}
+                  className="inline-flex items-center justify-center gap-2 w-full py-3 rounded-sm text-sm font-medium border border-foreground hover:bg-foreground hover:text-primary-foreground transition-colors duration-200"
+                >
+                  {cta}
+                  <ArrowRight size={15} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* ── SERVICES ────────────────────────────────────────── */}

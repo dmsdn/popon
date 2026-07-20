@@ -46,8 +46,8 @@ export default function PopupRegister() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get("id"); // 있으면 수정 모드
-  const [cats, setCats] = useState<string[]>(["캐릭터"]);
-  const [tags, setTags] = useState<string[]>(["성수동팝업", "한정판굿즈"]);
+  const [cats, setCats] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [spaceMode, setSpaceMode] = useState<"partner" | "direct">("partner");
   const [useReservation, setUseReservation] = useState(true);
