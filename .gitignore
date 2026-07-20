@@ -31,4 +31,7 @@ MLService/
 # ── 기타 ──
 *.log
 .DS_Store
+target/
+build/
+*.class
 Thumbs.db
