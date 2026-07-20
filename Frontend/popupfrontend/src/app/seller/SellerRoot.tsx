@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Outlet, NavLink, Link, useNavigate, useLocation } from "react-router";
+import { Outlet, NavLink, Link, useNavigate, useLocation, ScrollRestoration } from "react-router";
 import {
   LayoutDashboard, Store, PlusSquare, CalendarCheck, Users, Package,
   FileText, BarChart3, Megaphone, Bell, ChevronDown, ExternalLink, LogOut,
@@ -129,6 +129,7 @@ export default function SellerRoot() {
 
         {/* ── 콘텐츠 ── */}
         <main className="flex-1 min-w-0 p-4 lg:p-6">
+          <ScrollRestoration />
           <Outlet />
         </main>
       </div>

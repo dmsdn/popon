@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useNavigate } from "react-router";
+import { Outlet, NavLink, useNavigate, ScrollRestoration } from "react-router";
 import { useState } from "react";
 import { Menu, X, LogOut, User } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -138,6 +138,8 @@ export default function Root() {
       </header>
 
       {/* ── PAGE CONTENT ────────────────────────────────────── */}
+      {/* 라우트 이동 시 스크롤 맨 위로 (뒤로가기는 이전 위치 복원) */}
+      <ScrollRestoration />
       <Outlet />
 
       {/* ── FOOTER ───────────────────────────────────────────── */}

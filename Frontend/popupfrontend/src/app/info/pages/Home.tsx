@@ -170,12 +170,6 @@ export default function Home() {
                 주최자로 등록하기
                 <ArrowRight size={16} />
               </button>
-              <button
-                onClick={() => navigate("/content-register")}
-                className="inline-flex items-center gap-2 border border-foreground/30 px-6 py-3 rounded-sm text-sm font-medium hover:border-foreground transition-colors duration-200"
-              >
-                팝업콘텐츠 등록 →
-              </button>
             </div>
             <div className="mt-12 flex gap-8">
               {[
