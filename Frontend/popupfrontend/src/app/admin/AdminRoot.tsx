@@ -1,9 +1,11 @@
+import { useEffect, useState } from "react";
 import { Outlet, NavLink, Link, Navigate, useLocation, ScrollRestoration } from "react-router";
 import {
   LayoutDashboard, ShieldCheck, KeyRound, Database,
-  LineChart, Newspaper, Headphones, Bell, ExternalLink, Users, LogIn, Store, Building2,
+  LineChart, Newspaper, Headphones, Bell, ExternalLink, Users, LogIn, Store, Building2, X, Clock3,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { getToken, getPopups, Popup } from "../lib/api";
 
 const MENU = [
   { group: "모니터링", items: [
@@ -36,11 +38,93 @@ function todayLabel() {
   return `${y}-${m}-${d} (${day})`;
 }
 
+// JWT payload에서 발급(iat)·만료(exp) 시각(초 단위 epoch) 추출 — 로그인 시간·세션 카운트다운용
+function decodeJwtTimes(token: string): { iat?: number; exp?: number } | null {
+  try {
+    const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(base64));
+  } catch {
+    return null;
+  }
+}
+
+const fmtHM = (epochSec: number) => {
+  const d = new Date(epochSec * 1000);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
+
+const fmtRemaining = (sec: number) => {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+};
+
+// 확인한 알림(팝업 id) 저장 키
+const SEEN_KEY = "adminSeenPopupNotifs";
+const loadSeen = (): number[] => {
+  try {
+    return JSON.parse(localStorage.getItem(SEEN_KEY) ?? "[]");
+  } catch {
+    return [];
+  }
+};
+
 export default function AdminRoot() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const admin = user?.role === "admin" ? user : null;
   const accountName = admin ? admin.email.split("@")[0] : null;
+
+  // ── 세션 타이머 (로그인 시각 = JWT iat, 만료 = JWT exp) ──
+  const [nowSec, setNowSec] = useState(() => Math.floor(Date.now() / 1000));
+  const token = getToken();
+  const times = admin && token ? decodeJwtTimes(token) : null;
+  const remaining = times?.exp ? Math.max(0, times.exp - nowSec) : null;
+
+  useEffect(() => {
+    if (!admin) return;
+    const t = setInterval(() => setNowSec(Math.floor(Date.now() / 1000)), 1000);
+    return () => clearInterval(t);
+  }, [admin]);
+
+  // 세션 만료 시 자동 로그아웃 (금융권 웹과 동일)
+  useEffect(() => {
+    if (admin && remaining === 0) {
+      alert("로그인 유지 시간이 만료되어 로그아웃됩니다.");
+      logout();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remaining === 0, admin]);
+
+  // ── 알림: 새로 등록된(심사 대기) 팝업 ──
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [pendingPopups, setPendingPopups] = useState<Popup[]>([]);
+  const [seenIds, setSeenIds] = useState<number[]>(loadSeen);
+  const unseen = pendingPopups.filter((p) => !seenIds.includes(p.id));
+
+  useEffect(() => {
+    if (!admin) return;
+    const fetchPending = () =>
+      getPopups()
+        .then((all) =>
+          setPendingPopups(
+            all.filter((p) => p.status === "PENDING").sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+          ),
+        )
+        .catch(() => {});
+    fetchPending();
+    const t = setInterval(fetchPending, 60_000); // 1분마다 새 등록 확인
+    return () => clearInterval(t);
+  }, [admin]);
+
+  // 패널을 열면 현재 목록을 '확인함'으로 기록 → 배지 해제
+  const openNotif = () => {
+    setNotifOpen(true);
+    const ids = [...new Set([...seenIds, ...pendingPopups.map((p) => p.id)])];
+    setSeenIds(ids);
+    localStorage.setItem(SEEN_KEY, JSON.stringify(ids));
+  };
 
   // 미로그인 시 어떤 관리자 라우트로 접근해도 로그인 페이지로 이동
   if (!admin && location.pathname !== "/admin/login") {
@@ -93,13 +177,42 @@ export default function AdminRoot() {
       <div className="flex-1 min-w-0 flex flex-col">
         <header className="h-14 bg-white border-b border-border flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40">
           <div className="text-sm font-medium lg:hidden">팝업온 Admin</div>
-          <div className="hidden lg:block text-xs text-muted-foreground">{todayLabel()} · 정상 운영 중</div>
+          <div className="hidden lg:flex items-center gap-3 text-xs text-muted-foreground">
+            <span>{todayLabel()}</span>
+            {admin && times?.iat && (
+              <>
+                <span className="text-border">|</span>
+                <span>로그인 {fmtHM(times.iat)}</span>
+                {remaining !== null && (
+                  <span className="flex items-center gap-1 text-foreground/70">
+                    <Clock3 size={11} />
+                    자동 로그아웃까지{" "}
+                    <span
+                      className={remaining < 300 ? "text-red-500 font-semibold" : "font-medium"}
+                      style={{ fontFamily: "'DM Mono', monospace" }}
+                    >
+                      {fmtRemaining(remaining)}
+                    </span>
+                  </span>
+                )}
+              </>
+            )}
+          </div>
           <div className="flex items-center gap-4">
             <Link to="/" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
               서비스 홈 <ExternalLink size={12} />
             </Link>
-            <button className="relative text-muted-foreground hover:text-foreground">
+            <button
+              onClick={() => (notifOpen ? setNotifOpen(false) : openNotif())}
+              className="relative text-muted-foreground hover:text-foreground"
+              title="새로 등록된 항목 알림"
+            >
               <Bell size={17} />
+              {unseen.length > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 px-0.5 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center">
+                  {unseen.length > 9 ? "9+" : unseen.length}
+                </span>
+              )}
             </button>
             {admin ? (
               <div className="flex items-center gap-2 text-xs border-l border-border pl-4">
@@ -124,6 +237,54 @@ export default function AdminRoot() {
           <Outlet />
         </main>
       </div>
+
+      {/* ── 우측 알림 패널 (새로 등록된 심사 대기 팝업) ── */}
+      {notifOpen && (
+        <>
+          <div className="fixed inset-0 bg-black/20 z-40" onClick={() => setNotifOpen(false)} />
+          <aside className="fixed inset-y-0 right-0 w-80 max-w-[85vw] bg-white border-l border-border shadow-xl z-50 flex flex-col">
+            <div className="h-14 px-4 border-b border-border flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <Bell size={15} className="text-accent" /> 새 알림
+                <span className="text-xs font-normal text-muted-foreground">심사 대기 {pendingPopups.length}건</span>
+              </div>
+              <button onClick={() => setNotifOpen(false)} className="text-muted-foreground hover:text-foreground">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {pendingPopups.length === 0 && (
+                <div className="px-4 py-12 text-center text-xs text-muted-foreground">
+                  새로 등록된 항목이 없습니다.
+                </div>
+              )}
+              <ul className="divide-y divide-border">
+                {pendingPopups.map((p) => (
+                  <li key={p.id}>
+                    <Link
+                      to="/admin/review"
+                      onClick={() => setNotifOpen(false)}
+                      className="block px-4 py-3.5 hover:bg-secondary/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full border bg-blue-50 text-blue-600 border-blue-200">팝업 등록</span>
+                        <span className="text-[10px] text-muted-foreground ml-auto" style={{ fontFamily: "'DM Mono', monospace" }}>
+                          {p.createdAt.slice(5, 16).replace("T", " ")}
+                        </span>
+                      </div>
+                      <div className="text-[13px] font-medium truncate">{p.title}</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">{p.companyName} · 심사 대기 — 눌러서 심사하기</div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="px-4 py-3 border-t border-border text-[11px] text-muted-foreground shrink-0">
+              1분마다 자동 갱신 · 현재는 팝업 등록 알림만 지원 (문의·신고 알림은 백엔드 구성 후 연동)
+            </div>
+          </aside>
+        </>
+      )}
     </div>
   );
 }
