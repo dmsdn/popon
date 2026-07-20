@@ -11,6 +11,7 @@ public class ContractResponse {
     private String popupTitle;
     private BigDecimal contractAmount;
     private String memo;
+    private String stage;
     private String registeredBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -21,6 +22,7 @@ public class ContractResponse {
                 .popupTitle(c.getPopup().getTitle())
                 .contractAmount(c.getContractAmount())
                 .memo(c.getMemo())
+                .stage(c.getStage().name())
                 .registeredBy(c.getRegisteredBy())
                 .createdAt(c.getCreatedAt())
                 .updatedAt(c.getUpdatedAt())

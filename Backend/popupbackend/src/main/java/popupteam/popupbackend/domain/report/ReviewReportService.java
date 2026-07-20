@@ -15,11 +15,15 @@ public class ReviewReportService {
 
     private final ReviewReportRepository reviewReportRepository;
     private final CustomerRepository customerRepository;
+    private final ReviewRefRepository reviewRefRepository;
 
-    // 참가자: 신고 접수
     public ReportResponse create(Long reporterCustomerId, ReportCreateRequest request) {
         Customer reporter = customerRepository.findById(reporterCustomerId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 소비자입니다."));
+
+        if (!reviewRefRepository.existsById(request.getReviewId())) {
+            throw new IllegalArgumentException("존재하지 않는 리뷰입니다.");
+        }
 
         ReviewReport report = new ReviewReport();
         report.setReviewId(request.getReviewId());
@@ -30,7 +34,6 @@ public class ReviewReportService {
         return ReportResponse.from(reviewReportRepository.save(report));
     }
 
-    // 관리자: 전체/상태별 목록
     public List<ReportResponse> getAll(ReportStatus status) {
         List<ReviewReport> reports = (status != null)
                 ? reviewReportRepository.findByStatusOrderByCreatedAtAsc(status)
@@ -39,7 +42,6 @@ public class ReviewReportService {
         return reports.stream().map(ReportResponse::from).collect(Collectors.toList());
     }
 
-    // 관리자: 처리완료 처리 (리뷰 삭제는 별도)
     public ReportResponse process(Long reportId, String adminEmail) {
         ReviewReport report = reviewReportRepository.findById(reportId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 신고입니다."));

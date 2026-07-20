@@ -33,4 +33,9 @@ public class PopupContract {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt = LocalDateTime.now();
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "stage", nullable = false)
+    private ContractStage stage = ContractStage.CONTRACTED;
+
 }

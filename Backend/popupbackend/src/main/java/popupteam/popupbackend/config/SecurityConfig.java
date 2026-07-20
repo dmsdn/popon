@@ -40,6 +40,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/cs/**").permitAll()   // 참가자용, 팀 예약 API와 동일한 정책
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/reports").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/visits/log").permitAll()   // === 추가 ===
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/venues/**").permitAll()   // === 추가 ===
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

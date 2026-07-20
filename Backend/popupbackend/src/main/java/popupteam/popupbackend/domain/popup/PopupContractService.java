@@ -8,6 +8,9 @@ import popupteam.popupbackend.domain.popup.dto.ContractSetRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
+import popupteam.popupbackend.common.exception.ForbiddenException;
+import popupteam.popupbackend.domain.popup.dto.ContractStageUpdateRequest;
+
 
 @Service
 @RequiredArgsConstructor
@@ -54,5 +57,29 @@ public class PopupContractService {
                 .orElseThrow(() -> new IllegalArgumentException("등록된 계약금 정보가 없습니다."));
 
         return ContractResponse.from(contract);
+    }
+
+    // 단계 변경 (관리자 또는 본인 주최자)
+    public ContractResponse updateStage(Long popupId, String requesterEmail, boolean isAdmin, ContractStageUpdateRequest request) {
+        PopupContract contract = popupContractRepository.findByPopupId(popupId)
+                .orElseThrow(() -> new IllegalArgumentException("등록된 계약금 정보가 없습니다."));
+
+        if (!isAdmin) {
+            Business business = businessRepository.findByEmail(requesterEmail)
+                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사업자입니다."));
+            if (!contract.getPopup().getBusiness().getId().equals(business.getId())) {
+                throw new ForbiddenException("본인 팝업의 계약 단계만 변경할 수 있습니다.");
+            }
+        }
+
+        ContractStage newStage = ContractStage.valueOf(request.getStage());
+        if (newStage == ContractStage.CONTRACTED) {
+            throw new IllegalArgumentException("CONTRACTED 단계로는 되돌릴 수 없습니다.");
+        }
+
+        contract.setStage(newStage);
+        contract.setUpdatedAt(LocalDateTime.now());
+
+        return ContractResponse.from(popupContractRepository.save(contract));
     }
 }

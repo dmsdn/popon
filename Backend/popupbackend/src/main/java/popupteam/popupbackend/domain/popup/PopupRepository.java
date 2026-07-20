@@ -18,6 +18,8 @@ public interface PopupRepository extends JpaRepository<Popup, Long> {
                        @Param("status") PopupStatus status,
                        @Param("keyword") String keyword);
 
-    // === 여기 추가 ===
+    List<Popup> findByStatusAndStartDateLessThanEqual(PopupStatus status, java.time.LocalDateTime startDate);
+    List<Popup> findByStatusAndEndDateLessThanEqual(PopupStatus status, java.time.LocalDateTime endDate);
+
     long countByStatus(PopupStatus status);
 }

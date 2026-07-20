@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import popupteam.popupbackend.domain.popup.dto.ContractStageUpdateRequest;
 
 @RestController
 @RequiredArgsConstructor
@@ -35,4 +36,15 @@ public class PopupContractController {
         boolean isAdmin = name != null && name.startsWith("admin:");
         return ResponseEntity.ok(popupContractService.getContract(popupId, name, isAdmin));
     }
+
+    // 단계 변경 (관리자 또는 본인 주최자)
+    @PatchMapping("/api/popups/{popupId}/contract/stage")
+    public ResponseEntity<?> updateStage(@PathVariable Long popupId,
+                                         Authentication authentication,
+                                         @Valid @RequestBody ContractStageUpdateRequest request) {
+        String name = authentication.getName();
+        boolean isAdmin = name != null && name.startsWith("admin:");
+        return ResponseEntity.ok(popupContractService.updateStage(popupId, name, isAdmin, request));
+    }
+
 }
