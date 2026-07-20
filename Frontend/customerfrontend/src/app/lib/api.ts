@@ -53,16 +53,24 @@ export type BackendPopup = {
   createdAt: string;
 };
 
+// 소비자에게 노출 가능한 상태 (심사 대기·반려·관리자 게시중지는 숨김)
+const VISIBLE_STATUSES = ["BEFOR", "OPEN", "CLOSED"];
+
 export async function fetchPopups(): Promise<BackendPopup[]> {
   const res = await fetch("/api/popups");
   if (!res.ok) throw new Error(`팝업 목록을 불러오지 못했어요. (${res.status})`);
-  return res.json();
+  const all: BackendPopup[] = await res.json();
+  return all.filter((p) => VISIBLE_STATUSES.includes(p.status));
 }
 
 export async function fetchPopup(id: string | number): Promise<BackendPopup> {
   const res = await fetch(`/api/popups/${id}`);
   if (!res.ok) throw new Error(`팝업 정보를 불러오지 못했어요. (${res.status})`);
-  return res.json();
+  const p: BackendPopup = await res.json();
+  if (!VISIBLE_STATUSES.includes(p.status)) {
+    throw new Error("게시가 중지되었거나 준비 중인 팝업이에요.");
+  }
+  return p;
 }
 
 // ── 백엔드 응답 → UI Popup 타입 어댑터 ──

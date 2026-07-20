@@ -41,7 +41,7 @@ export default function AdminDashboard() {
   }, []);
 
   const pendingCards = [
-    { icon: ShieldCheck, label: "팝업 심사 대기", value: pendingCount, to: "/admin/review", color: "text-accent" },
+    { icon: ShieldCheck, label: "팝업 심사 대기", value: pendingCount, to: "/admin/popups", color: "text-accent" },
     { icon: Headphones, label: "미처리 문의", value: NOT_CONNECTED, to: "/admin/cs", color: "text-amber-600" },
     { icon: Activity, label: "후기 신고 접수", value: NOT_CONNECTED, to: "/admin/cs", color: "text-red-500" },
   ];
