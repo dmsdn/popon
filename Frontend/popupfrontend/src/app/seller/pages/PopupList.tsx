@@ -2,22 +2,26 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { Search, Pencil, Trash2, Loader2 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import { getPopups, deletePopup, Popup, PopupStatusCode } from "../../lib/api";
+import { getPopups, getMyPopups, deletePopup, Popup, PopupStatusCode } from "../../lib/api";
 
-// 백엔드 PopupStatus(BEFOR/OPEN/CLOSED) → 화면 표기
+// 백엔드 PopupStatus → 화면 표기 (등록 직후 PENDING, 관리자 승인 시 BEFOR, 반려 시 REJECTED)
 const STATUS_LABEL: Record<PopupStatusCode, string> = {
+  PENDING: "심사 대기",
+  REJECTED: "반려",
   BEFOR: "오픈예정",
   OPEN: "게시중",
   CLOSED: "종료",
 };
 
 const STATUS_BADGE: Record<PopupStatusCode, string> = {
+  PENDING: "bg-blue-50 text-blue-600 border-blue-200",
+  REJECTED: "bg-red-50 text-red-500 border-red-200",
   OPEN: "bg-emerald-50 text-emerald-600 border-emerald-200",
   BEFOR: "bg-amber-50 text-amber-600 border-amber-200",
   CLOSED: "bg-slate-100 text-slate-400 border-slate-200",
 };
 
-const FILTERS: ("전체" | PopupStatusCode)[] = ["전체", "BEFOR", "OPEN", "CLOSED"];
+const FILTERS: ("전체" | PopupStatusCode)[] = ["전체", "PENDING", "REJECTED", "BEFOR", "OPEN", "CLOSED"];
 
 const fmtDate = (iso: string | null) => (iso ? iso.slice(0, 10) : "-");
 
@@ -33,11 +37,12 @@ export default function PopupList() {
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    getPopups()
+    // 사업자 로그인 시 내 팝업 전용 API(심사 상태 포함), 미로그인 시 전체 조회로 폴백
+    const fetchList = user?.role === "business" ? getMyPopups() : getPopups();
+    fetchList
       .then((all) => {
         if (!alive) return;
-        // 조회 API는 전체 팝업을 반환하므로 내(로그인한 사업자) 팝업만 필터링
-        setPopups(user ? all.filter((p) => p.businessId === user.businessId) : all);
+        setPopups(all);
         setError("");
       })
       .catch((e) => alive && setError(e instanceof Error ? e.message : "팝업 목록을 불러오지 못했습니다."))
@@ -146,6 +151,9 @@ export default function PopupList() {
                 <td className="px-4 py-3 text-xs">{p.location ?? "-"}</td>
                 <td className="px-4 py-3">
                   <span className={`text-[11px] px-2 py-0.5 rounded-full border ${STATUS_BADGE[p.status]}`}>{STATUS_LABEL[p.status]}</span>
+                  {p.status === "REJECTED" && p.rejectReason && (
+                    <div className="text-[11px] text-red-500 mt-1 max-w-[180px]">사유: {p.rejectReason}</div>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-xs">{fmtDate(p.createdAt)}</td>
                 <td className="px-4 py-3">
