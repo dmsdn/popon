@@ -20,4 +20,19 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     List<Reservation> findByPopupId(@Param("popupId") Long popupId);
 
     Optional<Reservation> findByQrToken(String qrToken);
+
+    @Query("SELECT new popupteam.popupbackend.domain.reservation.dto.PopupVisitorCountProjection(" +
+            "r.popup.id, r.popup.title, r.popup.business.companyName, COUNT(r)) " +
+            "FROM Reservation r WHERE r.entryStatus = popupteam.popupbackend.domain.reservation.EntryStatus.CHECKED_IN " +
+            "GROUP BY r.popup.id, r.popup.title, r.popup.business.companyName " +
+            "ORDER BY COUNT(r) DESC")
+    List<popupteam.popupbackend.domain.reservation.dto.PopupVisitorCountProjection> findVisitorRankingAllTime();
+
+    @Query("SELECT new popupteam.popupbackend.domain.reservation.dto.PopupVisitorCountProjection(" +
+            "r.popup.id, r.popup.title, r.popup.business.companyName, COUNT(r)) " +
+            "FROM Reservation r WHERE r.entryStatus = popupteam.popupbackend.domain.reservation.EntryStatus.CHECKED_IN " +
+            "AND r.reservationDate = :date " +
+            "GROUP BY r.popup.id, r.popup.title, r.popup.business.companyName " +
+            "ORDER BY COUNT(r) DESC")
+    List<popupteam.popupbackend.domain.reservation.dto.PopupVisitorCountProjection> findVisitorRankingByDate(@Param("date") LocalDate date);
 }
