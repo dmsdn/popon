@@ -76,5 +76,5 @@ public class BusinessService {
         business.setUpdatedAt(java.time.LocalDateTime.now());
         businessRepository.save(business);
     }
-    
+
 }
