@@ -1,7 +1,6 @@
 // app/page.tsx
 import { Header } from "@/components/layout/Header";
 import { MobileHeader } from "@/components/layout/MobileHeader";
-import { NavTabs } from "@/components/layout/NavTabs";
 import { Footer } from "@/components/layout/Footer";
 import { BottomTabBar } from "@/components/layout/BottomTabBar";
 import { PromoCarousel } from "@/components/home/PromoCarousel";
@@ -22,7 +21,6 @@ export default function Home() {
       {/* 데스크톱 헤더 */}
       <div className="hidden mobile:block">
         <Header />
-        <NavTabs />
       </div>
 
       {/* 모바일 헤더 */}
