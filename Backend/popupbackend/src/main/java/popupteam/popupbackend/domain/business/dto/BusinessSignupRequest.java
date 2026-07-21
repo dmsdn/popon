@@ -1,4 +1,3 @@
-// BusinessSignupRequest.java
 package popupteam.popupbackend.domain.business.dto;
 
 import jakarta.validation.constraints.*;
@@ -20,4 +19,7 @@ public class BusinessSignupRequest {
     private String businessNumber;
 
     private String phone;
+
+    @AssertTrue(message = "개인정보 수집·이용에 동의해야 가입할 수 있습니다.")
+    private boolean agreeTerms;
 }

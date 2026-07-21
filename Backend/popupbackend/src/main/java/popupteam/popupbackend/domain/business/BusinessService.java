@@ -5,14 +5,14 @@ import popupteam.popupbackend.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import popupteam.popupbackend.domain.business.dto.BusinessUpdateRequest;
-import popupteam.popupbackend.domain.business.dto.PasswordChangeRequest;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
 public class BusinessService {
 
     private final BusinessRepository businessRepository;
+    private final BusinessConsentRepository businessConsentRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
@@ -31,7 +31,21 @@ public class BusinessService {
         business.setBusinessNumber(request.getBusinessNumber());
         business.setPhone(request.getPhone());
 
-        return businessRepository.save(business);
+        Business saved = businessRepository.save(business);
+
+        // 가입 시 동의 이력 생성 (보관기간 1년)
+        recordConsent(saved);
+
+        return saved;
+    }
+
+    private void recordConsent(Business business) {
+        LocalDateTime now = LocalDateTime.now();
+        BusinessConsent consent = new BusinessConsent();
+        consent.setBusiness(business);
+        consent.setAgreedAt(now);
+        consent.setExpiresAt(now.plusYears(1));
+        businessConsentRepository.save(consent);
     }
 
     public BusinessLoginResponse login(BusinessLoginRequest request) {
@@ -42,8 +56,19 @@ public class BusinessService {
             throw new IllegalArgumentException("이메일 또는 비밀번호가 틀렸습니다.");
         }
 
+        boolean needsReconsent = businessConsentRepository
+                .findTopByBusinessIdOrderByAgreedAtDesc(business.getId())
+                .map(c -> c.getExpiresAt().isBefore(LocalDateTime.now()))
+                .orElse(true); // 동의 이력이 아예 없으면 재동의 필요로 처리
+
         String token = jwtUtil.generateToken(business.getEmail());
-        return new BusinessLoginResponse(token, business.getId(), business.getCompanyName());
+        return new BusinessLoginResponse(token, business.getId(), business.getCompanyName(), needsReconsent);
+    }
+
+    // 재동의 처리 (동의 만료 후 다시 체크했을 때)
+    public void reconsent(String email) {
+        Business business = findByEmail(email);
+        recordConsent(business);
     }
 
     public Business findByEmail(String email) {
@@ -51,7 +76,7 @@ public class BusinessService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사업자입니다."));
     }
 
-    public Business updateInfo(String email, BusinessUpdateRequest request) {
+    public Business updateInfo(String email, popupteam.popupbackend.domain.business.dto.BusinessUpdateRequest request) {
         Business business = findByEmail(email);
 
         if (request.getCompanyName() != null && !request.getCompanyName().isBlank()) {
@@ -60,12 +85,12 @@ public class BusinessService {
         if (request.getPhone() != null && !request.getPhone().isBlank()) {
             business.setPhone(request.getPhone());
         }
-        business.setUpdatedAt(java.time.LocalDateTime.now());
+        business.setUpdatedAt(LocalDateTime.now());
 
         return businessRepository.save(business);
     }
 
-    public void changePassword(String email, PasswordChangeRequest request) {
+    public void changePassword(String email, popupteam.popupbackend.domain.business.dto.PasswordChangeRequest request) {
         Business business = findByEmail(email);
 
         if (!passwordEncoder.matches(request.getCurrentPassword(), business.getPassword())) {
@@ -73,8 +98,7 @@ public class BusinessService {
         }
 
         business.setPassword(passwordEncoder.encode(request.getNewPassword()));
-        business.setUpdatedAt(java.time.LocalDateTime.now());
+        business.setUpdatedAt(LocalDateTime.now());
         businessRepository.save(business);
     }
-
 }

@@ -41,6 +41,11 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/reports").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/visits/log").permitAll()   // === 추가 ===
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/venues/**").permitAll()   // === 추가 ===
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/terms").permitAll()   // === 추가 ===
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/popups/*/waiting").permitAll()   // === 추가 ===
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/popups/*/waiting/board").permitAll()   // === 추가 ===
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/waiting/*").permitAll()   // === 추가 ===
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/popups/*/queue/board").permitAll()   // === 추가 ===
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

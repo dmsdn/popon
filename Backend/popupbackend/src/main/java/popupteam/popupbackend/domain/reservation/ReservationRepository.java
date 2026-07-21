@@ -35,4 +35,14 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             "GROUP BY r.popup.id, r.popup.title, r.popup.business.companyName " +
             "ORDER BY COUNT(r) DESC")
     List<popupteam.popupbackend.domain.reservation.dto.PopupVisitorCountProjection> findVisitorRankingByDate(@Param("date") LocalDate date);
+
+    @Query("SELECT r FROM Reservation r LEFT JOIN r.slot s WHERE r.popup.id = :popupId " +
+            "AND r.status = 'CONFIRMED' AND r.entryStatus = 'PENDING' " +
+            "AND ((s IS NOT NULL AND FUNCTION('TIMESTAMP', s.slotDate, s.startTime) <= :now) " +
+            "OR (s IS NULL AND r.reservationDate <= :today)) " +
+            "ORDER BY r.createdAt ASC")
+    List<Reservation> findArrivedPreReservations(@Param("popupId") Long popupId,
+                                                 @Param("now") java.time.LocalDateTime now,
+                                                 @Param("today") java.time.LocalDate today);
+
 }
