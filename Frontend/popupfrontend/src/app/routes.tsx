@@ -20,6 +20,9 @@ import Performance from "./seller/pages/Performance";
 import Notices from "./seller/pages/Notices";
 import Inquiries from "./seller/pages/Inquiries";
 
+// ── 현장 웨이팅 비회원 접수 (QR 진입 공개 페이지) ──
+import WalkinPage from "./walkin/WalkinPage";
+
 // ── 플랫폼 관리자 UI ──
 import AdminRoot from "./admin/AdminRoot";
 import AdminDashboard from "./admin/pages/AdminDashboard";
@@ -64,6 +67,9 @@ export const router = createBrowserRouter([
       { path: "inquiries", Component: Inquiries },
     ],
   },
+
+  // 2.5) 비회원 현장 웨이팅 폼 — 로그인 불필요, 현장 QR로 진입
+  { path: "/walkin", Component: WalkinPage },
 
   // 3) 플랫폼 관리자 (최상위 루트: /admin)
   {

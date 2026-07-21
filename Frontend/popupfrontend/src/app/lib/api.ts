@@ -403,3 +403,11 @@ export function checkinReservation(id: number) {
 export function markNoShow(id: number) {
   return request<ReservationDetail>(`/api/reservations/${id}/no-show`, { method: "PATCH" });
 }
+
+// QR 스캔 입장 — 사전예약자의 입장 QR(qrToken)을 스캔해 체크인 (서버가 입장 시각 기록)
+export function checkinByQr(qrToken: string) {
+  return request<ReservationDetail>("/api/reservations/checkin/qr", {
+    method: "POST",
+    body: JSON.stringify({ qrToken }),
+  });
+}

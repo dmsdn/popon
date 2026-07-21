@@ -252,8 +252,11 @@ export default function Reservations() {
 
           {!loading && tab === "roster" && (
             <div className="bg-white border border-border rounded-sm overflow-x-auto">
-              <div className="px-4 py-3 border-b border-border">
+              <div className="px-4 py-3 border-b border-border flex flex-wrap items-center justify-between gap-2">
                 <span className="text-sm font-semibold">예약자 {roster.length}건</span>
+                <span className="text-[11px] text-muted-foreground">
+                  취소된 예약도 명단에 「예약취소」로 남으며, 현장 대기열에는 편입되지 않습니다
+                </span>
               </div>
               <table className="w-full text-[13px] min-w-[720px]">
                 <thead>
@@ -280,7 +283,7 @@ export default function Reservations() {
                         <td className="px-4 py-2.5 text-right">{r.partySize}명</td>
                         <td className="px-4 py-2.5">
                           {cancelled ? (
-                            <span className="text-[11px] px-2 py-0.5 rounded-full border bg-slate-100 text-slate-400 border-slate-200">취소됨</span>
+                            <span className="text-[11px] px-2 py-0.5 rounded-full border bg-slate-100 text-slate-400 border-slate-200">예약취소</span>
                           ) : (
                             <span className={`text-[11px] px-2 py-0.5 rounded-full border ${entryCls}`}>{entryLabel}</span>
                           )}
