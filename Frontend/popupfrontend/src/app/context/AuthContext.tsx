@@ -7,7 +7,8 @@ type User =
 
 type AuthContextType = {
   user: User | null;
-  login: (email: string, password: string) => Promise<void>;
+  // needsReconsent: 개인정보 동의 보관기간 만료 → 재동의 필요 (호출부에서 안내 후 businessReconsent 호출)
+  login: (email: string, password: string) => Promise<{ needsReconsent: boolean }>;
   adminLogin: (email: string, password: string) => Promise<void>;
   logout: () => void;
 };
@@ -39,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const u: User = { role: "business", name: res.companyName, email, businessId: res.businessId };
     localStorage.setItem(USER_KEY, JSON.stringify(u));
     setUser(u);
+    return { needsReconsent: res.needsReconsent === true };
   };
 
   const adminLogin = async (email: string, password: string) => {

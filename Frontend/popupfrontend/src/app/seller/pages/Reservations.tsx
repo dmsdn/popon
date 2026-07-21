@@ -71,11 +71,18 @@ export default function Reservations() {
     const popup = popups.find((p) => p.id === popupId);
     const loadSlots = async (): Promise<PopupSlot[]> => {
       if (popup && popup.reservationMode === "SLOT") {
-        // 슬롯당 정원: 기존 슬롯 정원 → 없으면 동시 수용 정원 → 기본 10
+        // 슬롯당 정원: 기존 슬롯 정원 → 없으면 동시 수용 정원 → 기본 10 (서버 일괄 생성 API, 멱등)
         const existing = await getSlots(popupId);
         const perSlotCap = existing[0]?.capacity ?? popup.capacity ?? 10;
-        const { created, existing: all } = await ensureSlots(popup, perSlotCap);
-        if (created > 0) setAutoGenNote(`등록 정보 기준 예약 슬롯 ${created}개를 자동 생성했습니다.`);
+        const { created, keptStale, existing: all } = await ensureSlots(popup, perSlotCap);
+        if (created > 0 || keptStale > 0) {
+          setAutoGenNote(
+            [
+              created > 0 ? `등록 정보 기준 예약 슬롯 ${created}개를 자동 생성했습니다.` : "",
+              keptStale > 0 ? `이전 설정의 슬롯 ${keptStale}개는 예약이 있어 유지 중입니다.` : "",
+            ].filter(Boolean).join(" "),
+          );
+        }
         return all;
       }
       return getSlots(popupId);

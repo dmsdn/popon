@@ -21,6 +21,17 @@ spring:
       max-file-size: 10MB
       max-request-size: 30MB
 
+  # 웨이팅 입장 QR 메일 발송용 (EmailNotificationService — 이 섹션이 없으면 기동 실패)
+  # username을 비워두면 발송은 스킵되고 로그만 남음. 실제 발송하려면 Gmail 주소+앱 비밀번호 입력.
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ""
+    password: ""
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+
 jwt:
   # 충분히 긴 랜덤 문자열 (예: openssl rand -base64 64 로 생성)
   secret: "여기에-랜덤-시크릿-키"

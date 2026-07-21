@@ -113,7 +113,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 // ── 주최자(사업자) 인증 ──
 
-export type LoginResponse = { accessToken: string; businessId: number; companyName: string };
+export type LoginResponse = {
+  accessToken: string;
+  businessId: number;
+  companyName: string;
+  needsReconsent: boolean; // 개인정보 동의 보관기간 만료 → 재동의 필요
+};
 export type BusinessInfo = { id: number; email: string; companyName: string; businessNumber: string; phone: string };
 
 export function login(email: string, password: string) {
@@ -129,6 +134,7 @@ export function signup(data: {
   companyName: string;
   businessNumber: string; // 000-00-00000
   phone?: string;
+  agreeTerms: boolean; // 개인정보 수집·이용 동의 (백엔드 필수)
 }) {
   return request<unknown>("/api/business/auth/signup", {
     method: "POST",
@@ -138,6 +144,17 @@ export function signup(data: {
 
 export function getMyInfo() {
   return request<BusinessInfo>("/api/business/auth/me");
+}
+
+// 개인정보 재동의 (로그인 응답 needsReconsent=true일 때 호출)
+export function businessReconsent() {
+  return request<{ message: string }>("/api/business/auth/consent", { method: "POST" });
+}
+
+// 약관 본문 조회 (permitAll)
+export type Terms = { id: number; title: string; content: string; updatedAt: string };
+export function getTerms() {
+  return request<Terms>("/api/terms");
 }
 
 // ── 관리자 인증 ──
@@ -268,6 +285,98 @@ export function createSlot(
   return request<PopupSlot>(`/api/popups/${popupId}/slots`, {
     method: "POST",
     body: JSON.stringify(data),
+  });
+}
+
+// 슬롯 일괄 생성 — 팝업 등록 정보(운영기간·운영시간·슬롯 단위) 기준, 서버가 없는 것만 생성·구 슬롯 정리 (멱등)
+export type SlotGenerateResult = {
+  created: number;
+  deletedStale: number; // 설정 변경으로 무효가 된 구 슬롯 중 삭제된 수(예약 없던 것)
+  keptStale: number; // 예약이 있어 유지된 구 슬롯 수 — 화면에서 경고 표시
+  slots: PopupSlot[];
+};
+export function generateSlots(popupId: number | string, perSlotCapacity?: number) {
+  return request<SlotGenerateResult>(`/api/popups/${popupId}/slots/generate`, {
+    method: "POST",
+    body: JSON.stringify({ perSlotCapacity }),
+  });
+}
+
+// ── 현장 웨이팅 (jsw waiting 도메인) ──
+
+export type WaitingStatusCode = "WAITING" | "CALLED" | "ENTERED" | "CANCELLED";
+
+export type WaitingItem = {
+  id: number;
+  popupId: number;
+  customerId: number | null;
+  name: string | null;
+  email: string | null;
+  phoneNumber: string;
+  partySize: number;
+  teamNumber: number; // 당일 팝업별 대기번호
+  qrToken: string; // 입장 QR 값
+  status: WaitingStatusCode;
+  teamsAhead: number;
+  registeredAt: string;
+  calledAt: string | null;
+  callExpiresAt: string | null;
+  enteredAt: string | null;
+  source: "ONSITE_WAITING";
+};
+
+// 웨이팅 등록 (permitAll) — 회원은 customerId, 비회원은 name+email 필수
+export function registerWaiting(
+  popupId: number | string,
+  data: { name?: string; email?: string; phoneNumber: string; partySize: number },
+  customerId?: number,
+) {
+  const q = customerId ? `?customerId=${customerId}` : "";
+  return request<WaitingItem>(`/api/popups/${popupId}/waiting${q}`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function getWaitingBoard(popupId: number | string) {
+  return request<{ popupId: number; totalWaitingTeams: number; waitingList: WaitingItem[] }>(
+    `/api/popups/${popupId}/waiting/board`,
+  );
+}
+
+export function enterWaiting(id: number) {
+  return request<WaitingItem>(`/api/waiting/${id}/enter`, { method: "PATCH" });
+}
+
+export function cancelWaiting(id: number) {
+  return request<WaitingItem>(`/api/waiting/${id}/cancel`, { method: "PATCH" });
+}
+
+// ── 통합 대기열 (사전예약 + 현장 웨이팅) ──
+
+export type UnifiedEntry = {
+  source: "RESERVATION" | "ONSITE_WAITING";
+  refId: number; // reservation.id 또는 waiting_queue.id
+  displayName: string; // 마스킹된 이름
+  phoneNumber: string | null;
+  partySize: number;
+  qrToken: string;
+  entryStatus: string; // PENDING/CHECKED_IN/NO_SHOW(예약) · WAITING/CALLED/ENTERED/CANCELLED(웨이팅)
+  joinedAt: string; // 예약=슬롯 시작시각, 웨이팅=등록시각
+};
+
+// 통합 대기열 보드 — 슬롯 시작이 지난 사전예약자 + 대기중 웨이팅 (서버가 자동 편입·정렬)
+export function getQueueBoard(popupId: number | string) {
+  return request<{ popupId: number; totalCount: number; entries: UnifiedEntry[] }>(
+    `/api/popups/${popupId}/queue/board`,
+  );
+}
+
+// 통합 QR 체크인 — 예약 QR·웨이팅 QR 구분 없이 하나로 처리 (서버가 시각 기록)
+export function checkinUnifiedQr(qrToken: string) {
+  return request<UnifiedEntry>("/api/queue/checkin/qr", {
+    method: "POST",
+    body: JSON.stringify({ qrToken }),
   });
 }
 
