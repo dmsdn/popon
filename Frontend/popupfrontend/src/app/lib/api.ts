@@ -317,6 +317,31 @@ export function getMyInquiries() {
   return request<InquiryItem[]>("/api/inquiries/my");
 }
 
+// ── 후기 신고 모더레이션 (popupbackend report 도메인) ──
+// 접수는 소비자 프론트에서 POST /api/reports?customerId= 로 이뤄짐 (pew 담당)
+
+export type ReportReasonCode = "ABUSE" | "SPAM" | "FALSE_INFO" | "OTHER";
+
+export type ReportItem = {
+  id: number;
+  reviewId: number;
+  reporterCustomerId: number;
+  reporterNickname: string;
+  reason: ReportReasonCode;
+  detail: string | null;
+  status: "PENDING" | "PROCESSED";
+  processedBy: string | null;
+  processedAt: string | null;
+  createdAt: string;
+};
+
+export function getAdminReports(status?: "PENDING" | "PROCESSED") {
+  return request<ReportItem[]>(`/api/admin/reports${status ? `?status=${status}` : ""}`);
+}
+export function processReport(id: number) {
+  return request<ReportItem>(`/api/admin/reports/${id}/process`, { method: "PATCH" });
+}
+
 // ── 공간(venue) 마스터 ──
 
 export type Venue = {
