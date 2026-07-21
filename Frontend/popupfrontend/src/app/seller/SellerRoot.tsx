@@ -1,10 +1,12 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, NavLink, Link, useNavigate, useLocation, ScrollRestoration } from "react-router";
 import {
   LayoutDashboard, Store, PlusSquare, CalendarCheck, Users, Package,
   FileText, BarChart3, Megaphone, Bell, ChevronDown, ExternalLink, LogOut, MessageSquare,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { getMyPopups, getMyInquiries, Popup, InquiryItem } from "../lib/api";
+import { loadSeen, saveSeen, unseenCount } from "../lib/navBadges";
 
 const MENU = [
   {
@@ -56,6 +58,49 @@ export default function SellerRoot() {
   useEffect(() => {
     if (!user) navigate("/login", { replace: true, state: { from: location.pathname } });
   }, [user, navigate, location.pathname]);
+
+  // ── 사이드바 새 소식 뱃지: 심사 결과 나온 팝업·답변 완료된 문의 (1분 폴링) ──
+  const isBusiness = user?.role === "business";
+  const [myPopups, setMyPopups] = useState<Popup[]>([]);
+  const [myInquiries, setMyInquiries] = useState<InquiryItem[]>([]);
+
+  useEffect(() => {
+    if (!isBusiness) return;
+    const fetchNews = () => {
+      getMyPopups().then(setMyPopups).catch(() => {});
+      getMyInquiries().then(setMyInquiries).catch(() => {});
+    };
+    fetchNews();
+    const t = setInterval(fetchNews, 60_000);
+    return () => clearInterval(t);
+  }, [isBusiness]);
+
+  // 키에 상태를 포함 — 상태가 바뀐 팝업·새로 답변된 문의만 다시 '새 소식'으로 집계
+  const navKeys: Record<string, string[]> = {
+    "/seller/popups": myPopups.filter((p) => p.status !== "PENDING").map((p) => `popup:${p.id}:${p.status}`),
+    "/seller/inquiries": myInquiries.filter((i) => i.status === "ANSWERED").map((i) => `inq:${i.id}:ANSWERED`),
+  };
+  const [seenNav, setSeenNav] = useState<Record<string, string[]>>(() => ({
+    "/seller/popups": loadSeen("/seller/popups"),
+    "/seller/inquiries": loadSeen("/seller/inquiries"),
+  }));
+  const badgeCounts: Record<string, number> = Object.fromEntries(
+    Object.entries(navKeys).map(([route, keys]) => [route, unseenCount(keys, seenNav[route] ?? [])]),
+  );
+
+  // 해당 메뉴 라우트로 이동하면 현재 항목을 확인함으로 저장 → 뱃지 즉시 해제
+  // (/seller/popups는 /seller/popups/new(등록)와 구분해 정확히 일치할 때만)
+  useEffect(() => {
+    const route = Object.keys(navKeys).find((r) =>
+      r === "/seller/popups" ? location.pathname === r : location.pathname === r || location.pathname.startsWith(r + "/"),
+    );
+    if (!route) return;
+    const keys = navKeys[route];
+    if (unseenCount(keys, seenNav[route] ?? []) === 0) return;
+    saveSeen(route, keys);
+    setSeenNav((prev) => ({ ...prev, [route]: keys }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, myPopups, myInquiries]);
 
   if (!user) return null;
 
@@ -119,6 +164,11 @@ export default function SellerRoot() {
                 >
                   <Icon size={15} />
                   {label}
+                  {(badgeCounts[to] ?? 0) > 0 && (
+                    <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-white text-[10px] font-semibold flex items-center justify-center">
+                      {badgeCounts[to] > 99 ? "99+" : badgeCounts[to]}
+                    </span>
+                  )}
                 </NavLink>
               ))}
             </div>
