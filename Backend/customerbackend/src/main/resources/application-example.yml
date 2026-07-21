@@ -50,3 +50,8 @@ jwt:
   # ※ 주최자측(popupbackend)과 동일한 값을 쓰면 토큰 호환 가능
   secret: "여기에-랜덤-시크릿-키"
   expiration: 86400000   # 토큰 유효기간 24시간 (ms)
+
+# 리뷰 이미지 업로드 저장 위치 (WebConfig·FileUploadController가 사용 — 없으면 기동 실패)
+file:
+  upload-dir: uploads
+  base-url: http://localhost:8081/uploads
