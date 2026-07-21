@@ -138,11 +138,14 @@ export type Popup = {
   title: string;
   description: string;
   location: string | null;
-  startDate: string | null; // ISO LocalDateTime
+  startDate: string | null; // ISO LocalDateTime — 시각 부분이 일일 운영 시작·종료 시간
   endDate: string | null;
   status: PopupStatusCode;
   rejectReason: string | null;
   createdAt: string;
+  capacity: number | null; // 동시 수용 정원
+  reservationMode: "SLOT" | "FREE" | null; // SLOT=슬롯 예약제, FREE=당일 방문(날짜 단위)
+  avgExperienceMinutes: number | null; // 체험 소요시간(분) = 슬롯 단위
 };
 
 export function getPopups(params?: { location?: string; status?: string; keyword?: string }) {
@@ -164,6 +167,9 @@ export function createPopup(data: {
   location?: string;
   startDate?: string;
   endDate?: string;
+  capacity?: number;
+  reservationMode: "SLOT" | "FREE"; // 백엔드 필수
+  avgExperienceMinutes: number; // 백엔드 필수 (슬롯 단위·분)
 }) {
   return request<Popup>("/api/popups", { method: "POST", body: JSON.stringify(data) });
 }
@@ -177,6 +183,9 @@ export function updatePopup(
     startDate?: string;
     endDate?: string;
     status?: PopupStatusCode;
+    capacity?: number;
+    reservationMode?: "SLOT" | "FREE";
+    avgExperienceMinutes?: number;
   },
 ) {
   return request<Popup>(`/api/popups/${id}`, { method: "PUT", body: JSON.stringify(data) });

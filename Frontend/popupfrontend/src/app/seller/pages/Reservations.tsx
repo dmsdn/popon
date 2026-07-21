@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { Loader2, Plus, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, Info } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import {
-  getMyPopups, getSlots, createSlot, getPopupReservations, checkinReservation, markNoShow,
+  getMyPopups, getSlots, getPopupReservations, checkinReservation, markNoShow,
   Popup, PopupSlot, ReservationDetail,
 } from "../../lib/api";
+import { ensureSlots } from "../../lib/slotAutoGen";
 
 const fmtTime = (t: string | null) => (t ? t.slice(0, 5) : ""); // HH:mm:ss → HH:mm
 
@@ -28,10 +29,9 @@ export default function Reservations() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // 슬롯 추가 폼
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ slotDate: "", startTime: "10:00", endTime: "11:00", capacity: 20 });
-  const [saving, setSaving] = useState(false);
+  // 슬롯은 수동 추가 없이 팝업 등록 정보(운영시간 × 슬롯 단위) 기준 자동 생성
+  const [slotDateFilter, setSlotDateFilter] = useState<string>("");
+  const [autoGenNote, setAutoGenNote] = useState("");
   const [entryActingId, setEntryActingId] = useState<number | null>(null);
 
   // 입장 처리: 수동 체크인 / 노쇼
@@ -59,46 +59,46 @@ export default function Reservations() {
       .catch((e) => setError(e instanceof Error ? e.message : "팝업 목록을 불러오지 못했습니다."));
   }, [isBusiness]);
 
-  // 선택된 팝업의 슬롯·명단 로드
+  const selected = popups.find((p) => p.id === popupId) ?? null;
+
+  // 선택된 팝업의 슬롯·명단 로드 + SLOT 모드면 누락 슬롯 자동 생성(등록 정보 기준, 없는 것만)
   useEffect(() => {
     if (!popupId) return;
     let alive = true;
     setLoading(true);
     setError("");
-    Promise.all([getSlots(popupId), getPopupReservations(popupId)])
+    setAutoGenNote("");
+    const popup = popups.find((p) => p.id === popupId);
+    const loadSlots = async (): Promise<PopupSlot[]> => {
+      if (popup && popup.reservationMode === "SLOT") {
+        // 슬롯당 정원: 기존 슬롯 정원 → 없으면 동시 수용 정원 → 기본 10
+        const existing = await getSlots(popupId);
+        const perSlotCap = existing[0]?.capacity ?? popup.capacity ?? 10;
+        const { created, existing: all } = await ensureSlots(popup, perSlotCap);
+        if (created > 0) setAutoGenNote(`등록 정보 기준 예약 슬롯 ${created}개를 자동 생성했습니다.`);
+        return all;
+      }
+      return getSlots(popupId);
+    };
+    Promise.all([loadSlots(), getPopupReservations(popupId)])
       .then(([s, r]) => {
         if (!alive) return;
         setSlots(s);
         setRoster(r);
+        setSlotDateFilter((prev) => (s.some((x) => x.slotDate === prev) ? prev : s[0]?.slotDate ?? ""));
       })
       .catch((e) => alive && setError(e instanceof Error ? e.message : "데이터를 불러오지 못했습니다."))
       .finally(() => alive && setLoading(false));
     return () => {
       alive = false;
     };
-  }, [popupId]);
+  }, [popupId, popups]);
 
-  const selected = popups.find((p) => p.id === popupId) ?? null;
-
-  const handleCreateSlot = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!popupId) return;
-    setSaving(true);
-    try {
-      const created = await createSlot(popupId, {
-        slotDate: form.slotDate,
-        startTime: form.startTime + ":00",
-        endTime: form.endTime + ":00",
-        capacity: form.capacity,
-      });
-      setSlots((prev) => [...prev, created]);
-      setShowForm(false);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "슬롯 생성에 실패했습니다.");
-    } finally {
-      setSaving(false);
-    }
-  };
+  // 날짜별 보기 (자동 생성 슬롯이 많아 날짜 단위로 선택)
+  const slotDates = useMemo(() => [...new Set(slots.map((s) => s.slotDate))].sort(), [slots]);
+  const daySlots = slots
+    .filter((s) => s.slotDate === slotDateFilter)
+    .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
   if (!isBusiness) {
     return (
@@ -145,7 +145,7 @@ export default function Reservations() {
       {selected && (
         <>
           <div className="flex gap-1 border-b border-border">
-            {([["slots", "예약 슬롯 설정"], ["roster", "예약자 명단"]] as const).map(([k, label]) => (
+            {([["slots", "예약 슬롯 현황"], ["roster", "예약자 명단"]] as const).map(([k, label]) => (
               <button
                 key={k}
                 onClick={() => setTab(k)}
@@ -167,86 +167,75 @@ export default function Reservations() {
 
           {!loading && tab === "slots" && (
             <div className="bg-white border border-border rounded-sm">
-              <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-                <span className="text-sm font-semibold">시간대별 예약 가능 인원</span>
-                <button
-                  onClick={() => setShowForm((v) => !v)}
-                  className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-sm bg-accent text-white hover:bg-accent/90"
-                >
-                  <Plus size={12} /> 슬롯 추가
-                </button>
+              <div className="px-4 py-3 border-b border-border flex flex-wrap items-center justify-between gap-2">
+                <span className="text-sm font-semibold">시간대별 예약 현황</span>
+                <span className="text-[11px] text-muted-foreground">
+                  슬롯은 팝업 등록 정보(운영기간·운영시간·슬롯 단위) 기준으로 자동 생성됩니다
+                </span>
               </div>
 
-              {showForm && (
-                <form onSubmit={handleCreateSlot} className="px-4 py-3 border-b border-border bg-secondary/40 flex flex-wrap items-end gap-3">
-                  <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
-                    날짜
-                    <input
-                      type="date" required value={form.slotDate}
-                      onChange={(e) => setForm((p) => ({ ...p, slotDate: e.target.value }))}
-                      className="px-2 py-1.5 text-xs border border-border rounded-sm bg-white"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
-                    시작
-                    <input
-                      type="time" required value={form.startTime}
-                      onChange={(e) => setForm((p) => ({ ...p, startTime: e.target.value }))}
-                      className="px-2 py-1.5 text-xs border border-border rounded-sm bg-white"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
-                    종료
-                    <input
-                      type="time" required value={form.endTime}
-                      onChange={(e) => setForm((p) => ({ ...p, endTime: e.target.value }))}
-                      className="px-2 py-1.5 text-xs border border-border rounded-sm bg-white"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
-                    정원
-                    <input
-                      type="number" min={1} required value={form.capacity}
-                      onChange={(e) => setForm((p) => ({ ...p, capacity: Number(e.target.value) }))}
-                      className="w-20 px-2 py-1.5 text-xs border border-border rounded-sm bg-white text-right"
-                    />
-                  </label>
-                  <button
-                    type="submit" disabled={saving}
-                    className="text-xs px-4 py-2 rounded-sm bg-foreground text-white hover:bg-foreground/90 disabled:opacity-50"
-                  >
-                    {saving ? "저장 중…" : "저장"}
-                  </button>
-                </form>
+              {autoGenNote && (
+                <div className="px-4 py-2.5 border-b border-border bg-emerald-50 text-xs text-emerald-700 flex items-center gap-1.5">
+                  <Info size={12} /> {autoGenNote}
+                </div>
               )}
 
-              <div className="p-4 grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                {slots.map((s) => {
-                  const rate = s.capacity > 0 ? Math.round((s.reservedCount / s.capacity) * 100) : 0;
-                  const full = s.remaining <= 0;
-                  return (
-                    <div key={s.id} className={`border rounded-sm p-3 ${full ? "border-accent/40 bg-accent/5" : "border-border"}`}>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-semibold" style={{ fontFamily: "'DM Mono', monospace" }}>
-                          {s.slotDate.slice(5)} {fmtTime(s.startTime)}~{fmtTime(s.endTime)}
-                        </span>
-                        <span className={`text-[11px] ${full ? "text-accent font-medium" : "text-muted-foreground"}`}>
-                          {full ? "마감" : `잔여 ${s.remaining}`}
-                        </span>
-                      </div>
-                      <div className="h-1.5 bg-secondary rounded-full overflow-hidden mb-2">
-                        <div className={`h-full ${full ? "bg-accent" : "bg-foreground/70"}`} style={{ width: `${rate}%` }} />
-                      </div>
-                      <div className="text-xs text-muted-foreground">{s.reservedCount}/{s.capacity}명 예약</div>
+              {selected.reservationMode === "FREE" && (
+                <div className="px-4 py-8 text-center text-xs text-muted-foreground">
+                  당일 방문형(FREE) 팝업입니다 — 시간 슬롯 없이 날짜 단위로 예약을 받습니다.
+                  <br />슬롯 예약제로 바꾸려면 팝업 수정에서 「사전예약제 운영」을 선택해 주세요.
+                </div>
+              )}
+
+              {selected.reservationMode !== "FREE" && (
+                <>
+                  {/* 날짜 선택 → 해당 날짜의 슬롯별 예약 현황 */}
+                  {slotDates.length > 0 && (
+                    <div className="px-4 py-2.5 border-b border-border flex flex-wrap items-center gap-1.5 max-h-24 overflow-y-auto">
+                      {slotDates.map((d) => (
+                        <button
+                          key={d}
+                          onClick={() => setSlotDateFilter(d)}
+                          className={`text-[11px] px-2.5 py-1 rounded-full border ${
+                            slotDateFilter === d ? "bg-foreground text-white border-foreground" : "border-border text-muted-foreground hover:border-foreground"
+                          }`}
+                          style={{ fontFamily: "'DM Mono', monospace" }}
+                        >
+                          {d.slice(5)}
+                        </button>
+                      ))}
                     </div>
-                  );
-                })}
-                {slots.length === 0 && (
-                  <div className="col-span-full text-center text-xs text-muted-foreground py-8">
-                    등록된 슬롯이 없습니다. 「슬롯 추가」로 시간대별 정원을 설정해 주세요.
+                  )}
+
+                  <div className="p-4 grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                    {daySlots.map((s) => {
+                      const rate = s.capacity > 0 ? Math.round((s.reservedCount / s.capacity) * 100) : 0;
+                      const full = s.remaining <= 0;
+                      return (
+                        <div key={s.id} className={`border rounded-sm p-3 ${full ? "border-accent/40 bg-accent/5" : "border-border"}`}>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-semibold" style={{ fontFamily: "'DM Mono', monospace" }}>
+                              {s.slotDate.slice(5)} {fmtTime(s.startTime)}~{fmtTime(s.endTime)}
+                            </span>
+                            <span className={`text-[11px] ${full ? "text-accent font-medium" : "text-muted-foreground"}`}>
+                              {full ? "마감" : `잔여 ${s.remaining}`}
+                            </span>
+                          </div>
+                          <div className="h-1.5 bg-secondary rounded-full overflow-hidden mb-2">
+                            <div className={`h-full ${full ? "bg-accent" : "bg-foreground/70"}`} style={{ width: `${rate}%` }} />
+                          </div>
+                          <div className="text-xs text-muted-foreground">{s.reservedCount}/{s.capacity} 예약</div>
+                        </div>
+                      );
+                    })}
+                    {slots.length === 0 && (
+                      <div className="col-span-full text-center text-xs text-muted-foreground py-8">
+                        생성된 슬롯이 없습니다. 팝업 등록/수정에서 운영시간과 슬롯 단위를 설정하면 자동 생성됩니다.
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                </>
+              )}
             </div>
           )}
 
