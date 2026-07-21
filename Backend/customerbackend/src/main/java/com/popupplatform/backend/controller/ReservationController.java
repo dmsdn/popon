@@ -1,5 +1,6 @@
 package com.popupplatform.backend.controller;
 
+import com.popupplatform.backend.dto.ReservationUpdateRequest;
 import com.popupplatform.backend.entity.Reservation;
 import com.popupplatform.backend.repository.ReservationRepository;
 import com.popupplatform.backend.util.JwtUtil;
@@ -23,8 +24,7 @@ public class ReservationController {
     @PostMapping
     public Reservation createReservation(
             @RequestHeader("Authorization") String authHeader,
-            @RequestBody Map<String, Object> body
-    ) {
+            @RequestBody Map<String, Object> body) {
         Long customerId = extractCustomerId(authHeader);
 
         Reservation reservation = new Reservation();
@@ -48,8 +48,7 @@ public class ReservationController {
     @PatchMapping("/{id}/cancel")
     public Map<String, Object> cancelReservation(
             @RequestHeader("Authorization") String authHeader,
-            @PathVariable Long id
-    ) {
+            @PathVariable Long id) {
         Reservation reservation = reservationRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("예약을 찾을 수 없어요."));
 
@@ -57,6 +56,31 @@ public class ReservationController {
         reservationRepository.save(reservation);
 
         return Map.of("success", true);
+    }
+
+    @PutMapping("/{id}")
+    public Reservation updateReservation(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable Long id,
+            @RequestBody ReservationUpdateRequest request) {
+        Long customerId = extractCustomerId(authHeader);
+
+        Reservation reservation = reservationRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("예약을 찾을 수 없어요."));
+
+        if (!reservation.getCustomerId().equals(customerId)) {
+            throw new RuntimeException("본인의 예약만 변경할 수 있어요.");
+        }
+
+        if (reservation.getStatus() == Reservation.Status.CANCELLED) {
+            throw new IllegalStateException("취소된 예약은 변경할 수 없어요.");
+        }
+
+        reservation.setVisitDate(LocalDate.parse(request.getVisitDate()));
+        reservation.setVisitTime(LocalTime.parse(request.getVisitTime()));
+        reservation.setPartySize(request.getPartySize());
+
+        return reservationRepository.save(reservation);
     }
 
     private Long extractCustomerId(String authHeader) {
