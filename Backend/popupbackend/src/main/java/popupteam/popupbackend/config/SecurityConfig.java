@@ -45,6 +45,7 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/popups/*/waiting").permitAll()   // === 추가 ===
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/popups/*/waiting/board").permitAll()   // === 추가 ===
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/waiting/*").permitAll()   // === 추가 ===
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/popups/*/queue/board").permitAll()   // === 추가 ===
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

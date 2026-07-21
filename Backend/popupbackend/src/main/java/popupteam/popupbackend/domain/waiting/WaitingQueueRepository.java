@@ -20,4 +20,7 @@ public interface WaitingQueueRepository extends JpaRepository<WaitingQueue, Long
     long countAheadOf(@Param("popupId") Long popupId, @Param("id") Long id);
 
     List<WaitingQueue> findByStatusAndCallExpiresAtBefore(WaitingStatus status, LocalDateTime time);
+
+    java.util.Optional<WaitingQueue> findByQrToken(String qrToken);
+
 }

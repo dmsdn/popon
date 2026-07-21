@@ -60,4 +60,9 @@ public class Popup {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt = LocalDateTime.now();
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "queue_mode", nullable = false)
+    private QueueMode queueMode = QueueMode.BOTH;
+
 }

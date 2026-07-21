@@ -2,6 +2,7 @@ package popupteam.popupbackend.domain.waiting;
 
 import jakarta.persistence.*;
 import lombok.*;
+import popupteam.popupbackend.domain.customer.Customer;
 import popupteam.popupbackend.domain.popup.Popup;
 import java.time.LocalDateTime;
 
@@ -19,6 +20,15 @@ public class WaitingQueue {
     @JoinColumn(name = "popup_id", nullable = false)
     private Popup popup;
 
+    // 회원 웨이팅일 때만 채워짐
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id")
+    private Customer customer;
+
+    // 비회원 웨이팅일 때 필수
+    private String name;
+    private String email;
+
     @Column(name = "phone_number", nullable = false, length = 20)
     private String phoneNumber;
 
@@ -27,6 +37,9 @@ public class WaitingQueue {
 
     @Column(name = "team_number", nullable = false)
     private Integer teamNumber;
+
+    @Column(name = "qr_token", unique = true, nullable = false, length = 36)
+    private String qrToken;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

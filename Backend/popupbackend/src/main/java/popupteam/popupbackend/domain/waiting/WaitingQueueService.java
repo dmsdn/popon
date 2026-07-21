@@ -1,5 +1,7 @@
 package popupteam.popupbackend.domain.waiting;
 
+import popupteam.popupbackend.domain.customer.Customer;
+import popupteam.popupbackend.domain.customer.CustomerRepository;
 import popupteam.popupbackend.domain.popup.Popup;
 import popupteam.popupbackend.domain.popup.PopupRepository;
 import popupteam.popupbackend.domain.waiting.dto.*;
@@ -9,6 +11,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -18,28 +21,50 @@ public class WaitingQueueService {
 
     private final WaitingQueueRepository waitingQueueRepository;
     private final PopupRepository popupRepository;
+    private final CustomerRepository customerRepository;
+    private final popupteam.popupbackend.common.notification.EmailNotificationService emailNotificationService;
+    private final popupteam.popupbackend.common.notification.SmsNotificationService smsNotificationService;
 
-    // 키오스크/패드: 대기 등록
-    public WaitingResponse register(Long popupId, WaitingCreateRequest request) {
+
+    // 현장 웨이팅 등록 (회원: customerId 있음 / 비회원: name+email 있음)
+    public WaitingResponse register(Long popupId, Long customerId, WaitingCreateRequest request) {
         Popup popup = popupRepository.findById(popupId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 팝업입니다."));
+
+        Customer customer = null;
+        if (customerId != null) {
+            customer = customerRepository.findById(customerId)
+                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 소비자입니다."));
+        } else {
+            if (request.getName() == null || request.getName().isBlank()
+                    || request.getEmail() == null || request.getEmail().isBlank()) {
+                throw new IllegalArgumentException("비회원 웨이팅은 이름과 이메일이 필수입니다.");
+            }
+        }
 
         LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
         int nextTeamNumber = waitingQueueRepository.findMaxTeamNumberToday(popupId, startOfDay) + 1;
 
         WaitingQueue waiting = new WaitingQueue();
         waiting.setPopup(popup);
+        waiting.setCustomer(customer);
+        waiting.setName(request.getName());
+        waiting.setEmail(request.getEmail());
         waiting.setPhoneNumber(request.getPhoneNumber());
         waiting.setPartySize(request.getPartySize());
         waiting.setTeamNumber(nextTeamNumber);
+        waiting.setQrToken(UUID.randomUUID().toString());
 
         WaitingQueue saved = waitingQueueRepository.save(waiting);
         long teamsAhead = waitingQueueRepository.countAheadOf(popupId, saved.getId());
 
+        String qrMessage = "팝업스토어 입장 QR: https://your-domain.com/qr/" + saved.getQrToken();
+        emailNotificationService.sendQrCode(saved.getEmail(), "팝업스토어 입장 QR 코드", qrMessage);
+        smsNotificationService.sendQrCode(saved.getPhoneNumber(), qrMessage);
         return WaitingResponse.from(saved, teamsAhead);
     }
 
-    // 패드 현황판: 대기중인 팀 전체 목록 (폴링으로 몇 초마다 조회)
+    // 패드 현황판: 현장웨이팅자만 (기존 방식 유지, 필요시 사용)
     public WaitingBoardResponse getBoard(Long popupId) {
         List<WaitingQueue> waitingList = waitingQueueRepository
                 .findByPopupIdAndStatusOrderByRegisteredAtAsc(popupId, WaitingStatus.WAITING);
@@ -58,7 +83,6 @@ public class WaitingQueueService {
                 .build();
     }
 
-    // 개별 조회 (내 대기번호로 순번 확인)
     public WaitingResponse getMyStatus(Long waitingId) {
         WaitingQueue w = waitingQueueRepository.findById(waitingId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 대기입니다."));
@@ -68,7 +92,6 @@ public class WaitingQueueService {
         return WaitingResponse.from(w, ahead);
     }
 
-    // 주최자/관리자: 호출 (15분 타이머 시작)
     public WaitingResponse call(Long waitingId) {
         WaitingQueue w = waitingQueueRepository.findById(waitingId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 대기입니다."));
@@ -83,21 +106,32 @@ public class WaitingQueueService {
         w.setCallExpiresAt(now.plusMinutes(15));
         waitingQueueRepository.save(w);
 
-        // === 카카오톡 알림 연동 지점 ===
-        // TODO: 카카오 비즈니스 알림톡 API 키 발급 후, 아래에 실제 발송 코드 추가
-        // kakaoAlimtalkClient.send(w.getPhoneNumber(), "입장 순서가 되었습니다. 15분 이내 입장해주세요.");
         log.info("[카카오 알림 발송 대상] phone={}, teamNumber={}", w.getPhoneNumber(), w.getTeamNumber());
 
         return WaitingResponse.from(w, 0L);
     }
 
-    // 주최자/관리자: 입장 확인
     public WaitingResponse enter(Long waitingId) {
         WaitingQueue w = waitingQueueRepository.findById(waitingId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 대기입니다."));
 
-        if (w.getStatus() != WaitingStatus.CALLED) {
-            throw new IllegalArgumentException("호출된 팀만 입장 처리할 수 있습니다.");
+        w.setStatus(WaitingStatus.ENTERED);
+        w.setEnteredAt(LocalDateTime.now());
+        waitingQueueRepository.save(w);
+
+        return WaitingResponse.from(w, 0L);
+    }
+
+    // 통합 QR 체크인 (예약 QR / 현장웨이팅 QR 둘 다 시도)
+    public WaitingResponse enterByQr(String qrToken) {
+        WaitingQueue w = waitingQueueRepository.findByQrToken(qrToken)
+                .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 QR 코드입니다."));
+
+        if (w.getStatus() == WaitingStatus.ENTERED) {
+            throw new IllegalArgumentException("이미 입장 처리된 대기입니다.");
+        }
+        if (w.getStatus() == WaitingStatus.CANCELLED) {
+            throw new IllegalArgumentException("취소된 대기입니다.");
         }
 
         w.setStatus(WaitingStatus.ENTERED);
@@ -107,7 +141,6 @@ public class WaitingQueueService {
         return WaitingResponse.from(w, 0L);
     }
 
-    // 주최자/관리자: 수동 취소
     public WaitingResponse cancel(Long waitingId) {
         WaitingQueue w = waitingQueueRepository.findById(waitingId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 대기입니다."));

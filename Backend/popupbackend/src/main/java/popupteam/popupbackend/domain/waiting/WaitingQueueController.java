@@ -15,22 +15,22 @@ public class WaitingQueueController {
     private final WaitingQueueService waitingQueueService;
 
     private void requireStaff(Authentication authentication) {
-        String name = authentication.getName();
-        boolean isAdmin = name != null && name.startsWith("admin:");
-        // 주최자/관리자 둘 다 허용 (본인 팝업 여부는 추후 세밀화 가능, 지금은 인증만 확인)
-        if (name == null) {
+        if (authentication == null || authentication.getName() == null) {
             throw new ForbiddenException("권한이 없습니다.");
         }
     }
 
-    // 키오스크/패드: 대기 등록 (인증 불필요, 현장 기기용)
+    // 현장 웨이팅 등록
+    // - 회원: customerId 쿼리파라미터로 전달 (customerfrontend에서 로그인 상태로 호출)
+    // - 비회원: customerId 없이, body에 name+email 채워서 호출 (QR폼에서 호출)
     @PostMapping("/api/popups/{popupId}/waiting")
     public ResponseEntity<?> register(@PathVariable Long popupId,
+                                      @RequestParam(required = false) Long customerId,
                                       @Valid @RequestBody WaitingCreateRequest request) {
-        return ResponseEntity.status(201).body(waitingQueueService.register(popupId, request));
+        return ResponseEntity.status(201).body(waitingQueueService.register(popupId, customerId, request));
     }
 
-    // 패드 현황판: 대기 목록 (인증 불필요, 현장 기기용, 폴링으로 조회)
+    // 패드 현황판: 현장웨이팅만 (단순 버전, 통합 버전은 별도 API)
     @GetMapping("/api/popups/{popupId}/waiting/board")
     public ResponseEntity<WaitingBoardResponse> getBoard(@PathVariable Long popupId) {
         return ResponseEntity.ok(waitingQueueService.getBoard(popupId));
@@ -49,11 +49,20 @@ public class WaitingQueueController {
         return ResponseEntity.ok(waitingQueueService.call(id));
     }
 
-    // 주최자/관리자: 입장 확인
+    // 주최자/관리자: 수동 입장 확인 (버튼으로)
     @PatchMapping("/api/waiting/{id}/enter")
     public ResponseEntity<?> enter(@PathVariable Long id, Authentication authentication) {
         requireStaff(authentication);
         return ResponseEntity.ok(waitingQueueService.enter(id));
+    }
+
+    // 주최자/관리자: QR 스캔 입장확인 (현장웨이팅 QR 전용)
+    @PostMapping("/api/waiting/checkin/qr")
+    public ResponseEntity<?> checkinByQr(Authentication authentication,
+                                         @RequestBody java.util.Map<String, String> body) {
+        requireStaff(authentication);
+        String qrToken = body.get("qrToken");
+        return ResponseEntity.ok(waitingQueueService.enterByQr(qrToken));
     }
 
     // 주최자/관리자: 수동 취소
