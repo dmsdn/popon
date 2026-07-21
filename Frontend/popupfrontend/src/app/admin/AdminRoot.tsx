@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Outlet, NavLink, Link, Navigate, useLocation, ScrollRestoration } from "react-router";
 import {
   LayoutDashboard, KeyRound, Database,
-  LineChart, Newspaper, Headphones, Bell, ExternalLink, Users, LogIn, Store, Building2, X, Clock3,
+  LineChart, Newspaper, Headphones, Bell, ExternalLink, Users, LogIn, Store, Building2, X, Clock3, FileSignature,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { getToken, getPopups, getAdminCsList, getAdminInquiries, getAdminReports, Popup } from "../lib/api";
@@ -15,6 +15,7 @@ const MENU = [
   ]},
   { group: "운영 관리", items: [
     { to: "/admin/popups", icon: Store, label: "팝업 관리" },
+    { to: "/admin/contracts", icon: FileSignature, label: "공간 대관·계약" },
     { to: "/admin/cs", icon: Headphones, label: "문의 및 신고관리" },
     { to: "/admin/masters", icon: Database, label: "공간·카테고리 마스터" },
     { to: "/admin/content", icon: Newspaper, label: "배너·콘텐츠 관리" },
