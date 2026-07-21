@@ -16,6 +16,7 @@ import Reservations from "./seller/pages/Reservations";
 import WaitingControl from "./seller/pages/WaitingControl";
 import Products from "./seller/pages/Products";
 import Quotes from "./seller/pages/Quotes";
+import PartnerVenues from "./seller/pages/PartnerVenues";
 import Performance from "./seller/pages/Performance";
 import Notices from "./seller/pages/Notices";
 import Inquiries from "./seller/pages/Inquiries";
@@ -30,6 +31,7 @@ import AdminDashboard from "./admin/pages/AdminDashboard";
 import AdminLogin from "./admin/pages/AdminLogin";
 import AdminPopups from "./admin/pages/AdminPopups";
 import AdminPopupEdit from "./admin/pages/AdminPopupEdit";
+import AdminContracts from "./admin/pages/AdminContracts";
 import Accounts from "./admin/pages/Accounts";
 import Businesses from "./admin/pages/Businesses";
 import Members from "./admin/pages/Members";
@@ -63,6 +65,7 @@ export const router = createBrowserRouter([
       { path: "waiting", Component: WaitingControl },
       { path: "products", Component: Products },
       { path: "quotes", Component: Quotes },
+      { path: "venues", Component: PartnerVenues },
       { path: "performance", Component: Performance },
       { path: "notices", Component: Notices },
       { path: "inquiries", Component: Inquiries },
@@ -82,6 +85,7 @@ export const router = createBrowserRouter([
       { path: "login", Component: AdminLogin },
       { path: "popups", Component: AdminPopups },
       { path: "popups/edit", Component: AdminPopupEdit },
+      { path: "contracts", Component: AdminContracts },
       { path: "accounts", Component: Accounts },
       { path: "businesses", Component: Businesses },
       { path: "members", Component: Members },

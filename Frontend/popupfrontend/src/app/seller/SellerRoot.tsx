@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Outlet, NavLink, Link, useNavigate, useLocation, ScrollRestoration } from "react-router";
 import {
   LayoutDashboard, Store, PlusSquare, CalendarCheck, Users, Package,
-  FileText, BarChart3, Megaphone, Bell, ChevronDown, ExternalLink, LogOut, MessageSquare, Inbox,
+  FileText, BarChart3, Megaphone, Bell, ChevronDown, ExternalLink, LogOut, MessageSquare, Inbox, Building2,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { getMyPopups, getMyInquiries, getToken, Popup, InquiryItem } from "../lib/api";
@@ -43,7 +43,10 @@ const MENU = [
   },
   {
     group: "견적·계약·정산",
-    items: [{ to: "/seller/quotes", icon: FileText, label: "견적·진행 단계" }],
+    items: [
+      { to: "/seller/quotes", icon: FileText, label: "견적·진행 단계" },
+      { to: "/seller/venues", icon: Building2, label: "파트너 공간" },
+    ],
   },
   {
     group: "데이터",

@@ -1,111 +1,221 @@
-import { Check, MessageSquare, FileText } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router";
+import { Check, Loader2, Info, FileSignature, MessageSquare } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import { getMyPopups, getContract, Popup, ContractInfo } from "../../lib/api";
+import { STAGE_FLOW, toUiStage, stageIndex } from "../../lib/contractStages";
+
+// 견적·계약·진행 단계 — 계약(파트너 공간 대관) 진행 상황 실연동 (조회 전용)
+// 전제: 견적·디자인이 확정되어 공간 대관 계약이 체결된 이후부터 단계가 시작됨.
+// 단계 전환(계약체결→제작/시공→운영 중→철거/정산)은 플랫폼 관리자가 확인 후 처리.
+// 견적 상담 항목은 백엔드 견적 API 구성 후 연동 — 현재 목업.
 
 const QUOTE_ITEMS = [
-  { item: "공간 대관료 (성수 A동, 18일)", type: "정형", amount: "13,500,000원", state: "즉시 확인" },
-  { item: "기본 전기·통신 사용료", type: "정형", amount: "420,000원", state: "즉시 확인" },
-  { item: "부스 디자인·시공비", type: "상담", amount: "견적 상담 중", state: "담당자 배정됨" },
-  { item: "현장 보안·안전 인력 (2명)", type: "정형", amount: "1,980,000원", state: "즉시 확인" },
+  { item: "공간 대관료 (정형)", type: "정형", state: "계약금에 포함 — 아래 계약 정보 참고" },
+  { item: "부스 디자인·시공비", type: "상담", state: "견적 상담 API 백엔드 구성 후 연동" },
+  { item: "현장 보안·안전 인력", type: "상담", state: "견적 상담 API 백엔드 구성 후 연동" },
 ];
 
-const STAGES = ["견적 확정", "계약 체결", "디자인 확정", "제작·시공", "운영 중", "철거·정산"];
-const CURRENT = 3; // 제작·시공 단계
-
-const TIMELINE = [
-  { date: "06-20", text: "견적서 v2 확정 · 전자서명 완료" },
-  { date: "06-24", text: "표준 대관 계약 체결 (계약번호 CT-2606-118)" },
-  { date: "07-01", text: "3D 렌더링 시안 2차 피드백 반영 · 디자인 확정" },
-  { date: "07-08", text: "부스 제작 착수 · 현장 설치 07-09 예정" },
-];
+const fmtWon = (n: number) => n.toLocaleString("ko-KR") + "원";
+const fmtDate = (iso: string | null | undefined) => (iso ? iso.slice(0, 10) : "-");
 
 export default function Quotes() {
+  const { user } = useAuth();
+  const isBusiness = user?.role === "business";
+
+  const [popups, setPopups] = useState<Popup[]>([]);
+  const [popupId, setPopupId] = useState<number | null>(null);
+  const [contract, setContract] = useState<ContractInfo | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [contractLoading, setContractLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isBusiness) {
+      setLoading(false);
+      return;
+    }
+    getMyPopups()
+      .then((list) => {
+        // 계약은 승인된 팝업부터 — 승인된 것 우선 선택
+        setPopups(list);
+        const first = list.find((p) => p.status === "BEFOR" || p.status === "OPEN" || p.status === "CLOSED") ?? list[0];
+        if (first) setPopupId(first.id);
+      })
+      .finally(() => setLoading(false));
+  }, [isBusiness]);
+
+  useEffect(() => {
+    if (!popupId) return;
+    setContractLoading(true);
+    setContract(null);
+    getContract(popupId)
+      .then(setContract)
+      .catch(() => setContract(null)) // 계약 미등록
+      .finally(() => setContractLoading(false));
+  }, [popupId]);
+
+  if (!isBusiness) {
+    return (
+      <div className="flex flex-col gap-4">
+        <h1 className="text-lg font-semibold">견적·계약·진행 단계</h1>
+        <div className="bg-amber-50 border border-amber-200 rounded-sm px-4 py-3 text-xs text-amber-700">
+          주최자(사업자) 계정으로 로그인해야 사용할 수 있습니다.{" "}
+          <Link to="/login" state={{ from: "/seller/quotes" }} className="underline underline-offset-2">로그인하기</Link>
+        </div>
+      </div>
+    );
+  }
+
+  const uiStage = contract ? toUiStage(contract.stage, contract.popupId) : null;
+  const curIdx = uiStage ? stageIndex(uiStage) : -1;
+
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-lg font-semibold">견적·계약·진행 단계</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">「무너의 여름방학 팝업」 · 공간 대관료 등 정형 항목은 즉시 확인, 디자인·시공비는 상담으로 확정됩니다.</p>
-      </div>
-
-      {/* 진행 단계 스텝퍼 */}
-      <div className="bg-white border border-border rounded-sm p-5">
-        <div className="text-sm font-semibold mb-5">진행 단계</div>
-        <div className="flex items-center">
-          {STAGES.map((s, i) => (
-            <div key={s} className="flex items-center flex-1 last:flex-none">
-              <div className="flex flex-col items-center gap-1.5">
-                <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-medium border-2 ${
-                    i < CURRENT
-                      ? "bg-accent border-accent text-white"
-                      : i === CURRENT
-                        ? "border-accent text-accent bg-accent/10"
-                        : "border-border text-muted-foreground bg-white"
-                  }`}
-                >
-                  {i < CURRENT ? <Check size={13} /> : i + 1}
-                </div>
-                <span className={`text-[11px] whitespace-nowrap ${i === CURRENT ? "text-accent font-semibold" : "text-muted-foreground"}`}>{s}</span>
-              </div>
-              {i < STAGES.length - 1 && <div className={`flex-1 h-0.5 mx-2 mb-5 ${i < CURRENT ? "bg-accent" : "bg-border"}`} />}
-            </div>
-          ))}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold">견적·계약·진행 단계</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            파트너 공간 대관 계약의 진행 상황을 확인합니다. 단계 전환은 플랫폼 관리자가 처리합니다.
+          </p>
         </div>
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-3 items-start">
-        {/* 견적 내역 */}
-        <div className="bg-white border border-border rounded-sm">
-          <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-            <span className="text-sm font-semibold">견적 내역</span>
-            <button className="flex items-center gap-1 text-xs text-accent"><FileText size={12} /> 견적서 PDF</button>
-          </div>
-          <ul className="divide-y divide-border">
-            {QUOTE_ITEMS.map((q) => (
-              <li key={q.item} className="px-4 py-3 flex items-center gap-3">
-                <span className={`shrink-0 text-[11px] px-2 py-0.5 rounded-full border ${
-                  q.type === "정형" ? "bg-blue-50 text-blue-600 border-blue-200" : "bg-amber-50 text-amber-600 border-amber-200"
-                }`}>{q.type}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[13px]">{q.item}</div>
-                  <div className="text-[11px] text-muted-foreground">{q.state}</div>
-                </div>
-                <div className="text-[13px] font-semibold shrink-0">{q.amount}</div>
-              </li>
+        {popups.length > 0 && (
+          <select
+            value={popupId ?? ""}
+            onChange={(e) => setPopupId(Number(e.target.value))}
+            className="px-3 py-2 text-[13px] border border-border rounded-sm bg-white focus:outline-none focus:border-accent"
+          >
+            {popups.map((p) => (
+              <option key={p.id} value={p.id}>{p.title}</option>
             ))}
-          </ul>
-          <div className="px-4 py-3 border-t border-border flex items-center justify-between bg-secondary/50">
-            <span className="text-xs text-muted-foreground">확정 항목 합계 (VAT 별도)</span>
-            <span className="text-sm font-bold">15,900,000원</span>
-          </div>
-          <div className="px-4 py-3">
-            <button className="w-full flex items-center justify-center gap-1.5 text-xs px-4 py-2.5 border border-accent text-accent rounded-sm hover:bg-accent/5">
-              <MessageSquare size={13} /> 디자인·시공비 상담 요청
-            </button>
-          </div>
-        </div>
-
-        {/* 진행 타임라인 + 정산 */}
-        <div className="flex flex-col gap-3">
-          <div className="bg-white border border-border rounded-sm">
-            <div className="px-4 py-3 border-b border-border text-sm font-semibold">진행 이력</div>
-            <ul className="p-4 flex flex-col gap-4">
-              {TIMELINE.map((t) => (
-                <li key={t.date} className="flex gap-3">
-                  <span className="shrink-0 text-[11px] text-muted-foreground w-11 pt-0.5" style={{ fontFamily: "'DM Mono', monospace" }}>{t.date}</span>
-                  <div className="relative flex-1 pb-1 text-[13px] leading-relaxed before:absolute before:-left-2 before:top-1.5 before:w-1.5 before:h-1.5 before:rounded-full before:bg-accent pl-2">
-                    {t.text}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="bg-white border border-border rounded-sm p-4">
-            <div className="text-sm font-semibold mb-2">정산 안내 (법인 후불)</div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              팝업 종료 후 월말 통합 정산으로 청구됩니다. 정산 내역은 팝업 종료(07-27) 이후 이 화면에서 확인할 수 있습니다.
-            </p>
-          </div>
-        </div>
+          </select>
+        )}
       </div>
+
+      {loading && (
+        <div className="text-center text-xs text-muted-foreground py-10">
+          <Loader2 size={14} className="inline animate-spin mr-1.5" /> 불러오는 중…
+        </div>
+      )}
+      {!loading && popups.length === 0 && (
+        <div className="bg-white border border-border rounded-sm px-4 py-10 text-center text-xs text-muted-foreground">
+          등록된 팝업이 없습니다. <Link to="/seller/popups/new" className="text-accent underline underline-offset-2">팝업을 먼저 등록</Link>해 주세요.
+        </div>
+      )}
+
+      {!loading && popupId && (
+        <>
+          {/* ── 계약 진행 단계 (실연동 · 조회 전용) ── */}
+          <div className="bg-white border border-border rounded-sm p-5">
+            <div className="flex items-center justify-between mb-5">
+              <span className="text-sm font-semibold">계약 진행 단계</span>
+              {contract && (
+                <span className="text-[11px] text-muted-foreground">
+                  최근 변경 {fmtDate(contract.updatedAt)} · 담당 {contract.registeredBy.replace("admin:", "")}
+                </span>
+              )}
+            </div>
+
+            {contractLoading ? (
+              <div className="text-center text-xs text-muted-foreground py-6">
+                <Loader2 size={14} className="inline animate-spin mr-1.5" /> 계약 정보 확인 중…
+              </div>
+            ) : contract ? (
+              <>
+                {/* 4단계 스텝퍼: 계약체결 → 제작/시공 → 운영 중 → 철거/정산 */}
+                <div className="flex items-start">
+                  {STAGE_FLOW.map((s, i) => (
+                    <div key={s.key} className="flex-1 flex flex-col items-center relative">
+                      {i > 0 && (
+                        <div className={`absolute top-3.5 right-1/2 w-full h-0.5 ${i <= curIdx ? "bg-accent" : "bg-border"}`} />
+                      )}
+                      <div
+                        className={`relative z-10 w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold border-2 ${
+                          i < curIdx
+                            ? "bg-accent border-accent text-white"
+                            : i === curIdx
+                              ? "bg-white border-accent text-accent"
+                              : "bg-white border-border text-muted-foreground/50"
+                        }`}
+                      >
+                        {i < curIdx ? <Check size={13} /> : i + 1}
+                      </div>
+                      <div className={`mt-2 text-xs font-medium ${i === curIdx ? "text-accent" : i < curIdx ? "" : "text-muted-foreground/60"}`}>
+                        {s.label}
+                      </div>
+                      <div className="mt-0.5 text-[10px] text-muted-foreground text-center px-2 hidden sm:block">{s.desc}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 계약 정보 */}
+                <div className="mt-6 grid sm:grid-cols-3 gap-3">
+                  <div className="border border-border rounded-sm p-3">
+                    <div className="text-[11px] text-muted-foreground mb-1">계약금</div>
+                    <div className="text-lg font-semibold" style={{ fontFamily: "'DM Mono', monospace" }}>
+                      {fmtWon(contract.contractAmount)}
+                    </div>
+                  </div>
+                  <div className="border border-border rounded-sm p-3">
+                    <div className="text-[11px] text-muted-foreground mb-1">계약 등록일</div>
+                    <div className="text-sm font-medium">{fmtDate(contract.createdAt)}</div>
+                  </div>
+                  <div className="border border-border rounded-sm p-3">
+                    <div className="text-[11px] text-muted-foreground mb-1">메모</div>
+                    <div className="text-xs leading-relaxed">{contract.memo || "-"}</div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-start gap-2.5 bg-secondary/60 rounded-sm px-4 py-4">
+                <FileSignature size={15} className="text-muted-foreground shrink-0 mt-0.5" />
+                <div className="text-xs text-muted-foreground leading-relaxed">
+                  아직 등록된 계약이 없습니다. 견적·디자인이 확정되고 파트너 공간과 대관 계약이 체결되면
+                  플랫폼 관리자가 계약을 등록하며, 이후 이 화면에서 진행 단계를 확인할 수 있습니다.
+                  <br />공간·비용 정보는 <Link to="/seller/venues" className="text-accent underline underline-offset-2">파트너 공간</Link>에서,
+                  문의는 <Link to="/seller/inquiries" className="text-accent underline underline-offset-2">문의하기</Link>를 이용하세요.
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── 견적 항목 (백엔드 구성 후 연동 — 목업) ── */}
+          <div className="bg-white border border-border rounded-sm">
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+              <span className="text-sm font-semibold">견적 항목</span>
+              <span className="text-[11px] text-amber-600 flex items-center gap-1">
+                <Info size={11} /> 견적 상담 API 백엔드 구성 후 연동
+              </span>
+            </div>
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr className="border-b border-border bg-secondary/60 text-xs text-muted-foreground">
+                  <th className="text-left font-medium px-4 py-2.5">항목</th>
+                  <th className="text-left font-medium px-4 py-2.5">유형</th>
+                  <th className="text-left font-medium px-4 py-2.5">상태</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {QUOTE_ITEMS.map((q) => (
+                  <tr key={q.item}>
+                    <td className="px-4 py-2.5">{q.item}</td>
+                    <td className="px-4 py-2.5">
+                      <span className={`text-[11px] px-2 py-0.5 rounded-full border ${q.type === "정형" ? "bg-blue-50 text-blue-600 border-blue-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
+                        {q.type}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-muted-foreground">{q.state}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="px-4 py-3 border-t border-border">
+              <Link to="/seller/inquiries" className="inline-flex items-center gap-1.5 text-xs text-accent hover:underline underline-offset-2">
+                <MessageSquare size={12} /> 견적·계약 관련 문의하기
+              </Link>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

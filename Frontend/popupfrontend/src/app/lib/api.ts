@@ -380,6 +380,39 @@ export function checkinUnifiedQr(qrToken: string) {
   });
 }
 
+// ── 계약 관리 (팝업 ↔ 파트너 공간 대관 계약) ──
+// 계약금 등록·단계 전환은 관리자 권한, 주최자는 본인 팝업 조회만
+
+export type ContractInfo = {
+  popupId: number;
+  popupTitle: string;
+  contractAmount: number;
+  memo: string | null;
+  stage: "CONTRACTED" | "IN_CONSTRUCTION" | "SETTLED";
+  registeredBy: string; // 등록/수정 관리자 (admin:이메일)
+  createdAt: string;
+  updatedAt: string;
+};
+
+export function getContract(popupId: number | string) {
+  return request<ContractInfo>(`/api/popups/${popupId}/contract`);
+}
+
+// 관리자: 계약금 등록/수정 (최초 등록 시 단계는 CONTRACTED로 시작)
+export function setAdminContract(popupId: number | string, data: { contractAmount: number; memo?: string }) {
+  return request<ContractInfo>(`/api/admin/popups/${popupId}/contract`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateContractStage(popupId: number | string, stage: "IN_CONSTRUCTION" | "SETTLED") {
+  return request<ContractInfo>(`/api/popups/${popupId}/contract/stage`, {
+    method: "PATCH",
+    body: JSON.stringify({ stage }),
+  });
+}
+
 // ── 관리자 대시보드 (jsw 신규 API) ──
 
 export type DailyVisitCount = { date: string; count: number };
