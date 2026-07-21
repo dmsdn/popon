@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Link } from "react-router";
 import { Search, Pencil, Trash2, Loader2, ShieldAlert, ChevronDown, ChevronUp, MessageSquare, CheckCircle2 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
@@ -160,8 +160,8 @@ export default function PopupList() {
               const answeredInqs = inquiries.filter((i) => i.status === "ANSWERED" && i.title.includes(`[${p.title}]`));
               const inqOpen = openInqPopupId === p.id;
               return (
-                <>
-                  <tr key={p.id} className="hover:bg-secondary/40">
+                <Fragment key={p.id}>
+                  <tr className="hover:bg-secondary/40">
                     <td className="px-4 py-3">
                       <div className="font-medium">{p.title}</div>
                     </td>
@@ -231,7 +231,7 @@ export default function PopupList() {
 
                   {/* 이 팝업 관련 답변 완료 문의 확장 행 */}
                   {inqOpen && answeredInqs.length > 0 && (
-                    <tr key={`inq-${p.id}`} className="bg-secondary/30">
+                    <tr className="bg-secondary/30">
                       <td colSpan={8} className="px-6 py-4">
                         <div className="max-w-2xl flex flex-col gap-3">
                           {answeredInqs.map((iq) => (
@@ -256,7 +256,7 @@ export default function PopupList() {
 
                   {/* 관리자 수정사항·사유 확장 행 */}
                   {adminEditOpen && meta.editNote && (
-                    <tr key={`admin-edit-${p.id}`} className="bg-secondary/30">
+                    <tr className="bg-secondary/30">
                       <td colSpan={8} className="px-6 py-4">
                         <div className="max-w-2xl bg-white border border-accent/30 rounded-sm p-4">
                           <div className="flex items-center gap-1.5 text-xs font-semibold text-accent mb-2">
@@ -268,7 +268,7 @@ export default function PopupList() {
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               );
             })}
             {!loading && rows.length === 0 && (

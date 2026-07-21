@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Link } from "react-router";
 import { Loader2, Send, ChevronDown, ChevronUp, CheckCircle2, Info } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
@@ -113,8 +113,8 @@ export default function CustomerInquiries() {
               {list.map((q) => {
                 const open = openId === q.id;
                 return (
-                  <>
-                    <tr key={q.id} className="hover:bg-secondary/40">
+                  <Fragment key={q.id}>
+                    <tr className="hover:bg-secondary/40">
                       <td className="px-4 py-3 font-medium">{q.popupTitle}</td>
                       <td className="px-4 py-3">{q.customerName}</td>
                       <td className="px-4 py-3">{q.title}</td>
@@ -135,7 +135,7 @@ export default function CustomerInquiries() {
                     </tr>
 
                     {open && (
-                      <tr key={`detail-${q.id}`} className="bg-secondary/30">
+                      <tr className="bg-secondary/30">
                         <td colSpan={6} className="px-6 py-4">
                           <div className="max-w-2xl flex flex-col gap-3">
                             <div className="bg-white border border-border rounded-sm p-3 text-[13px] whitespace-pre-wrap">{q.content}</div>
@@ -171,7 +171,7 @@ export default function CustomerInquiries() {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </Fragment>
                 );
               })}
               {list.length === 0 && (
