@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { use, useState } from "react";
 import { Header } from "@/components/layout/Header";
 import { MobileHeader } from "@/components/layout/MobileHeader";
 import { Footer } from "@/components/layout/Footer";
@@ -15,6 +15,7 @@ import {
   reviews,
   type PopupItem,
 } from "@/data/mockPopups";
+import Link from "next/link";
 
 const TABS = ["정보", "굿즈", "후기"] as const;
 
@@ -28,8 +29,9 @@ function findPopupById(id: string): PopupItem | undefined {
   return all.find((item) => item.id === id);
 }
 
-export default function PopupDetailPage({ params }: { params: { id: string } }) {
-  const popup = findPopupById(params.id);
+export default function PopupDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const popup = findPopupById(id);
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("정보");
 
   if (!popup) {
@@ -46,7 +48,7 @@ export default function PopupDetailPage({ params }: { params: { id: string } }) 
   const relatedReviews = reviews.filter((r) => r.popupName === popup.name);
 
   return (
-    <main className="mobile:max-w-[1000px] mobile:mx-auto pb-16 mobile:pb-0">
+    <main className="w-full mobile:max-w-[1000px] mobile:mx-auto pb-16 mobile:pb-0">
       <div className="hidden mobile:block">
         <Header />
       </div>
@@ -61,7 +63,15 @@ export default function PopupDetailPage({ params }: { params: { id: string } }) 
         </div>
 
         {/* 브랜드 브레드크럼 */}
-        <p className="text-xs text-gray-400 mb-2">{popup.location ?? "브랜드"} &gt;</p>
+        <p className="text-xs text-gray-400 mb-2">
+          <Link
+  href={`/brand/${popup.id}`}
+  className="text-xs text-gray-400 hover:text-black"
+>
+  {popup.brand}
+</Link>
+          &gt;
+        </p>
 
         {/* 제목 + 평점 */}
         <div className="flex items-start justify-between mb-2">

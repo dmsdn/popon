@@ -15,7 +15,7 @@ export function PopupSection({
     <section className="mb-10 mobile:mb-14 px-4 mobile:px-8">
       <div className="flex items-baseline justify-between mb-3 mobile:mb-4">
         <h3 className="text-base mobile:text-lg font-semibold">{title}</h3>
-        <span className="text-xs mobile:text-sm text-gray-400">더보기 ›</span>
+        <span className="text-sm mobile:text-base text-gray-400">더보기 ›</span>
       </div>
       {filterOptions && <FilterChip options={filterOptions} />}
       <div className="flex gap-3 mobile:gap-4 overflow-x-auto pb-1">
