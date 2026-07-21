@@ -19,6 +19,7 @@ import Quotes from "./seller/pages/Quotes";
 import Performance from "./seller/pages/Performance";
 import Notices from "./seller/pages/Notices";
 import Inquiries from "./seller/pages/Inquiries";
+import CustomerInquiries from "./seller/pages/CustomerInquiries";
 
 // ── 현장 웨이팅 비회원 접수 (QR 진입 공개 페이지) ──
 import WalkinPage from "./walkin/WalkinPage";
@@ -65,6 +66,7 @@ export const router = createBrowserRouter([
       { path: "performance", Component: Performance },
       { path: "notices", Component: Notices },
       { path: "inquiries", Component: Inquiries },
+      { path: "customer-inquiries", Component: CustomerInquiries },
     ],
   },
 

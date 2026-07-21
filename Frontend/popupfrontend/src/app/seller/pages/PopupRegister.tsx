@@ -6,6 +6,22 @@ import {
 } from "lucide-react";
 import { createPopup, updatePopup, getPopup, uploadPopupImage, getVenues } from "../../lib/api";
 import { ensureSlots } from "../../lib/slotAutoGen";
+import { loadOpsMode, saveOpsMode, OpsMode } from "../../lib/walkinQueue";
+
+// 운영 기간 기본값: 시작일 = 작성 당일, 종료일 = 2주 뒤
+const toDateStr = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const twoWeeksLater = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 14);
+  return d;
+};
+
+const OPS_MODE_LABEL: Record<OpsMode, string> = {
+  RESERVATION: "사전예약만",
+  WALKIN: "현장 웨이팅만",
+  BOTH: "둘 다 운영",
+};
 
 const CATEGORIES = ["패션", "뷰티", "F&B", "캐릭터", "라이프스타일", "아트", "테크", "엔터테인먼트"];
 const DAYS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -46,8 +62,13 @@ export default function PopupRegister() {
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [spaceMode, setSpaceMode] = useState<"partner" | "direct">("partner");
-  const [useReservation, setUseReservation] = useState(true);
+  // 운영 방식(사전예약만/현장 웨이팅만/둘 다) — 대기열·인원 관제와 공유 (localStorage, 백엔드 구성 후 연동)
+  const [opsMode, setOpsMode] = useState<OpsMode>("BOTH");
+  const useReservation = opsMode !== "WALKIN"; // 사전예약 포함 여부 → 슬롯 자동 생성 대상
   const [images, setImages] = useState<File[]>([]);
+  // 상세 설명용 세로형 JPG 1장 (쿠팡 상품 상세 스타일)
+  const [detailImage, setDetailImage] = useState<File | null>(null);
+  const detailInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [submitted, setSubmitted] = useState(false);
   const [sameHours, setSameHours] = useState(true);
@@ -57,8 +78,8 @@ export default function PopupRegister() {
   // 백엔드 연동 필드
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [startDate, setStartDate] = useState("2026-08-01");
-  const [endDate, setEndDate] = useState("2026-08-15");
+  const [startDate, setStartDate] = useState(() => toDateStr(new Date()));
+  const [endDate, setEndDate] = useState(() => toDateStr(twoWeeksLater()));
   const [openTime, setOpenTime] = useState("11:00");
   const [closeTime, setCloseTime] = useState("20:00");
   // 예약 정책 (백엔드 필수: reservationMode·avgExperienceMinutes) — 슬롯은 이 값 기준 자동 생성
@@ -96,7 +117,12 @@ export default function PopupRegister() {
           setEndDate(p.endDate.slice(0, 10));
           setCloseTime(p.endDate.slice(11, 16) || "20:00");
         }
-        if (p.reservationMode) setUseReservation(p.reservationMode === "SLOT");
+        // 운영 방식 복원: FREE면 현장 웨이팅만, SLOT이면 저장된 운영 방식(기본 BOTH)
+        if (p.reservationMode === "FREE") setOpsMode("WALKIN");
+        else if (p.reservationMode === "SLOT") {
+          const saved = loadOpsMode(p.id);
+          setOpsMode(saved === "WALKIN" ? "BOTH" : saved);
+        }
         if (p.avgExperienceMinutes) setSlotUnit(p.avgExperienceMinutes);
         if (p.capacity) setMaxCapacity(p.capacity);
         if (p.location) {
@@ -136,8 +162,13 @@ export default function PopupRegister() {
     setSubmitting(true);
     try {
       const popup = editId ? await updatePopup(editId, payload) : await createPopup(payload);
+      saveOpsMode(popup.id, opsMode); // 대기열·인원 관제가 이 값을 읽어 표시
       for (const file of images) {
         await uploadPopupImage(popup.id, file);
+      }
+      // 상세 설명 이미지 — 백엔드에 썸네일/상세 구분이 없어 팝업 이미지로 함께 업로드
+      if (detailImage) {
+        await uploadPopupImage(popup.id, detailImage);
       }
       // 사전예약제(SLOT)면 운영기간 × 운영시간 × 슬롯 단위로 예약 슬롯 자동 생성 (없는 것만)
       if (useReservation) {
@@ -392,29 +423,27 @@ export default function PopupRegister() {
           </div>
         </Section>
 
-        {/* 5. 상세 설명 */}
-        <Section id="detail" title="상세 설명" desc="최대 2,000자 · 마크다운 지원 (굵게, 목록, 소제목)">
-          <textarea
-            rows={8}
-            maxLength={2000}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className={inputCls + " resize-y leading-relaxed"}
-            placeholder={"팝업의 콘셉트, 판매 상품, 포토존·이벤트 등을 소개해 주세요.\n\n## 이런 걸 만나요\n- 한정판 굿즈 20종\n- 브랜드 캐릭터 포토존"}
-          />
-        </Section>
-
-        {/* 6. 예약·입장 정책 */}
-        <Section id="entry" title="예약·입장 정책" desc="사전예약제 운영 시 팝업온 예약·QR 입장 시스템과 자동 연동됩니다.">
-          <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2 text-[13px] cursor-pointer">
-              <input type="radio" name="resv" checked={useReservation} onChange={() => setUseReservation(true)} className="accent-[#E85D3C]" />
-              사전예약제 운영
-            </label>
-            <label className="flex items-center gap-2 text-[13px] cursor-pointer">
-              <input type="radio" name="resv" checked={!useReservation} onChange={() => setUseReservation(false)} className="accent-[#E85D3C]" />
-              현장 입장만 운영
-            </label>
+        {/* 5. 예약·입장 정책 */}
+        <Section id="entry" title="예약·입장 정책" desc="여기서 정한 운영 방식이 대기열·인원 관제 화면에 그대로 적용됩니다.">
+          <div>
+            <label className={labelCls}>운영 방식 <Req /></label>
+            <div className="flex gap-2">
+              {(["RESERVATION", "WALKIN", "BOTH"] as OpsMode[]).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setOpsMode(m)}
+                  className={`text-xs px-4 py-2 rounded-sm border transition-colors ${
+                    opsMode === m ? "border-accent text-accent bg-accent/5 font-medium" : "border-border text-muted-foreground hover:border-accent"
+                  }`}
+                >
+                  {OPS_MODE_LABEL[m]}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1.5">
+              사전예약과 현장 웨이팅을 동시에 운영할 때의 현장 대기열 조정 의무는 주최자에게 있습니다.
+            </p>
           </div>
           {useReservation && (
             <div className="p-4 bg-secondary/60 rounded-sm">
@@ -470,6 +499,49 @@ export default function PopupRegister() {
           <p className="text-[11px] text-muted-foreground flex items-center gap-1">
             <Info size={11} /> 혼잡도 기준: 정원 대비 80% 이상 "혼잡" · 50~80% "보통" · 이하 "여유"
           </p>
+        </Section>
+
+        {/* 6. 상세 설명 */}
+        <Section id="detail" title="상세 설명" desc="최대 2,000자 · 마크다운 지원 (굵게, 목록, 소제목)">
+          <textarea
+              rows={8}
+              maxLength={2000}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className={inputCls + " resize-y leading-relaxed"}
+              placeholder={"팝업의 콘셉트, 판매 상품, 포토존·이벤트 등을 소개해 주세요.\n\n## 이런 걸 만나요\n- 한정판 굿즈 20종\n- 브랜드 캐릭터 포토존"}
+          />
+          <div>
+            <label className={labelCls}>상세 설명 이미지 <span className="font-normal text-muted-foreground">(세로형 JPG 1장 — 상품 상세페이지처럼 본문 아래 노출)</span></label>
+            <input
+              ref={detailInputRef}
+              type="file"
+              accept="image/jpeg"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) setDetailImage(f);
+                e.target.value = "";
+              }}
+            />
+            {detailImage ? (
+              <div className="flex items-center gap-2 text-xs bg-secondary px-3 py-2.5 rounded-sm">
+                <ImageIcon size={13} /> {detailImage.name}
+                <span className="text-muted-foreground">({(detailImage.size / 1024 / 1024).toFixed(1)}MB)</span>
+                <button type="button" onClick={() => setDetailImage(null)} className="ml-auto text-muted-foreground hover:text-foreground">
+                  <X size={13} />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => detailInputRef.current?.click()}
+                className="w-full h-20 border-2 border-dashed border-border rounded-sm flex items-center justify-center gap-2 text-xs text-muted-foreground hover:border-accent hover:text-accent transition-colors"
+              >
+                <Upload size={15} /> 상세 이미지 JPG 업로드 (1장)
+              </button>
+            )}
+          </div>
         </Section>
 
         {/* 하단 액션 바 */}

@@ -9,7 +9,7 @@ import {
   Popup, PopupSlot, ReservationDetail,
 } from "../../lib/api";
 import {
-  loadWalkins, addWalkin, updateWalkin, loadOpsMode, saveOpsMode, loadResExits, markResExit, localNowIso,
+  loadWalkins, addWalkin, updateWalkin, loadOpsMode, loadResExits, markResExit, localNowIso,
   WalkinEntry, OpsMode,
 } from "../../lib/walkinQueue";
 
@@ -186,7 +186,9 @@ export default function WaitingControl() {
       setNowMs(Date.now());
     };
     fetchAll(true);
-    setMode(loadOpsMode(popupId));
+    // 운영 방식은 팝업 등록/수정에서 확정 — 여기서는 표시만 (FREE 팝업은 현장 웨이팅만)
+    const p = popups.find((x) => x.id === popupId);
+    setMode(p?.reservationMode === "FREE" ? "WALKIN" : loadOpsMode(popupId));
     setSlotFilter("ALL");
     const t = setInterval(() => fetchAll(false), 30_000);
     // 같은 브라우저 다른 탭(비회원 폼)에서 접수하면 즉시 반영
@@ -278,6 +280,7 @@ export default function WaitingControl() {
     return end === null || nowMs > end.getTime() + NOSHOW_GRACE_MS;
   };
 
+  // 혼잡도 정원 = 팝업 등록의 「최대 수용 정원」(동시 체류 기준) — 슬롯 정원 합산 아님
   // ── 체류 인원: 입장 처리됐고 아직 퇴장 안 한 사람 (대기열 편입 여부와 무관하게 명단 전체 기준) ──
   const staying = useMemo<QueueRow[]>(() => {
     const resStaying: QueueRow[] = roster
@@ -315,12 +318,7 @@ export default function WaitingControl() {
     return [...resStaying, ...walkinStaying].sort((a, b) => (a.enteredAt ?? "").localeCompare(b.enteredAt ?? ""));
   }, [roster, walkins, resExits]);
   const stayingCount = staying.reduce((a, r) => a + r.partySize, 0);
-  const capacity =
-    slotFilter !== "ALL"
-      ? slotMap[slotFilter]?.capacity ?? null
-      : slots.length > 0
-        ? slots.reduce((a, s) => a + s.capacity, 0)
-        : null;
+  const capacity = selected?.capacity ?? null;
   const rate = capacity ? Math.round((stayingCount / capacity) * 100) : null;
   const level = rate === null ? null : rate >= 80 ? "혼잡" : rate >= 50 ? "보통" : "여유";
   const levelColor = rate === null ? "" : rate >= 80 ? "text-red-500" : rate >= 50 ? "text-amber-500" : "text-emerald-500";
@@ -380,12 +378,6 @@ export default function WaitingControl() {
     } else if (row.walkinId) {
       setWalkins(updateWalkin(popupId, row.walkinId, { exitedAt: localNowIso() }));
     }
-  };
-
-  const handleModeChange = (m: OpsMode) => {
-    if (!popupId) return;
-    setMode(m);
-    saveOpsMode(popupId, m);
   };
 
   const handleManualAdd = (e: React.FormEvent) => {
@@ -457,23 +449,23 @@ export default function WaitingControl() {
 
       {selected && (
         <>
-          {/* ── 운영 모드 ── */}
+          {/* ── 운영 방식 (팝업 등록/수정에서 확정 — 여기서는 표시만) ── */}
           <div className="bg-white border border-border rounded-sm p-4">
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-sm font-semibold">운영 방식</span>
               <div className="flex gap-1">
                 {(["RESERVATION", "WALKIN", "BOTH"] as OpsMode[]).map((m) => (
-                  <button
+                  <span
                     key={m}
-                    onClick={() => handleModeChange(m)}
-                    className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                      mode === m ? "bg-foreground text-white border-foreground" : "border-border text-muted-foreground hover:border-foreground"
+                    className={`text-xs px-3 py-1.5 rounded-full border ${
+                      mode === m ? "bg-foreground text-white border-foreground font-medium" : "border-border text-muted-foreground/50"
                     }`}
                   >
                     {MODE_LABEL[m]}
-                  </button>
+                  </span>
                 ))}
               </div>
+              <span className="text-[11px] text-muted-foreground">팝업 등록/수정의 「예약·입장 정책」에서 변경할 수 있습니다</span>
             </div>
             <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
               플랫폼은 예약·웨이팅 <strong>통합관리 도구</strong>만 제공합니다. 사전예약과 현장 웨이팅을 동시에 운영할 때의
