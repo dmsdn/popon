@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Outlet, NavLink, Link, useNavigate, useLocation, ScrollRestoration } from "react-router";
 import {
   LayoutDashboard, Store, PlusSquare, CalendarCheck, Users, Package,
-  FileText, BarChart3, Megaphone, Bell, ChevronDown, ExternalLink, LogOut,
+  FileText, BarChart3, Megaphone, Bell, ChevronDown, ExternalLink, LogOut, MessageSquare,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -40,6 +40,10 @@ const MENU = [
   {
     group: "마케팅",
     items: [{ to: "/seller/notices", icon: Megaphone, label: "긴급공지 발송" }],
+  },
+  {
+    group: "지원",
+    items: [{ to: "/seller/inquiries", icon: MessageSquare, label: "문의하기" }],
   },
 ];
 

@@ -10,7 +10,7 @@ const STATUS_LABEL: Record<PopupStatusCode, string> = {
   PENDING: "심사 대기",
   REJECTED: "반려",
   BEFOR: "오픈예정",
-  OPEN: "게시중",
+  OPEN: "진행중",
   CLOSED: "종료",
 };
 

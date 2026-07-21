@@ -1,127 +1,170 @@
-import { useState } from "react";
-import { Headphones, Flag, Eye, EyeOff, UserCheck } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Loader2, Send, ChevronDown, ChevronUp, CheckCircle2, Info } from "lucide-react";
+import {
+  getAdminCsList, answerCs, getAdminInquiries, answerInquiry,
+  CsItem, InquiryItem,
+} from "../../lib/api";
 
-type TicketState = "미배정" | "처리중" | "완료";
+// CS·리뷰 모더레이션 — 소비자 CS(/api/admin/cs)·주최자 문의(/api/admin/inquiries) 실데이터 + 답변 등록
+// 후기 신고 모더레이션은 리뷰 신고 API 백엔드 구성 후 연동
 
-const TICKETS = [
-  { id: "CS-3301", type: "예약", from: "소비자", title: "QR코드가 열리지 않아요 (무너 팝업)", received: "07-15 10:42", assignee: "-", state: "미배정" as TicketState },
-  { id: "CS-3300", type: "정산", from: "주최자", title: "6월 정산서 세부 항목 문의 (레코드랩)", received: "07-15 10:15", assignee: "김지원", state: "처리중" as TicketState },
-  { id: "CS-3299", type: "계정", from: "주최자", title: "파트너 계정 접근권한 추가 요청 (글로우랩)", received: "07-15 09:58", assignee: "-", state: "미배정" as TicketState },
-  { id: "CS-3298", type: "예약", from: "소비자", title: "노쇼 처리 이의 신청", received: "07-14 18:31", assignee: "이현우", state: "처리중" as TicketState },
-  { id: "CS-3295", type: "기타", from: "소비자", title: "휠체어 접근 가능 여부 문의", received: "07-14 15:02", assignee: "김지원", state: "완료" as TicketState },
-];
+type Tab = "cs" | "inquiry";
 
-const REVIEWS = [
-  { id: "RV-8812", popup: "무너의 여름방학 팝업", reason: "부적절한 사진 포함", content: "굿즈는 좋은데 사진에 타인 얼굴이 그대로…", reports: 3, visible: true },
-  { id: "RV-8807", popup: "선셋 무드 향수전", reason: "욕설·비방", content: "직원이 ○○같이 응대함. 최악.", reports: 5, visible: true },
-  { id: "RV-8790", popup: "빈티지 바이닐 마켓", reason: "광고·홍보성", content: "우리 매장 오시면 같은 LP 반값! 링크 클릭…", reports: 2, visible: false },
-];
-
-const STATE_BADGE: Record<TicketState, string> = {
-  미배정: "bg-red-50 text-red-500 border-red-200",
-  처리중: "bg-blue-50 text-blue-600 border-blue-200",
-  완료: "bg-slate-100 text-slate-500 border-slate-200",
+const STATUS_BADGE: Record<string, string> = {
+  PENDING: "bg-amber-50 text-amber-600 border-amber-200",
+  ANSWERED: "bg-emerald-50 text-emerald-600 border-emerald-200",
 };
+const STATUS_LABEL: Record<string, string> = { PENDING: "답변 대기", ANSWERED: "답변 완료" };
+
+const fmt = (iso: string | null) => (iso ? iso.slice(0, 16).replace("T", " ") : "-");
 
 export default function CS() {
-  const [tab, setTab] = useState<"tickets" | "reviews">("tickets");
-  const [tickets, setTickets] = useState(TICKETS);
-  const [reviews, setReviews] = useState(REVIEWS);
+  const [tab, setTab] = useState<Tab>("cs");
+  const [csList, setCsList] = useState<CsItem[]>([]);
+  const [inquiries, setInquiries] = useState<InquiryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [openId, setOpenId] = useState<number | null>(null);
+  const [answer, setAnswer] = useState("");
+  const [savingId, setSavingId] = useState<number | null>(null);
 
-  const assign = (id: string) =>
-    setTickets((prev) => prev.map((t) => (t.id === id ? { ...t, assignee: "김지원", state: "처리중" as TicketState } : t)));
-  const toggleReview = (id: string) =>
-    setReviews((prev) => prev.map((r) => (r.id === id ? { ...r, visible: !r.visible } : r)));
+  useEffect(() => {
+    Promise.all([getAdminCsList(), getAdminInquiries()])
+      .then(([cs, inq]) => {
+        // 답변 대기 우선, 최근 접수순
+        const sortFn = (a: { status: string; createdAt: string }, b: { status: string; createdAt: string }) => {
+          if ((a.status === "PENDING") !== (b.status === "PENDING")) return a.status === "PENDING" ? -1 : 1;
+          return b.createdAt.localeCompare(a.createdAt);
+        };
+        setCsList([...cs].sort(sortFn));
+        setInquiries([...inq].sort(sortFn));
+        setError("");
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : "문의 목록을 불러오지 못했습니다."))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const submitAnswer = async (id: number) => {
+    if (!answer.trim()) {
+      alert("답변 내용을 입력해 주세요.");
+      return;
+    }
+    setSavingId(id);
+    try {
+      if (tab === "cs") {
+        const updated = await answerCs(id, answer.trim());
+        setCsList((prev) => prev.map((x) => (x.id === id ? updated : x)));
+      } else {
+        const updated = await answerInquiry(id, answer.trim());
+        setInquiries((prev) => prev.map((x) => (x.id === id ? updated : x)));
+      }
+      setOpenId(null);
+      setAnswer("");
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "답변 등록에 실패했습니다.");
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const rows: (CsItem | InquiryItem)[] = tab === "cs" ? csList : inquiries;
+  const pendingCs = csList.filter((c) => c.status === "PENDING").length;
+  const pendingInq = inquiries.filter((c) => c.status === "PENDING").length;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 max-w-4xl">
       <div>
         <h1 className="text-lg font-semibold">CS·리뷰 모더레이션</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">문의 접수·담당자 배정과 신고된 후기의 노출 여부를 처리합니다.</p>
+        <p className="text-xs text-muted-foreground mt-0.5">소비자 CS와 주최자 문의를 접수·답변합니다.</p>
       </div>
 
+      <div className="flex items-start gap-2.5 bg-blue-50 border border-blue-200 rounded-sm px-4 py-3">
+        <Info size={14} className="text-blue-500 shrink-0 mt-0.5" />
+        <div className="text-xs text-blue-800 leading-relaxed">
+          문의 접수·답변은 실데이터 연동 완료. <strong>후기 신고 모더레이션</strong>은 리뷰 신고 API 백엔드 구성 후 연동 필요.
+        </div>
+      </div>
+
+      {/* 탭 */}
       <div className="flex gap-1 border-b border-border">
-        {([["tickets", "문의 접수", Headphones], ["reviews", "후기 신고", Flag]] as const).map(([k, label, Icon]) => (
+        {([["cs", `소비자 CS (대기 ${pendingCs})`], ["inquiry", `주최자 문의 (대기 ${pendingInq})`]] as const).map(([k, label]) => (
           <button
             key={k}
-            onClick={() => setTab(k)}
-            className={`flex items-center gap-1.5 text-[13px] px-4 py-2.5 border-b-2 -mb-px transition-colors ${
+            onClick={() => { setTab(k); setOpenId(null); setAnswer(""); }}
+            className={`text-[13px] px-4 py-2.5 border-b-2 -mb-px transition-colors ${
               tab === k ? "border-accent text-accent font-medium" : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Icon size={14} /> {label}
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground">
-              {k === "tickets" ? tickets.filter((t) => t.state !== "완료").length : reviews.length}
-            </span>
+            {label}
           </button>
         ))}
       </div>
 
-      {tab === "tickets" ? (
-        <div className="bg-white border border-border rounded-sm overflow-x-auto">
-          <table className="w-full text-[13px] min-w-[760px]">
-            <thead>
-              <tr className="border-b border-border bg-secondary/60 text-xs text-muted-foreground">
-                <th className="text-left font-medium px-4 py-2.5">접수번호</th>
-                <th className="text-left font-medium px-4 py-2.5">유형</th>
-                <th className="text-left font-medium px-4 py-2.5">문의자</th>
-                <th className="text-left font-medium px-4 py-2.5">제목</th>
-                <th className="text-left font-medium px-4 py-2.5">접수 시각</th>
-                <th className="text-left font-medium px-4 py-2.5">담당자</th>
-                <th className="text-left font-medium px-4 py-2.5">상태</th>
-                <th className="text-center font-medium px-4 py-2.5">처리</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {tickets.map((t) => (
-                <tr key={t.id} className="hover:bg-secondary/40">
-                  <td className="px-4 py-3 text-xs" style={{ fontFamily: "'DM Mono', monospace" }}>{t.id}</td>
-                  <td className="px-4 py-3"><span className="text-[11px] px-2 py-0.5 rounded-sm bg-secondary text-muted-foreground">{t.type}</span></td>
-                  <td className="px-4 py-3 text-xs">{t.from}</td>
-                  <td className="px-4 py-3 font-medium">{t.title}</td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">{t.received}</td>
-                  <td className="px-4 py-3 text-xs">{t.assignee}</td>
-                  <td className="px-4 py-3"><span className={`text-[11px] px-2 py-0.5 rounded-full border ${STATE_BADGE[t.state]}`}>{t.state}</span></td>
-                  <td className="px-4 py-3 text-center">
-                    {t.state === "미배정" ? (
-                      <button onClick={() => assign(t.id)} className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-sm bg-accent text-white hover:bg-accent/90">
-                        <UserCheck size={11} /> 담당 배정
-                      </button>
-                    ) : (
-                      <button className="text-[11px] px-2.5 py-1 rounded-sm border border-border hover:border-accent hover:text-accent">답변 작성</button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {reviews.map((r) => (
-            <div key={r.id} className="bg-white border border-border rounded-sm px-5 py-4 flex items-start gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span className="text-xs text-muted-foreground" style={{ fontFamily: "'DM Mono', monospace" }}>{r.id}</span>
-                  <span className="text-xs font-medium">{r.popup}</span>
-                  <span className="text-[11px] px-2 py-0.5 rounded-full border bg-red-50 text-red-500 border-red-200">
-                    {r.reason} · 신고 {r.reports}건
-                  </span>
-                </div>
-                <p className="text-[13px] text-muted-foreground leading-relaxed">"{r.content}"</p>
-              </div>
-              <button
-                onClick={() => toggleReview(r.id)}
-                className={`shrink-0 flex items-center gap-1.5 text-xs px-3 py-2 rounded-sm border ${
-                  r.visible ? "border-border hover:border-red-300 hover:text-red-500" : "border-red-200 bg-red-50 text-red-500"
-                }`}
-              >
-                {r.visible ? <><Eye size={13} /> 노출중 → 숨기기</> : <><EyeOff size={13} /> 비노출 처리됨</>}
-              </button>
-            </div>
-          ))}
+      {error && <div className="bg-red-50 border border-red-200 rounded-sm px-4 py-3 text-xs text-red-600">{error}</div>}
+      {loading && (
+        <div className="text-center text-xs text-muted-foreground py-10">
+          <Loader2 size={14} className="inline animate-spin mr-1.5" /> 불러오는 중…
         </div>
       )}
+
+      <div className="flex flex-col gap-2.5">
+        {!loading && rows.length === 0 && !error && (
+          <div className="bg-white border border-border rounded-sm px-4 py-10 text-center text-xs text-muted-foreground">
+            접수된 문의가 없습니다.
+          </div>
+        )}
+        {rows.map((r) => {
+          const from = "customerNickname" in r ? `소비자 · ${r.customerNickname}` : `주최자 · ${(r as InquiryItem).companyName}`;
+          const open = openId === r.id;
+          return (
+            <div key={r.id} className="bg-white border border-border rounded-sm">
+              <button className="w-full px-4 py-3.5 flex items-center gap-3 text-left" onClick={() => { setOpenId(open ? null : r.id); setAnswer(""); }}>
+                <span className={`shrink-0 text-[11px] px-2 py-0.5 rounded-full border ${STATUS_BADGE[r.status]}`}>{STATUS_LABEL[r.status]}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-semibold truncate">{r.title}</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">{from} · 접수 {fmt(r.createdAt)}</div>
+                </div>
+                {open ? <ChevronUp size={15} className="shrink-0 text-muted-foreground" /> : <ChevronDown size={15} className="shrink-0 text-muted-foreground" />}
+              </button>
+
+              {open && (
+                <div className="px-4 pb-4 border-t border-border pt-3 flex flex-col gap-3">
+                  <div className="bg-secondary/60 rounded-sm p-3 text-[13px] whitespace-pre-wrap">{r.content}</div>
+
+                  {r.status === "ANSWERED" ? (
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-sm p-3">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 mb-1.5">
+                        <CheckCircle2 size={12} /> 답변 완료 · {r.answeredBy?.replace("admin:", "")} · {fmt(r.answeredAt)}
+                      </div>
+                      <p className="text-[13px] text-emerald-900 whitespace-pre-wrap">{r.answerContent}</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-end">
+                      <label className="flex-1 flex flex-col gap-1.5">
+                        <span className="text-xs font-medium">답변 작성</span>
+                        <textarea
+                          rows={3}
+                          value={answer}
+                          onChange={(e) => setAnswer(e.target.value)}
+                          placeholder="문의에 대한 답변을 입력해 주세요."
+                          className="w-full px-3 py-2 text-[13px] border border-border rounded-sm resize-y focus:outline-none focus:border-accent"
+                        />
+                      </label>
+                      <button
+                        onClick={() => submitAnswer(r.id)}
+                        disabled={savingId === r.id}
+                        className="shrink-0 flex items-center justify-center gap-1.5 text-xs px-5 py-2.5 rounded-sm bg-accent text-white hover:bg-accent/90 disabled:opacity-50"
+                      >
+                        {savingId === r.id ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />} 답변 등록
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

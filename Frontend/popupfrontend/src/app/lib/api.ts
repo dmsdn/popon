@@ -237,20 +237,144 @@ export function createSlot(
   });
 }
 
+// ── 관리자 대시보드 (jsw 신규 API) ──
+
+export type DailyVisitCount = { date: string; count: number };
+export type RevenueTrend = { period: string; totalAmount: number };
+
+export type AdminDashboard = {
+  pendingPopupCount: number;
+  openPopupCount: number;
+  totalCustomerCount: number;
+  activePartnerCount: number;
+  pendingInquiryCount: number;
+  pendingCsCount: number;
+  pendingReportCount: number;
+  visitTrend: DailyVisitCount[];
+  revenueTrend: RevenueTrend[];
+};
+
+export function getAdminDashboard() {
+  return request<AdminDashboard>("/api/admin/dashboard");
+}
+
+export function getVisitTrend(days = 7) {
+  return request<DailyVisitCount[]>(`/api/admin/stats/visits?days=${days}`);
+}
+
+// ── CS(소비자 문의) · 주최자 문의 모더레이션 ──
+
+export type CsItem = {
+  id: number;
+  customerId: number;
+  customerNickname: string;
+  title: string;
+  content: string;
+  status: "PENDING" | "ANSWERED";
+  answerContent: string | null;
+  answeredBy: string | null;
+  answeredAt: string | null;
+  createdAt: string;
+};
+
+export type InquiryItem = {
+  id: number;
+  businessId: number;
+  companyName: string;
+  title: string;
+  content: string;
+  status: "PENDING" | "ANSWERED";
+  answerContent: string | null;
+  answeredBy: string | null;
+  answeredAt: string | null;
+  createdAt: string;
+};
+
+export function getAdminCsList(status?: "PENDING" | "ANSWERED") {
+  return request<CsItem[]>(`/api/admin/cs${status ? `?status=${status}` : ""}`);
+}
+export function answerCs(id: number, answerContent: string) {
+  return request<CsItem>(`/api/admin/cs/${id}/answer`, {
+    method: "PATCH",
+    body: JSON.stringify({ answerContent }),
+  });
+}
+export function getAdminInquiries(status?: "PENDING" | "ANSWERED") {
+  return request<InquiryItem[]>(`/api/admin/inquiries${status ? `?status=${status}` : ""}`);
+}
+export function answerInquiry(id: number, answerContent: string) {
+  return request<InquiryItem>(`/api/admin/inquiries/${id}/answer`, {
+    method: "PATCH",
+    body: JSON.stringify({ answerContent }),
+  });
+}
+
+// 주최자: 문의 작성·내 문의 목록
+export function createInquiry(data: { title: string; content: string }) {
+  return request<InquiryItem>("/api/inquiries", { method: "POST", body: JSON.stringify(data) });
+}
+export function getMyInquiries() {
+  return request<InquiryItem[]>("/api/inquiries/my");
+}
+
+// ── 공간(venue) 마스터 ──
+
+export type Venue = {
+  id: number;
+  name: string;
+  address: string;
+  areaSqm: number | null;
+  rentalFee: number | null;
+  description: string | null;
+  imageUrl: string | null;
+  status: "AVAILABLE" | "UNAVAILABLE";
+  createdAt: string;
+};
+
+export function getVenues(status?: "AVAILABLE" | "UNAVAILABLE") {
+  return request<Venue[]>(`/api/venues${status ? `?status=${status}` : ""}`);
+}
+export function createVenue(data: {
+  name: string; address: string; areaSqm?: number; rentalFee?: number; description?: string; imageUrl?: string;
+}) {
+  return request<Venue>("/api/admin/venues", { method: "POST", body: JSON.stringify(data) });
+}
+export function updateVenue(id: number, data: Partial<Omit<Venue, "id" | "createdAt">>) {
+  return request<Venue>(`/api/admin/venues/${id}`, { method: "PUT", body: JSON.stringify(data) });
+}
+export function deleteVenue(id: number) {
+  return request<void>(`/api/admin/venues/${id}`, { method: "DELETE" });
+}
+
 // ── 예약자 명단 (해당 팝업 주최자 또는 관리자) ──
 
 export type ReservationDetail = {
   id: number;
-  slotId: number;
-  slotDate: string;
-  startTime: string;
-  endTime: string;
+  popupId: number;
+  slotId: number | null; // FREE 모드면 null
+  reservationDate: string;
+  startTime: string | null;
+  endTime: string | null;
   customerId: number;
   customerNickname: string;
   partySize: number;
+  status: "CONFIRMED" | "CANCELLED";
+  cancelReason: string | null;
+  cancelledAt: string | null;
   createdAt: string;
+  entryStatus: string | null; // 입장 상태 (체크인/노쇼)
+  checkedInAt: string | null;
+  checkedInBy: string | null;
 };
 
 export function getPopupReservations(popupId: number | string) {
   return request<ReservationDetail[]>(`/api/reservations/popup/${popupId}`);
+}
+
+// 입장 처리 (주최자·관리자): 수동 체크인 / 노쇼
+export function checkinReservation(id: number) {
+  return request<ReservationDetail>(`/api/reservations/${id}/checkin`, { method: "PATCH" });
+}
+export function markNoShow(id: number) {
+  return request<ReservationDetail>(`/api/reservations/${id}/no-show`, { method: "PATCH" });
 }
