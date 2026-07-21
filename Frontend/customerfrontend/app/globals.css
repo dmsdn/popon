@@ -25,3 +25,39 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ===========================
+   Scrollbar
+=========================== */
+
+/* 스크롤은 가능하지만 스크롤바 숨김 */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* (선택) 세로 스크롤바 디자인 */
+.page-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.page-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.page-scrollbar::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 999px;
+}
+
+.page-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+.page-scrollbar {
+  scrollbar-width: thin;
+}

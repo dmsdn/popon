@@ -1,6 +1,8 @@
 export type PopupItem = {
   id: string;
   name: string;
+  brand: string;
+  brandId: string;
   dateRange?: string;
   location?: string;
   badge?: string;
@@ -25,34 +27,101 @@ export const categories = [
 ];
 
 export const recentPopups: PopupItem[] = [
-  { id: "1", name: "스타벅스 서머" },
-  { id: "2", name: "아더에러" },
-  { id: "3", name: "탬버린즈" },
-  { id: "4", name: "무신사 스탠다드" },
-  { id: "5", name: "산리오 카페" },
+  { id: "1", name: "스타벅스 서머", brand: "스타벅스", brandId: "starbucks" },
+  { id: "2", name: "아더에러", brand: "아더에러", brandId: "adererror" },
+  { id: "3", name: "탬버린즈", brand: "탬버린즈", brandId: "tamburins" },
+  { id: "4", name: "무신사 스탠다드", brand: "무신사", brandId: "musinsa" },
+  { id: "5", name: "산리오 카페", brand: "산리오", brandId: "sanrio" },
 ];
 
 export const popularPopups: PopupItem[] = [
-  { id: "1", name: "무신사 스탠다드", dateRange: "26.08.07 ~ 26.08.13", location: "성수", badge: "1" },
-  { id: "2", name: "산리오 카페", dateRange: "26.08.07 ~ 26.08.13", location: "여의도", badge: "2" },
-  { id: "3", name: "디올 뷰티", dateRange: "26.08.07 ~ 26.08.13", location: "홍대", badge: "3" },
-  { id: "4", name: "룰루레몬", dateRange: "26.08.07 ~ 26.08.13", location: "성수", badge: "4" },
+  {
+    id: "1",
+    name: "무신사 스탠다드",
+    brand: "무신사",
+    brandId: "musinsa",
+    dateRange: "26.08.07 ~ 26.08.13",
+    location: "성수",
+    badge: "1",
+  },
+  {
+    id: "2",
+    name: "산리오 카페",
+    brand: "산리오",
+    brandId: "sanrio",
+    dateRange: "26.08.07 ~ 26.08.13",
+    location: "여의도",
+    badge: "2",
+  },
+  {
+    id: "3",
+    name: "디올 뷰티",
+    brand: "디올",
+    brandId: "dior",
+    dateRange: "26.08.07 ~ 26.08.13",
+    location: "홍대",
+    badge: "3",
+  },
+  {
+    id: "4",
+    name: "룰루레몬",
+    brand: "룰루레몬",
+    brandId: "lululemon",
+    dateRange: "26.08.07 ~ 26.08.13",
+    location: "성수",
+    badge: "4",
+  },
 ];
 
 export const openingSoonPopups: PopupItem[] = [
-  { id: "1", name: "포켓몬 스토어", dateRange: "26.08.07 ~ 26.08.13", location: "성수", badge: "D-1" },
-  { id: "2", name: "젠틀몬스터", dateRange: "26.08.07 ~ 26.08.13", location: "홍대", badge: "D-1" },
-  { id: "3", name: "빈폴 팝업", dateRange: "26.08.07 ~ 26.08.13", location: "여의도", badge: "D-1" },
-  { id: "4", name: "나이키 런닝", dateRange: "26.08.07 ~ 26.08.13", location: "성수", badge: "D-1" },
-  { id: "5", name: "어글리덕", dateRange: "26.08.07 ~ 26.08.13", location: "용산", badge: "D-1" },
+  { id: "1", name: "포켓몬 스토어", brand: "포켓몬", brandId: "pokémon", dateRange: "26.08.07 ~ 26.08.13", location: "성수", badge: "D-1" },
+  { id: "2", name: "젠틀몬스터", brand: "젠틀몬스터", brandId: "gentlemonster", dateRange: "26.08.07 ~ 26.08.13", location: "홍대", badge: "D-1" },
+  { id: "3", name: "빈폴 팝업", brand: "빈폴", brandId: "bifun", dateRange: "26.08.07 ~ 26.08.13", location: "여의도", badge: "D-1" },
+  { id: "4", name: "나이키 런닝", brand: "나이키", brandId: "nike", dateRange: "26.08.07 ~ 26.08.13", location: "성수", badge: "D-1" },
+  { id: "5", name: "어글리덕", brand: "어글리덕", brandId: "uglyduck", dateRange: "26.08.07 ~ 26.08.13", location: "용산", badge: "D-1" },
 ];
 
 export const freePopups: PopupItem[] = [
-  { id: "1", name: "하이브 인사이트", dateRange: "26.08.07 ~ 26.08.13", location: "용산" },
-  { id: "2", name: "LG 하우스", dateRange: "26.08.07 ~ 26.08.13", location: "여의도" },
-  { id: "3", name: "배스킨라빈스 팝업", dateRange: "26.08.07 ~ 26.08.13", location: "성수" },
-  { id: "4", name: "스타벅스 서머", dateRange: "26.08.07 ~ 26.08.13", location: "홍대" },
-  { id: "5", name: "아더에러", dateRange: "26.08.07 ~ 26.08.13", location: "성수" },
+  {
+    id: "1",
+    name: "하이브 인사이트",
+    brand: "HYBE",
+    brandId: "hybe",
+    dateRange: "26.08.07 ~ 26.08.13",
+    location: "용산",
+  },
+  {
+    id: "2",
+    name: "LG 하우스",
+    brand: "LG",
+    brandId: "lg",
+    dateRange: "26.08.07 ~ 26.08.13",
+    location: "여의도",
+  },
+  {
+    id: "3",
+    name: "배스킨라빈스 팝업",
+    brand: "배스킨라빈스",
+    brandId: "baskinrobbins",
+    dateRange: "26.08.07 ~ 26.08.13",
+    location: "성수",
+  },
+  {
+    id: "4",
+    name: "스타벅스 서머",
+    brand: "스타벅스",
+    brandId: "starbucks",
+    dateRange: "26.08.07 ~ 26.08.13",
+    location: "홍대",
+  },
+  {
+    id: "5",
+    name: "아더에러",
+    brand: "아더에러",
+    brandId: "adererror",
+    dateRange: "26.08.07 ~ 26.08.13",
+    location: "성수",
+  },
 ];
 
 export const reviews: ReviewItem[] = [
