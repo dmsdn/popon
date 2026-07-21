@@ -96,6 +96,18 @@ export default function AdminRoot() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remaining === 0, admin]);
 
+  // API가 401/403(토큰 거부)을 반환한 경우도 즉시 로그아웃 — 로그아웃 후엔 라우트 가드가 로그인 화면으로 보냄
+  useEffect(() => {
+    if (!admin) return;
+    const onExpired = () => {
+      alert("세션이 만료되어 로그아웃됩니다. 다시 로그인해 주세요.");
+      logout();
+    };
+    window.addEventListener("popupon:auth-expired", onExpired);
+    return () => window.removeEventListener("popupon:auth-expired", onExpired);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [admin]);
+
   // ── 알림: 새로 등록된(심사 대기) 팝업 ──
   const [notifOpen, setNotifOpen] = useState(false);
   const [pendingPopups, setPendingPopups] = useState<Popup[]>([]);
