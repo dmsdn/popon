@@ -57,6 +57,18 @@ export function clearToken() {
   localStorage.removeItem(TOKEN_KEY);
 }
 
+// 저장된 토큰이 로컬 기준으로 아직 유효(만료 전)한지 — 403 원인 판별용
+function isTokenLocallyValid(): boolean {
+  const token = getToken();
+  if (!token) return false;
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return typeof payload.exp === "number" && payload.exp * 1000 > Date.now();
+  } catch {
+    return false;
+  }
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = { ...(options.headers as Record<string, string>) };
   if (options.body && !(options.body instanceof FormData)) {
@@ -78,11 +90,19 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       const data = await res.json();
       if (data?.message) message = data.message;
     } catch {
-      // 401/403 + 빈 본문 = Security 필터가 토큰을 거부한 것(만료·무효) — 컨트롤러 검증(400+message)과 구분됨
       if (res.status === 401 || res.status === 403) {
-        message = "세션이 만료되었거나 권한이 없습니다. 다시 로그인해 주세요.";
-        // 각 센터 레이아웃(SellerRoot/AdminRoot)이 수신해 자동 로그아웃·로그인 화면 이동 처리
-        window.dispatchEvent(new CustomEvent("popupon:auth-expired"));
+        // 주의: 403+빈 본문은 두 경우가 있다.
+        //  a) Security 필터가 토큰을 거부(만료·무효) — 진짜 세션 문제
+        //  b) 백엔드 미처리 예외(FK 제약 위반 등)가 /error로 재디스패치됐는데 /error도 인증 필수라 403이 되는 스프링 함정
+        //     (예: 예약 슬롯이 연결된 팝업 DELETE — 자식 데이터 미정리로 DataIntegrityViolation)
+        // 로컬 토큰의 exp가 아직 유효하면 (b)로 판단해 로그아웃하지 않는다.
+        if (isTokenLocallyValid()) {
+          message = `요청을 처리하지 못했습니다. (${res.status}) 연결된 데이터(예약 슬롯·예약 등)가 있는 항목이거나 서버 오류일 수 있습니다.`;
+        } else {
+          message = "세션이 만료되었거나 권한이 없습니다. 다시 로그인해 주세요.";
+          // 각 센터 레이아웃(SellerRoot/AdminRoot)이 수신해 자동 로그아웃·로그인 화면 이동 처리
+          window.dispatchEvent(new CustomEvent("popupon:auth-expired"));
+        }
       }
     }
     throw new ApiError(res.status, message);
