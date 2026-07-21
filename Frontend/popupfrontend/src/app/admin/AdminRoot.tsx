@@ -5,7 +5,7 @@ import {
   LineChart, Newspaper, Headphones, Bell, ExternalLink, Users, LogIn, Store, Building2, X, Clock3,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { getToken, getPopups, Popup } from "../lib/api";
+import { getToken, getPopups, getAdminDashboard, Popup, AdminDashboard } from "../lib/api";
 
 const MENU = [
   { group: "모니터링", items: [
@@ -14,7 +14,7 @@ const MENU = [
   ]},
   { group: "운영 관리", items: [
     { to: "/admin/popups", icon: Store, label: "팝업 관리" },
-    { to: "/admin/cs", icon: Headphones, label: "CS·리뷰 모더레이션" },
+    { to: "/admin/cs", icon: Headphones, label: "문의 및 신고관리" },
     { to: "/admin/masters", icon: Database, label: "공간·카테고리 마스터" },
     { to: "/admin/content", icon: Newspaper, label: "배너·콘텐츠 관리" },
   ]},
@@ -111,9 +111,12 @@ export default function AdminRoot() {
     localStorage.setItem(DISMISSED_KEY, JSON.stringify(ids));
   };
 
+  // 사이드바 뱃지용 미처리 건수 (심사 대기·CS·문의·신고) — 알림과 같은 주기로 갱신
+  const [dash, setDash] = useState<AdminDashboard | null>(null);
+
   useEffect(() => {
     if (!admin) return;
-    const fetchPending = () =>
+    const fetchPending = () => {
       getPopups()
         .then((all) =>
           setPendingPopups(
@@ -121,10 +124,18 @@ export default function AdminRoot() {
           ),
         )
         .catch(() => {});
+      getAdminDashboard().then(setDash).catch(() => {});
+    };
     fetchPending();
     const t = setInterval(fetchPending, 60_000); // 1분마다 새 등록 확인
     return () => clearInterval(t);
   }, [admin]);
+
+  // 메뉴 경로별 미처리 건수 — 값이 있으면 라벨 옆 숫자 뱃지로 표시
+  const badgeCounts: Record<string, number> = {
+    "/admin/popups": dash?.pendingPopupCount ?? pendingPopups.length,
+    "/admin/cs": dash ? dash.pendingCsCount + dash.pendingInquiryCount + dash.pendingReportCount : 0,
+  };
 
   // 패널을 열면 현재 목록을 '확인함'으로 기록 → 배지 해제
   const openNotif = () => {
@@ -171,6 +182,11 @@ export default function AdminRoot() {
                 >
                   <Icon size={15} />
                   {label}
+                  {(badgeCounts[to] ?? 0) > 0 && (
+                    <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-semibold flex items-center justify-center">
+                      {badgeCounts[to] > 99 ? "99+" : badgeCounts[to]}
+                    </span>
+                  )}
                 </NavLink>
               ))}
             </div>
