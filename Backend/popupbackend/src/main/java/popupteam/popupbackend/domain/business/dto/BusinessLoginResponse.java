@@ -1,4 +1,3 @@
-// BusinessLoginResponse.java
 package popupteam.popupbackend.domain.business.dto;
 import lombok.*;
 
@@ -7,4 +6,5 @@ public class BusinessLoginResponse {
     private String accessToken;
     private Long businessId;
     private String companyName;
+    private boolean needsReconsent;
 }
