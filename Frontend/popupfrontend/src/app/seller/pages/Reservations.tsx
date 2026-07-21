@@ -1,13 +1,20 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, CheckCircle2, XCircle } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import {
-  getMyPopups, getSlots, createSlot, getPopupReservations,
+  getMyPopups, getSlots, createSlot, getPopupReservations, checkinReservation, markNoShow,
   Popup, PopupSlot, ReservationDetail,
 } from "../../lib/api";
 
-const fmtTime = (t: string) => t.slice(0, 5); // HH:mm:ss → HH:mm
+const fmtTime = (t: string | null) => (t ? t.slice(0, 5) : ""); // HH:mm:ss → HH:mm
+
+// 입장 상태 표기 (PENDING=입장 전, CHECKED_IN=입장완료, NO_SHOW=노쇼)
+const ENTRY_BADGE: Record<string, [string, string]> = {
+  PENDING: ["입장 전", "bg-blue-50 text-blue-600 border-blue-200"],
+  CHECKED_IN: ["입장완료", "bg-emerald-50 text-emerald-600 border-emerald-200"],
+  NO_SHOW: ["노쇼", "bg-red-50 text-red-500 border-red-200"],
+};
 
 export default function Reservations() {
   const { user } = useAuth();
@@ -25,6 +32,21 @@ export default function Reservations() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ slotDate: "", startTime: "10:00", endTime: "11:00", capacity: 20 });
   const [saving, setSaving] = useState(false);
+  const [entryActingId, setEntryActingId] = useState<number | null>(null);
+
+  // 입장 처리: 수동 체크인 / 노쇼
+  const handleEntry = async (id: number, action: "checkin" | "noshow") => {
+    if (action === "noshow" && !window.confirm("노쇼로 처리할까요?")) return;
+    setEntryActingId(id);
+    try {
+      const updated = action === "checkin" ? await checkinReservation(id) : await markNoShow(id);
+      setRoster((prev) => prev.map((x) => (x.id === id ? updated : x)));
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "처리에 실패했습니다.");
+    } finally {
+      setEntryActingId(null);
+    }
+  };
 
   // 내 팝업 목록 로드 → 첫 팝업 자동 선택
   useEffect(() => {
@@ -233,28 +255,64 @@ export default function Reservations() {
               <div className="px-4 py-3 border-b border-border">
                 <span className="text-sm font-semibold">예약자 {roster.length}건</span>
               </div>
-              <table className="w-full text-[13px] min-w-[560px]">
+              <table className="w-full text-[13px] min-w-[720px]">
                 <thead>
                   <tr className="border-b border-border bg-secondary/60 text-xs text-muted-foreground">
                     <th className="text-left font-medium px-4 py-2.5">예약번호</th>
                     <th className="text-left font-medium px-4 py-2.5">예약자</th>
-                    <th className="text-left font-medium px-4 py-2.5">슬롯</th>
+                    <th className="text-left font-medium px-4 py-2.5">일시</th>
                     <th className="text-right font-medium px-4 py-2.5">인원</th>
-                    <th className="text-left font-medium px-4 py-2.5">신청일시</th>
+                    <th className="text-left font-medium px-4 py-2.5">상태</th>
+                    <th className="text-center font-medium px-4 py-2.5">처리</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {roster.map((r) => (
-                    <tr key={r.id} className="hover:bg-secondary/40">
-                      <td className="px-4 py-2.5 text-xs" style={{ fontFamily: "'DM Mono', monospace" }}>R-{String(r.id).padStart(4, "0")}</td>
-                      <td className="px-4 py-2.5 font-medium">{r.customerNickname}</td>
-                      <td className="px-4 py-2.5">{r.slotDate} {fmtTime(r.startTime)}~{fmtTime(r.endTime)}</td>
-                      <td className="px-4 py-2.5 text-right">{r.partySize}명</td>
-                      <td className="px-4 py-2.5 text-xs text-muted-foreground">{r.createdAt.slice(0, 16).replace("T", " ")}</td>
-                    </tr>
-                  ))}
+                  {roster.map((r) => {
+                    const cancelled = r.status === "CANCELLED";
+                    const [entryLabel, entryCls] = ENTRY_BADGE[r.entryStatus ?? "PENDING"] ?? ENTRY_BADGE.PENDING;
+                    return (
+                      <tr key={r.id} className={`hover:bg-secondary/40 ${cancelled ? "opacity-50" : ""}`}>
+                        <td className="px-4 py-2.5 text-xs" style={{ fontFamily: "'DM Mono', monospace" }}>R-{String(r.id).padStart(4, "0")}</td>
+                        <td className="px-4 py-2.5 font-medium">{r.customerNickname}</td>
+                        <td className="px-4 py-2.5">
+                          {r.reservationDate}{r.startTime ? ` ${fmtTime(r.startTime)}~${fmtTime(r.endTime)}` : ""}
+                        </td>
+                        <td className="px-4 py-2.5 text-right">{r.partySize}명</td>
+                        <td className="px-4 py-2.5">
+                          {cancelled ? (
+                            <span className="text-[11px] px-2 py-0.5 rounded-full border bg-slate-100 text-slate-400 border-slate-200">취소됨</span>
+                          ) : (
+                            <span className={`text-[11px] px-2 py-0.5 rounded-full border ${entryCls}`}>{entryLabel}</span>
+                          )}
+                          {r.checkedInAt && (
+                            <div className="text-[10px] text-muted-foreground mt-0.5">{r.checkedInAt.slice(5, 16).replace("T", " ")}</div>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          {!cancelled && r.entryStatus === "PENDING" && (
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => handleEntry(r.id, "checkin")}
+                                disabled={entryActingId === r.id}
+                                className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-sm border border-emerald-200 text-emerald-600 hover:bg-emerald-50 disabled:opacity-40"
+                              >
+                                <CheckCircle2 size={11} /> 체크인
+                              </button>
+                              <button
+                                onClick={() => handleEntry(r.id, "noshow")}
+                                disabled={entryActingId === r.id}
+                                className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-sm border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-40"
+                              >
+                                <XCircle size={11} /> 노쇼
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {roster.length === 0 && (
-                    <tr><td colSpan={5} className="px-4 py-10 text-center text-xs text-muted-foreground">아직 예약자가 없습니다.</td></tr>
+                    <tr><td colSpan={6} className="px-4 py-10 text-center text-xs text-muted-foreground">아직 예약자가 없습니다.</td></tr>
                   )}
                 </tbody>
               </table>

@@ -4,17 +4,12 @@ import {
   FileText, MapPin, Image as ImageIcon, AlignLeft, CalendarClock,
   Ticket, Upload, Plus, X, Info, CheckCircle2,
 } from "lucide-react";
-import { createPopup, updatePopup, getPopup, uploadPopupImage } from "../../lib/api";
+import { createPopup, updatePopup, getPopup, uploadPopupImage, getVenues } from "../../lib/api";
 
 const CATEGORIES = ["패션", "뷰티", "F&B", "캐릭터", "라이프스타일", "아트", "테크", "엔터테인먼트"];
 const DAYS = ["월", "화", "수", "목", "금", "토", "일"];
-const PARTNER_SPACES = [
-  "성수 언더스탠드에비뉴 A동 (120㎡)",
-  "성수 언더스탠드에비뉴 B동 (85㎡)",
-  "더현대 서울 B1 팝업존 (60㎡)",
-  "홍대 AK& 5F 이벤트홀 (150㎡)",
-  "잠실 롯데월드몰 1F 아트리움 (200㎡)",
-];
+// 파트너 공간: 관리자 공간 마스터(/api/venues, 대관 가능만) 실데이터 — 표기: "이름 (면적㎡)"
+const venueLabel = (name: string, areaSqm: number | null) => (areaSqm != null ? `${name} (${areaSqm}㎡)` : name);
 
 const SECTIONS = [
   { id: "basic", icon: FileText, label: "기본 정보" },
@@ -65,8 +60,20 @@ export default function PopupRegister() {
   const [endDate, setEndDate] = useState("2026-08-15");
   const [openTime, setOpenTime] = useState("11:00");
   const [closeTime, setCloseTime] = useState("20:00");
-  const [partnerSpace, setPartnerSpace] = useState(PARTNER_SPACES[0]);
+  const [partnerSpaces, setPartnerSpaces] = useState<string[]>([]);
+  const [partnerSpace, setPartnerSpace] = useState("");
   const [directAddress, setDirectAddress] = useState("");
+
+  // 파트너 공간 목록: 관리자 공간 마스터에서 대관 가능(AVAILABLE)만 로드
+  useEffect(() => {
+    getVenues("AVAILABLE")
+      .then((vs) => {
+        const labels = vs.map((v) => venueLabel(v.name, v.areaSqm));
+        setPartnerSpaces(labels);
+        setPartnerSpace((prev) => prev || labels[0] || "");
+      })
+      .catch(() => setPartnerSpaces([]));
+  }, []);
 
   // 수정 모드: 기존 팝업 불러와서 폼 채우기
   useEffect(() => {
@@ -84,13 +91,17 @@ export default function PopupRegister() {
           setCloseTime(p.endDate.slice(11, 16) || "20:00");
         }
         if (p.location) {
-          if (PARTNER_SPACES.includes(p.location)) {
-            setSpaceMode("partner");
-            setPartnerSpace(p.location);
-          } else {
-            setSpaceMode("direct");
-            setDirectAddress(p.location);
-          }
+          // 파트너 공간 목록에 있으면 파트너 모드, 아니면 직접 입력으로 간주
+          setSpaceMode("direct");
+          setDirectAddress(p.location);
+          setPartnerSpaces((labels) => {
+            if (labels.includes(p.location!)) {
+              setSpaceMode("partner");
+              setPartnerSpace(p.location!);
+              setDirectAddress("");
+            }
+            return labels;
+          });
         }
       })
       .catch((e) => setError(e instanceof Error ? e.message : "팝업 정보를 불러오지 못했습니다."));
@@ -299,10 +310,11 @@ export default function PopupRegister() {
             <div>
               <label className={labelCls}>대관 공간 선택 <Req /></label>
               <select className={inputCls} value={partnerSpace} onChange={(e) => setPartnerSpace(e.target.value)}>
-                {PARTNER_SPACES.map((s) => <option key={s}>{s}</option>)}
+                {partnerSpaces.length === 0 && <option value="">등록된 파트너 공간이 없습니다</option>}
+                {partnerSpaces.map((s) => <option key={s}>{s}</option>)}
               </select>
               <p className="text-[11px] text-muted-foreground mt-1.5 flex items-center gap-1">
-                <Info size={11} /> 대관 가능 일정은 「견적·진행 단계」의 공간 예약 캘린더에서 확인 후 신청하세요.
+                <Info size={11} /> 관리자 공간 마스터의 대관 가능 공간이 표시됩니다. 대관 일정은 「견적·진행 단계」에서 확인 후 신청하세요.
               </p>
             </div>
           ) : (

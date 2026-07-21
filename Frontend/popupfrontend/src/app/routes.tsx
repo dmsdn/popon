@@ -18,6 +18,7 @@ import Products from "./seller/pages/Products";
 import Quotes from "./seller/pages/Quotes";
 import Performance from "./seller/pages/Performance";
 import Notices from "./seller/pages/Notices";
+import Inquiries from "./seller/pages/Inquiries";
 
 // ── 플랫폼 관리자 UI ──
 import AdminRoot from "./admin/AdminRoot";
@@ -60,6 +61,7 @@ export const router = createBrowserRouter([
       { path: "quotes", Component: Quotes },
       { path: "performance", Component: Performance },
       { path: "notices", Component: Notices },
+      { path: "inquiries", Component: Inquiries },
     ],
   },
 

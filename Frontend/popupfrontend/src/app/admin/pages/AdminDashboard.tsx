@@ -1,50 +1,30 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { ArrowUpRight, ShieldCheck, Handshake, Headphones, Activity, Store, Users } from "lucide-react";
+import { ArrowUpRight, ShieldCheck, Handshake, Headphones, Activity, Store, Users, MessageSquare } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
-import { getPopups } from "../../lib/api";
+import { getAdminDashboard, AdminDashboard as Dashboard } from "../../lib/api";
 
-const WEEKLY = [
-  { date: "07-09", visitors: 18200, popups: 42 },
-  { date: "07-10", visitors: 24100, popups: 44 },
-  { date: "07-11", visitors: 31800, popups: 45 },
-  { date: "07-12", visitors: 33400, popups: 45 },
-  { date: "07-13", visitors: 21600, popups: 46 },
-  { date: "07-14", visitors: 23900, popups: 47 },
-  { date: "07-15", visitors: 11300, popups: 48 },
-];
-
-// 미처리 문의·후기 신고는 CS 백엔드 API가 아직 없음 → value: null 로 표기
-const NOT_CONNECTED = null;
-
-const RECENT_CS = [
-  { time: "10:42", type: "예약", text: "QR코드가 열리지 않아요 (소비자 · 무너 팝업)", state: "미배정" },
-  { time: "10:15", type: "정산", text: "6월 정산서 세부 항목 문의 (주최자 · 레코드랩)", state: "처리중" },
-  { time: "09:31", type: "신고", text: "후기 부적절 사진 신고 3건 접수 (자동)", state: "미처리" },
-];
+// 관리자 대시보드 — GET /api/admin/dashboard 실데이터 (방문자 추이·승인 대기·CS·회원 집계)
 
 export default function AdminDashboard() {
-  const [pendingCount, setPendingCount] = useState<number | null>(null);
-  const [publishedCount, setPublishedCount] = useState<number | null>(null);
+  const [data, setData] = useState<Dashboard | null>(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    getPopups()
-      .then((all) => {
-        setPendingCount(all.filter((p) => p.status === "PENDING").length);
-        // 게시중 = 승인되어 소비자에게 노출되는 팝업 (오픈예정 + 진행중)
-        setPublishedCount(all.filter((p) => p.status === "BEFOR" || p.status === "OPEN").length);
-      })
-      .catch(() => {
-        setPendingCount(null);
-        setPublishedCount(null);
-      });
+    getAdminDashboard()
+      .then(setData)
+      .catch((e) => setError(e instanceof Error ? e.message : "대시보드를 불러오지 못했습니다."));
   }, []);
 
   const pendingCards = [
-    { icon: ShieldCheck, label: "팝업 심사 대기", value: pendingCount, to: "/admin/popups", color: "text-accent" },
-    { icon: Headphones, label: "미처리 문의", value: NOT_CONNECTED, to: "/admin/cs", color: "text-amber-600" },
-    { icon: Activity, label: "후기 신고 접수", value: NOT_CONNECTED, to: "/admin/cs", color: "text-red-500" },
+    { icon: ShieldCheck, label: "팝업 심사 대기", value: data?.pendingPopupCount, to: "/admin/popups", color: "text-accent" },
+    { icon: Headphones, label: "미처리 문의 (소비자 CS)", value: data?.pendingCsCount, to: "/admin/cs", color: "text-amber-600" },
+    { icon: MessageSquare, label: "미처리 문의 (주최자)", value: data?.pendingInquiryCount, to: "/admin/cs", color: "text-blue-600" },
+    { icon: Activity, label: "후기 신고 접수", value: data?.pendingReportCount, to: "/admin/cs", color: "text-red-500" },
   ];
+
+  // 방문자 추이 → 차트 데이터 (MM-DD 표기)
+  const chart = (data?.visitTrend ?? []).map((v) => ({ date: v.date.slice(5), visitors: v.count }));
 
   return (
     <div className="flex flex-col gap-5">
@@ -53,52 +33,58 @@ export default function AdminDashboard() {
         <p className="text-xs text-muted-foreground mt-0.5">승인 대기·CS·플랫폼 전체 현황 요약</p>
       </div>
 
+      {error && <div className="bg-red-50 border border-red-200 rounded-sm px-4 py-3 text-xs text-red-600">{error}</div>}
+
       {/* 승인 대기 요약 */}
-      <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
         {pendingCards.map(({ icon: Icon, label, value, to, color }) => (
           <Link key={label} to={to} className="bg-white border border-border rounded-sm p-4 hover:border-accent/50 transition-colors group">
             <div className="flex items-center justify-between mb-2">
               <span className="flex items-center gap-2 text-xs text-muted-foreground"><Icon size={13} /> {label}</span>
               <ArrowUpRight size={13} className="text-muted-foreground group-hover:text-accent" />
             </div>
-            {value !== null ? (
-              <div className={`text-2xl font-semibold ${color}`}>{value}<span className="text-sm font-normal text-muted-foreground ml-1">건</span></div>
-            ) : (
-              <div className="text-[11px] text-muted-foreground leading-relaxed pt-1.5">백엔드 구성 후 연동 필요</div>
-            )}
+            <div className={`text-2xl font-semibold ${color}`}>
+              {value ?? "—"}<span className="text-sm font-normal text-muted-foreground ml-1">건</span>
+            </div>
           </Link>
         ))}
       </div>
 
       <div className="grid lg:grid-cols-3 gap-3 items-start">
-        {/* 플랫폼 추이 */}
+        {/* 플랫폼 방문자 추이 (실데이터) */}
         <div className="bg-white border border-border rounded-sm p-4 lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
-            <span className="text-sm font-semibold">플랫폼 전체 방문자 추이 (최근 7일)</span>
+            <span className="text-sm font-semibold">플랫폼 전체 방문자 추이 (최근 {chart.length || 7}일)</span>
             <Link to="/admin/stats" className="text-xs text-accent">상세 통계</Link>
           </div>
           <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={WEEKLY} margin={{ top: 4, right: 8, left: -8, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="gAdm" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#E85D3C" stopOpacity={0.25} />
-                    <stop offset="100%" stopColor="#E85D3C" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#eee" vertical={false} />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v / 1000}k`} />
-                <Tooltip contentStyle={{ fontSize: 12, borderRadius: 4 }} />
-                <Area type="monotone" dataKey="visitors" name="방문자" stroke="#E85D3C" strokeWidth={2} fill="url(#gAdm)" />
-              </AreaChart>
-            </ResponsiveContainer>
+            {chart.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
+                집계된 방문 데이터가 없습니다. (앱 접속 시 자동 집계)
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chart} margin={{ top: 4, right: 8, left: -8, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="gAdm" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#E85D3C" stopOpacity={0.25} />
+                      <stop offset="100%" stopColor="#E85D3C" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#eee" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 4 }} />
+                  <Area type="monotone" dataKey="visitors" name="방문자" stroke="#E85D3C" strokeWidth={2} fill="url(#gAdm)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
           <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-border">
             {[
-              { icon: Store, label: "게시중 팝업", value: publishedCount !== null ? `${publishedCount}개` : "—" },
-              { icon: Users, label: "누적 회원", value: "백엔드 구성 후 연동 필요" },
-              { icon: Handshake, label: "활성 파트너", value: "백엔드 구성 후 연동 필요" },
+              { icon: Store, label: "게시중 팝업", value: data ? `${data.openPopupCount}개` : "—" },
+              { icon: Users, label: "누적 회원", value: data ? `${data.totalCustomerCount.toLocaleString()}명` : "—" },
+              { icon: Handshake, label: "활성 파트너", value: data ? `${data.activePartnerCount}사` : "—" },
             ].map(({ icon: Icon, label, value }) => (
               <div key={label} className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-sm bg-secondary flex items-center justify-center"><Icon size={14} className="text-muted-foreground" /></div>
@@ -111,23 +97,23 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* 최근 CS */}
+        {/* 매출 추이 (계약금 기준) */}
         <div className="bg-white border border-border rounded-sm">
           <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-            <span className="text-sm font-semibold">최근 접수 CS</span>
-            <Link to="/admin/cs" className="text-xs text-accent">전체 보기</Link>
+            <span className="text-sm font-semibold">매출 추이 (계약금)</span>
+            <Link to="/admin/stats" className="text-xs text-accent">상세</Link>
           </div>
           <ul className="divide-y divide-border">
-            {RECENT_CS.map((c) => (
-              <li key={c.time + c.text} className="px-4 py-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[10px] text-muted-foreground" style={{ fontFamily: "'DM Mono', monospace" }}>{c.time}</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-secondary text-muted-foreground">{c.type}</span>
-                  <span className={`ml-auto text-[10px] ${c.state === "처리중" ? "text-blue-600" : "text-red-500"}`}>{c.state}</span>
-                </div>
-                <div className="text-xs leading-snug">{c.text}</div>
+            {(data?.revenueTrend ?? []).slice(-6).map((r) => (
+              <li key={r.period} className="px-4 py-2.5 flex items-center justify-between text-xs">
+                <span className="text-muted-foreground" style={{ fontFamily: "'DM Mono', monospace" }}>{r.period}</span>
+                <span className="font-semibold">{Number(r.totalAmount).toLocaleString()}원</span>
               </li>
             ))}
+            {data && data.revenueTrend.length === 0 && (
+              <li className="px-4 py-8 text-center text-xs text-muted-foreground">계약 매출 데이터가 없습니다.<br />(팝업 계약금 등록 시 집계)</li>
+            )}
+            {!data && !error && <li className="px-4 py-8 text-center text-xs text-muted-foreground">불러오는 중…</li>}
           </ul>
         </div>
       </div>
