@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { Search, Pencil, Trash2, Loader2, ShieldAlert, ChevronDown, ChevronUp, MessageSquare } from "lucide-react";
+import { Search, Pencil, Trash2, Loader2, ShieldAlert, ChevronDown, ChevronUp, MessageSquare, CheckCircle2 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import { getPopups, getMyPopups, deletePopup, Popup, PopupStatusCode } from "../../lib/api";
+import { getPopups, getMyPopups, getMyInquiries, deletePopup, Popup, PopupStatusCode, InquiryItem } from "../../lib/api";
 import { loadAllMeta, isSuspended } from "../../lib/adminPopupMeta";
 
 // 백엔드 PopupStatus → 화면 표기 (등록 직후 PENDING, 관리자 승인 시 BEFOR, 반려 시 REJECTED)
@@ -37,6 +37,9 @@ export default function PopupList() {
   // 관리자 수정 이력(수정사항·사유, 상태 확정일) — 관리자 콘솔에서 기록한 값
   const [adminMeta] = useState(loadAllMeta);
   const [openAdminEditId, setOpenAdminEditId] = useState<number | null>(null);
+  // 이 팝업 관련 문의(제목의 [팝업명] 태그로 매칭) 중 답변 완료된 것 — 문의답변완료 버튼·확장
+  const [inquiries, setInquiries] = useState<InquiryItem[]>([]);
+  const [openInqPopupId, setOpenInqPopupId] = useState<number | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -51,6 +54,11 @@ export default function PopupList() {
       })
       .catch((e) => alive && setError(e instanceof Error ? e.message : "팝업 목록을 불러오지 못했습니다."))
       .finally(() => alive && setLoading(false));
+    if (user?.role === "business") {
+      getMyInquiries()
+        .then((l) => alive && setInquiries(l))
+        .catch(() => {});
+    }
     return () => {
       alive = false;
     };
@@ -149,6 +157,8 @@ export default function PopupList() {
               const meta = adminMeta[String(p.id)] ?? {};
               const suspended = isSuspended(p.status, p.rejectReason);
               const adminEditOpen = openAdminEditId === p.id;
+              const answeredInqs = inquiries.filter((i) => i.status === "ANSWERED" && i.title.includes(`[${p.title}]`));
+              const inqOpen = openInqPopupId === p.id;
               return (
                 <>
                   <tr key={p.id} className="hover:bg-secondary/40">
@@ -173,6 +183,17 @@ export default function PopupList() {
                             }`}
                           >
                             <ShieldAlert size={10} /> 관리자 수정 {adminEditOpen ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+                          </button>
+                        )}
+                        {/* 이 팝업 관련 문의에 관리자 답변이 달린 경우: 버튼 → 아래로 확장해 답변 확인 */}
+                        {answeredInqs.length > 0 && (
+                          <button
+                            onClick={() => setOpenInqPopupId(inqOpen ? null : p.id)}
+                            className={`inline-flex items-center gap-0.5 text-[11px] px-2 py-0.5 rounded-full border transition-colors ${
+                              inqOpen ? "bg-emerald-600 text-white border-emerald-600" : "border-emerald-300 text-emerald-600 hover:bg-emerald-50"
+                            }`}
+                          >
+                            <CheckCircle2 size={10} /> 문의답변완료 {inqOpen ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
                           </button>
                         )}
                       </div>
@@ -207,6 +228,31 @@ export default function PopupList() {
                       </div>
                     </td>
                   </tr>
+
+                  {/* 이 팝업 관련 답변 완료 문의 확장 행 */}
+                  {inqOpen && answeredInqs.length > 0 && (
+                    <tr key={`inq-${p.id}`} className="bg-secondary/30">
+                      <td colSpan={8} className="px-6 py-4">
+                        <div className="max-w-2xl flex flex-col gap-3">
+                          {answeredInqs.map((iq) => (
+                            <div key={iq.id} className="bg-white border border-emerald-200 rounded-sm p-4">
+                              <div className="text-[13px] font-semibold mb-1">{iq.title}</div>
+                              <div className="text-[12px] text-muted-foreground whitespace-pre-wrap mb-2.5">{iq.content}</div>
+                              <div className="bg-emerald-50 border border-emerald-200 rounded-sm p-3">
+                                <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 mb-1">
+                                  <CheckCircle2 size={12} /> 관리자 답변 · {iq.answeredAt ? iq.answeredAt.slice(0, 16).replace("T", " ") : "-"}
+                                </div>
+                                <p className="text-[13px] text-emerald-900 whitespace-pre-wrap">{iq.answerContent}</p>
+                              </div>
+                            </div>
+                          ))}
+                          <Link to="/seller/inquiries" className="text-[11px] text-accent underline underline-offset-2 self-end">
+                            문의하기 페이지에서 전체 보기 →
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
 
                   {/* 관리자 수정사항·사유 확장 행 */}
                   {adminEditOpen && meta.editNote && (

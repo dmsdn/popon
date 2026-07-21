@@ -5,7 +5,8 @@ import {
   LineChart, Newspaper, Headphones, Bell, ExternalLink, Users, LogIn, Store, Building2, X, Clock3,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { getToken, getPopups, getAdminDashboard, Popup, AdminDashboard } from "../lib/api";
+import { getToken, getPopups, getAdminCsList, getAdminInquiries, getAdminReports, Popup } from "../lib/api";
+import { loadSeen, saveSeen, unseenCount } from "../lib/navBadges";
 
 const MENU = [
   { group: "모니터링", items: [
@@ -111,8 +112,8 @@ export default function AdminRoot() {
     localStorage.setItem(DISMISSED_KEY, JSON.stringify(ids));
   };
 
-  // 사이드바 뱃지용 미처리 건수 (심사 대기·CS·문의·신고) — 알림과 같은 주기로 갱신
-  const [dash, setDash] = useState<AdminDashboard | null>(null);
+  // 사이드바 뱃지용 미처리 항목 키 (CS·문의·신고) — 알림과 같은 주기로 갱신
+  const [csKeys, setCsKeys] = useState<string[]>([]);
 
   useEffect(() => {
     if (!admin) return;
@@ -124,18 +125,45 @@ export default function AdminRoot() {
           ),
         )
         .catch(() => {});
-      getAdminDashboard().then(setDash).catch(() => {});
+      Promise.all([getAdminCsList("PENDING"), getAdminInquiries("PENDING"), getAdminReports("PENDING")])
+        .then(([cs, inq, rep]) =>
+          setCsKeys([
+            ...cs.map((c) => `cs:${c.id}`),
+            ...inq.map((i) => `inq:${i.id}`),
+            ...rep.map((r) => `rep:${r.id}`),
+          ]),
+        )
+        .catch(() => {});
     };
     fetchPending();
     const t = setInterval(fetchPending, 60_000); // 1분마다 새 등록 확인
     return () => clearInterval(t);
   }, [admin]);
 
-  // 메뉴 경로별 미처리 건수 — 값이 있으면 라벨 옆 숫자 뱃지로 표시
-  const badgeCounts: Record<string, number> = {
-    "/admin/popups": dash?.pendingPopupCount ?? pendingPopups.length,
-    "/admin/cs": dash ? dash.pendingCsCount + dash.pendingInquiryCount + dash.pendingReportCount : 0,
+  // 메뉴 경로별 '아직 확인 안 한' 항목 — 해당 라우트로 이동하면 즉시 뱃지 해제
+  const navKeys: Record<string, string[]> = {
+    "/admin/popups": pendingPopups.map((p) => `popup:${p.id}`),
+    "/admin/cs": csKeys,
   };
+  const [seenNav, setSeenNav] = useState<Record<string, string[]>>(() => ({
+    "/admin/popups": loadSeen("/admin/popups"),
+    "/admin/cs": loadSeen("/admin/cs"),
+  }));
+  const badgeCounts: Record<string, number> = Object.fromEntries(
+    Object.entries(navKeys).map(([route, keys]) => [route, unseenCount(keys, seenNav[route] ?? [])]),
+  );
+
+  useEffect(() => {
+    const route = Object.keys(navKeys).find(
+      (r) => location.pathname === r || location.pathname.startsWith(r + "/"),
+    );
+    if (!route) return;
+    const keys = navKeys[route];
+    if (unseenCount(keys, seenNav[route] ?? []) === 0) return;
+    saveSeen(route, keys);
+    setSeenNav((prev) => ({ ...prev, [route]: keys }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, pendingPopups, csKeys]);
 
   // 패널을 열면 현재 목록을 '확인함'으로 기록 → 배지 해제
   const openNotif = () => {
