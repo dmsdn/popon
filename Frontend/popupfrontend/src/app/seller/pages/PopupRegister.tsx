@@ -170,11 +170,13 @@ export default function PopupRegister() {
       if (detailImage) {
         await uploadPopupImage(popup.id, detailImage);
       }
-      // 사전예약제(SLOT)면 운영기간 × 운영시간 × 슬롯 단위로 예약 슬롯 자동 생성 (없는 것만)
+      // 사전예약제(SLOT)면 서버가 운영기간 × 운영시간 × 슬롯 단위로 예약 슬롯 일괄 생성 (멱등)
       if (useReservation) {
         setSlotProgress("운영시간 기준 예약 슬롯 자동 생성 중…");
-        const { created } = await ensureSlots(popup, slotCapacity);
-        setSlotProgress(created > 0 ? `예약 슬롯 ${created}개 자동 생성 완료` : "");
+        const { created, keptStale } = await ensureSlots(popup, slotCapacity);
+        let note = created > 0 ? `예약 슬롯 ${created}개 자동 생성 완료` : "";
+        if (keptStale > 0) note += ` · 이전 설정의 슬롯 ${keptStale}개는 예약이 있어 유지됨`;
+        setSlotProgress(note);
       }
       setSubmitted(true);
     } catch (e) {
