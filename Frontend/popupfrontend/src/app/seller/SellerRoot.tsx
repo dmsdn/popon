@@ -1,12 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Outlet, NavLink, Link, useNavigate, useLocation, ScrollRestoration } from "react-router";
 import {
   LayoutDashboard, Store, PlusSquare, CalendarCheck, Users, Package,
   FileText, BarChart3, Megaphone, Bell, ChevronDown, ExternalLink, LogOut, MessageSquare, Inbox,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { getMyPopups, getMyInquiries, Popup, InquiryItem } from "../lib/api";
+import { getMyPopups, getMyInquiries, getToken, Popup, InquiryItem } from "../lib/api";
 import { loadSeen, saveSeen, unseenCount } from "../lib/navBadges";
+
+// JWT payload에서 만료(exp, 초 단위 epoch) 추출 — 세션 만료 감지용
+function decodeJwtExp(token: string): number | null {
+  try {
+    const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(base64))?.exp ?? null;
+  } catch {
+    return null;
+  }
+}
 
 const MENU = [
   {
@@ -61,6 +71,35 @@ export default function SellerRoot() {
   useEffect(() => {
     if (!user) navigate("/login", { replace: true, state: { from: location.pathname } });
   }, [user, navigate, location.pathname]);
+
+  // ── 세션(JWT) 만료 처리: 만료 감지(30초 주기) + API 401/403 수신 시 자동 로그아웃 → 로그인 화면 ──
+  // (토큰이 죽어도 localStorage 사용자 정보로 로그인된 것처럼 보이던 문제 방지)
+  const expiredRef = useRef(false);
+  useEffect(() => {
+    if (!user) return;
+    expiredRef.current = false;
+    const expire = () => {
+      if (expiredRef.current) return;
+      expiredRef.current = true;
+      alert("로그인 유지 시간이 만료되어 로그아웃됩니다. 다시 로그인해 주세요.");
+      logout();
+      navigate("/login", { replace: true, state: { from: location.pathname } });
+    };
+    const check = () => {
+      const token = getToken();
+      if (!token) return;
+      const exp = decodeJwtExp(token);
+      if (exp !== null && exp * 1000 <= Date.now()) expire();
+    };
+    check();
+    const t = setInterval(check, 30_000);
+    window.addEventListener("popupon:auth-expired", expire);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener("popupon:auth-expired", expire);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   // ── 사이드바 새 소식 뱃지: 심사 결과 나온 팝업·답변 완료된 문의 (1분 폴링) ──
   const isBusiness = user?.role === "business";

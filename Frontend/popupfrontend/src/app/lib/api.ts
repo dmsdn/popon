@@ -78,7 +78,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       const data = await res.json();
       if (data?.message) message = data.message;
     } catch {
-      if (res.status === 401 || res.status === 403) message = "로그인이 필요하거나 권한이 없습니다.";
+      // 401/403 + 빈 본문 = Security 필터가 토큰을 거부한 것(만료·무효) — 컨트롤러 검증(400+message)과 구분됨
+      if (res.status === 401 || res.status === 403) {
+        message = "세션이 만료되었거나 권한이 없습니다. 다시 로그인해 주세요.";
+        // 각 센터 레이아웃(SellerRoot/AdminRoot)이 수신해 자동 로그아웃·로그인 화면 이동 처리
+        window.dispatchEvent(new CustomEvent("popupon:auth-expired"));
+      }
     }
     throw new ApiError(res.status, message);
   }
