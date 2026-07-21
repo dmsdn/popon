@@ -26,6 +26,15 @@ public class PopupSlotController {
         return ResponseEntity.status(201).body(popupSlotService.create(popupId, business.getId(), request));
     }
 
+    @PostMapping("/api/popups/{popupId}/slots/generate")
+    public ResponseEntity<?> generate(@PathVariable Long popupId,
+                                      Authentication authentication,
+                                      @RequestBody(required = false) SlotGenerateRequest request) {
+        Business business = businessRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사업자입니다."));
+        return ResponseEntity.ok(popupSlotService.generate(popupId, business.getId(), request));
+    }
+
     @GetMapping("/api/popups/{popupId}/slots")
     public ResponseEntity<List<PopupSlotResponse>> findByPopup(@PathVariable Long popupId) {
         return ResponseEntity.ok(popupSlotService.findByPopup(popupId));

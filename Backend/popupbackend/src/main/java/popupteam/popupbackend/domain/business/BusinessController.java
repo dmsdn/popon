@@ -43,4 +43,11 @@ public class BusinessController {
         businessService.changePassword(authentication.getName(), request);
         return ResponseEntity.ok(java.util.Map.of("message", "비밀번호가 변경되었습니다."));
     }
+
+    @PostMapping("/consent")
+    public ResponseEntity<?> reconsent(org.springframework.security.core.Authentication authentication) {
+        businessService.reconsent(authentication.getName());
+        return ResponseEntity.ok(java.util.Map.of("message", "약관에 다시 동의했습니다."));
+    }
+
 }
