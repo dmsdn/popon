@@ -5,6 +5,7 @@ import {
   Ticket, Upload, Plus, X, Info, CheckCircle2,
 } from "lucide-react";
 import { createPopup, updatePopup, getPopup, uploadPopupImage, getVenues } from "../../lib/api";
+import { ensureSlots } from "../../lib/slotAutoGen";
 
 const CATEGORIES = ["패션", "뷰티", "F&B", "캐릭터", "라이프스타일", "아트", "테크", "엔터테인먼트"];
 const DAYS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -60,6 +61,11 @@ export default function PopupRegister() {
   const [endDate, setEndDate] = useState("2026-08-15");
   const [openTime, setOpenTime] = useState("11:00");
   const [closeTime, setCloseTime] = useState("20:00");
+  // 예약 정책 (백엔드 필수: reservationMode·avgExperienceMinutes) — 슬롯은 이 값 기준 자동 생성
+  const [slotUnit, setSlotUnit] = useState(30); // 슬롯 단위(분) = 체험 소요시간
+  const [slotCapacity, setSlotCapacity] = useState(10); // 슬롯당 예약 정원 (자동 생성 시 사용)
+  const [maxCapacity, setMaxCapacity] = useState(120); // 동시 수용 정원
+  const [slotProgress, setSlotProgress] = useState(""); // 자동 생성 진행 안내
   const [partnerSpaces, setPartnerSpaces] = useState<string[]>([]);
   const [partnerSpace, setPartnerSpace] = useState("");
   const [directAddress, setDirectAddress] = useState("");
@@ -90,6 +96,9 @@ export default function PopupRegister() {
           setEndDate(p.endDate.slice(0, 10));
           setCloseTime(p.endDate.slice(11, 16) || "20:00");
         }
+        if (p.reservationMode) setUseReservation(p.reservationMode === "SLOT");
+        if (p.avgExperienceMinutes) setSlotUnit(p.avgExperienceMinutes);
+        if (p.capacity) setMaxCapacity(p.capacity);
         if (p.location) {
           // 파트너 공간 목록에 있으면 파트너 모드, 아니면 직접 입력으로 간주
           setSpaceMode("direct");
@@ -119,6 +128,9 @@ export default function PopupRegister() {
       location: spaceMode === "partner" ? partnerSpace : directAddress.trim(),
       startDate: `${startDate}T${openTime}:00`,
       endDate: `${endDate}T${closeTime}:00`,
+      capacity: maxCapacity,
+      reservationMode: (useReservation ? "SLOT" : "FREE") as "SLOT" | "FREE",
+      avgExperienceMinutes: slotUnit,
     };
 
     setSubmitting(true);
@@ -126,6 +138,12 @@ export default function PopupRegister() {
       const popup = editId ? await updatePopup(editId, payload) : await createPopup(payload);
       for (const file of images) {
         await uploadPopupImage(popup.id, file);
+      }
+      // 사전예약제(SLOT)면 운영기간 × 운영시간 × 슬롯 단위로 예약 슬롯 자동 생성 (없는 것만)
+      if (useReservation) {
+        setSlotProgress("운영시간 기준 예약 슬롯 자동 생성 중…");
+        const { created } = await ensureSlots(popup, slotCapacity);
+        setSlotProgress(created > 0 ? `예약 슬롯 ${created}개 자동 생성 완료` : "");
       }
       setSubmitted(true);
     } catch (e) {
@@ -154,6 +172,9 @@ export default function PopupRegister() {
           플랫폼 운영팀이 24시간 내에 등록 내용을 검수합니다.<br />
           심사 결과는 「팝업 조회/수정」에서 확인할 수 있으며, 승인 즉시 소비자 서비스에 게시됩니다.
         </p>
+        {slotProgress && (
+          <p className="text-xs text-emerald-600 mb-6 -mt-3">{slotProgress} — 「예약 슬롯·명단」에서 확인하세요.</p>
+        )}
         <button onClick={() => navigate("/seller/popups")} className="text-xs px-5 py-2.5 rounded-sm bg-accent text-white hover:bg-accent/90">
           게시 상태 확인하기
         </button>
@@ -396,23 +417,29 @@ export default function PopupRegister() {
             </label>
           </div>
           {useReservation && (
-            <div className="grid sm:grid-cols-3 gap-4 p-4 bg-secondary/60 rounded-sm">
-              <div>
-                <label className={labelCls}>슬롯 단위</label>
-                <select className={inputCls}>
-                  <option>60분</option><option>30분</option><option>90분</option>
-                </select>
+            <div className="p-4 bg-secondary/60 rounded-sm">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>슬롯 단위 (체험 소요시간)</label>
+                  <select value={slotUnit} onChange={(e) => setSlotUnit(Number(e.target.value))} className={inputCls}>
+                    <option value={30}>30분</option>
+                    <option value={60}>60분</option>
+                    <option value={90}>90분</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>슬롯당 예약 정원</label>
+                  <input
+                    type="number" min={1} value={slotCapacity}
+                    onChange={(e) => setSlotCapacity(Number(e.target.value))}
+                    className={inputCls}
+                  />
+                </div>
               </div>
-              <div>
-                <label className={labelCls}>슬롯당 예약 정원</label>
-                <input type="number" defaultValue={40} className={inputCls} />
-              </div>
-              <div>
-                <label className={labelCls}>노쇼 자동 취소</label>
-                <select className={inputCls}>
-                  <option>호출 후 10분</option><option>호출 후 5분</option><option>사용 안 함</option>
-                </select>
-              </div>
+              <p className="text-[11px] text-muted-foreground mt-3 flex items-center gap-1">
+                <Info size={11} /> 등록 시 운영기간 × 운영시간을 슬롯 단위로 나눠 예약 슬롯이 자동 생성됩니다.
+                예) 11:00~19:00 · 30분 단위 → 날짜별 11:00~11:30 … 18:30~19:00
+              </p>
             </div>
           )}
           <div className="grid sm:grid-cols-3 gap-4">
@@ -425,7 +452,11 @@ export default function PopupRegister() {
             </div>
             <div>
               <label className={labelCls}>최대 수용 정원 <Req /></label>
-              <input type="number" defaultValue={120} className={inputCls} />
+              <input
+                type="number" min={1} value={maxCapacity}
+                onChange={(e) => setMaxCapacity(Number(e.target.value))}
+                className={inputCls}
+              />
             </div>
             <div>
               <label className={labelCls}>혼잡 알림 임계치</label>

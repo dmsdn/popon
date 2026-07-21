@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { QRCodeSVG } from "qrcode.react";
-import { Loader2, LogOut, QrCode, UserPlus, CheckCircle2, XCircle, Info, Clock3 } from "lucide-react";
+import jsQR from "jsqr";
+import { Loader2, LogOut, QrCode, UserPlus, CheckCircle2, XCircle, Info, Clock3, X, Camera } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import {
   getMyPopups, getSlots, getPopupReservations, checkinReservation, markNoShow, checkinByQr,
@@ -72,13 +73,16 @@ export default function WaitingControl() {
   const [addOpen, setAddOpen] = useState(false);
   const [addForm, setAddForm] = useState({ name: "", partySize: 1, type: "GUEST" as "MEMBER" | "GUEST", phone: "" });
 
-  // QR 스캔 입장 — 현장 스캐너(키보드 입력형)나 수기 입력으로 QR 값 넣고 Enter
-  const [qrValue, setQrValue] = useState("");
+  // ── QR 카메라 스캔 입장 — 「QR코드 읽기」 버튼 → 카메라 스캔 → 즉시 입장 처리 ──
+  const [scanOpen, setScanOpen] = useState(false);
+  const [camError, setCamError] = useState("");
   const [qrMsg, setQrMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [manualQr, setManualQr] = useState(""); // 카메라 불가 시 폴백 입력
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const lastScanRef = useRef<{ v: string; t: number }>({ v: "", t: 0 });
 
-  const handleQrCheckin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const v = qrValue.trim();
+  const processQrValue = async (raw: string) => {
+    const v = raw.trim();
     if (!v || !popupId) return;
     try {
       if (v.startsWith("popupon-entry:")) {
@@ -86,7 +90,7 @@ export default function WaitingControl() {
         const [, , entryId] = v.split(":");
         const target = loadWalkins(popupId).find((w) => w.id === entryId);
         if (!target) throw new Error("이 팝업의 대기열에서 QR을 찾을 수 없습니다.");
-        if (target.enteredAt) throw new Error("이미 입장 처리된 QR입니다.");
+        if (target.enteredAt) throw new Error(`${target.name}님은 이미 입장 처리되었습니다.`);
         setWalkins(updateWalkin(popupId, entryId, { enteredAt: localNowIso() }));
         setQrMsg({ ok: true, text: `${target.name}님 입장 처리 완료` });
       } else {
@@ -95,11 +99,62 @@ export default function WaitingControl() {
         setRoster((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
         setQrMsg({ ok: true, text: `${updated.customerNickname}님(사전예약) 입장 처리 완료` });
       }
-      setQrValue("");
     } catch (err) {
       setQrMsg({ ok: false, text: err instanceof Error ? err.message : "QR 입장 처리에 실패했습니다." });
     }
   };
+
+  // 스캔 모달이 열리면 카메라 시작 → 프레임마다 jsQR로 디코드 → 값이 잡히면 입장 처리
+  useEffect(() => {
+    if (!scanOpen) return;
+    setCamError("");
+    setQrMsg(null);
+    let stream: MediaStream | null = null;
+    let raf = 0;
+    let active = true;
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    navigator.mediaDevices
+      ?.getUserMedia({ video: { facingMode: "environment" } })
+      .then((s) => {
+        if (!active) {
+          s.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        stream = s;
+        const video = videoRef.current;
+        if (!video) return;
+        video.srcObject = s;
+        video.play().catch(() => {});
+        const tick = () => {
+          if (!active) return;
+          if (ctx && video.readyState === video.HAVE_ENOUGH_DATA) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0);
+            const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(img.data, img.width, img.height);
+            if (code?.data) {
+              const now = Date.now();
+              // 같은 QR 연속 인식 방지 (3초 쿨다운)
+              if (code.data !== lastScanRef.current.v || now - lastScanRef.current.t > 3000) {
+                lastScanRef.current = { v: code.data, t: now };
+                processQrValue(code.data);
+              }
+            }
+          }
+          raf = requestAnimationFrame(tick);
+        };
+        raf = requestAnimationFrame(tick);
+      })
+      .catch(() => setCamError("카메라를 사용할 수 없습니다. 아래에 QR 값을 직접 입력해 주세요."));
+    return () => {
+      active = false;
+      cancelAnimationFrame(raf);
+      stream?.getTracks().forEach((t) => t.stop());
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scanOpen, popupId]);
 
   useEffect(() => {
     if (!isBusiness) return;
@@ -484,51 +539,45 @@ export default function WaitingControl() {
             </div>
           </div>
 
-          {/* ── QR 스캔 입장 처리 ── */}
-          <form onSubmit={handleQrCheckin} className="bg-white border border-border rounded-sm p-4 flex flex-wrap items-center gap-3">
+          {/* ── QR 입장 처리: 카메라 스캔 ── */}
+          <div className="bg-white border border-border rounded-sm p-4 flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-1.5 text-sm font-semibold">
               <QrCode size={15} className="text-accent" /> QR 입장 처리
             </div>
-            <input
-              value={qrValue}
-              onChange={(e) => setQrValue(e.target.value)}
-              placeholder="스캐너로 QR을 찍거나 QR 값을 붙여넣고 Enter"
-              className="flex-1 min-w-[240px] px-3 py-2 text-[13px] border border-border rounded-sm focus:outline-none focus:border-accent"
-              style={{ fontFamily: "'DM Mono', monospace" }}
-            />
-            <button type="submit" className="text-xs px-4 py-2 rounded-sm bg-accent text-white hover:bg-accent/90">입장 처리</button>
-            {qrMsg && (
+            <button
+              onClick={() => setScanOpen(true)}
+              className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-sm bg-accent text-white hover:bg-accent/90"
+            >
+              <Camera size={13} /> QR코드 읽기
+            </button>
+            <span className="text-[11px] text-muted-foreground">
+              대기자의 입장 QR을 카메라로 스캔하면 즉시 입장 처리되고 처리 열에 시각이 기록됩니다
+            </span>
+            {qrMsg && !scanOpen && (
               <span className={`w-full text-xs ${qrMsg.ok ? "text-emerald-600" : "text-red-500"}`}>{qrMsg.text}</span>
             )}
-            <span className="w-full text-[11px] text-muted-foreground">
-              사전예약 QR은 백엔드 실연동(서버가 입장 시각 기록) · 현장 웨이팅 QR은 로컬 처리
-            </span>
-          </form>
+          </div>
 
           {/* ── 현장 대기열 (슬롯별 보기) ── */}
           <div className="bg-white border border-border rounded-sm overflow-x-auto">
             <div className="px-4 py-3 border-b border-border flex flex-wrap items-center gap-2">
               <span className="text-sm font-semibold mr-2">현장 대기열</span>
-              <button
-                onClick={() => setSlotFilter("ALL")}
-                className={`text-[11px] px-2.5 py-1 rounded-full border ${
-                  slotFilter === "ALL" ? "bg-foreground text-white border-foreground" : "border-border text-muted-foreground hover:border-foreground"
-                }`}
+              {/* 자동 생성된 전체 예약 슬롯 반영 — 슬롯별로 선택해서 보기 */}
+              <select
+                value={slotFilter === "ALL" ? "ALL" : String(slotFilter)}
+                onChange={(e) => setSlotFilter(e.target.value === "ALL" ? "ALL" : Number(e.target.value))}
+                className="text-[12px] px-2.5 py-1.5 border border-border rounded-sm bg-white focus:outline-none focus:border-accent"
+                style={{ fontFamily: "'DM Mono', monospace" }}
               >
-                전체
-              </button>
-              {slots.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => setSlotFilter(s.id)}
-                  className={`text-[11px] px-2.5 py-1 rounded-full border ${
-                    slotFilter === s.id ? "bg-foreground text-white border-foreground" : "border-border text-muted-foreground hover:border-foreground"
-                  }`}
-                  style={{ fontFamily: "'DM Mono', monospace" }}
-                >
-                  {s.slotDate.slice(5)} {fmtTime(s.startTime)}~{fmtTime(s.endTime)}
-                </button>
-              ))}
+                <option value="ALL">전체 슬롯</option>
+                {[...slots]
+                  .sort((a, b) => `${a.slotDate}${a.startTime}`.localeCompare(`${b.slotDate}${b.startTime}`))
+                  .map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.slotDate.slice(5)} {fmtTime(s.startTime)}~{fmtTime(s.endTime)}
+                    </option>
+                  ))}
+              </select>
               {mode !== "RESERVATION" && (
                 <button
                   onClick={() => setAddOpen((v) => !v)}
@@ -703,6 +752,61 @@ export default function WaitingControl() {
               </div>
             </div>
           )}
+        </>
+      )}
+
+      {/* ── QR 스캔 모달 (카메라) ── */}
+      {scanOpen && (
+        <>
+          <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setScanOpen(false)} />
+          <div className="fixed inset-x-0 top-[10vh] mx-auto w-[min(420px,92vw)] bg-white border border-border rounded-sm shadow-xl z-50 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-1.5 text-sm font-semibold">
+                <Camera size={15} className="text-accent" /> 입장 QR 스캔
+              </div>
+              <button onClick={() => setScanOpen(false)} className="text-muted-foreground hover:text-foreground">
+                <X size={16} />
+              </button>
+            </div>
+            {!camError ? (
+              <div className="relative rounded-sm overflow-hidden bg-black aspect-square">
+                <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
+                {/* 스캔 가이드 프레임 */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="w-3/5 h-3/5 border-2 border-white/80 rounded-md" />
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <p className="text-xs text-amber-600">{camError}</p>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    processQrValue(manualQr);
+                    setManualQr("");
+                  }}
+                  className="flex gap-2"
+                >
+                  <input
+                    value={manualQr}
+                    onChange={(e) => setManualQr(e.target.value)}
+                    placeholder="QR 값 직접 입력"
+                    className="flex-1 px-3 py-2 text-[13px] border border-border rounded-sm focus:outline-none focus:border-accent"
+                    style={{ fontFamily: "'DM Mono', monospace" }}
+                  />
+                  <button type="submit" className="text-xs px-3 py-2 rounded-sm bg-accent text-white">처리</button>
+                </form>
+              </div>
+            )}
+            <div className="mt-3 min-h-[20px]">
+              {qrMsg && (
+                <p className={`text-xs ${qrMsg.ok ? "text-emerald-600" : "text-red-500"}`}>{qrMsg.text}</p>
+              )}
+              {!qrMsg && !camError && (
+                <p className="text-[11px] text-muted-foreground">QR을 프레임 안에 맞추면 자동으로 입장 처리됩니다.</p>
+              )}
+            </div>
+          </div>
         </>
       )}
     </div>
