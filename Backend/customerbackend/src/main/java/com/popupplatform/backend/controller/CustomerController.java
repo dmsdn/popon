@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.Map;
 
-
 @RestController
 @RequestMapping("/api/customer/me")
 @RequiredArgsConstructor
@@ -31,8 +30,7 @@ public class CustomerController {
     @PatchMapping
     public CustomerResponse updateMyInfo(
             @RequestHeader("Authorization") String authHeader,
-            @RequestBody CustomerUpdateRequest request
-    ) {
+            @RequestBody CustomerUpdateRequest request) {
         Customer customer = findCustomer(authHeader);
 
         if (request.getNickname() != null && !request.getNickname().isBlank()) {
@@ -40,6 +38,12 @@ public class CustomerController {
         }
         if (request.getProfileImage() != null) {
             customer.setProfileImage(request.getProfileImage());
+        }
+        if (request.getBirthDate() != null) {
+            customer.setBirthDate(request.getBirthDate());
+        }
+        if (request.getGender() != null) {
+            customer.setGender(Customer.Gender.valueOf(request.getGender().toUpperCase()));
         }
 
         Customer saved = customerRepository.save(customer);
@@ -52,19 +56,20 @@ public class CustomerController {
         return customerRepository.findById(customerId)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없어요."));
     }
+
     @DeleteMapping
     public Map<String, Object> withdraw(@RequestHeader("Authorization") String authHeader) {
-    Customer customer = findCustomer(authHeader);
+        Customer customer = findCustomer(authHeader);
 
-    // 개인정보는 최소화, 리뷰 등 콘텐츠는 유지
-    customer.setWithdrawn(true);
-    customer.setWithdrawnAt(LocalDateTime.now());
-    customer.setNickname("탈퇴한 사용자");
-    customer.setProfileImage(null);
-    customer.setEmail(null);
-    customer.setPhone(null);
+        // 개인정보는 최소화, 리뷰 등 콘텐츠는 유지
+        customer.setWithdrawn(true);
+        customer.setWithdrawnAt(LocalDateTime.now());
+        customer.setNickname("탈퇴한 사용자");
+        customer.setProfileImage(null);
+        customer.setEmail(null);
+        customer.setPhone(null);
 
-    customerRepository.save(customer);
-    return Map.of("success", true);
-}
+        customerRepository.save(customer);
+        return Map.of("success", true);
+    }
 }
