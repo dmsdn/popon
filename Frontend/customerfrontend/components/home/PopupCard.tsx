@@ -14,9 +14,9 @@ export function PopupCard({ id, name, dateRange, location, badge }: PopupItem) {
           )}
         </div>
         <div className="p-2">
-          <p className="text-sm font-medium">{name}</p>
-          {dateRange && <p className="text-xs text-gray-400 mt-1">{dateRange}</p>}
-          {location && <p className="text-xs text-gray-400">{location}</p>}
+          <p className="text-base font-medium">{name}</p>
+          {dateRange && <p className="text-sm text-gray-400 mt-1">{dateRange}</p>}
+          {location && <p className="text-sm text-gray-400">{location}</p>}
         </div>
       </div>
     </Link>

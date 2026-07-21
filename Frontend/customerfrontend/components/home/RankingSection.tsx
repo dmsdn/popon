@@ -1,8 +1,44 @@
-// [임시 스텁] pew 브랜치 커밋에 RankingSection.tsx가 누락되어 빌드가 깨지는 것을 막기 위한 파일.
-// pew가 원본 RankingSection을 푸시하면 이 파일은 그쪽 버전으로 교체할 것 (충돌 시 pew 버전 채택).
-import { PopupItem } from "@/data/mockPopups";
-import { PopupSection } from "@/components/home/PopupSection";
+// components/home/RankingSection.tsx
+import Image from "next/image";
 
-export function RankingSection({ title, items }: { title: string; items: PopupItem[] }) {
-  return <PopupSection title={title} items={items} />;
+interface Popup {
+  id: string;
+  name: string;
+  imageUrl?: string;
+}
+
+interface RankingSectionProps {
+  title: string;
+  items: Popup[];
+}
+
+export function RankingSection({ title, items }: RankingSectionProps) {
+  return (
+    <section className="px-4 py-4">
+      <h2 className="text-sm font-semibold mb-3">{title}</h2>
+      <div className="flex gap-3 overflow-x-auto">
+        {items.map((popup, index) => (
+          <div key={popup.id} className="relative flex-shrink-0 w-24">
+            <span className="absolute top-1 left-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-black text-xs font-bold text-white">
+              {index + 1}
+            </span>
+            <div className="relative h-32 w-24 overflow-hidden rounded-lg bg-gray-100">
+              {popup.imageUrl ? (
+                <Image
+                  src={popup.imageUrl}
+                  alt={popup.name}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">
+                  이미지
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
 }

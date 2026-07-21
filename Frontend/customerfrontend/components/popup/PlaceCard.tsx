@@ -13,14 +13,14 @@ export function PlaceCard({
   distance?: string;
 }) {
   return (
-    <div className="flex-none w-[130px]">
-      <div className="h-[100px] bg-gray-100 rounded-lg mb-2 flex items-center justify-center text-xs text-gray-400">
+    <div className="flex-none w-[150px]">
+      <div className="h-[150px] bg-gray-100 rounded-lg mb-2 flex items-center justify-center text-xs text-gray-400">
         이미지
       </div>
-      <p className="text-xs text-gray-400">{category}</p>
+      <p className="text-sm text-gray-400">{category}</p>
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium truncate">{name}</p>
-        {distance && <span className="text-xs text-gray-400 flex-none ml-1">{distance}</span>}
+        <p className="text-base font-medium truncate">{name}</p>
+        {distance && <span className="text-sm text-gray-400 flex-none ml-1">{distance}</span>}
       </div>
     </div>
   );
