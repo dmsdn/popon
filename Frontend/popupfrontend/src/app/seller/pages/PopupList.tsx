@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { Search, Pencil, Trash2, Loader2, ShieldAlert, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, Pencil, Trash2, Loader2, ShieldAlert, ChevronDown, ChevronUp, MessageSquare } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { getPopups, getMyPopups, deletePopup, Popup, PopupStatusCode } from "../../lib/api";
 import { loadAllMeta, isSuspended } from "../../lib/adminPopupMeta";
@@ -133,13 +133,14 @@ export default function PopupList() {
               <th className="text-left font-medium px-4 py-2.5">상태</th>
               <th className="text-left font-medium px-4 py-2.5">상태 확정일</th>
               <th className="text-left font-medium px-4 py-2.5">등록일</th>
+              <th className="text-center font-medium px-4 py-2.5">문의</th>
               <th className="text-center font-medium px-4 py-2.5">관리</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {loading && (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-xs text-muted-foreground">
+                <td colSpan={8} className="px-4 py-10 text-center text-xs text-muted-foreground">
                   <Loader2 size={14} className="inline animate-spin mr-1.5" /> 불러오는 중…
                 </td>
               </tr>
@@ -182,6 +183,17 @@ export default function PopupList() {
                     <td className="px-4 py-3 text-xs">{meta.statusDate ?? "-"}</td>
                     <td className="px-4 py-3 text-xs">{fmtDate(p.createdAt)}</td>
                     <td className="px-4 py-3">
+                      <div className="flex justify-center">
+                        <Link
+                          to={`/seller/inquiries?popup=${encodeURIComponent(p.title)}`}
+                          title="이 팝업에 대해 관리자에게 문의"
+                          className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-sm border border-border text-muted-foreground hover:border-accent hover:text-accent transition-colors"
+                        >
+                          <MessageSquare size={11} /> 문의
+                        </Link>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-2 text-muted-foreground">
                         <Link to={`/seller/popups/new?id=${p.id}`} title="수정" className="hover:text-foreground"><Pencil size={14} /></Link>
                         <button
@@ -199,7 +211,7 @@ export default function PopupList() {
                   {/* 관리자 수정사항·사유 확장 행 */}
                   {adminEditOpen && meta.editNote && (
                     <tr key={`admin-edit-${p.id}`} className="bg-secondary/30">
-                      <td colSpan={7} className="px-6 py-4">
+                      <td colSpan={8} className="px-6 py-4">
                         <div className="max-w-2xl bg-white border border-accent/30 rounded-sm p-4">
                           <div className="flex items-center gap-1.5 text-xs font-semibold text-accent mb-2">
                             <ShieldAlert size={12} /> 관리자 수정사항 및 사유
@@ -214,7 +226,7 @@ export default function PopupList() {
               );
             })}
             {!loading && rows.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-10 text-center text-xs text-muted-foreground">조건에 맞는 팝업이 없습니다.</td></tr>
+              <tr><td colSpan={8} className="px-4 py-10 text-center text-xs text-muted-foreground">조건에 맞는 팝업이 없습니다.</td></tr>
             )}
           </tbody>
         </table>

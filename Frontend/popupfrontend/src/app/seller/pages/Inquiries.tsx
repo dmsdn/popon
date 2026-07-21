@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { Loader2, Send, ChevronDown, ChevronUp, CheckCircle2, Plus } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { createInquiry, getMyInquiries, InquiryItem } from "../../lib/api";
@@ -24,6 +24,15 @@ export default function Inquiries() {
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState({ title: "", content: "" });
   const [saving, setSaving] = useState(false);
+
+  // 주최자 팝업 조회 표의 「문의」 버튼 → ?popup=팝업명 으로 진입 시 폼 자동 오픈 + 제목 프리필
+  const [searchParams] = useSearchParams();
+  const popupParam = searchParams.get("popup");
+  useEffect(() => {
+    if (!popupParam) return;
+    setFormOpen(true);
+    setForm((p) => (p.title ? p : { ...p, title: `[${popupParam}] ` }));
+  }, [popupParam]);
 
   useEffect(() => {
     if (!isBusiness) {

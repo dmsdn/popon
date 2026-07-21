@@ -74,7 +74,7 @@ export default function CS() {
   return (
     <div className="flex flex-col gap-4 max-w-4xl">
       <div>
-        <h1 className="text-lg font-semibold">CS·리뷰 모더레이션</h1>
+        <h1 className="text-lg font-semibold">문의 및 신고관리</h1>
         <p className="text-xs text-muted-foreground mt-0.5">소비자 CS와 주최자 문의를 접수·답변합니다.</p>
       </div>
 
