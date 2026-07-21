@@ -18,6 +18,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
    public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
       System.out.println("===== loadUser 호출됨 =====");
       OAuth2User oAuth2User = super.loadUser(userRequest);
+      
       System.out.println("카카오 유저 정보: " + String.valueOf(oAuth2User.getAttributes()));
       String registrationId = userRequest.getClientRegistration().getRegistrationId();
       Map<String, Object> attributes = oAuth2User.getAttributes();
@@ -46,6 +47,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
          profileImage = (String)attributes.get("picture");
       }
 
+      
+
       System.out.println("providerId: " + providerId + ", nickname: " + nickname);
       Customer.Provider provider = Provider.valueOf(registrationId.toUpperCase());
       final String finalProviderId = providerId;
@@ -54,6 +57,18 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
       final String finalProfileImage = profileImage;
 
       Customer customer = customerRepository.findByProviderAndProviderId(provider, providerId)
+        .map(existing -> {
+            if (existing.getWithdrawn()) {
+                // 탈퇴했던 계정이면 부활시키기
+                existing.setWithdrawn(false);
+                existing.setWithdrawnAt(null);
+                existing.setNickname(finalNickname);
+                existing.setEmail(finalEmail);
+                existing.setProfileImage(finalProfileImage);
+                return customerRepository.save(existing);
+            }
+            return existing;
+        })
         .orElseGet(() -> {
             System.out.println("기존 유저 없음, 새로 생성 시도");
             Customer newCustomer = new Customer();
@@ -67,6 +82,10 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             return saved;
         });
       System.out.println("최종 customer id: " + customer.getId());
+
+      if (customer.getWithdrawn()) {
+      throw new OAuth2AuthenticationException("탈퇴한 계정이에요. 재가입이 필요해요.");
+}
       return oAuth2User;
    }
 

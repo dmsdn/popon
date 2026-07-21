@@ -4,7 +4,10 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import com.nimbusds.openid.connect.sdk.claims.Gender;
 
 @Entity
 @Table(name = "customer")
@@ -46,6 +49,13 @@ public class Customer {
     @Column(name = "withdrawn_at")
     private LocalDateTime withdrawnAt;
 
+    @Column(name = "birth_date")
+    private LocalDate birthDate;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Gender gender = Gender.UNKNOWN;
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
@@ -60,4 +70,8 @@ public class Customer {
     public enum Provider {
         KAKAO, GOOGLE
     }
+
+    public enum Gender {
+    MALE, FEMALE, UNKNOWN
+}
 }
