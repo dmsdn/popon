@@ -1,6 +1,5 @@
 // components/home/DesktopHome.tsx
 import { Header } from "@/components/layout/Header";
-import { NavTabs } from "@/components/layout/NavTabs";
 import { Footer } from "@/components/layout/Footer";
 import { PromoCarousel } from "@/components/home/PromoCarousel";
 import { CategoryIconList } from "@/components/home/CategoryIconList";
@@ -18,7 +17,7 @@ export function DesktopHome() {
   return (
     <main>
       <Header />
-      <NavTabs />
+      {/* NavTabs는 pew 커밋에서 삭제됨(새 Header에 내비 통합) — import 잔재만 정리 */}
       <PromoCarousel />
       <CategoryIconList />
       <NoticeBar />
