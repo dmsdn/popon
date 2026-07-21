@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Outlet, NavLink, Link, useNavigate, useLocation, ScrollRestoration } from "react-router";
 import {
   LayoutDashboard, Store, PlusSquare, CalendarCheck, Users, Package,
-  FileText, BarChart3, Megaphone, Bell, ChevronDown, ExternalLink, LogOut, MessageSquare,
+  FileText, BarChart3, Megaphone, Bell, ChevronDown, ExternalLink, LogOut, MessageSquare, Inbox,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { getMyPopups, getMyInquiries, Popup, InquiryItem } from "../lib/api";
@@ -45,7 +45,10 @@ const MENU = [
   },
   {
     group: "지원",
-    items: [{ to: "/seller/inquiries", icon: MessageSquare, label: "문의하기" }],
+    items: [
+      { to: "/seller/inquiries", icon: MessageSquare, label: "문의하기" },
+      { to: "/seller/customer-inquiries", icon: Inbox, label: "문의받기" },
+    ],
   },
 ];
 
