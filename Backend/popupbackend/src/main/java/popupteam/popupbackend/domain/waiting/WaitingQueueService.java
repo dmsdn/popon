@@ -24,6 +24,7 @@ public class WaitingQueueService {
     private final CustomerRepository customerRepository;
     private final popupteam.popupbackend.common.notification.EmailNotificationService emailNotificationService;
     private final popupteam.popupbackend.common.notification.SmsNotificationService smsNotificationService;
+    private final popupteam.popupbackend.domain.eventlog.TransactionEventLogService transactionEventLogService;
 
 
     // 현장 웨이팅 등록 (회원: customerId 있음 / 비회원: name+email 있음)
@@ -106,6 +107,8 @@ public class WaitingQueueService {
         w.setCallExpiresAt(now.plusMinutes(15));
         waitingQueueRepository.save(w);
 
+        transactionEventLogService.log(w.getPopup().getId(), "WAITING", w.getId(), "CALLED", "system", null);
+
         log.info("[카카오 알림 발송 대상] phone={}, teamNumber={}", w.getPhoneNumber(), w.getTeamNumber());
 
         return WaitingResponse.from(w, 0L);
@@ -118,6 +121,8 @@ public class WaitingQueueService {
         w.setStatus(WaitingStatus.ENTERED);
         w.setEnteredAt(LocalDateTime.now());
         waitingQueueRepository.save(w);
+
+        transactionEventLogService.log(w.getPopup().getId(), "WAITING", w.getId(), "ENTERED", "system", null);
 
         return WaitingResponse.from(w, 0L);
     }
@@ -138,6 +143,8 @@ public class WaitingQueueService {
         w.setEnteredAt(LocalDateTime.now());
         waitingQueueRepository.save(w);
 
+        transactionEventLogService.log(w.getPopup().getId(), "WAITING", w.getId(), "ENTERED", "qr_scan", null);
+
         return WaitingResponse.from(w, 0L);
     }
 
@@ -147,6 +154,8 @@ public class WaitingQueueService {
 
         w.setStatus(WaitingStatus.CANCELLED);
         waitingQueueRepository.save(w);
+
+        transactionEventLogService.log(w.getPopup().getId(), "WAITING", w.getId(), "CANCELLED", "system", null);
 
         return WaitingResponse.from(w, 0L);
     }
