@@ -19,7 +19,6 @@ popup-store-project/
 ├── Frontend/
 │   ├── popupfrontend/          ← 관리자·주최자 웹 (Vite + React, 포트 5174)
 │   └── customerfrontend/       ← 소비자 웹 (Next.js 16, 포트 5173)
-├── MLService/                  ← ML 추천·리포트 (FastAPI 8000, gitignore — 별도 관리)
 └── uploads/                    업로드 이미지 저장소 (백엔드 실행 위치 기준)
 ```
 
@@ -44,7 +43,6 @@ flowchart LR
         CTRL[Controller → Service → Repository]
     end
     DB[(MySQL popupdb)]
-    ML[MLService :8000\n읽기 전용]
     KAKAO[카카오 OAuth]
 
     C -- "/api (rewrites 프록시)" --> SEC
@@ -52,7 +50,6 @@ flowchart LR
     W --> SEC
     SEC --> CTRL --> DB
     C -- 전체 페이지 이동 --> KAKAO --> SEC
-    ML -. event_log·거래 로그 조회 .-> DB
 ```
 
 ### 2-2. 요청 처리 파이프라인 (모든 API 공통)
@@ -148,7 +145,7 @@ sequenceDiagram
 | `venue` | 공간(대관처) 마스터 | 위치·면적·일 대관료·시설·사진, 좌표 |
 | `venue_meeting_request` | 공간 대관 미팅 | REQUESTED→IN_PROGRESS→CONTRACTED/CANCELLED |
 | `popup_contract` | 계약 | 계약금·메모·stage(CONTRACTED/IN_CONSTRUCTION/SETTLED) |
-| `transaction_event_log` | 거래 원장 (append-only) | popupId·대상(RESERVATION/WAITING)·이벤트(CANCELLED/CHECKED_IN/NO_SHOW/ENTERED/AUTO_CANCELLED…)·actor·시각. 예약·웨이팅 상태 변화 시 서비스가 자동 기록. ML 학습·감사 원천 |
+| `transaction_event_log` | 거래 원장 (append-only) | popupId·대상(RESERVATION/WAITING)·이벤트(CANCELLED/CHECKED_IN/NO_SHOW/ENTERED/AUTO_CANCELLED…)·actor·시각. 예약·웨이팅 상태 변화 시 서비스가 자동 기록.|
 
 ### 3-2. 계정·플랫폼 운영 (jsw 소유)
 
@@ -171,10 +168,7 @@ sequenceDiagram
 | `popup_wishlist` | 찜 (customerId+popupId) |
 | `review` / `review_image` / `review_like` | 별점·후기 / 첨부 사진 / 공감 |
 
-### 3-4. 기타
 
-- `ml_customer`·`ml_popup`·`event_log` — MLService 전용 (transaction_event_log와 별개, 이름 혼동 주의)
-- `reservation` — 구 소비자백 예약 테이블 **잔재, DROP 대상** (db-init.sql에 포함)
 - 특이 구조 하나: `customer` 테이블은 엔티티가 2개다 — `domain/customer/Customer`(예약·웨이팅의 FK 참조용)와 `domain/consumer/Customer`(@Entity명 CustomerAccount, 계정 관리용). 과도기 중복으로 추후 단일화 예정.
 
 ---
