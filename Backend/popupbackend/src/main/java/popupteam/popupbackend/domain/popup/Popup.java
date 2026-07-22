@@ -65,4 +65,7 @@ public class Popup {
     @Column(name = "queue_mode", nullable = false)
     private QueueMode queueMode = QueueMode.BOTH;
 
+    private Double latitude;
+    private Double longitude;
+
 }

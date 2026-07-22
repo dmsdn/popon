@@ -12,4 +12,6 @@ public class VenueUpdateRequest {
     private String description;
     private String imageUrl;
     private String status; // "AVAILABLE" 또는 "UNAVAILABLE"
+    private Double latitude;
+    private Double longitude;
 }

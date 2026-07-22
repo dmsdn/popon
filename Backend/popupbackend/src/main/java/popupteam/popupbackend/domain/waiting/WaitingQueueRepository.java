@@ -23,4 +23,7 @@ public interface WaitingQueueRepository extends JpaRepository<WaitingQueue, Long
 
     java.util.Optional<WaitingQueue> findByQrToken(String qrToken);
 
+    @Query("SELECT COUNT(w) FROM WaitingQueue w WHERE w.popup.id = :popupId " +
+            "AND w.status = 'ENTERED' AND w.enteredAt >= :since")
+    long countRecentlyEntered(@Param("popupId") Long popupId, @Param("since") java.time.LocalDateTime since);
 }

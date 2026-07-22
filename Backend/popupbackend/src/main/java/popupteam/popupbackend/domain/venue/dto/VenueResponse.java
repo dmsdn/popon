@@ -16,6 +16,8 @@ public class VenueResponse {
     private String imageUrl;
     private String status;
     private LocalDateTime createdAt;
+    private Double latitude;
+    private Double longitude;
 
     public static VenueResponse from(Venue v) {
         return VenueResponse.builder()
@@ -28,6 +30,8 @@ public class VenueResponse {
                 .imageUrl(v.getImageUrl())
                 .status(v.getStatus().name())
                 .createdAt(v.getCreatedAt())
+                .latitude(v.getLatitude())
+                .longitude(v.getLongitude())
                 .build();
     }
 }
