@@ -61,13 +61,10 @@ public class CustomerController {
     public Map<String, Object> withdraw(@RequestHeader("Authorization") String authHeader) {
         Customer customer = findCustomer(authHeader);
 
-        // 개인정보는 최소화, 리뷰 등 콘텐츠는 유지
+        // [정책 변경] DB 정보는 그대로 보존. withdrawn 플래그만 세워서 비활성화.
+        // 같은 소셜 계정으로 다시 로그인하면 이 row는 그대로 두고 새 계정(id_2 등)이 생성됨.
         customer.setWithdrawn(true);
         customer.setWithdrawnAt(LocalDateTime.now());
-        customer.setNickname("탈퇴한 사용자");
-        customer.setProfileImage(null);
-        customer.setEmail(null);
-        customer.setPhone(null);
 
         customerRepository.save(customer);
         return Map.of("success", true);
