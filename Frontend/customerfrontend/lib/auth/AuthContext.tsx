@@ -59,6 +59,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
+    // effect 본문과 같은 틱에서 setState가 동기적으로 실행되지 않도록
+    // 마이크로태스크 한 번을 거쳐서 시작합니다.
+    await Promise.resolve();
+
     const token = getToken();
     if (!token) {
       setCustomer(null);
@@ -90,8 +94,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+  queueMicrotask(() => {
+    void refresh();
+  });
+}, [refresh]);
 
   const logout = () => {
     clearToken();
