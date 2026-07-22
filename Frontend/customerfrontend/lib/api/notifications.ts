@@ -1,5 +1,5 @@
 // lib/api/notifications.ts
-import { apiFetch, API_BASE } from "./client";
+//import { apiFetch, API_BASE } from "./client";
 
 export async function getNotifications() {
   return [
