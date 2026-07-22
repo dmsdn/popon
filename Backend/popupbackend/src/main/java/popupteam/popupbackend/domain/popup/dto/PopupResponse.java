@@ -22,6 +22,8 @@ public class PopupResponse {
     private Integer capacity;
     private String reservationMode;
     private Integer avgExperienceMinutes;
+    private Double latitude;
+    private Double longitude;
 
     public static PopupResponse from(Popup popup) {
         return PopupResponse.builder()
@@ -41,6 +43,8 @@ public class PopupResponse {
                 .capacity(popup.getCapacity())
                 .reservationMode(popup.getReservationMode() != null ? popup.getReservationMode().name() : null)
                 .avgExperienceMinutes(popup.getAvgExperienceMinutes())
+                .latitude(popup.getLatitude())
+                .longitude(popup.getLongitude())
                 .build();
     }
 }

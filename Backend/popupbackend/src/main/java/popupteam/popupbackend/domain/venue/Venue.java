@@ -42,4 +42,8 @@ public class Venue {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt = LocalDateTime.now();
+
+    private Double latitude;
+    private Double longitude;
+
 }

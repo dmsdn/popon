@@ -16,4 +16,6 @@ public class VenueCreateRequest {
     private BigDecimal rentalFee;
     private String description;
     private String imageUrl;
+    private Double latitude;
+    private Double longitude;
 }

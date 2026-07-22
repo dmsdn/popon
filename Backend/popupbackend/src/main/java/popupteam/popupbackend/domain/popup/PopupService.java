@@ -16,6 +16,10 @@ public class PopupService {
     private final BusinessRepository businessRepository;
     private final PopupImageRepository popupImageRepository;
     private final popupteam.popupbackend.common.storage.FileStorageService fileStorageService;
+    private final PopupSlotRepository popupSlotRepository;
+    private final popupteam.popupbackend.domain.reservation.ReservationRepository reservationRepository;
+    private final popupteam.popupbackend.common.geocoding.GeocodingService geocodingService;
+
 
     public PopupResponse create(Long businessId, PopupCreateRequest request) {
         Business business = businessRepository.findById(businessId)
@@ -26,6 +30,10 @@ public class PopupService {
         popup.setTitle(request.getTitle());
         popup.setDescription(request.getDescription());
         popup.setLocation(request.getLocation());
+        geocodingService.geocode(request.getLocation()).ifPresent(coord -> {
+            popup.setLatitude(coord.latitude());
+            popup.setLongitude(coord.longitude());
+        });
         popup.setStartDate(request.getStartDate());
         popup.setEndDate(request.getEndDate());
         popup.setStatus(PopupStatus.PENDING);
@@ -105,6 +113,13 @@ public class PopupService {
 
         popup.setUpdatedAt(java.time.LocalDateTime.now());
 
+        if (request.getLocation() != null) {
+            geocodingService.geocode(request.getLocation()).ifPresent(coord -> {
+                popup.setLatitude(coord.latitude());
+                popup.setLongitude(coord.longitude());
+            });
+        }
+
         return PopupResponse.from(popupRepository.save(popup));
     }
 
@@ -115,6 +130,16 @@ public class PopupService {
         if (!popup.getBusiness().getId().equals(businessId)) {
             throw new IllegalArgumentException("본인이 등록한 팝업만 삭제할 수 있습니다.");
         }
+
+        // 예약이 하나라도 있으면(취소 포함) 삭제 자체를 막음
+        boolean hasReservations = !reservationRepository.findByPopupId(id).isEmpty();
+        if (hasReservations) {
+            throw new IllegalArgumentException("예약 내역이 있는 팝업은 삭제할 수 없습니다. 예약 기록 보존을 위해 삭제가 제한됩니다.");
+        }
+
+        // 예약이 없으면 슬롯/이미지 먼저 정리 후 팝업 삭제
+        popupSlotRepository.deleteAll(popupSlotRepository.findByPopupId(id));
+        popupImageRepository.deleteAll(popupImageRepository.findByPopupIdOrderBySortOrder(id));
 
         popupRepository.delete(popup);
     }
