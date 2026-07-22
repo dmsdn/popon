@@ -1,0 +1,8 @@
+package popupteam.popupbackend.domain.customer;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface CustomerRepository extends JpaRepository<Customer, Long> {
+
+    long countByWithdrawnFalse();
+}
