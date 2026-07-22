@@ -6,12 +6,12 @@ import { SuggestedKeywords } from "@/components/search/SuggestedKeywords";
 import { RankingSection } from "@/components/home/RankingSection";
 import { popularPopups } from "@/data/mockPopups";
 
-export default function SearchPage({
+export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: { q?: string };
+  searchParams: Promise<{ q?: string }>;
 }) {
-  const query = searchParams.q;
+  const { q: query } = await searchParams;
 
   return (
     <main>
