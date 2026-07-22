@@ -27,6 +27,11 @@ public class Customer {
     @Column(name = "provider_id", nullable = false)
     private String providerId;
 
+    // 소셜 제공자가 주는 원본 고유 ID (불변, 로그인 매칭용).
+    // providerId는 재가입 시 "원본id_2" 처럼 표시용으로 바뀔 수 있지만 socialId는 절대 안 바뀜.
+    @Column(name = "social_id")
+    private String socialId;
+
     private String email;
 
     @Column(nullable = false)
