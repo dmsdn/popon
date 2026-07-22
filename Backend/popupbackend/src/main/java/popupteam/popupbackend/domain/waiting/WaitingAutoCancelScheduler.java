@@ -13,6 +13,7 @@ import java.util.List;
 public class WaitingAutoCancelScheduler {
 
     private final WaitingQueueRepository waitingQueueRepository;
+    private final popupteam.popupbackend.domain.eventlog.TransactionEventLogService transactionEventLogService;
 
     // 1분마다 체크
     @Scheduled(fixedRate = 60000)
@@ -22,6 +23,8 @@ public class WaitingAutoCancelScheduler {
 
         for (WaitingQueue w : expired) {
             w.setStatus(WaitingStatus.CANCELLED);
+            transactionEventLogService.log(w.getPopup().getId(), "WAITING", w.getId(),
+                    "AUTO_CANCELLED", "system", "호출 후 15분 초과 자동취소");
         }
 
         if (!expired.isEmpty()) {

@@ -26,6 +26,7 @@ public class ReservationService {
     private final PopupSlotRepository popupSlotRepository;
     private final CustomerRepository customerRepository;
     private final BusinessRepository businessRepository;
+    private final popupteam.popupbackend.domain.eventlog.TransactionEventLogService transactionEventLogService;
 
     public ReservationResponse create(Long customerId, ReservationCreateRequest request) {
         Popup popup = popupRepository.findById(request.getPopupId())
@@ -119,6 +120,8 @@ public class ReservationService {
         reservation.setStatus(ReservationStatus.CANCELLED);
         reservation.setCancelReason(cancelReason);
         reservation.setCancelledAt(LocalDateTime.now());
+        transactionEventLogService.log(reservation.getPopup().getId(), "RESERVATION", reservation.getId(),
+                "CANCELLED", requesterEmail, cancelReason);
 
         return ReservationDetailResponse.from(reservationRepository.save(reservation));
     }
@@ -153,6 +156,9 @@ public class ReservationService {
         }
 
         reservation.setEntryStatus(EntryStatus.NO_SHOW);
+        transactionEventLogService.log(reservation.getPopup().getId(), "RESERVATION", reservation.getId(),
+                "NO_SHOW", requesterEmail, null);
+
         return ReservationDetailResponse.from(reservationRepository.save(reservation));
     }
 
@@ -177,6 +183,8 @@ public class ReservationService {
         reservation.setEntryStatus(EntryStatus.CHECKED_IN);
         reservation.setCheckedInAt(LocalDateTime.now());
         reservation.setCheckedInBy(requesterEmail);
+        transactionEventLogService.log(reservation.getPopup().getId(), "RESERVATION", reservation.getId(),
+                "CHECKED_IN", requesterEmail, null);
 
         return ReservationDetailResponse.from(reservationRepository.save(reservation));
     }
