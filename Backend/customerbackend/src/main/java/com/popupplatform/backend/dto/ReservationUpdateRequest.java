@@ -6,7 +6,6 @@ import lombok.Setter;
 @Getter
 @Setter
 public class ReservationUpdateRequest {
-    private String visitDate;  // "2026-07-20"
-    private String visitTime;  // "14:00"
+    private Long slotId;      // 다른 시간대로 변경
     private Integer partySize;
 }

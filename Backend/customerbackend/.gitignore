@@ -38,3 +38,12 @@ out/
 
 ### 로컬 설정 (비밀번호·API 키 포함 — 커밋 금지) ###
 application.yml
+
+# Next.js generated files
+Frontend/customerfrontend/.next/
+
+# dependencies
+Frontend/customerfrontend/node_modules/
+
+# build output
+Frontend/customerfrontend/out/
