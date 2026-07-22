@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
+import Link from "next/link";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import { promoCards } from "@/data/mockPopups";
@@ -41,14 +42,15 @@ export function PromoCarousel() {
       <div className="overflow-hidden" ref={emblaRef}>
         <div className="flex gap-3 mobile:gap-5">
           {promoCards.map((card) => (
-            <div
+            <Link
               key={card.id}
-              className=" flex-[0_0_92%] mobile:flex-[0_0_420px] aspect-[3/4] overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 pb-6"
+              href={card.href}
+              className="flex-[0_0_92%] mobile:flex-[0_0_420px] aspect-[3/4] overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 pb-6"
             >
               <span className="text-sm mobile:text-base text-gray-500">
                 {card.title}
               </span>
-            </div>
+            </Link>
           ))}
         </div>
       </div>

@@ -1,47 +1,96 @@
+// app/popup/[id]/page.tsx
 "use client";
 
-import { use, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { use, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Footer } from "@/components/layout/Footer";
 import { BottomTabBar } from "@/components/layout/BottomTabBar";
 import { ReviewCard } from "@/components/popup/ReviewCard";
 import { PlaceCard } from "@/components/popup/PlaceCard";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { findBrandById } from "@/data/mockBrands";
 import { ReservationModal } from "@/components/popup/ReservationModal";
 import { WaitingModal } from "@/components/popup/WaitingModal";
-import {
-  recentPopups,
-  popularPopups,
-  openingSoonPopups,
-  freePopups,
-  reviews,
-  type PopupItem,
-} from "@/data/mockPopups";
+import { getPopup, getPopupSlots, type PopupDetail, type PopupSlot } from "@/lib/api/popups";
+import { createReservation } from "@/lib/api/reservations";
+import { registerWaiting, setActiveWaitingId } from "@/lib/api/waiting";
+import { getMyReviews, toDisplayDate, type Review } from "@/lib/api/reviews";
+import { RESERVATION_MODE, POPUP_STATUS_LABEL } from "@/lib/constants/status";
+import { recentPopups, popularPopups } from "@/data/mockPopups";
+import type { ReviewItem } from "@/data/mockPopups";
 
 const TABS = ["정보", "굿즈", "후기"] as const;
 
-// ⚠️ 지금 mockPopups.ts의 각 배열(recentPopups, popularPopups...)이
-//    id를 "1"부터 각자 따로 매기고 있어서, 이 함수는 배열들을 순서대로 뒤져
-//    가장 먼저 걸리는 항목을 반환해요. 즉 여러 배열에 같은 id="1"이 있으면
-//    항상 recentPopups 쪽이 먼저 잡힙니다.
-//    실제로 쓰려면 전체 팝업에서 id가 겹치지 않게(예: p001, p002...) 만들어야 해요.
-function findPopupById(id: string): PopupItem | undefined {
-  const all = [...recentPopups, ...popularPopups, ...openingSoonPopups, ...freePopups];
-  return all.find((item) => item.id === id);
-}
-
 export default function PopupDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { isLoggedIn } = useAuth();
-  const popup = findPopupById(id);
+  const { isLoggedIn, customer } = useAuth();
   const router = useRouter();
-  const [showReservation, setShowReservation] = useState(false);
-const [showWaiting, setShowWaiting] = useState(false);
-  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("정보");
 
-  if (!popup) {
+  const [popup, setPopup] = useState<PopupDetail | null>(null);
+  const [slots, setSlots] = useState<PopupSlot[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+
+  const [showReservation, setShowReservation] = useState(false);
+  const [showWaiting, setShowWaiting] = useState(false);
+  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("정보");
+  const [myReviewsForPopup, setMyReviewsForPopup] = useState<Review[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setLoadError(false);
+      try {
+        const data = await getPopup(id);
+        if (cancelled) return;
+        setPopup(data);
+
+        // SLOT 모드 팝업이면 예약 가능한 시간대 목록도 같이 받아둠
+        if (data.reservationMode === RESERVATION_MODE.SLOT) {
+          const slotList = await getPopupSlots(id);
+          if (!cancelled) setSlots(slotList);
+        }
+      } catch (err) {
+        console.error("팝업 상세 조회 실패", err);
+        if (!cancelled) setLoadError(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  // 후기 탭: lib/api/reviews.ts(실 API 우선 → 실패 시 localStorage mock)에서
+  // 내가 쓴 리뷰를 불러와 이 팝업(popupId) 것만 걸러서 보여줍니다.
+  useEffect(() => {
+    if (!popup) return;
+    let cancelled = false;
+
+    getMyReviews()
+      .then((all) => {
+        if (cancelled) return;
+        setMyReviewsForPopup(all.filter((r) => r.popupId === popup.id));
+      })
+      .catch((err) => {
+        console.error("내 리뷰 조회 실패", err);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [popup]);
+
+  if (loading) {
+    return <main className="px-6 py-20 text-center text-gray-400">불러오는 중이에요...</main>;
+  }
+
+  if (loadError || !popup) {
     return (
       <main className="px-6 py-20 text-center text-gray-400">
         팝업 정보를 찾을 수 없어요.
@@ -49,106 +98,140 @@ const [showWaiting, setShowWaiting] = useState(false);
     );
   }
 
-  // ⚠️ 아래 값들(태그, 평점, 공지, 소개, 이용정보 등)은 PopupItem 타입에 없는
-  //    필드라서 지금은 화면 구조만 맞춘 임시 값이에요. 실제 데이터가 준비되면
-  //    PopupItem을 확장하거나 별도 상세 데이터 소스를 연결해주세요.
-  const relatedReviews = reviews.filter((r) => r.popupName === popup.name);
-  const brand = popup.brandId ? findBrandById(popup.brandId) : undefined;
+  // 내가 이 팝업에 쓴 리뷰들 (lib/api/reviews.ts) → ReviewCard가 쓰는 표시용 형태로 변환
+  const relatedReviews: ReviewItem[] = myReviewsForPopup.map((r) => ({
+    id: String(r.id),
+    popupName: popup.title,
+    nickname: customer?.nickname ?? "나의 후기",
+    content: r.content,
+    date: toDisplayDate(r.createdAt),
+    rating: r.rating,
+    photos: r.imageUrls.length > 0 ? r.imageUrls : undefined,
+  }));
+
+  const handleReservationSubmit = async (date: Date, count: number, slotId?: number) => {
+    if (!customer) return;
+    try {
+      await createReservation(customer.id, {
+        popupId: popup.id,
+        partySize: count,
+        ...(popup.reservationMode === RESERVATION_MODE.SLOT
+          ? { slotId }
+          : { reservationDate: date.toISOString().slice(0, 10) }),
+      });
+      alert(`${date.getMonth() + 1}월 ${date.getDate()}일 ${count}인 예약이 접수됐어요.`);
+      setShowReservation(false);
+      router.push("/reservations");
+    } catch (err) {
+      console.error("예약 실패", err);
+      alert("예약에 실패했어요. 잠시 후 다시 시도해주세요.");
+    }
+  };
+
+  const handleWaitingSubmit = async (count: number) => {
+    if (!customer) return;
+    try {
+      const waiting = await registerWaiting(
+        popup.id,
+        { phoneNumber: customer.phone ?? "", partySize: count },
+        customer.id
+      );
+      setActiveWaitingId(waiting.id);
+      alert(`웨이팅 ${count}명 등록됐어요.`);
+      setShowWaiting(false);
+      router.push("/reservations");
+    } catch (err) {
+      console.error("웨이팅 등록 실패", err);
+      alert("웨이팅 등록에 실패했어요. 잠시 후 다시 시도해주세요.");
+    }
+  };
 
   return (
     <main className="w-full mobile:max-w-[1000px] mobile:mx-auto pb-16 mobile:pb-0">
       <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100">
-  <button
-    type="button"
-    onClick={() => router.back()}
-    aria-label="뒤로가기"
-    className="text-lg text-gray-500"
-  >
-    ‹
-  </button>
-</div>
+        <button
+          type="button"
+          onClick={() => router.back()}
+          aria-label="뒤로가기"
+          className="text-lg text-gray-500"
+        >
+          ‹
+        </button>
+      </div>
 
       <div className="px-4 mobile:px-8 py-6">
-        {/* 대표 이미지 */}
+        {/* 대표 이미지 - TODO: 실제 이미지 업로드 데이터 연결 */}
         <div className="aspect-[4/5] max-h-[520px] bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 text-sm mb-5">
           대표 이미지
         </div>
 
-        {/* 브랜드 브레드크럼 */}
-        {brand ? (
-          <Link href={`/brand/${brand.id}`} className="inline-block text-xs text-gray-400 mb-2">
-            {brand.name} &gt;
-          </Link>
-        ) : (
-          <p className="text-xs text-gray-400 mb-2">{popup.location ?? "브랜드"} &gt;</p>
-        )}
+        <p className="text-xs text-gray-400 mb-2">{popup.companyName}</p>
 
-        {/* 제목 + 평점 */}
+        {/* 제목 + 상태 */}
         <div className="flex items-start justify-between mb-2">
-          <h1 className="text-xl font-bold">{popup.name}</h1>
+          <h1 className="text-xl font-bold">{popup.title}</h1>
           {/* TODO: 실제 평점 데이터 연결 */}
           <span className="text-sm text-gray-500 flex-none">★★★★★ 4/5</span>
         </div>
 
-        {popup.dateRange && <p className="text-sm text-gray-500">{popup.dateRange}</p>}
+        <p className="text-sm text-gray-500">
+          {new Date(popup.startDate).toLocaleDateString("ko-KR")} ~{" "}
+          {new Date(popup.endDate).toLocaleDateString("ko-KR")}
+        </p>
         {popup.location && <p className="text-sm text-gray-500 mb-3">{popup.location}</p>}
 
-        {/* 태그 - TODO: 실제 카테고리/지역 태그 데이터 연결 */}
         <div className="flex gap-2 mb-6">
-          {[popup.location].filter(Boolean).map((tag) => (
-            <span key={tag} className="text-xs border border-gray-200 rounded-full px-3 py-1 text-gray-600">
-              {tag}
+          <span className="text-xs border border-gray-200 rounded-full px-3 py-1 text-gray-600">
+            {POPUP_STATUS_LABEL[popup.status]}
+          </span>
+          {popup.location && (
+            <span className="text-xs border border-gray-200 rounded-full px-3 py-1 text-gray-600">
+              {popup.location}
             </span>
-          ))}
+          )}
         </div>
 
-        {/* 사전 예약 / 웨이팅 박스 — 기존 코드 교체 */}
-<div className="flex flex-col gap-3 mb-8">
-  <button
-    type="button"
-    onClick={() => setShowReservation(true)}
-    className="text-left border border-gray-200 rounded-lg px-4 py-3"
-  >
-    <p className="text-sm font-semibold mb-1">사전 예약</p>
-    <p className="text-xs text-gray-400">
-      [Event] 사전 예약 시 소정의 상품을 증정해드립니다 &gt;
-    </p>
-  </button>
-  <button
-    type="button"
-    onClick={() => setShowWaiting(true)}
-    className="text-left border border-gray-200 rounded-lg px-4 py-3"
-  >
-    <p className="text-sm font-semibold mb-1">웨이팅</p>
-    <p className="text-xs text-gray-400">
-      [Event] 사전 예약 시 소정의 상품을 증정해드립니다 &gt;
-    </p>
-  </button>
-</div>
+        {/* 사전 예약 / 웨이팅 박스 */}
+        <div className="flex flex-col gap-3 mb-8">
+          <button
+            type="button"
+            onClick={() => setShowReservation(true)}
+            className="text-left border border-gray-200 rounded-lg px-4 py-3"
+          >
+            <p className="text-sm font-semibold mb-1">사전 예약</p>
+            <p className="text-xs text-gray-400">
+              [Event] 사전 예약 시 소정의 상품을 증정해드립니다 &gt;
+            </p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowWaiting(true)}
+            className="text-left border border-gray-200 rounded-lg px-4 py-3"
+          >
+            <p className="text-sm font-semibold mb-1">웨이팅</p>
+            <p className="text-xs text-gray-400">
+              [Event] 사전 예약 시 소정의 상품을 증정해드립니다 &gt;
+            </p>
+          </button>
+        </div>
 
-{showReservation && (
-  <ReservationModal
-    popupName={popup.name}
-    onClose={() => setShowReservation(false)}
-    onSubmit={(date, count) => {
-      // TODO: 실제 예약 API 연결
-      alert(`${date.getMonth() + 1}월 ${date.getDate()}일 ${count}인 예약이 접수됐어요.`);
-      setShowReservation(false);
-    }}
-  />
-)}
+        {showReservation && (
+          <ReservationModal
+            popupName={popup.title}
+            reservationMode={popup.reservationMode}
+            slots={slots}
+            onClose={() => setShowReservation(false)}
+            onSubmit={handleReservationSubmit}
+          />
+        )}
 
-{showWaiting && (
-  <WaitingModal
-    popupName={popup.name}
-    onClose={() => setShowWaiting(false)}
-    onSubmit={(count) => {
-      // TODO: 실제 웨이팅 API 연결
-      alert(`웨이팅 ${count}명 등록됐어요.`);
-      setShowWaiting(false);
-    }}
-  />
-)}
+        {showWaiting && (
+          <WaitingModal
+            popupName={popup.title}
+            onClose={() => setShowWaiting(false)}
+            onSubmit={handleWaitingSubmit}
+          />
+        )}
 
         {/* 탭 */}
         <div className="flex border-b border-gray-100 mb-6">
@@ -186,17 +269,15 @@ const [showWaiting, setShowWaiting] = useState(false);
 
             <section>
               <h2 className="text-sm font-semibold mb-2">소개</h2>
-              {/* TODO: 실제 소개 데이터 연결 */}
-              <p className="text-sm text-gray-600 leading-relaxed">
-                {popup.name}에서 준비한 특별한 팝업스토어예요. 신제품 체험부터 다양한 이벤트, 한정
-                굿즈까지 이곳에서만 만나볼 수 있는 특별한 경험을 준비했습니다.
-              </p>
+              <p className="text-sm text-gray-600 leading-relaxed">{popup.description}</p>
             </section>
 
             <section>
               <h2 className="text-sm font-semibold mb-2">이용 정보</h2>
-              {/* TODO: 실제 이용 정보 데이터 연결 */}
-              <p className="text-sm text-gray-600">주차 가능 / 무료 입장 / 사전 예약</p>
+              <p className="text-sm text-gray-600">
+                정원 {popup.capacity}명 · 평균 체험 시간 {popup.avgExperienceMinutes}분
+                {popup.areaSqm ? ` · ${popup.areaSqm}㎡` : ""}
+              </p>
             </section>
 
             <section>
@@ -217,22 +298,22 @@ const [showWaiting, setShowWaiting] = useState(false);
         )}
 
         {activeTab === "후기" && (
-          <section>
-            {isLoggedIn && (
-              <Link
-                href={`/popup/${id}/review`}
-                className="block w-full text-center rounded-full py-3 text-sm font-medium bg-[#FEE500] mb-4"
-              >
-                후기 작성하기
-              </Link>
-            )}
-            {relatedReviews.length === 0 ? (
-              <p className="text-sm text-gray-400 py-10 text-center">아직 후기가 없어요.</p>
-            ) : (
-              relatedReviews.map((review) => <ReviewCard key={review.id} review={review} />)
-            )}
-          </section>
-        )}
+  <section>
+    {isLoggedIn && (
+      <Link
+        href={`/popup/${id}/review`}
+        className="block w-full text-center rounded-full py-3 text-sm font-medium bg-[#FEE500] mb-4"
+      >
+        후기 작성하기
+      </Link>
+    )}
+    {relatedReviews.length === 0 ? (
+      <p className="text-sm text-gray-400 py-10 text-center">아직 후기가 없어요.</p>
+    ) : (
+      relatedReviews.map((review) => <ReviewCard key={review.id} review={review} />)
+    )}
+  </section>
+)}
       </div>
 
       {/* 팝업 주변 핫플 - TODO: 실제 주변 장소 데이터 연결 */}
@@ -246,12 +327,12 @@ const [showWaiting, setShowWaiting] = useState(false);
         </div>
       </section>
 
-      {/* 비슷한 팝업 - TODO: 실제 추천 로직 연결 */}
+      {/* 비슷한 팝업 - TODO: 실제 추천 로직 연결 (지금은 mock 목록에서 이름만 다른 것 노출) */}
       <section className="px-4 mobile:px-8 mb-10">
         <h2 className="text-base font-semibold mb-3">비슷한 팝업</h2>
         <div className="flex gap-3 overflow-x-auto pb-1">
           {[...recentPopups, ...popularPopups]
-            .filter((item) => item.id !== popup.id || item.name !== popup.name)
+            .filter((item) => item.name !== popup.title)
             .slice(0, 4)
             .map((item) => (
               <PlaceCard key={item.id + item.name} category={item.location ?? "팝업"} name={item.name} />

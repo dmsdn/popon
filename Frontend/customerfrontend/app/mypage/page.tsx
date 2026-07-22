@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { notices } from "@/data/notices";
+import { getMyReviews, toDisplayDate, type Review } from "@/lib/api/reviews";
+import { getPopup } from "@/lib/api/popups";
 
 type MenuKey =
   | "내 정보"
@@ -82,11 +84,52 @@ function MyPageContent() {
   ]);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
+  // "다녀간 팝업" - 내가 쓴 리뷰 목록 (lib/api/reviews.ts: 실 API 우선 → 실패 시 localStorage mock)
+  const [myReviews, setMyReviews] = useState<Review[] | null>(null);
+  const [popupTitles, setPopupTitles] = useState<Record<number, string>>({});
+
   useEffect(() => {
     if (!loading && !isLoggedIn) {
       router.replace("/login");
     }
   }, [loading, isLoggedIn, router]);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    let cancelled = false;
+
+    getMyReviews()
+      .then(async (list) => {
+        if (cancelled) return;
+        setMyReviews(list);
+
+        // 리뷰가 어떤 팝업인지 이름을 보여주기 위해 팝업 상세를 조회합니다.
+        // (팝업 조회 API는 mock 대체가 없어서 실패할 수 있음 → 실패해도 리뷰 자체는 보여주고 이름만 대체 표기)
+        const uniquePopupIds = [...new Set(list.map((r) => r.popupId))];
+        const entries = await Promise.all(
+          uniquePopupIds.map(async (popupId) => {
+            try {
+              const detail = await getPopup(popupId);
+              return [popupId, detail.title] as const;
+            } catch {
+              return [popupId, null] as const;
+            }
+          })
+        );
+        if (cancelled) return;
+        setPopupTitles(
+          Object.fromEntries(entries.filter(([, title]) => title !== null)) as Record<number, string>
+        );
+      })
+      .catch((err) => {
+        console.error("내 리뷰 조회 실패", err);
+        if (!cancelled) setMyReviews([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn]);
 
   // /mypage?menu=공지사항 처럼 쿼리로 들어오면 해당 메뉴가 바로 선택된 상태로 열립니다.
   const queryMenu = searchParams.get("menu");
@@ -314,7 +357,42 @@ if (queryMenu !== syncedQueryMenu) {
           )}
 
           {activeMenu === "쿠폰함" && <EmptyState message="보유한 쿠폰이 없어요." />}
-          {activeMenu === "다녀간 팝업" && <EmptyState message="다녀간 팝업이 없어요." />}
+
+          {activeMenu === "다녀간 팝업" && (
+            myReviews === null ? (
+              <p className="text-sm text-gray-400 py-16 text-center">불러오는 중이에요...</p>
+            ) : myReviews.length === 0 ? (
+              <EmptyState message="다녀간 팝업이 없어요." />
+            ) : (
+              <div className="flex flex-col gap-3">
+                {myReviews.map((review) => (
+                  <div key={review.id} className="border border-gray-200 rounded-xl p-5">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-semibold">
+                        {popupTitles[review.popupId] ?? `팝업 #${review.popupId}`}
+                      </p>
+                      <span className="text-xs font-medium text-gray-700">⭐ {review.rating}</span>
+                    </div>
+                    <p className="text-sm text-gray-700 leading-relaxed mb-2">{review.content}</p>
+                    {review.imageUrls.length > 0 && (
+                      <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-2">
+                        {review.imageUrls.map((url, i) => (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            key={url + i}
+                            src={url}
+                            alt=""
+                            className="w-16 h-16 flex-none rounded-lg object-cover"
+                          />
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-xs text-gray-400">{toDisplayDate(review.createdAt)} 작성 · 좋아요 {review.likeCount}</p>
+                  </div>
+                ))}
+              </div>
+            )
+          )}
 
           {activeMenu === "알림 설정" && (
             <div className="flex flex-col gap-1">
