@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 public class VenueService {
 
     private final VenueRepository venueRepository;
+    private final popupteam.popupbackend.common.geocoding.GeocodingService geocodingService;
 
     // 관리자: 등록
     public VenueResponse create(VenueCreateRequest request) {
@@ -22,6 +23,15 @@ public class VenueService {
         venue.setRentalFee(request.getRentalFee());
         venue.setDescription(request.getDescription());
         venue.setImageUrl(request.getImageUrl());
+        if (request.getLatitude() != null && request.getLongitude() != null) {
+            venue.setLatitude(request.getLatitude());
+            venue.setLongitude(request.getLongitude());
+        } else {
+            geocodingService.geocode(request.getAddress()).ifPresent(coord -> {
+                venue.setLatitude(coord.latitude());
+                venue.setLongitude(coord.longitude());
+            });
+        }
 
         return VenueResponse.from(venueRepository.save(venue));
     }
@@ -38,6 +48,8 @@ public class VenueService {
         if (request.getDescription() != null) venue.setDescription(request.getDescription());
         if (request.getImageUrl() != null) venue.setImageUrl(request.getImageUrl());
         if (request.getStatus() != null) venue.setStatus(VenueStatus.valueOf(request.getStatus()));
+        if (request.getLatitude() != null) venue.setLatitude(request.getLatitude());
+        if (request.getLongitude() != null) venue.setLongitude(request.getLongitude());
         venue.setUpdatedAt(LocalDateTime.now());
 
         return VenueResponse.from(venueRepository.save(venue));

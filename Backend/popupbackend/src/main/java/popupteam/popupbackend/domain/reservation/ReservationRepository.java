@@ -45,4 +45,8 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
                                                  @Param("now") java.time.LocalDateTime now,
                                                  @Param("today") java.time.LocalDate today);
 
+
+    @Query("SELECT COUNT(r) FROM Reservation r WHERE r.popup.id = :popupId " +
+            "AND r.entryStatus = 'CHECKED_IN' AND r.checkedInAt >= :since")
+    long countRecentlyCheckedIn(@Param("popupId") Long popupId, @Param("since") java.time.LocalDateTime since);
 }
