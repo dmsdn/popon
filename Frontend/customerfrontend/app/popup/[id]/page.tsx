@@ -1,12 +1,16 @@
 "use client";
 
 import { use, useState } from "react";
-import { Header } from "@/components/layout/Header";
-import { MobileHeader } from "@/components/layout/MobileHeader";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Footer } from "@/components/layout/Footer";
 import { BottomTabBar } from "@/components/layout/BottomTabBar";
 import { ReviewCard } from "@/components/popup/ReviewCard";
 import { PlaceCard } from "@/components/popup/PlaceCard";
+import { useAuth } from "@/lib/auth/AuthContext";
+import { findBrandById } from "@/data/mockBrands";
+import { ReservationModal } from "@/components/popup/ReservationModal";
+import { WaitingModal } from "@/components/popup/WaitingModal";
 import {
   recentPopups,
   popularPopups,
@@ -15,7 +19,6 @@ import {
   reviews,
   type PopupItem,
 } from "@/data/mockPopups";
-import Link from "next/link";
 
 const TABS = ["정보", "굿즈", "후기"] as const;
 
@@ -31,7 +34,11 @@ function findPopupById(id: string): PopupItem | undefined {
 
 export default function PopupDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { isLoggedIn } = useAuth();
   const popup = findPopupById(id);
+  const router = useRouter();
+  const [showReservation, setShowReservation] = useState(false);
+const [showWaiting, setShowWaiting] = useState(false);
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("정보");
 
   if (!popup) {
@@ -46,15 +53,20 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   //    필드라서 지금은 화면 구조만 맞춘 임시 값이에요. 실제 데이터가 준비되면
   //    PopupItem을 확장하거나 별도 상세 데이터 소스를 연결해주세요.
   const relatedReviews = reviews.filter((r) => r.popupName === popup.name);
+  const brand = popup.brandId ? findBrandById(popup.brandId) : undefined;
 
   return (
     <main className="w-full mobile:max-w-[1000px] mobile:mx-auto pb-16 mobile:pb-0">
-      <div className="hidden mobile:block">
-        <Header />
-      </div>
-      <div className="block mobile:hidden">
-        <MobileHeader />
-      </div>
+      <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100">
+  <button
+    type="button"
+    onClick={() => router.back()}
+    aria-label="뒤로가기"
+    className="text-lg text-gray-500"
+  >
+    ‹
+  </button>
+</div>
 
       <div className="px-4 mobile:px-8 py-6">
         {/* 대표 이미지 */}
@@ -63,15 +75,13 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         </div>
 
         {/* 브랜드 브레드크럼 */}
-        <p className="text-xs text-gray-400 mb-2">
-          <Link
-  href={`/brand/${popup.id}`}
-  className="text-xs text-gray-400 hover:text-black"
->
-  {popup.brand}
-</Link>
-          &gt;
-        </p>
+        {brand ? (
+          <Link href={`/brand/${brand.id}`} className="inline-block text-xs text-gray-400 mb-2">
+            {brand.name} &gt;
+          </Link>
+        ) : (
+          <p className="text-xs text-gray-400 mb-2">{popup.location ?? "브랜드"} &gt;</p>
+        )}
 
         {/* 제목 + 평점 */}
         <div className="flex items-start justify-between mb-2">
@@ -92,21 +102,53 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
           ))}
         </div>
 
-        {/* 사전 예약 / 웨이팅 박스 */}
-        <div className="flex flex-col gap-3 mb-8">
-          <div className="border border-gray-200 rounded-lg px-4 py-3">
-            <p className="text-sm font-semibold mb-1">사전 예약</p>
-            <p className="text-xs text-gray-400">
-              [Event] 사전 예약 시 소정의 상품을 증정해드립니다 &gt;
-            </p>
-          </div>
-          <div className="border border-gray-200 rounded-lg px-4 py-3">
-            <p className="text-sm font-semibold mb-1">웨이팅</p>
-            <p className="text-xs text-gray-400">
-              [Event] 사전 예약 시 소정의 상품을 증정해드립니다 &gt;
-            </p>
-          </div>
-        </div>
+        {/* 사전 예약 / 웨이팅 박스 — 기존 코드 교체 */}
+<div className="flex flex-col gap-3 mb-8">
+  <button
+    type="button"
+    onClick={() => setShowReservation(true)}
+    className="text-left border border-gray-200 rounded-lg px-4 py-3"
+  >
+    <p className="text-sm font-semibold mb-1">사전 예약</p>
+    <p className="text-xs text-gray-400">
+      [Event] 사전 예약 시 소정의 상품을 증정해드립니다 &gt;
+    </p>
+  </button>
+  <button
+    type="button"
+    onClick={() => setShowWaiting(true)}
+    className="text-left border border-gray-200 rounded-lg px-4 py-3"
+  >
+    <p className="text-sm font-semibold mb-1">웨이팅</p>
+    <p className="text-xs text-gray-400">
+      [Event] 사전 예약 시 소정의 상품을 증정해드립니다 &gt;
+    </p>
+  </button>
+</div>
+
+{showReservation && (
+  <ReservationModal
+    popupName={popup.name}
+    onClose={() => setShowReservation(false)}
+    onSubmit={(date, count) => {
+      // TODO: 실제 예약 API 연결
+      alert(`${date.getMonth() + 1}월 ${date.getDate()}일 ${count}인 예약이 접수됐어요.`);
+      setShowReservation(false);
+    }}
+  />
+)}
+
+{showWaiting && (
+  <WaitingModal
+    popupName={popup.name}
+    onClose={() => setShowWaiting(false)}
+    onSubmit={(count) => {
+      // TODO: 실제 웨이팅 API 연결
+      alert(`웨이팅 ${count}명 등록됐어요.`);
+      setShowWaiting(false);
+    }}
+  />
+)}
 
         {/* 탭 */}
         <div className="flex border-b border-gray-100 mb-6">
@@ -176,6 +218,14 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
 
         {activeTab === "후기" && (
           <section>
+            {isLoggedIn && (
+              <Link
+                href={`/popup/${id}/review`}
+                className="block w-full text-center rounded-full py-3 text-sm font-medium bg-[#FEE500] mb-4"
+              >
+                후기 작성하기
+              </Link>
+            )}
             {relatedReviews.length === 0 ? (
               <p className="text-sm text-gray-400 py-10 text-center">아직 후기가 없어요.</p>
             ) : (

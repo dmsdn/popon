@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { notices } from "@/data/notices";
 
 type MenuKey =
   | "내 정보"
   | "찜 목록"
-  | "예약 내역"
+  | "예약 / 웨이팅"
   | "쿠폰함"
   | "다녀간 팝업"
   | "알림 설정"
@@ -17,7 +19,7 @@ type MenuKey =
 
 const SIDEBAR_MENU: MenuKey[] = [
   "찜 목록",
-  "예약 내역",
+  "예약 / 웨이팅",
   "쿠폰함",
   "다녀간 팝업",
   "알림 설정",
@@ -31,20 +33,44 @@ const PROVIDER_LABEL = {
   GOOGLE: "구글 연결",
 } as const;
 
-const NOTICES = [
-  { title: "여름맞이 팝업 이벤트 안내", date: "26.07.15" },
-  { title: "앱 이용약관 개정 안내", date: "26.06.30" },
-  { title: "웨이팅 서비스 점검 안내", date: "26.06.10" },
+// ==================== 예시용 mock 데이터 (실제로는 백엔드 API로 대체) ====================
+// TODO: getMyWaiting() API로 교체 - 웨이팅이 없으면 null을 내려줘야 프로필 카드가 자동으로 숨겨짐
+const mockWaiting = {
+  id: "w1",
+  popupId: "1",
+  popupName: "팝업 이름",
+  aheadCount: 7,
+  estimatedMinutes: 10,
+  myOrder: 7,
+};
+
+// TODO: getMyReservations() API로 교체
+// 예시로 2건을 넣어서, 아래 "바로가기 카드" 로직이 여러 건일 때 어떻게 동작하는지 확인할 수 있게 했어요.
+const mockReservations = [
+  { id: "r1", popupName: "팝업 이름", dDay: "D-1", date: "26. 07. 16. (목)", time: "오후 13:30", partySize: 2 },
+  { id: "r2", popupName: "다른 팝업 이름", dDay: "D-3", date: "26. 07. 18. (토)", time: "오후 15:00", partySize: 1 },
 ];
+// ================================================================================
 
 const FAQS = [
   { q: "웨이팅은 어떻게 신청하나요?", a: "팝업 상세페이지의 '웨이팅' 버튼에서 카카오 로그인으로 바로 신청할 수 있어요." },
-  { q: "예약 취소는 어디서 하나요?", a: "마이페이지 > 예약 내역에서 취소할 예약을 선택해 취소할 수 있어요." },
+  { q: "예약 취소는 어디서 하나요?", a: "마이페이지 > 예약 / 웨이팅에서 취소할 예약을 선택해 취소할 수 있어요." },
   { q: "쿠폰은 어떻게 받나요?", a: "일부 팝업은 사전 예약/방문 인증 시 쿠폰함에 자동으로 지급돼요." },
 ];
 
+const VALID_MENUS: MenuKey[] = ["내 정보", ...SIDEBAR_MENU];
+
 export default function MyPage() {
+  return (
+    <Suspense>
+      <MyPageContent />
+    </Suspense>
+  );
+}
+
+function MyPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { customer, isLoggedIn, loading, logout } = useAuth();
   const [activeMenu, setActiveMenu] = useState<MenuKey>("내 정보");
   const [mobileView, setMobileView] = useState<"list" | "detail">("list");
@@ -61,6 +87,18 @@ export default function MyPage() {
       router.replace("/login");
     }
   }, [loading, isLoggedIn, router]);
+
+  // /mypage?menu=공지사항 처럼 쿼리로 들어오면 해당 메뉴가 바로 선택된 상태로 열립니다.
+  const queryMenu = searchParams.get("menu");
+const [syncedQueryMenu, setSyncedQueryMenu] = useState(queryMenu);
+
+if (queryMenu !== syncedQueryMenu) {
+  setSyncedQueryMenu(queryMenu);
+  if (queryMenu && (VALID_MENUS as string[]).includes(queryMenu)) {
+    setActiveMenu(queryMenu as MenuKey);
+    setMobileView("detail");
+  }
+}
 
   if (loading || !customer) return null;
 
@@ -83,21 +121,21 @@ export default function MyPage() {
     );
   };
 
+  // 웨이팅 + 예약을 합친 총 "대기중" 건수 - 프로필 아래 바로가기 카드 분기에 씁니다.
+  const activeCount = (mockWaiting ? 1 : 0) + mockReservations.length;
 
   return (
     <main className="w-full mobile:max-w-[1000px] mobile:mx-auto">
-      <div className="px-4 mobile:px-8 py-4 border-b border-gray-100">
-        
-        <h1 className="text-lg font-bold">
-            <button
-            type="button"
-             onClick={() => router.back()}
-            className="flex items-center gap-1 text-lg text-gray-500 mb-4"
-          >
-            ‹
-          </button>
-            내 정보
-        </h1>
+      <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          aria-label="뒤로가기"
+          className="text-lg text-gray-500"
+        >
+          ‹
+        </button>
+        <h1 className="text-lg font-bold">내 정보</h1>
       </div>
 
       <div className="flex flex-col mobile:flex-row">
@@ -117,6 +155,32 @@ export default function MyPage() {
             </div>
             <p className="text-sm font-medium">{customer.nickname} 님</p>
           </button>
+
+          {/* 프로필 바로 아래 - 진행 중인 웨이팅/예약 바로가기 카드
+              - 대기중인 게 하나도 없으면(activeCount === 0) 카드 자체를 숨김
+              - 딱 1건이면 그 항목 상세페이지로 바로 이동
+              - 2건 이상이면 문구를 바꾸고, 마이페이지 안의 "예약 / 웨이팅" 탭으로 전환 */}
+          {activeCount > 0 &&
+            (activeCount === 1 ? (
+              <Link
+                href={mockWaiting ? `/waiting/${mockWaiting.id}` : `/reservations/${mockReservations[0].id}`}
+                className="mx-4 mb-4 flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3"
+              >
+                <span className="text-sm text-gray-700">
+                  {mockWaiting ? `웨이팅 ${mockWaiting.myOrder}번째 대기중` : `예약 1건`}
+                </span>
+                <span className="text-xs text-gray-400">›</span>
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleSelectMenu("예약 / 웨이팅")}
+                className="mx-4 mb-4 flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 text-left"
+              >
+                <span className="text-sm text-gray-700">현재 대기중인 예약 · 웨이팅 내역 확인하기</span>
+                <span className="text-xs text-gray-400">›</span>
+              </button>
+            ))}
 
           <nav className="flex flex-col">
             {SIDEBAR_MENU.map((menu) => (
@@ -193,7 +257,62 @@ export default function MyPage() {
           )}
 
           {activeMenu === "찜 목록" && <EmptyState message="찜한 팝업이 없어요." />}
-          {activeMenu === "예약 내역" && <EmptyState message="예약 내역이 없어요." />}
+
+          {activeMenu === "예약 / 웨이팅" && (
+            <div className="flex flex-col gap-10">
+              <section>
+                <h2 className="text-sm font-semibold mb-3">웨이팅</h2>
+                {mockWaiting ? (
+                  <Link href={`/waiting/${mockWaiting.id}`} className="block border border-gray-200 rounded-xl p-5">
+                    <div className="flex items-start gap-4">
+                      <div className="w-16 h-16 flex-none bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs">
+                        이미지
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold mb-1">{mockWaiting.popupName}</p>
+                        <p className="text-xs text-gray-500">
+                          앞 {mockWaiting.aheadCount}팀 · 예상 대기 약 {mockWaiting.estimatedMinutes}분
+                        </p>
+                      </div>
+                      <div className="text-right flex-none">
+                        <span className="text-2xl font-bold">{mockWaiting.myOrder}</span>
+                        <span className="text-xs text-gray-500 ml-0.5">번째</span>
+                      </div>
+                    </div>
+                  </Link>
+                ) : (
+                  <EmptyState message="진행 중인 웨이팅이 없어요." />
+                )}
+              </section>
+
+              <section>
+                <h2 className="text-sm font-semibold mb-3">예약</h2>
+                {mockReservations.length === 0 ? (
+                  <EmptyState message="예약 내역이 없어요." />
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {mockReservations.map((r) => (
+                      <Link
+                        key={r.id}
+                        href={`/reservations/${r.id}`}
+                        className="flex items-center gap-4 border border-gray-200 rounded-xl p-5"
+                      >
+                        <div className="w-16 h-16 flex-none bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs">
+                          이미지
+                        </div>
+                        <div>
+                          <span className="inline-block text-xs text-gray-500 mb-1">{r.dDay}</span>
+                          <p className="text-sm font-semibold mb-1">{r.popupName}</p>
+                          <p className="text-xs text-gray-500">{r.date} {r.time} {r.partySize}명</p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </div>
+          )}
+
           {activeMenu === "쿠폰함" && <EmptyState message="보유한 쿠폰이 없어요." />}
           {activeMenu === "다녀간 팝업" && <EmptyState message="다녀간 팝업이 없어요." />}
 
@@ -223,11 +342,15 @@ export default function MyPage() {
 
           {activeMenu === "공지사항" && (
             <div className="flex flex-col">
-              {NOTICES.map((notice) => (
-                <div key={notice.title} className="py-4 border-b border-gray-50">
+              {notices.map((notice) => (
+                <Link
+                  key={notice.id}
+                  href={`/notice/${notice.id}`}
+                  className="block py-4 border-b border-gray-50"
+                >
                   <p className="text-sm text-gray-800">{notice.title}</p>
                   <p className="text-xs text-gray-400 mt-1">{notice.date}</p>
-                </div>
+                </Link>
               ))}
             </div>
           )}
