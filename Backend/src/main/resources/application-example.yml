@@ -1,8 +1,13 @@
 spring:
+  # 개인 로컬 설정(내 DB 비밀번호·메일 계정 등)은 application-local.yml에 두면 이 파일을 덮어씀 (gitignore 대상 — 커밋 안 됨)
+  # 만드는 법: application-local-example.yml 복사 → application-local.yml → 값 수정
+  config:
+    import: "optional:classpath:application-local.yml"
+
   datasource:
     url: jdbc:mysql://localhost:3306/popupdb?createDatabaseIfNotExist=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
     username: root
-    password: "<로컬 MySQL 비밀번호>"
+    password: "<내 MySQL 비밀번호>"
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
