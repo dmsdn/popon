@@ -1,20 +1,54 @@
+"use client";
+
+import { useState } from "react";
 import { ReviewItem } from "@/data/mockPopups";
 
+const CONTENT_PREVIEW_LENGTH = 60;
+
 export function ReviewCard({ review }: { review: ReviewItem }) {
-  const { popupName, content, date, rating } = review;
+  const { nickname, content, date, rating, photos } = review;
+  const [expanded, setExpanded] = useState(false);
+
+  const isLong = content.length > CONTENT_PREVIEW_LENGTH;
 
   return (
-    <div className="flex-none w-[200px] border border-gray-200 rounded-xl overflow-hidden">
-      <div className="p-3 h-[90px] flex items-end text-sm text-gray-500">
+    <div className="border-b border-gray-100 py-5">
+      <div className="flex items-center gap-2.5 mb-3">
+        <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600 flex-none">
+          {nickname.charAt(0)}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate">{nickname}</p>
+          <p className="text-xs text-gray-400">{date}</p>
+        </div>
+        <span className="text-xs font-medium text-gray-700 flex-none">⭐ {rating}</span>
+      </div>
+
+      <p className={`text-sm text-gray-700 leading-relaxed ${!expanded && isLong ? "line-clamp-2" : ""}`}>
         {content}
-      </div>
-      <div className="flex justify-between px-3 text-xs text-gray-400 border-t border-gray-100 py-2">
-        <span>{date}</span>
-        <span>⭐ {rating}</span>
-      </div>
-      <div className="px-3 py-2 border-t border-gray-100 text-sm font-medium">
-        {popupName}
-      </div>
+      </p>
+      {isLong && (
+        <button
+          type="button"
+          onClick={() => setExpanded((prev) => !prev)}
+          className="text-xs text-gray-400 mt-1"
+        >
+          {expanded ? "접기" : "더보기"}
+        </button>
+      )}
+
+      {photos && photos.length > 0 && (
+        <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-hide">
+          {photos.map((photo, i) => (
+            <div
+              key={photo + i}
+              className="w-20 h-20 flex-none bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs"
+            >
+              사진
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

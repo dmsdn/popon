@@ -32,7 +32,7 @@ export default function WriteReviewPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
-  const { isLoggedIn, loading } = useAuth();
+  const { isLoggedIn, loading, customer } = useAuth();
   const popup = findPopupById(id);
 
   const [rating, setRating] = useState(0);
@@ -40,7 +40,6 @@ export default function WriteReviewPage({
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // 로그인하지 않은 상태로 직접 이 페이지에 접근하면 로그인 페이지로 돌려보냅니다.
   useEffect(() => {
     if (!loading && !isLoggedIn) {
       router.replace("/login");
@@ -64,12 +63,10 @@ export default function WriteReviewPage({
     if (!canSubmit) return;
     setSubmitting(true);
 
-    // TODO(백엔드 연동): 실제 리뷰 생성 API 호출로 교체해주세요.
-    // 지금은 백엔드 없이도 흐름(작성 → 목록에 바로 반영)을 확인할 수 있도록
-    // mock 데이터에 바로 추가합니다.
     addReview({
       id: `${Date.now()}`,
       popupName: popup.name,
+      nickname: customer?.nickname ?? "익명",
       content: content.trim(),
       date: formatToday(),
       rating,
