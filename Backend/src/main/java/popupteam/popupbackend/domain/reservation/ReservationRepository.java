@@ -49,4 +49,11 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     @Query("SELECT COUNT(r) FROM Reservation r WHERE r.popup.id = :popupId " +
             "AND r.entryStatus = 'CHECKED_IN' AND r.checkedInAt >= :since")
     long countRecentlyCheckedIn(@Param("popupId") Long popupId, @Param("since") java.time.LocalDateTime since);
+
+    // 체크인은 했지만 아직 퇴장하지 않은 예약 (현재 체류 중)
+    @Query("SELECT r FROM Reservation r WHERE r.popup.id = :popupId " +
+            "AND r.entryStatus = 'CHECKED_IN' AND r.exitedAt IS NULL " +
+            "ORDER BY r.checkedInAt ASC")
+    List<Reservation> findCurrentlyInsideByPopupId(@Param("popupId") Long popupId);
+
 }

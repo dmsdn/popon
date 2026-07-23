@@ -168,7 +168,9 @@ public class PopupService {
 
         popup.setStatus(PopupStatus.BEFOR);
         popup.setRejectReason(null);
+        popup.setAdminEditNote(null);
         popup.setUpdatedAt(java.time.LocalDateTime.now());
+        popup.setStatusChangedAt(java.time.LocalDateTime.now());
 
         return PopupResponse.from(popupRepository.save(popup));
     }
@@ -179,7 +181,9 @@ public class PopupService {
 
         popup.setStatus(PopupStatus.REJECTED);
         popup.setRejectReason(reason);
+        popup.setAdminEditNote(reason);
         popup.setUpdatedAt(java.time.LocalDateTime.now());
+        popup.setStatusChangedAt(java.time.LocalDateTime.now());
 
         return PopupResponse.from(popupRepository.save(popup));
     }

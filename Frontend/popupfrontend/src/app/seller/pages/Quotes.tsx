@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { Check, Loader2, Info, FileSignature, MessageSquare } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { getMyPopups, getContract, Popup, ContractInfo } from "../../lib/api";
-import { STAGE_FLOW, toUiStage, stageIndex } from "../../lib/contractStages";
+import { STAGE_FLOW, stageIndex } from "../../lib/contractStages";
 
 // 견적·계약·진행 단계 — 계약(파트너 공간 대관) 진행 상황 실연동 (조회 전용)
 // 전제: 견적·디자인이 확정되어 공간 대관 계약이 체결된 이후부터 단계가 시작됨.
@@ -66,8 +66,8 @@ export default function Quotes() {
     );
   }
 
-  const uiStage = contract ? toUiStage(contract.stage, contract.popupId) : null;
-  const curIdx = uiStage ? stageIndex(uiStage) : -1;
+  // 7/23: OPERATING 포함 4단계 전부 서버 값 — 로컬 변환 없이 그대로 사용
+  const curIdx = contract ? stageIndex(contract.stage) : -1;
 
   return (
     <div className="flex flex-col gap-4">

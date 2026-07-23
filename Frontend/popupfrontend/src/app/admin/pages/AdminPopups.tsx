@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { Search, Loader2, Info, CheckCircle2, XCircle, ShieldCheck, PauseCircle, Pencil, ChevronUp } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { getPopups, approvePopup, rejectPopup, Popup, PopupStatusCode, ApiError } from "../../lib/api";
-import { setMeta, today, SUSPEND_MARKER, isSuspended } from "../../lib/adminPopupMeta";
+import { SUSPEND_MARKER, isSuspended } from "../../lib/adminPopupMeta";
 
 // 플랫폼 전체 팝업 관리 (심사·게시중지·수정 통합)
 // 심사·게시중지: 관리자 승인/반려 API 실연동 / 내용 수정: /admin/popups/edit (실반영은 관리자 수정 API 백엔드 구성 후)
@@ -79,7 +79,7 @@ export default function AdminPopups() {
     try {
       const updated = action === "approve" ? await approvePopup(p.id) : await rejectPopup(p.id, reason.trim());
       setPopups((prev) => prev.map((x) => (x.id === p.id ? updated : x)));
-      setMeta(p.id, { statusDate: today() });
+      // 상태 확정일은 7/23부터 서버가 기록(popup.statusChangedAt) — 로컬 setMeta 제거
       setOpenReviewId(null);
       setReason("");
     } catch (e) {
@@ -99,7 +99,7 @@ export default function AdminPopups() {
         ? await approvePopup(p.id)
         : await rejectPopup(p.id, `${SUSPEND_MARKER} 관리자에 의해 게시가 중지되었습니다.`);
       setPopups((prev) => prev.map((x) => (x.id === p.id ? updated : x)));
-      setMeta(p.id, { statusDate: today() });
+      // 상태 확정일은 서버 statusChangedAt이 기록
     } catch (e) {
       handleAuthError(e, "처리에 실패했습니다.");
     } finally {
