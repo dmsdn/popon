@@ -6,13 +6,11 @@ import { Loader2, LogOut, QrCode, UserPlus, CheckCircle2, XCircle, Info, Clock3,
 import { useAuth } from "../../context/AuthContext";
 import {
   getMyPopups, getSlots, getPopupReservations, checkinReservation, markNoShow,
-  getQueueBoard, checkinUnifiedQr, registerWaiting, enterWaiting, cancelWaiting,
+  getQueueBoard, checkinUnifiedQr, exitUnifiedQr, registerWaiting, enterWaiting, cancelWaiting,
   Popup, PopupSlot, ReservationDetail, UnifiedEntry,
 } from "../../lib/api";
 import {
-  loadOpsMode, loadResExits, markResExit,
-  loadEnteredWaitings, recordEnteredWaiting, markWaitingExit,
-  EnteredWaiting, OpsMode,
+  loadOpsMode, OpsMode,
 } from "../../lib/walkinQueue";
 
 // 대기열·인원 관제 — 예약·웨이팅 통합관리 (jsw waiting·unified queue 백엔드 실연동)
@@ -45,8 +43,6 @@ export default function WaitingControl() {
   const [slots, setSlots] = useState<PopupSlot[]>([]);
   const [roster, setRoster] = useState<ReservationDetail[]>([]);
   const [board, setBoard] = useState<UnifiedEntry[]>([]);
-  const [resExits, setResExits] = useState<Record<string, string>>({});
-  const [enteredWaitings, setEnteredWaitings] = useState<EnteredWaiting[]>([]);
   const [mode, setMode] = useState<OpsMode>("BOTH");
   const [slotFilter, setSlotFilter] = useState<number | "ALL">("ALL");
   const [loading, setLoading] = useState(false);
@@ -98,8 +94,6 @@ export default function WaitingControl() {
         })
         .catch((e) => alive && setError(e instanceof Error ? e.message : "데이터를 불러오지 못했습니다."))
         .finally(() => alive && withSpinner && setLoading(false));
-      setResExits(loadResExits(popupId));
-      setEnteredWaitings(loadEnteredWaitings(popupId));
       setNowMs(Date.now());
     };
     fetchAll(true);
@@ -145,17 +139,14 @@ export default function WaitingControl() {
     noShow: boolean;
   };
 
+  // 7/23: 통합 보드가 체류중(CHECKED_IN/ENTERED)까지 반환 — 대기열 표에는 입장 전만 표시(체류자는 아래 체류 목록으로)
   const queueRows = useMemo<QueueRow[]>(() => {
     return board
+      .filter((e) => e.entryStatus !== "CHECKED_IN" && e.entryStatus !== "ENTERED")
       .filter((e) => (mode === "WALKIN" ? e.source !== "RESERVATION" : true))
       .filter((e) => (mode === "RESERVATION" ? e.source !== "ONSITE_WAITING" : true))
       .map((e) => {
-        const res = e.source === "RESERVATION" ? rosterById[e.refId] : undefined;
         const slot = e.source === "RESERVATION" ? slotByStart[e.joinedAt?.slice(0, 16) ?? ""] : undefined;
-        const entered =
-          e.entryStatus === "CHECKED_IN" || e.entryStatus === "ENTERED"
-            ? res?.checkedInAt ?? e.joinedAt
-            : null;
         return {
           key: `${e.source}-${e.refId}`,
           source: e.source,
@@ -164,11 +155,11 @@ export default function WaitingControl() {
           contact: e.phoneNumber ?? "-",
           partySize: e.partySize,
           slotId: slot?.id ?? null,
-          enteredAt: entered,
+          enteredAt: null,
           noShow: e.entryStatus === "NO_SHOW" || e.entryStatus === "CANCELLED",
         };
       });
-  }, [board, rosterById, slotByStart, mode]);
+  }, [board, slotByStart, mode]);
 
   const filteredRows = queueRows.filter((row) => slotFilter === "ALL" || row.slotId === slotFilter);
 
@@ -178,17 +169,23 @@ export default function WaitingControl() {
     return end === null || nowMs > end.getTime() + NOSHOW_GRACE_MS;
   };
 
-  // ── 체류 인원: 예약 체크인(서버) + 입장 처리한 웨이팅(로컬 기록) − 퇴장 ──
-  type StayRow = { key: string; source: "RESERVATION" | "ONSITE_WAITING"; refId: number; name: string; partySize: number; enteredAt: string | null };
+  // ── 체류 인원: 서버 통합 보드의 입장완료(CHECKED_IN/ENTERED, 퇴장 전) 엔트리 — 7/23 전면 서버 기준 ──
+  type StayRow = { key: string; source: "RESERVATION" | "ONSITE_WAITING"; refId: number; name: string; partySize: number; enteredAt: string | null; qrToken: string };
   const staying = useMemo<StayRow[]>(() => {
-    const resStaying: StayRow[] = roster
-      .filter((r) => r.entryStatus === "CHECKED_IN" && !resExits[String(r.id)])
-      .map((r) => ({ key: `res-${r.id}`, source: "RESERVATION" as const, refId: r.id, name: r.customerNickname, partySize: r.partySize, enteredAt: r.checkedInAt }));
-    const waitingStaying: StayRow[] = enteredWaitings
-      .filter((w) => !w.exitedAt)
-      .map((w) => ({ key: `wait-${w.refId}`, source: "ONSITE_WAITING" as const, refId: w.refId, name: w.name, partySize: w.partySize, enteredAt: w.enteredAt }));
-    return [...resStaying, ...waitingStaying].sort((a, b) => (a.enteredAt ?? "").localeCompare(b.enteredAt ?? ""));
-  }, [roster, resExits, enteredWaitings]);
+    return board
+      .filter((e) => e.entryStatus === "CHECKED_IN" || e.entryStatus === "ENTERED")
+      .map((e) => ({
+        key: `${e.source}-${e.refId}`,
+        source: e.source,
+        refId: e.refId,
+        name: e.displayName,
+        partySize: e.partySize,
+        // 체류 엔트리의 joinedAt = 입장 시각(서버가 checkedInAt/enteredAt으로 채움); 예약은 명단 상세로 보정
+        enteredAt: (e.source === "RESERVATION" ? rosterById[e.refId]?.checkedInAt : null) ?? e.joinedAt,
+        qrToken: e.qrToken, // 퇴장 처리(exitUnifiedQr)에 사용
+      }))
+      .sort((a, b) => (a.enteredAt ?? "").localeCompare(b.enteredAt ?? ""));
+  }, [board, rosterById]);
 
   const stayingCount = staying.reduce((a, r) => a + r.partySize, 0);
   // 혼잡도 정원 = 팝업 등록의 「최대 수용 정원」(동시 체류 기준)
@@ -216,8 +213,7 @@ export default function WaitingControl() {
       if (row.source === "RESERVATION") {
         await checkinReservation(row.refId); // 서버가 입장 시각 기록
       } else {
-        const w = await enterWaiting(row.refId);
-        setEnteredWaitings(recordEnteredWaiting(popupId, { refId: w.id, name: row.name, partySize: w.partySize, enteredAt: w.enteredAt ?? undefined }));
+        await enterWaiting(row.refId); // 입장 완료자는 이제 통합 보드가 반환 — 로컬 기록 불필요
       }
       refreshBoard(popupId);
     } catch (e) {
@@ -242,13 +238,17 @@ export default function WaitingControl() {
     }
   };
 
-  const handleExit = (row: StayRow) => {
+  // 퇴장 처리 — 7/23 신규 통합 퇴장 API(예약·웨이팅 공통, 서버가 exitedAt 기록)
+  const handleExit = async (row: StayRow) => {
     if (!popupId) return;
-    if (row.source === "RESERVATION") {
-      markResExit(popupId, row.refId);
-      setResExits(loadResExits(popupId));
-    } else {
-      setEnteredWaitings(markWaitingExit(popupId, row.refId));
+    setActingKey(`exit-${row.key}`);
+    try {
+      await exitUnifiedQr(row.qrToken);
+      refreshBoard(popupId);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "퇴장 처리에 실패했습니다.");
+    } finally {
+      setActingKey(null);
     }
   };
 
@@ -279,9 +279,6 @@ export default function WaitingControl() {
     try {
       // 통합 QR 체크인 — 예약·웨이팅 QR 모두 서버가 판별해 입장 처리·시각 기록
       const entry = await checkinUnifiedQr(v);
-      if (entry.source === "ONSITE_WAITING") {
-        setEnteredWaitings(recordEnteredWaiting(popupId, { refId: entry.refId, name: entry.displayName, partySize: entry.partySize }));
-      }
       setQrMsg({ ok: true, text: `${entry.displayName}님(${entry.source === "RESERVATION" ? "사전예약" : "현장 웨이팅"}) 입장 처리 완료` });
       refreshBoard(popupId);
     } catch (err) {
@@ -378,8 +375,8 @@ export default function WaitingControl() {
       <div className="flex items-start gap-2.5 bg-blue-50 border border-blue-200 rounded-sm px-4 py-3">
         <Info size={14} className="text-blue-500 shrink-0 mt-0.5" />
         <div className="text-xs text-blue-800 leading-relaxed">
-          통합 대기열(사전예약 자동 편입)·웨이팅 접수/입장/취소·QR 체크인은 <strong>백엔드 실연동</strong>.
-          운영 방식 저장·퇴장 처리·입장 완료 웨이팅 목록은 로컬 기록(백엔드 API 추가 시 연동).
+          통합 대기열(사전예약 자동 편입)·웨이팅 접수/입장/취소·QR 체크인·<strong>퇴장 처리·체류 인원</strong>까지 전부 <strong>백엔드 실연동</strong>.
+          운영 방식 저장만 로컬 기록(등록/수정 DTO에 queueMode 수신 추가 시 연동).
         </div>
       </div>
 
