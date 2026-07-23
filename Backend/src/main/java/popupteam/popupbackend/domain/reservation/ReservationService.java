@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.time.LocalDate;
 
 @Service
 @RequiredArgsConstructor
@@ -84,6 +85,77 @@ public class ReservationService {
             reservation.setSlot(null);
             reservation.setReservationDate(request.getReservationDate());
         }
+
+        return ReservationResponse.from(reservationRepository.save(reservation));
+    }
+
+    // 예약 변경 (다른 슬롯/날짜로), 소비자 본인만 가능
+    public ReservationResponse change(Long reservationId, Long customerId, ReservationChangeRequest request) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 예약입니다."));
+
+        if (!reservation.getCustomer().getId().equals(customerId)) {
+            throw new ForbiddenException("본인의 예약만 변경할 수 있습니다.");
+        }
+
+        if (reservation.getStatus() == ReservationStatus.CANCELLED) {
+            throw new IllegalArgumentException("취소된 예약은 변경할 수 없습니다.");
+        }
+
+        if (reservation.getEntryStatus() != EntryStatus.PENDING) {
+            throw new IllegalArgumentException("입장 처리 전 예약만 변경할 수 있습니다.");
+        }
+
+        Popup popup = reservation.getPopup();
+        int newPartySize = (request.getPartySize() != null) ? request.getPartySize() : reservation.getPartySize();
+        if (newPartySize < 1) {
+            throw new IllegalArgumentException("인원수는 1명 이상이어야 합니다.");
+        }
+
+        if (popup.getReservationMode() == ReservationMode.SLOT) {
+            if (request.getNewSlotId() == null) {
+                throw new IllegalArgumentException("시간대 예약 팝업입니다. newSlotId를 입력해주세요.");
+            }
+            PopupSlot newSlot = popupSlotRepository.findById(request.getNewSlotId())
+                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 시간대입니다."));
+
+            if (!newSlot.getPopup().getId().equals(popup.getId())) {
+                throw new IllegalArgumentException("해당 팝업의 시간대가 아닙니다.");
+            }
+
+            int reserved = reservationRepository.findBySlotIdAndStatus(newSlot.getId(), ReservationStatus.CONFIRMED).stream()
+                    .filter(r -> !r.getId().equals(reservation.getId()))
+                    .mapToInt(Reservation::getPartySize)
+                    .sum();
+
+            if (reserved + newPartySize > newSlot.getCapacity()) {
+                throw new IllegalArgumentException("정원이 초과되어 변경할 수 없습니다. 남은 자리: " + (newSlot.getCapacity() - reserved));
+            }
+
+            reservation.setSlot(newSlot);
+            reservation.setReservationDate(newSlot.getSlotDate());
+
+        } else { // FREE 모드
+            LocalDate newDate = (request.getNewReservationDate() != null)
+                    ? request.getNewReservationDate() : reservation.getReservationDate();
+
+            int reserved = reservationRepository.findByPopupIdAndReservationDateAndStatus(
+                            popup.getId(), newDate, ReservationStatus.CONFIRMED).stream()
+                    .filter(r -> !r.getId().equals(reservation.getId()))
+                    .mapToInt(Reservation::getPartySize)
+                    .sum();
+
+            if (reserved + newPartySize > popup.getCapacity()) {
+                throw new IllegalArgumentException("정원이 초과되어 변경할 수 없습니다. 남은 자리: " + (popup.getCapacity() - reserved));
+            }
+
+            reservation.setReservationDate(newDate);
+        }
+
+        reservation.setPartySize(newPartySize);
+
+        transactionEventLogService.log(popup.getId(), "RESERVATION", reservation.getId(),
+                "CHANGED", "customer:" + customerId, null);
 
         return ReservationResponse.from(reservationRepository.save(reservation));
     }

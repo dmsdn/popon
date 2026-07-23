@@ -88,4 +88,12 @@ public class ReservationController {
         boolean isAdmin = name != null && name.startsWith("admin:");
         return ResponseEntity.ok(reservationService.markNoShow(id, name, isAdmin));
     }
+
+    // === 예약 변경 (소비자 본인용, 다른 슬롯/날짜로) ===
+    @PatchMapping("/{id}/change")
+    public ResponseEntity<?> change(@PathVariable Long id,
+                                    @RequestParam Long customerId,
+                                    @Valid @RequestBody ReservationChangeRequest request) {
+        return ResponseEntity.ok(reservationService.change(id, customerId, request));
+    }
 }
