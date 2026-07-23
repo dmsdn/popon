@@ -26,4 +26,10 @@ public interface WaitingQueueRepository extends JpaRepository<WaitingQueue, Long
     @Query("SELECT COUNT(w) FROM WaitingQueue w WHERE w.popup.id = :popupId " +
             "AND w.status = 'ENTERED' AND w.enteredAt >= :since")
     long countRecentlyEntered(@Param("popupId") Long popupId, @Param("since") java.time.LocalDateTime since);
+
+    @Query("SELECT w FROM WaitingQueue w WHERE w.popup.id = :popupId " +
+            "AND w.status = 'ENTERED' AND w.exitedAt IS NULL " +
+            "ORDER BY w.enteredAt ASC")
+    List<WaitingQueue> findCurrentlyInsideByPopupId(@Param("popupId") Long popupId);
+
 }

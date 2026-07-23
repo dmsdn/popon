@@ -56,4 +56,6 @@ public class WaitingQueue {
 
     @Column(name = "entered_at")
     private LocalDateTime enteredAt;
+    // 퇴장 처리 시각 (null이면 아직 체류 중)
+    private LocalDateTime exitedAt;
 }
