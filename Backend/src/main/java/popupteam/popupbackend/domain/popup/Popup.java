@@ -27,6 +27,11 @@ public class Popup {
 
     private String location;
 
+    // 지역 키워드 (region 테이블 FK). 소비자 관심지역(customer_region)과 매칭시키는 용도.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "address_keyword")
+    private popupteam.popupbackend.domain.consumer.Region addressKeyword;
+
     @Column(name = "start_date")
     private LocalDateTime startDate;
 
