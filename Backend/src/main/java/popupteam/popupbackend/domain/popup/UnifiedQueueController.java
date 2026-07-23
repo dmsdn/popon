@@ -27,4 +27,14 @@ public class UnifiedQueueController {
         return ResponseEntity.ok(unifiedQueueService.checkinByQr(qrToken, name, isAdmin));
     }
 
+    // 통합 QR 퇴장 처리 (예약이든 현장웨이팅이든 하나의 엔드포인트로 처리)
+    @PostMapping("/api/queue/exit/qr")
+    public ResponseEntity<?> exitByQr(org.springframework.security.core.Authentication authentication,
+                                      @RequestBody java.util.Map<String, String> body) {
+        String name = authentication.getName();
+        boolean isAdmin = name != null && name.startsWith("admin:");
+        String qrToken = body.get("qrToken");
+        return ResponseEntity.ok(unifiedQueueService.exitByQr(qrToken, name, isAdmin));
+    }
+
 }

@@ -1,9 +1,13 @@
-// 대기열 운영 보조 저장 모듈.
-// 현장 웨이팅 등록·조회·입장·취소는 백엔드 실연동으로 이관됨(lib/api.ts의 waiting·queue API).
-// 여기 남은 것은 서버 API가 없는 보조 기록뿐:
-//  - 운영 모드(사전예약만/현장만/둘 다): 백엔드 Popup.queueMode가 생겼지만 등록/응답 DTO에 아직 미노출 → 로컬 유지
-//  - 퇴장 처리: 퇴장 API 없음 → 로컬 기록
-//  - 입장 완료된 웨이팅 목록: 통합 보드가 대기중만 반환 → 체류 표시용으로 입장 처리 시 로컬에 기록
+// [역할] 대기열 운영 보조 저장 모듈 — 남은 것은 「운영 방식」 로컬 저장뿐.
+//
+// 7/23 백엔드 추가로 대부분 서버로 이관됨:
+//  - 퇴장 처리      → POST /api/queue/exit/qr (lib/api.ts의 exitUnifiedQr)
+//  - 입장 완료 목록 → 통합 보드(GET /api/popups/{id}/queue/board)가 체류중(CHECKED_IN/ENTERED)도 반환
+//  (기존 localStorage 키 reservationExits:*, enteredWaitings:* 는 더 이상 사용하지 않음)
+//
+// ⚠ 운영 모드만 로컬 유지: 백엔드 Popup.queueMode·응답 노출은 생겼지만
+//    등록/수정 요청 DTO(PopupCreateRequest·PopupUpdateRequest)가 아직 값을 받지 않아
+//    저장 경로가 없음 → DTO에 queueMode 수신이 추가되면 이 모듈은 삭제 가능. (팀 전달 사항)
 
 export type OpsMode = "RESERVATION" | "WALKIN" | "BOTH";
 
@@ -21,57 +25,4 @@ export function loadOpsMode(popupId: number | string): OpsMode {
 
 export function saveOpsMode(popupId: number | string, mode: OpsMode) {
   localStorage.setItem(`waitingOpsMode:${popupId}`, mode);
-}
-
-// ── 사전예약자 퇴장 기록 (백엔드에 퇴장 API 없음 — 체크인까지만 서버 기록) ──
-
-const exitKey = (popupId: number | string) => `reservationExits:${popupId}`;
-
-export function loadResExits(popupId: number | string): Record<string, string> {
-  try {
-    return JSON.parse(localStorage.getItem(exitKey(popupId)) ?? "{}");
-  } catch {
-    return {};
-  }
-}
-
-export function markResExit(popupId: number | string, reservationId: number) {
-  const map = loadResExits(popupId);
-  map[String(reservationId)] = localNowIso();
-  localStorage.setItem(exitKey(popupId), JSON.stringify(map));
-}
-
-// ── 입장 완료된 현장 웨이팅 기록 (체류 표시용 — 서버에 '입장 완료 목록' API가 없어 로컬 보관) ──
-
-export type EnteredWaiting = {
-  refId: number; // waiting_queue.id
-  name: string;
-  partySize: number;
-  enteredAt: string;
-  exitedAt?: string;
-};
-
-const enteredKey = (popupId: number | string) => `enteredWaitings:${popupId}`;
-
-export function loadEnteredWaitings(popupId: number | string): EnteredWaiting[] {
-  try {
-    return JSON.parse(localStorage.getItem(enteredKey(popupId)) ?? "[]");
-  } catch {
-    return [];
-  }
-}
-
-export function recordEnteredWaiting(popupId: number | string, rec: Omit<EnteredWaiting, "enteredAt"> & { enteredAt?: string }) {
-  const list = loadEnteredWaitings(popupId).filter((x) => x.refId !== rec.refId);
-  list.push({ ...rec, enteredAt: rec.enteredAt ?? localNowIso() });
-  localStorage.setItem(enteredKey(popupId), JSON.stringify(list));
-  return list;
-}
-
-export function markWaitingExit(popupId: number | string, refId: number) {
-  const list = loadEnteredWaitings(popupId).map((x) =>
-    x.refId === refId ? { ...x, exitedAt: localNowIso() } : x,
-  );
-  localStorage.setItem(enteredKey(popupId), JSON.stringify(list));
-  return list;
 }

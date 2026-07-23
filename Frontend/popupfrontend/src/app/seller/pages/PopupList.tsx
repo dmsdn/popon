@@ -201,7 +201,8 @@ export default function PopupList() {
                         <div className="text-[11px] text-red-500 mt-1 max-w-[180px]">사유: {p.rejectReason}</div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-xs">{meta.statusDate ?? "-"}</td>
+                    {/* 상태 확정일: 7/23부터 서버 기록(statusChangedAt) 사용 — 이전 로컬 기록(meta.statusDate)은 폴백 */}
+                    <td className="px-4 py-3 text-xs">{fmtDate(p.statusChangedAt) !== "-" ? fmtDate(p.statusChangedAt) : meta.statusDate ?? "-"}</td>
                     <td className="px-4 py-3 text-xs">{fmtDate(p.createdAt)}</td>
                     <td className="px-4 py-3">
                       <div className="flex justify-center">
