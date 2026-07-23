@@ -1,28 +1,40 @@
+import Link from "next/link";
 import { PopupItem } from "@/data/mockPopups";
 import { PopupCard } from "./PopupCard";
-import { FilterChip } from "@/components/ui/FilterChip";
+import { HorizontalCarousel } from "@/components/ui/HorizontalCarousel";
 
 export function PopupSection({
   title,
   items,
-  filterOptions,
+  limit = 8,
+  moreHref,
 }: {
   title: string;
   items: PopupItem[];
-  filterOptions?: string[];
+  /** 섹션에 보여줄 최대 개수 (기본 8개) */
+  limit?: number;
+  /** "더보기" 클릭 시 이동할 경로. 없으면 그냥 비활성 텍스트로만 표시 */
+  moreHref?: string;
 }) {
+  const visibleItems = items.slice(0, limit);
+
   return (
     <section className="mb-10 mobile:mb-14 px-4 mobile:px-8">
       <div className="flex items-baseline justify-between mb-3 mobile:mb-4">
         <h3 className="text-base mobile:text-lg font-semibold">{title}</h3>
-        <span className="text-sm mobile:text-base text-gray-400">더보기 ›</span>
+        {moreHref ? (
+          <Link href={moreHref} className="text-sm mobile:text-base text-gray-400">
+            더보기 ›
+          </Link>
+        ) : (
+          <span className="text-sm mobile:text-base text-gray-300">더보기 ›</span>
+        )}
       </div>
-      {filterOptions && <FilterChip options={filterOptions} />}
-      <div className="flex gap-3 mobile:gap-4 overflow-x-auto pb-1">
-        {items.map((item) => (
+      <HorizontalCarousel>
+        {visibleItems.map((item) => (
           <PopupCard key={item.id} {...item} />
         ))}
-      </div>
+      </HorizontalCarousel>
     </section>
   );
 }
