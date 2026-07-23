@@ -188,6 +188,10 @@ export type Popup = {
   capacity: number | null; // 동시 수용 정원
   reservationMode: "SLOT" | "FREE" | null; // SLOT=슬롯 예약제, FREE=당일 방문(날짜 단위)
   avgExperienceMinutes: number | null; // 체험 소요시간(분) = 슬롯 단위
+  // 7/23 jsw 추가분 — 로컬(localStorage) 임시 저장을 서버 값으로 대체
+  queueMode: "PRERESERVATION_ONLY" | "ONSITE_WAITING_ONLY" | "BOTH" | null; // 운영 방식 (⚠ 등록/수정 요청 DTO에는 아직 미수신 — 값이 채워지면 로컬 OpsMode 대체)
+  statusChangedAt: string | null; // 관리자가 상태를 마지막으로 확정한 일시 (승인/반려/게시중지)
+  adminEditNote: string | null;   // 반려·게시중지 사유 (승인 시 서버가 null로 초기화)
 };
 
 export function getPopups(params?: { location?: string; status?: string; keyword?: string }) {
@@ -380,6 +384,15 @@ export function checkinUnifiedQr(qrToken: string) {
   });
 }
 
+// 통합 QR 퇴장 처리 (7/23 신규) — 예약·웨이팅 구분 없이 qrToken으로 퇴장 시각(exitedAt) 기록.
+// 이 API로 관제의 체류 인원이 서버 기준으로 계산됨 (기존 localStorage 퇴장 기록 대체)
+export function exitUnifiedQr(qrToken: string) {
+  return request<UnifiedEntry>("/api/queue/exit/qr", {
+    method: "POST",
+    body: JSON.stringify({ qrToken }),
+  });
+}
+
 // ── 계약 관리 (팝업 ↔ 파트너 공간 대관 계약) ──
 // 계약금 등록·단계 전환은 관리자 권한, 주최자는 본인 팝업 조회만
 
@@ -388,7 +401,7 @@ export type ContractInfo = {
   popupTitle: string;
   contractAmount: number;
   memo: string | null;
-  stage: "CONTRACTED" | "IN_CONSTRUCTION" | "SETTLED";
+  stage: "CONTRACTED" | "IN_CONSTRUCTION" | "OPERATING" | "SETTLED"; // OPERATING: 7/23 백엔드 enum 추가 — 로컬 플래그 대체
   registeredBy: string; // 등록/수정 관리자 (admin:이메일)
   createdAt: string;
   updatedAt: string;
@@ -406,7 +419,7 @@ export function setAdminContract(popupId: number | string, data: { contractAmoun
   });
 }
 
-export function updateContractStage(popupId: number | string, stage: "IN_CONSTRUCTION" | "SETTLED") {
+export function updateContractStage(popupId: number | string, stage: "IN_CONSTRUCTION" | "OPERATING" | "SETTLED") {
   return request<ContractInfo>(`/api/popups/${popupId}/contract/stage`, {
     method: "PATCH",
     body: JSON.stringify({ stage }),

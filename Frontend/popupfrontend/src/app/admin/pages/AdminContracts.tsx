@@ -1,12 +1,12 @@
 import { Fragment, useEffect, useState } from "react";
 import { Loader2, FileSignature, ChevronRight, Info, Pencil, CheckCircle2 } from "lucide-react";
 import { getPopups, getContract, setAdminContract, updateContractStage, Popup, ContractInfo } from "../../lib/api";
-import { STAGE_FLOW, UiStage, toUiStage, stageIndex, nextStage, setOperating } from "../../lib/contractStages";
+import { STAGE_FLOW, stageIndex, nextStage } from "../../lib/contractStages";
 
 // 공간 대관·계약 관리 — 승인된 팝업의 파트너 공간 대관 계약을 관리자가 등록·진행.
 // 계약체결 → 제작/시공 → 운영 중 → 철거/정산 4단계이며, 단계 확인·전환은 관리자의 의무/권한.
 // 실연동: 계약금 등록(PUT /api/admin/popups/{id}/contract)·단계 전환(PATCH .../contract/stage)·조회
-// ⚠ 「운영 중」 단계는 백엔드 ContractStage에 없어 로컬 기록 — enum에 OPERATING 추가 시 서버 반영 (팀 전달)
+// 7/23: 백엔드 ContractStage에 OPERATING 추가 — 4단계 전부 서버 값 (로컬 「운영 중」 플래그 제거)
 
 const fmtWon = (n: number) => n.toLocaleString("ko-KR") + "원";
 
@@ -67,26 +67,16 @@ export default function AdminContracts() {
     }
   };
 
-  // 다음 단계 전환 — 운영 중은 로컬 기록, 나머지는 서버 PATCH
+  // 다음 단계 전환 — 4단계 전부 서버 PATCH (7/23 백엔드 OPERATING enum 추가로 로컬 플래그 제거)
   const advance = async (row: Row) => {
     if (!row.contract) return;
-    const cur = toUiStage(row.contract.stage, row.popup.id);
-    const next = nextStage(cur);
+    const next = nextStage(row.contract.stage);
     if (!next) return;
     const nextLabel = STAGE_FLOW[stageIndex(next)].label;
     if (!window.confirm(`「${row.popup.title}」 계약을 「${nextLabel}」 단계로 전환할까요?`)) return;
     setActingId(row.popup.id);
     try {
-      if (next === "IN_CONSTRUCTION") {
-        patchRow(row.popup.id, await updateContractStage(row.popup.id, "IN_CONSTRUCTION"));
-      } else if (next === "OPERATING") {
-        setOperating(row.popup.id, true); // 백엔드 단계 없음 — 로컬 기록
-        setRows((prev) => [...prev]); // 리렌더
-      } else if (next === "SETTLED") {
-        const updated = await updateContractStage(row.popup.id, "SETTLED");
-        setOperating(row.popup.id, false);
-        patchRow(row.popup.id, updated);
-      }
+      patchRow(row.popup.id, await updateContractStage(row.popup.id, next));
     } catch (e) {
       alert(e instanceof Error ? e.message : "단계 전환에 실패했습니다.");
     } finally {
@@ -135,9 +125,8 @@ export default function AdminContracts() {
             <tbody className="divide-y divide-border">
               {rows.map((row) => {
                 const { popup, contract } = row;
-                const ui: UiStage | null = contract ? toUiStage(contract.stage, popup.id) : null;
-                const idx = ui ? stageIndex(ui) : -1;
-                const next = ui ? nextStage(ui) : null;
+                const idx = contract ? stageIndex(contract.stage) : -1;
+                const next = contract ? nextStage(contract.stage) : null;
                 const open = openId === popup.id;
                 return (
                   <Fragment key={popup.id}>
