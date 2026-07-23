@@ -56,36 +56,37 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
       final String finalNickname = nickname;
       final String finalProfileImage = profileImage;
 
-      Customer customer = customerRepository.findByProviderAndProviderId(provider, providerId)
-        .map(existing -> {
-            if (existing.getWithdrawn()) {
-                // 탈퇴했던 계정이면 부활시키기
-                existing.setWithdrawn(false);
-                existing.setWithdrawnAt(null);
-                existing.setNickname(finalNickname);
-                existing.setEmail(finalEmail);
-                existing.setProfileImage(finalProfileImage);
-                return customerRepository.save(existing);
-            }
-            return existing;
-        })
+      // 1) socialId(불변) 기준으로 활성 계정 매칭
+      Customer customer = customerRepository.findByProviderAndSocialIdAndWithdrawnFalse(provider, finalProviderId)
+        // 2) socialId 컬럼 도입 전 가입자를 위한 레거시 호환 매칭 (providerId 기준)
+        .or(() -> customerRepository.findByProviderAndProviderIdAndWithdrawnFalse(provider, finalProviderId)
+            .map(legacy -> {
+                if (legacy.getSocialId() == null) {
+                    legacy.setSocialId(finalProviderId); // 다음부터는 socialId로 매칭되도록 백필
+                    return customerRepository.save(legacy);
+                }
+                return legacy;
+            }))
         .orElseGet(() -> {
-            System.out.println("기존 유저 없음, 새로 생성 시도");
+            // 활성 계정이 없음 = 신규 가입이거나, 탈퇴 후 재가입.
+            // 탈퇴 정보는 손대지 않고 이 소셜 계정으로 몇 번째 가입인지만 세서 새 계정을 만든다.
+            long joinCount = customerRepository.countByProviderAndSocialId(provider, finalProviderId);
+            String displayProviderId = (joinCount == 0) ? finalProviderId : (finalProviderId + "_" + (joinCount + 1));
+
+            System.out.println("활성 계정 없음, 새로 생성 (가입 회차: " + (joinCount + 1) + ")");
             Customer newCustomer = new Customer();
             newCustomer.setProvider(provider);
-            newCustomer.setProviderId(finalProviderId);
+            newCustomer.setSocialId(finalProviderId);
+            newCustomer.setProviderId(displayProviderId);
             newCustomer.setEmail(finalEmail);
             newCustomer.setNickname(finalNickname);
             newCustomer.setProfileImage(finalProfileImage);
             Customer saved = customerRepository.save(newCustomer);
-            System.out.println("저장 완료, id: " + saved.getId());
+            System.out.println("저장 완료, id: " + saved.getId() + ", providerId: " + saved.getProviderId());
             return saved;
         });
       System.out.println("최종 customer id: " + customer.getId());
 
-      if (customer.getWithdrawn()) {
-      throw new OAuth2AuthenticationException("탈퇴한 계정이에요. 재가입이 필요해요.");
-}
       return oAuth2User;
    }
 
