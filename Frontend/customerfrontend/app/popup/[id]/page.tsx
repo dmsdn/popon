@@ -12,7 +12,7 @@ import { ReservationModal } from "@/components/popup/ReservationModal";
 import { WaitingModal } from "@/components/popup/WaitingModal";
 import { HeartButton } from "@/components/ui/HeartButton";
 import { getMyReviews, toDisplayDate, type Review } from "@/lib/api/reviews";
-import { getPopup, searchPopups, type PopupDetail } from "@/lib/api/popups";
+import { getPopup, getPopupSlots, searchPopups, type PopupDetail, type PopupSlot } from "@/lib/api/popups";
 import { createReservation } from "@/lib/api/reservations";
 import { registerWaiting } from "@/lib/api/waiting";
 import { toPopupItem } from "@/lib/utils/popupMapper";
@@ -32,6 +32,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
 
   const [showReservation, setShowReservation] = useState(false);
   const [showWaiting, setShowWaiting] = useState(false);
+  const [slots, setSlots] = useState<PopupSlot[]>([]);
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("정보");
   const [myReviewsForPopup, setMyReviewsForPopup] = useState<Review[]>([]);
 
@@ -65,6 +66,22 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
       cancelled = true;
     };
   }, [id]);
+
+  // SLOT 방식 팝업이면 예약 모달에서 고를 시간대 목록을 미리 받아둡니다.
+  useEffect(() => {
+    if (!popup || popup.reservationMode !== "SLOT") return;
+    let cancelled = false;
+
+    getPopupSlots(popup.id)
+      .then((list) => {
+        if (!cancelled) setSlots(list);
+      })
+      .catch((err) => console.error("예약 시간대 조회 실패", err));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [popup]);
 
   // 후기 탭: lib/api/reviews.ts(실 API 우선 → 실패 시 localStorage mock)에서
   // 방금 작성한 리뷰를 불러와, 기존 정적 mock 리뷰 목록과 함께 보여줍니다.
@@ -181,8 +198,9 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         {showReservation && (
           <ReservationModal
             popupName={popup.title}
+            slots={slots}
             onClose={() => setShowReservation(false)}
-            onSubmit={async (date, count) => {
+            onSubmit={async (date, count, slotId) => {
               if (!customer) {
                 router.push("/login");
                 return;
@@ -190,7 +208,9 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
               try {
                 await createReservation(customer.id, {
                   popupId: popup.id,
-                  reservationDate: date.toISOString().slice(0, 10),
+                  ...(popup.reservationMode === "SLOT"
+                    ? { slotId }
+                    : { reservationDate: date.toISOString().slice(0, 10) }),
                   partySize: count,
                 });
                 alert(`${date.getMonth() + 1}월 ${date.getDate()}일 ${count}인 예약이 접수됐어요.`);

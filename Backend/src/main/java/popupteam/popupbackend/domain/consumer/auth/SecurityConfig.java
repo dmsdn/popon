@@ -27,6 +27,7 @@ public class SecurityConfig {
     public SecurityFilterChain consumerFilterChain(HttpSecurity http) throws Exception {
         http
                 .securityMatcher("/oauth2/**", "/login/**", "/api/customer/**")
+                .cors(cors -> {}) // CorsConfig의 CorsConfigurationSource Bean을 자동으로 사용
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .anyRequest().permitAll()

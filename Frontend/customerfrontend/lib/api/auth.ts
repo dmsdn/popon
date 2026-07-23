@@ -18,17 +18,20 @@ export function redirectToGoogleLogin() {
 export interface SignupInfoPayload {
   nickname: string;
   phone: string;
+  // ⚠️ 백엔드 CustomerUpdateRequest에 email 필드가 없어서 보내도 무시돼요.
+  // 나중에 백엔드가 지원하면 자동으로 반영될 거예요.
   email?: string;
 }
 
+// ⚠️ 원래 PATCH /api/customer/me/signup-info를 불렀는데, 백엔드에 그 경로가 아예 없어서
+// (전체 검색해도 없음) 늘 실패했어요. 실제로 존재하는 PATCH /api/customer/me로 바꿨습니다.
+// 다만 백엔드가 아직 phone 필드를 안 받아서(CustomerUpdateRequest에 없음), 이걸 호출해도
+// 지금 당장은 전화번호가 저장되진 않아요 — 백엔드 쪽 phone 처리 코드가 추가돼야 완성됩니다.
 export function submitSignupInfo(payload: SignupInfoPayload) {
-  return apiFetch<{ id: number; nickname: string; phone: string; onboarded: boolean }>(
-    "/api/customer/me/signup-info",
-    {
-      method: "PATCH",
-      body: JSON.stringify(payload),
-    }
-  );
+  return apiFetch<{ id: number; nickname: string; phone: string | null }>("/api/customer/me", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function submitPreferences(keywordIds: number[]) {

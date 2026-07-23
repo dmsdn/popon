@@ -25,16 +25,9 @@ type MenuKey =
   | "1:1 문의"
   | "Q&A";
 
-const SIDEBAR_MENU: MenuKey[] = [
-  "찜 목록",
-  "예약 / 웨이팅",
-  "쿠폰함",
-  "다녀간 팝업",
-  "알림 설정",
-  "공지사항",
-  "1:1 문의",
-  "Q&A",
-];
+const PUBLIC_MENU: MenuKey[] = ["공지사항", "1:1 문의", "Q&A"];
+const PRIVATE_MENU: MenuKey[] = ["찜 목록", "예약 / 웨이팅", "쿠폰함", "다녀간 팝업", "알림 설정"];
+const SIDEBAR_MENU: MenuKey[] = [...PRIVATE_MENU, ...PUBLIC_MENU];
 
 const PROVIDER_LABEL = {
   KAKAO: "카카오 연결",
@@ -147,11 +140,8 @@ function MyPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wishlistIds]);
 
-  useEffect(() => {
-    if (!loading && !isLoggedIn) {
-      router.replace("/login");
-    }
-  }, [loading, isLoggedIn, router]);
+  // 비로그인 상태에서도 마이페이지 자체는 보여주고(공지사항/1:1 문의/Q&A는 로그인 없이도 봐야 하니까),
+  // 로그인이 필요한 메뉴를 고르려고 할 때만 로그인 화면으로 보냅니다. (handleSelectMenu 참고)
 
   // /mypage?menu=공지사항 처럼 쿼리로 들어오면 해당 메뉴가 바로 선택된 상태로 열립니다.
   const queryMenu = searchParams.get("menu");
@@ -160,14 +150,32 @@ const [syncedQueryMenu, setSyncedQueryMenu] = useState(queryMenu);
 if (queryMenu !== syncedQueryMenu) {
   setSyncedQueryMenu(queryMenu);
   if (queryMenu && (VALID_MENUS as string[]).includes(queryMenu)) {
-    setActiveMenu(queryMenu as MenuKey);
-    setMobileView("detail");
+    const isPrivate = (PRIVATE_MENU as string[]).includes(queryMenu) || queryMenu === "내 정보";
+    if (isPrivate && !loading && !isLoggedIn) {
+      router.replace("/login");
+    } else {
+      setActiveMenu(queryMenu as MenuKey);
+      setMobileView("detail");
+    }
   }
 }
 
-  if (loading || !customer) return null;
+  // 비로그인 상태로 들어왔는데 아직 기본값(내 정보)이면, 로그인 없이도 볼 수 있는
+  // 메뉴로 기본 선택을 바꿔줍니다.
+  useEffect(() => {
+    if (!loading && !isLoggedIn && activeMenu === "내 정보") {
+      setActiveMenu("공지사항");
+    }
+  }, [loading, isLoggedIn, activeMenu]);
+
+  if (loading) return null;
 
   const handleSelectMenu = (menu: MenuKey) => {
+    const isPrivate = (PRIVATE_MENU as string[]).includes(menu) || menu === "내 정보";
+    if (isPrivate && !isLoggedIn) {
+      router.push("/login");
+      return;
+    }
     setActiveMenu(menu);
     setMobileView("detail");
   };
@@ -207,48 +215,64 @@ if (queryMenu !== syncedQueryMenu) {
         <aside
           className={`${mobileView === "detail" ? "hidden mobile:block" : "block"} mobile:w-[240px] mobile:border-r border-gray-100 py-6`}
         >
-          <button
-            type="button"
-            onClick={() => handleSelectMenu("내 정보")}
-            className="w-full flex flex-col items-center mobile:items-start px-4 mobile:px-6 mb-6"
-          >
-            <div className="w-16 h-16 rounded-full bg-gray-200 mb-3 overflow-hidden">
-              {customer.profileImage && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={customer.profileImage} alt="" className="w-full h-full object-cover" />
-              )}
-            </div>
-            <p className="text-sm font-medium">{customer.nickname} 님</p>
-          </button>
-
-          {/* 프로필 바로 아래 - 진행 중인 웨이팅/예약 바로가기 카드
-              - 대기중인 게 하나도 없으면(activeCount === 0) 카드 자체를 숨김
-              - 딱 1건이면 그 항목 상세페이지로 바로 이동
-              - 2건 이상이면 문구를 바꾸고, 마이페이지 안의 "예약 / 웨이팅" 탭으로 전환 */}
-          {activeCount > 0 &&
-            (activeCount === 1 ? (
-              <Link
-                href={mockWaiting ? `/waiting/${mockWaiting.id}` : `/reservations/${mockReservations[0].id}`}
-                className="mx-4 mb-4 flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3"
-              >
-                <span className="text-sm text-gray-700">
-                  {mockWaiting ? `웨이팅 ${mockWaiting.myOrder}번째 대기중` : `예약 1건`}
-                </span>
-                <span className="text-xs text-gray-400">›</span>
-              </Link>
-            ) : (
+          {isLoggedIn && customer ? (
+            <>
               <button
                 type="button"
-                onClick={() => handleSelectMenu("예약 / 웨이팅")}
-                className="mx-4 mb-4 flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 text-left"
+                onClick={() => handleSelectMenu("내 정보")}
+                className="w-full flex flex-col items-center mobile:items-start px-4 mobile:px-6 mb-6"
               >
-                <span className="text-sm text-gray-700">현재 대기중인 예약 · 웨이팅 내역 확인하기</span>
-                <span className="text-xs text-gray-400">›</span>
+                <div className="w-16 h-16 rounded-full bg-gray-200 mb-3 overflow-hidden">
+                  {customer.profileImage && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={customer.profileImage} alt="" className="w-full h-full object-cover" />
+                  )}
+                </div>
+                <p className="text-sm font-medium">{customer.nickname} 님</p>
               </button>
-            ))}
+
+              {/* 프로필 바로 아래 - 진행 중인 웨이팅/예약 바로가기 카드
+                  - 대기중인 게 하나도 없으면(activeCount === 0) 카드 자체를 숨김
+                  - 딱 1건이면 그 항목 상세페이지로 바로 이동
+                  - 2건 이상이면 문구를 바꾸고, 마이페이지 안의 "예약 / 웨이팅" 탭으로 전환 */}
+              {activeCount > 0 &&
+                (activeCount === 1 ? (
+                  <Link
+                    href={mockWaiting ? `/waiting/${mockWaiting.id}` : `/reservations/${mockReservations[0].id}`}
+                    className="mx-4 mb-4 flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3"
+                  >
+                    <span className="text-sm text-gray-700">
+                      {mockWaiting ? `웨이팅 ${mockWaiting.myOrder}번째 대기중` : `예약 1건`}
+                    </span>
+                    <span className="text-xs text-gray-400">›</span>
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleSelectMenu("예약 / 웨이팅")}
+                    className="mx-4 mb-4 flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 text-left"
+                  >
+                    <span className="text-sm text-gray-700">현재 대기중인 예약 · 웨이팅 내역 확인하기</span>
+                    <span className="text-xs text-gray-400">›</span>
+                  </button>
+                ))}
+            </>
+          ) : (
+            <div className="px-4 mobile:px-6 mb-6">
+              <p className="text-sm text-gray-500 mb-3">
+                로그인하면 찜 목록, 예약/웨이팅 내역을 확인할 수 있어요.
+              </p>
+              <Link
+                href="/login"
+                className="block w-full text-center rounded-full py-3 text-sm font-medium bg-gray-900 text-white"
+              >
+                로그인 / 회원가입
+              </Link>
+            </div>
+          )}
 
           <nav className="flex flex-col">
-            {SIDEBAR_MENU.map((menu) => (
+            {(isLoggedIn ? SIDEBAR_MENU : PUBLIC_MENU).map((menu) => (
               <button
                 key={menu}
                 type="button"
@@ -260,13 +284,15 @@ if (queryMenu !== syncedQueryMenu) {
                 {menu}
               </button>
             ))}
-            <button
-              type="button"
-              onClick={() => setShowLogoutConfirm(true)}
-              className="w-full text-left px-4 mobile:px-6 py-3.5 text-sm text-gray-700"
-            >
-              로그아웃
-            </button>
+            {isLoggedIn && (
+              <button
+                type="button"
+                onClick={() => setShowLogoutConfirm(true)}
+                className="w-full text-left px-4 mobile:px-6 py-3.5 text-sm text-gray-700"
+              >
+                로그아웃
+              </button>
+            )}
           </nav>
         </aside>
 
@@ -279,7 +305,7 @@ if (queryMenu !== syncedQueryMenu) {
             ‹ 뒤로
           </button>
 
-          {activeMenu === "내 정보" && (
+          {activeMenu === "내 정보" && customer && (
             <div>
               <div className="flex items-center justify-between py-4 border-b border-gray-50">
                 <span className="text-sm text-gray-700">닉네임</span>

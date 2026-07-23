@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Header } from "@/components/layout/Header";
-import { MobileHeader } from "@/components/layout/MobileHeader";
+import { useRouter } from "next/navigation";
 import { Footer } from "@/components/layout/Footer";
 import { BottomTabBar } from "@/components/layout/BottomTabBar";
 import { searchPopups } from "@/lib/api/popups";
@@ -16,6 +15,7 @@ import type { PopupItem } from "@/data/mockPopups";
 const KEYWORDS = ["전체", "성수", "여의도", "홍대"];
 
 export default function RankingListPage() {
+  const router = useRouter();
   const [keyword, setKeyword] = useState(KEYWORDS[0]);
   const [items, setItems] = useState<PopupItem[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -41,11 +41,15 @@ export default function RankingListPage() {
 
   return (
     <main className="pb-16 mobile:pb-0 mobile:max-w-[1000px] mobile:mx-auto">
-      <div className="hidden mobile:block">
-        <Header />
-      </div>
-      <div className="block mobile:hidden">
-        <MobileHeader />
+      <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          aria-label="뒤로가기"
+          className="text-lg text-gray-500"
+        >
+          ‹
+        </button>
       </div>
 
       <div className="px-4 mobile:px-8 py-4">
