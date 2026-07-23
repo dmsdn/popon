@@ -2,16 +2,30 @@
 "use client";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { addRecentSearch } from "@/lib/searchHistory";
 
-export function SearchInput({ autoFocus = false }: { autoFocus?: boolean }) {
-  const [value, setValue] = useState("");
+export function SearchInput({
+  autoFocus = false,
+  initialQuery = "",
+}: {
+  autoFocus?: boolean;
+  initialQuery?: string;
+}) {
+  const [value, setValue] = useState(initialQuery);
   const router = useRouter();
   const isTyping = value.length > 0;
+
+  // /search?q=... 가 바뀌었는데(예: 추천 검색어 클릭, 뒤로가기 등) 이 컴포넌트는
+  // 그대로 유지되는 경우 입력창 값도 같이 맞춰줍니다.
+  useEffect(() => {
+    setValue(initialQuery);
+  }, [initialQuery]);
 
   function handleSearch() {
     const trimmed = value.trim();
     if (!trimmed) return;
+    addRecentSearch(trimmed);
     router.push(`/search?q=${encodeURIComponent(trimmed)}`);
   }
 

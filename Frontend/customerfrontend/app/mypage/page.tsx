@@ -1,12 +1,18 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { notices } from "@/data/notices";
 import { getMyReviews, toDisplayDate, type Review } from "@/lib/api/reviews";
-import { getPopup } from "@/lib/api/popups";
+import { getPopup, type PopupDetail } from "@/lib/api/popups";
+import {
+  subscribeWishlist,
+  getWishlistSnapshot,
+  ensureWishlistLoaded,
+  toggleWishlist,
+} from "@/lib/wishlistStore";
 
 type MenuKey =
   | "내 정보"
@@ -33,6 +39,7 @@ const SIDEBAR_MENU: MenuKey[] = [
 const PROVIDER_LABEL = {
   KAKAO: "카카오 연결",
   GOOGLE: "구글 연결",
+  DEV: "개발용 로그인",
 } as const;
 
 // ==================== 예시용 mock 데이터 (실제로는 백엔드 API로 대체) ====================
@@ -84,52 +91,67 @@ function MyPageContent() {
   ]);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  // "다녀간 팝업" - 내가 쓴 리뷰 목록 (lib/api/reviews.ts: 실 API 우선 → 실패 시 localStorage mock)
+  // 다녀간 팝업 (= 내가 쓴 후기)
   const [myReviews, setMyReviews] = useState<Review[] | null>(null);
   const [popupTitles, setPopupTitles] = useState<Record<number, string>>({});
-
-  useEffect(() => {
-    if (!loading && !isLoggedIn) {
-      router.replace("/login");
-    }
-  }, [loading, isLoggedIn, router]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
     let cancelled = false;
 
     getMyReviews()
-      .then(async (list) => {
+      .then((list) => {
         if (cancelled) return;
         setMyReviews(list);
-
-        // 리뷰가 어떤 팝업인지 이름을 보여주기 위해 팝업 상세를 조회합니다.
-        // (팝업 조회 API는 mock 대체가 없어서 실패할 수 있음 → 실패해도 리뷰 자체는 보여주고 이름만 대체 표기)
-        const uniquePopupIds = [...new Set(list.map((r) => r.popupId))];
-        const entries = await Promise.all(
-          uniquePopupIds.map(async (popupId) => {
-            try {
-              const detail = await getPopup(popupId);
-              return [popupId, detail.title] as const;
-            } catch {
-              return [popupId, null] as const;
-            }
-          })
-        );
-        if (cancelled) return;
-        setPopupTitles(
-          Object.fromEntries(entries.filter(([, title]) => title !== null)) as Record<number, string>
-        );
+        // 리뷰에 달린 popupId들의 제목을 한 번씩만 조회
+        const uniqueIds = [...new Set(list.map((r) => r.popupId))];
+        uniqueIds.forEach((popupId) => {
+          getPopup(popupId)
+            .then((detail) => {
+              if (!cancelled) setPopupTitles((prev) => ({ ...prev, [popupId]: detail.title }));
+            })
+            .catch(() => {
+              /* 팝업이 삭제됐을 수도 있어요 - 제목 없이 표시 */
+            });
+        });
       })
       .catch((err) => {
-        console.error("내 리뷰 조회 실패", err);
-        if (!cancelled) setMyReviews([]);
+        console.error("다녀간 팝업(내 후기) 조회 실패", err);
+        setMyReviews([]);
       });
 
     return () => {
       cancelled = true;
     };
   }, [isLoggedIn]);
+
+  // 찜 목록
+  const wishlistIds = useSyncExternalStore(subscribeWishlist, getWishlistSnapshot, () => new Set<number>());
+  const [wishlistPopups, setWishlistPopups] = useState<Record<number, PopupDetail>>({});
+
+  useEffect(() => {
+    if (isLoggedIn) ensureWishlistLoaded();
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    wishlistIds.forEach((popupId) => {
+      if (wishlistPopups[popupId]) return;
+      getPopup(popupId)
+        .then((detail) => {
+          setWishlistPopups((prev) => ({ ...prev, [popupId]: detail }));
+        })
+        .catch(() => {
+          /* 팝업이 삭제됐을 수도 있어요 */
+        });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wishlistIds]);
+
+  useEffect(() => {
+    if (!loading && !isLoggedIn) {
+      router.replace("/login");
+    }
+  }, [loading, isLoggedIn, router]);
 
   // /mypage?menu=공지사항 처럼 쿼리로 들어오면 해당 메뉴가 바로 선택된 상태로 열립니다.
   const queryMenu = searchParams.get("menu");
@@ -266,8 +288,13 @@ if (queryMenu !== syncedQueryMenu) {
 
               <div className="flex items-center justify-between py-4 border-b border-gray-50">
                 <span className="text-sm text-gray-700">연결된 로그인</span>
-                <span className="flex items-center gap-1.5 text-xs font-medium bg-[#FEE500] rounded-full px-3 py-1.5">
-                  💬 {PROVIDER_LABEL[customer.provider]}
+                <span
+                  className={`flex items-center gap-1.5 text-xs font-medium rounded-full px-3 py-1.5 ${
+                    customer.provider === "KAKAO" ? "bg-[#FEE500]" : "bg-gray-100 text-gray-700"
+                  }`}
+                >
+                  {customer.provider === "KAKAO" ? "💬" : customer.provider === "GOOGLE" ? "G" : "🛠️"}{" "}
+                  {PROVIDER_LABEL[customer.provider]}
                 </span>
               </div>
 
@@ -292,14 +319,49 @@ if (queryMenu !== syncedQueryMenu) {
               <button
                 type="button"
                 onClick={() => alert("준비 중이에요.")}
-                className="text-sm text-red-500 mt-8"
+                className="text-sm text-gray-500 mt-8"
               >
                 회원 탈퇴 ›
               </button>
             </div>
           )}
 
-          {activeMenu === "찜 목록" && <EmptyState message="찜한 팝업이 없어요." />}
+          {activeMenu === "찜 목록" &&
+            (wishlistIds.size === 0 ? (
+              <EmptyState message="찜한 팝업이 없어요." />
+            ) : (
+              <div className="flex flex-col gap-3">
+                {[...wishlistIds].map((popupId) => {
+                  const p = wishlistPopups[popupId];
+                  return (
+                    <Link
+                      key={popupId}
+                      href={`/popup/${popupId}`}
+                      className="flex items-center gap-4 border border-gray-200 rounded-xl p-4"
+                    >
+                      <div className="w-16 h-16 flex-none bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs">
+                        이미지
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate">{p?.title ?? `팝업 #${popupId}`}</p>
+                        {p?.location && <p className="text-xs text-gray-400 mt-0.5">{p.location}</p>}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          toggleWishlist(popupId);
+                        }}
+                        aria-label="찜 해제"
+                        className="text-gray-300 flex-none"
+                      >
+                        ✕
+                      </button>
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
 
           {activeMenu === "예약 / 웨이팅" && (
             <div className="flex flex-col gap-10">
@@ -357,42 +419,33 @@ if (queryMenu !== syncedQueryMenu) {
           )}
 
           {activeMenu === "쿠폰함" && <EmptyState message="보유한 쿠폰이 없어요." />}
-
-          {activeMenu === "다녀간 팝업" && (
-            myReviews === null ? (
-              <p className="text-sm text-gray-400 py-16 text-center">불러오는 중이에요...</p>
+          {activeMenu === "다녀간 팝업" &&
+            (myReviews === null ? (
+              <p className="text-sm text-gray-400 py-16 text-center">불러오는 중...</p>
             ) : myReviews.length === 0 ? (
               <EmptyState message="다녀간 팝업이 없어요." />
             ) : (
               <div className="flex flex-col gap-3">
                 {myReviews.map((review) => (
-                  <div key={review.id} className="border border-gray-200 rounded-xl p-5">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-sm font-semibold">
+                  <Link
+                    key={review.id}
+                    href={`/popup/${review.popupId}`}
+                    className="block border border-gray-200 rounded-xl p-4"
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-sm font-semibold truncate">
                         {popupTitles[review.popupId] ?? `팝업 #${review.popupId}`}
                       </p>
-                      <span className="text-xs font-medium text-gray-700">⭐ {review.rating}</span>
+                      <span className="text-xs text-gray-400 flex-none ml-2">
+                        {toDisplayDate(review.createdAt)}
+                      </span>
                     </div>
-                    <p className="text-sm text-gray-700 leading-relaxed mb-2">{review.content}</p>
-                    {review.imageUrls.length > 0 && (
-                      <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-2">
-                        {review.imageUrls.map((url, i) => (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            key={url + i}
-                            src={url}
-                            alt=""
-                            className="w-16 h-16 flex-none rounded-lg object-cover"
-                          />
-                        ))}
-                      </div>
-                    )}
-                    <p className="text-xs text-gray-400">{toDisplayDate(review.createdAt)} 작성 · 좋아요 {review.likeCount}</p>
-                  </div>
+                    <p className="text-xs text-gray-500 mb-1">⭐ {review.rating}</p>
+                    <p className="text-sm text-gray-600 line-clamp-2">{review.content}</p>
+                  </Link>
                 ))}
               </div>
-            )
-          )}
+            ))}
 
           {activeMenu === "알림 설정" && (
             <div className="flex flex-col gap-1">
@@ -441,7 +494,7 @@ if (queryMenu !== syncedQueryMenu) {
               <button
                 type="button"
                 onClick={() => alert("준비 중이에요.")}
-                className="w-full rounded-full py-3.5 text-sm font-medium bg-[#FEE500]"
+                className="w-full rounded-full py-3.5 text-sm font-medium bg-gray-900 text-white"
               >
                 문의하기
               </button>
