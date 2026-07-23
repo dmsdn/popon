@@ -76,7 +76,7 @@ export default function PreferencesPage() {
           type="button"
           disabled={submitting || selected.length === 0}
           onClick={() => finish(selected)}
-          className="w-full rounded-full py-3.5 text-sm font-medium bg-[#FEE500] disabled:opacity-50"
+          className="w-full rounded-full py-3.5 text-sm font-medium bg-gray-900 text-white disabled:opacity-50"
         >
           {submitting ? "저장하는 중..." : "선택 완료"}
         </button>
