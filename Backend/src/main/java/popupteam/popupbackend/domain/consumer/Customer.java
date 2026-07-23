@@ -42,6 +42,24 @@ public class Customer {
 
     private String phone;
 
+    // 카카오/구글이 전화번호/이메일을 안 줘서, 첫 로그인 후 "회원정보 입력" 화면에서 직접 받는 값들.
+    @Column(name = "terms_agreed", nullable = false)
+    private Boolean termsAgreed = false; // [필수] 서비스 이용약관 동의
+
+    @Column(name = "privacy_agreed", nullable = false)
+    private Boolean privacyAgreed = false; // [필수] 개인정보 수집 및 이용 동의
+
+    @Column(name = "location_agreed", nullable = false)
+    private Boolean locationAgreed = false; // [선택] 위치 정보 이용 동의
+
+    @Column(name = "marketing_agreed", nullable = false)
+    private Boolean marketingAgreed = false; // [선택] 마케팅 정보 수신 동의
+
+    // "회원정보 입력" 화면(닉네임/전화번호/이메일/약관동의)을 마쳤는지 여부.
+    // 이게 false면 프론트가 로그인 직후 이 화면으로 보내면 됨.
+    @Column(name = "signup_completed", nullable = false)
+    private Boolean signupCompleted = false;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
