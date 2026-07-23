@@ -1,0 +1,25 @@
+// [역할] 계약 진행 4단계의 화면 표현 매핑: 계약체결 → 제작/시공 → 운영 중 → 철거/정산.
+// 전제(백엔드): 견적·디자인 확정 후 파트너 공간과 주최자의 대관 계약이 체결된 시점부터 시작.
+// 단계 확인·전환은 플랫폼 관리자의 권한/의무 — 주최자 화면(Quotes)은 조회 전용.
+//
+// 7/23 백엔드 ContractStage에 OPERATING이 추가되어 4단계가 전부 서버 값이 됨.
+// (기존의 localStorage 「운영 중」 플래그(contractOperating)는 제거 — 서버 단일 소스)
+
+export type ContractStage = "CONTRACTED" | "IN_CONSTRUCTION" | "OPERATING" | "SETTLED";
+
+export const STAGE_FLOW: { key: ContractStage; label: string; desc: string }[] = [
+  { key: "CONTRACTED", label: "계약체결", desc: "파트너 공간 대관 계약 완료 · 계약금 등록" },
+  { key: "IN_CONSTRUCTION", label: "제작/시공", desc: "부스 제작·현장 설치 진행" },
+  { key: "OPERATING", label: "운영 중", desc: "팝업 오픈·현장 운영" },
+  { key: "SETTLED", label: "철거/정산", desc: "철거 완료·비용 정산" },
+];
+
+export function stageIndex(stage: ContractStage): number {
+  return STAGE_FLOW.findIndex((s) => s.key === stage);
+}
+
+// 다음 단계 계산 (관리자 전환 버튼용) — 마지막 단계면 null
+export function nextStage(current: ContractStage): ContractStage | null {
+  const i = stageIndex(current);
+  return i >= 0 && i < STAGE_FLOW.length - 1 ? STAGE_FLOW[i + 1].key : null;
+}

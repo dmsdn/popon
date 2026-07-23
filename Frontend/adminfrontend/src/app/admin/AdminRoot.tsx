@@ -267,9 +267,10 @@ export default function AdminRoot() {
             )}
           </div>
           <div className="flex items-center gap-4">
-            <Link to="/" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+            {/* 서비스 홈(주최자 정보사이트)은 분리된 popupfrontend(5174)에 있음 — 다른 origin이라 <a>로 이동 */}
+            <a href="http://localhost:5174/" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
               서비스 홈 <ExternalLink size={12} />
-            </Link>
+            </a>
             <button
               onClick={() => (notifOpen ? setNotifOpen(false) : openNotif())}
               className="relative text-muted-foreground hover:text-foreground"

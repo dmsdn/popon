@@ -49,7 +49,7 @@ JWT 시크릿은 하나이며 통합 전 발급 토큰도 그대로 유효하다
 
 - **예약은 `domain/reservation` 단일 소유** — 구 customerbackend의 예약 CRUD는 삭제됨. 소비자 예약도 `/api/reservations` 사용.
 - 테이블당 엔티티 하나 원칙. 예외 2개(과도기): `domain/customer/Customer`(참조용)와 `domain/consumer/Customer`(@Entity명 `CustomerAccount`)가 같은 `customer` 테이블을 매핑 — 추후 단일화 예정.
-- 프론트: popupfrontend(5174)는 Vite proxy, customerfrontend(5173)는 Next rewrites — 둘 다 `/api` → 8080.
+- 프론트: popupfrontend(주최자·5174)와 adminfrontend(관리자·5175)는 Vite proxy, customerfrontend(소비자·5173)는 Next rewrites — 셋 다 `/api` → 8080.
 - 업로드 파일: 리포 루트 `uploads/` (서버 실행 위치 기준 상대경로 — IntelliJ에서 실행 시 Working directory를 리포 루트가 아닌 `Backend`로 두면 `Backend/uploads`에 생성되니 주의)
 
 ## 팀원 Pull 후 체크리스트 (unified 브랜치 최초 전환 시)
@@ -72,9 +72,9 @@ JWT 시크릿은 하나이며 통합 전 발급 토큰도 그대로 유효하다
    ```
    관리자 공용 계정(admin@popupon.kr/admin1234)·키워드 8종 삽입 + 구 reservation 테이블 삭제 (여러 번 실행해도 안전)
 
-**4. 프론트 의존성** — 두 프론트 모두 `npm install` (popupfrontend: qrcode.react·jsqr 등 / customerfrontend: pew 신규 의존성)
+**4. 프론트 의존성** — 세 프론트 모두 `npm install` (popupfrontend·adminfrontend: qrcode.react·jsqr 등 / customerfrontend: pew 신규 의존성)
 
-**5. 포트** — 백엔드는 이제 **8080 하나**. 8081을 띄우는 옛 실행 구성·스크립트는 삭제. 프론트는 기존대로 5174(주최자·관리자)/5173(소비자).
+**5. 포트** — 백엔드는 이제 **8080 하나**. 8081을 띄우는 옛 실행 구성·스크립트는 삭제. 프론트는 5173(소비자)/5174(주최자)/5175(관리자) — 관리자 콘솔이 `Frontend/adminfrontend` 별도 앱으로 분리됨(관리자·주최자 토큰이 한 origin의 localStorage에서 충돌하던 문제 해소).
 
 **6. 카카오 로그인 (선택)** — 카카오 개발자 콘솔 Redirect URI가 `http://localhost:8080/login/oauth2/code/kakao`로 재등록된 뒤부터 동작. 콘솔 권한자 1명이 처리하면 전원 적용.
 
