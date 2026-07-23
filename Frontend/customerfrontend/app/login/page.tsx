@@ -72,7 +72,7 @@ export default function LoginPage() {
               href="/login/dev"
               className="w-full max-w-sm text-center rounded-full py-3.5 text-sm font-medium border border-dashed border-gray-300 text-gray-500"
             >
-              [개발용] 이메일/비밀번호로 로그인·회원가입
+              [개발용] 테스트 ID로 로그인
             </Link>
           </>
         )}
