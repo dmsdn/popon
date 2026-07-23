@@ -16,6 +16,12 @@ import { type PopupItem } from "@/data/mockPopups";
 
 const STATUSES = ["예정", "진행중", "종료"] as const;
 
+// ⚠️ 백엔드 Popup 테이블에 카테고리 컬럼이 없어서, 실제 팝업 데이터에는 category 값이
+// 전혀 안 붙어있어요. 그래서 목록에서 자동으로 뽑는 대신 고정된 카테고리 목록을 보여주고,
+// 선택하면 일단 팝업 이름/지역에 그 단어가 들어간 것만 걸러주는 임시 방식으로 동작해요.
+// (진짜 카테고리 분류가 아니라 텍스트 매칭이라 정확하진 않아요)
+const CATEGORIES = ["뷰티", "패션", "애니", "푸드", "스포츠", "라이프", "굿즈", "문구"] as const;
+
 export default function SearchPage({
   searchParams,
 }: {
@@ -54,12 +60,11 @@ export default function SearchPage({
     () => [...new Set(allPopups.map((p) => p.location).filter((v): v is string => !!v))],
     [allPopups]
   );
-  // ⚠️ category는 백엔드에 아직 없는 필드라 실 데이터에선 항상 비어있어요.
-  //    카테고리 필터는 그래서 지금 선택지가 안 뜹니다 — backend-todo.md 11번 참고.
-  const CATEGORIES = useMemo(
-    () => [...new Set(allPopups.map((p) => p.category).filter((v): v is string => !!v))],
-    [allPopups]
-  );
+
+  // ⚠️ 백엔드 Popup 테이블에 카테고리 컬럼이 없어서, 실제 팝업 데이터에는 category 값이
+  // 전혀 안 붙어있어요. 그래서 목록에서 자동으로 뽑는 대신 고정된 카테고리 목록을 보여주고,
+  // 선택하면 일단 팝업 이름/지역에 그 단어가 들어간 것만 걸러주는 임시 방식으로 동작해요.
+  // (진짜 카테고리 분류가 아니라 텍스트 매칭이라 정확하진 않아요 - 아래 관련 안내 참고)
 
   // 검색어 자체가 지역/운영여부 키워드와 그대로 일치하면(예: "성수", "홍대")
   // 전체 텍스트 검색과 별개로 그 필터 버튼도 같이 선택된 상태로 맞춰줍니다.
@@ -83,7 +88,14 @@ export default function SearchPage({
         (item.category?.toLowerCase().includes(q) ?? false) ||
         (item.location?.toLowerCase().includes(q) ?? false);
       if (!matchesQuery) return false;
-      if (category && item.category !== category) return false;
+      // ⚠️ 실제 category 데이터가 없어서, 선택한 카테고리 단어가 팝업 이름/지역에
+      // 포함되는지로 대신 걸러요 (정확한 카테고리 분류는 아니에요).
+      if (category) {
+        const c = category.toLowerCase();
+        const matchesCategory =
+          item.name.toLowerCase().includes(c) || (item.location?.toLowerCase().includes(c) ?? false);
+        if (!matchesCategory) return false;
+      }
       if (region && item.location !== region) return false;
       if (status && item.status !== status) return false;
       return true;
@@ -121,9 +133,7 @@ export default function SearchPage({
 
           {/* 카테고리 / 지역 / 운영여부로 결과 좁히기 */}
           <div className="flex flex-col gap-2 px-4 mobile:px-8 py-3 border-b border-gray-100">
-            {CATEGORIES.length > 0 && (
-              <FilterRow label="카테고리" options={CATEGORIES} selected={category} onSelect={setCategory} />
-            )}
+            <FilterRow label="카테고리" options={CATEGORIES} selected={category} onSelect={setCategory} />
             <FilterRow label="지역" options={REGIONS} selected={region} onSelect={setRegion} />
             <FilterRow label="운영여부" options={[...STATUSES]} selected={status} onSelect={setStatus} />
           </div>

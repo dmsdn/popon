@@ -6,11 +6,23 @@ import { getKeywords, type Keyword } from "@/lib/api/customer";
 import { submitPreferences } from "@/lib/api/auth";
 import { useAuth } from "@/lib/auth/AuthContext";
 
+// ⚠️ 지역/카테고리는 백엔드에 아직 저장할 API가 없어요 (customer_region 관련 작업이
+// 진행 중인 걸로 알고 있어요). 그래서 지금은 선택 결과를 브라우저에만 저장해두고,
+// "관심 키워드"만 기존처럼 실제 API(submitPreferences)로 저장돼요.
+// 백엔드에 저장 API가 생기면 handleFinish 안의 저장 부분만 바꿔주면 됩니다.
+const REGIONS = ["성수", "홍대", "여의도", "용산", "더현대서울"];
+const CATEGORIES = ["뷰티", "패션", "애니", "푸드", "스포츠", "라이프", "굿즈", "문구"];
+
+const REGION_STORAGE_KEY = "preferred_regions";
+const CATEGORY_STORAGE_KEY = "preferred_categories";
+
 export default function PreferencesPage() {
   const router = useRouter();
   const { refresh } = useAuth();
   const [keywords, setKeywords] = useState<Keyword[]>([]);
-  const [selected, setSelected] = useState<number[]>([]);
+  const [selectedKeywords, setSelectedKeywords] = useState<number[]>([]);
+  const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -22,14 +34,38 @@ export default function PreferencesPage() {
       });
   }, []);
 
-  const toggle = (id: number) => {
-    setSelected((prev) => (prev.includes(id) ? prev.filter((k) => k !== id) : [...prev, id]));
+  const toggleRegion = (region: string) => {
+    setSelectedRegions((prev) =>
+      prev.includes(region) ? prev.filter((r) => r !== region) : [...prev, region]
+    );
   };
 
-  const finish = async (ids: number[]) => {
+  const toggleCategory = (category: string) => {
+    setSelectedCategories((prev) =>
+      prev.includes(category) ? prev.filter((c) => c !== category) : [...prev, category]
+    );
+  };
+
+  const toggleKeyword = (id: number) => {
+    setSelectedKeywords((prev) => (prev.includes(id) ? prev.filter((k) => k !== id) : [...prev, id]));
+  };
+
+  const hasAnySelection =
+    selectedRegions.length > 0 || selectedCategories.length > 0 || selectedKeywords.length > 0;
+
+  const finish = async (skip: boolean) => {
     setSubmitting(true);
+
+    // 지역/카테고리는 아직 실 API가 없어서 로컬에만 저장
     try {
-      await submitPreferences(ids);
+      window.localStorage.setItem(REGION_STORAGE_KEY, JSON.stringify(skip ? [] : selectedRegions));
+      window.localStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(skip ? [] : selectedCategories));
+    } catch (error) {
+      console.warn("지역/카테고리 로컬 저장 실패", error);
+    }
+
+    try {
+      await submitPreferences(skip ? [] : selectedKeywords);
     } catch (error) {
       console.warn("취향 저장 실패(개발 중 CORS 등으로 무시하고 진행)", error);
       if (process.env.NODE_ENV !== "development") {
@@ -51,31 +87,76 @@ export default function PreferencesPage() {
 
   return (
     <main className="w-full mobile:max-w-[1000px] mobile:mx-auto flex flex-col min-h-screen px-6 py-10">
-      <h1 className="text-xl font-bold mb-2">관심 있는 카테고리를 선택해 주세요</h1>
+      <h1 className="text-xl font-bold mb-2">관심 있는 지역/카테고리를 선택해 주세요</h1>
       <p className="text-sm text-gray-400 mb-8">나중에 마이페이지에서 언제든 수정할 수 있어요.</p>
 
-      <div className="flex flex-wrap gap-2 mb-10">
-        {keywords.map((kw) => (
-          <button
-            key={kw.id}
-            type="button"
-            onClick={() => toggle(kw.id)}
-            className={`px-4 py-2 rounded-full text-sm border ${
-              selected.includes(kw.id)
-                ? "bg-gray-900 text-white border-gray-900"
-                : "border-gray-200 text-gray-600"
-            }`}
-          >
-            {kw.name}
-          </button>
-        ))}
-      </div>
+      <section className="mb-8">
+        <h2 className="text-sm font-semibold text-gray-800 mb-3">관심 지역</h2>
+        <div className="grid grid-cols-4 mobile:grid-cols-6 gap-2">
+          {REGIONS.map((region) => (
+            <button
+              key={region}
+              type="button"
+              onClick={() => toggleRegion(region)}
+              className={`aspect-square rounded-[4px] text-xs font-medium flex items-center justify-center text-center px-1 border ${
+                selectedRegions.includes(region)
+                  ? "bg-gray-900 text-white border-gray-900"
+                  : "border-gray-200 text-gray-600"
+              }`}
+            >
+              {region}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="text-sm font-semibold text-gray-800 mb-3">관심 카테고리</h2>
+        <div className="grid grid-cols-4 mobile:grid-cols-6 gap-2">
+          {CATEGORIES.map((category) => (
+            <button
+              key={category}
+              type="button"
+              onClick={() => toggleCategory(category)}
+              className={`aspect-square rounded-[4px] text-xs font-medium flex items-center justify-center text-center px-1 border ${
+                selectedCategories.includes(category)
+                  ? "bg-gray-900 text-white border-gray-900"
+                  : "border-gray-200 text-gray-600"
+              }`}
+            >
+              {category}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {keywords.length > 0 && (
+        <section className="mb-10">
+          <h2 className="text-sm font-semibold text-gray-800 mb-3">관심 키워드</h2>
+          <div className="flex flex-wrap gap-2">
+            {keywords.map((kw) => (
+              <button
+                key={kw.id}
+                type="button"
+                onClick={() => toggleKeyword(kw.id)}
+                className={`px-4 py-2 rounded-full text-sm border ${
+                  selectedKeywords.includes(kw.id)
+                    ? "bg-gray-900 text-white border-gray-900"
+                    : "border-gray-200 text-gray-600"
+                }`}
+              >
+                {kw.name}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="mt-auto flex flex-col gap-3">
         <button
           type="button"
-          disabled={submitting || selected.length === 0}
-          onClick={() => finish(selected)}
+          disabled={submitting || !hasAnySelection}
+          onClick={() => finish(false)}
           className="w-full rounded-full py-3.5 text-sm font-medium bg-gray-900 text-white disabled:opacity-50"
         >
           {submitting ? "저장하는 중..." : "선택 완료"}
@@ -83,7 +164,7 @@ export default function PreferencesPage() {
         <button
           type="button"
           disabled={submitting}
-          onClick={() => finish([])}
+          onClick={() => finish(true)}
           className="w-full rounded-full py-3.5 text-sm font-medium text-gray-500"
         >
           바로 시작하기
