@@ -73,7 +73,7 @@ public class Customer {
     }
 
     public enum Provider {
-        KAKAO, GOOGLE
+        KAKAO, GOOGLE, DEV
     }
 
     public enum Gender {
