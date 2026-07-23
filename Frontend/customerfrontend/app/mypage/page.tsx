@@ -39,7 +39,7 @@ const SIDEBAR_MENU: MenuKey[] = [
 const PROVIDER_LABEL = {
   KAKAO: "카카오 연결",
   GOOGLE: "구글 연결",
-  EMAIL: "이메일 로그인",
+  DEV: "개발용 로그인",
 } as const;
 
 // ==================== 예시용 mock 데이터 (실제로는 백엔드 API로 대체) ====================
@@ -293,7 +293,7 @@ if (queryMenu !== syncedQueryMenu) {
                     customer.provider === "KAKAO" ? "bg-[#FEE500]" : "bg-gray-100 text-gray-700"
                   }`}
                 >
-                  {customer.provider === "KAKAO" ? "💬" : customer.provider === "GOOGLE" ? "G" : "✉️"}{" "}
+                  {customer.provider === "KAKAO" ? "💬" : customer.provider === "GOOGLE" ? "G" : "🛠️"}{" "}
                   {PROVIDER_LABEL[customer.provider]}
                 </span>
               </div>
