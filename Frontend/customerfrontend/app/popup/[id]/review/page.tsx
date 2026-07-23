@@ -1,22 +1,10 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createReview } from "@/lib/api/reviews";
-import {
-  recentPopups,
-  popularPopups,
-  openingSoonPopups,
-  freePopups,
-  type PopupItem,
-} from "@/data/mockPopups";
-
-// ⚠️ popup/[id]/page.tsx와 동일한 방식으로 mock 배열에서 팝업을 찾습니다.
-function findPopupById(id: string): PopupItem | undefined {
-  const all = [...recentPopups, ...popularPopups, ...openingSoonPopups, ...freePopups];
-  return all.find((item) => item.id === id);
-}
+import { getPopup, type PopupDetail } from "@/lib/api/popups";
 
 const MAX_IMAGE_COUNT = 5;
 const RATING_OPTIONS = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
@@ -24,13 +12,34 @@ const RATING_OPTIONS = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
 export default function WriteReviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const popup = findPopupById(id);
+
+  const [popup, setPopup] = useState<PopupDetail | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const [rating, setRating] = useState(5);
   const [content, setContent] = useState("");
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getPopup(id)
+      .then((data) => {
+        if (!cancelled) setPopup(data);
+      })
+      .catch((err) => console.error("팝업 정보 조회 실패", err))
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  if (loading) {
+    return <main className="px-6 py-20 text-center text-gray-400">불러오는 중이에요...</main>;
+  }
 
   if (!popup) {
     return (
@@ -59,7 +68,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
     setError(null);
     try {
       await createReview({
-        popupId: Number(popup.id),
+        popupId: popup.id,
         rating,
         content: content.trim(),
         imageUrls,
@@ -81,7 +90,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <div className="px-4 mobile:px-8 py-6 flex flex-col gap-6">
-        <p className="text-sm text-gray-500">{popup.name}</p>
+        <p className="text-sm text-gray-500">{popup.title}</p>
 
         <div>
           <span className="block text-sm font-medium text-gray-700 mb-2">별점</span>

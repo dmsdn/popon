@@ -60,13 +60,21 @@ export default function LoginPage() {
         </button>
 
         {process.env.NODE_ENV === "development" && (
-          <button
-            type="button"
-            onClick={handleTestLogin}
-            className="w-full max-w-sm rounded-full py-3.5 text-sm font-medium border border-dashed border-gray-300 text-gray-500 mt-2"
-          >
-            [개발용] 테스트 계정으로 계속하기
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={handleTestLogin}
+              className="w-full max-w-sm rounded-full py-3.5 text-sm font-medium border border-dashed border-gray-300 text-gray-500 mt-2"
+            >
+              [개발용] 테스트 계정으로 계속하기
+            </button>
+            <Link
+              href="/login/dev"
+              className="w-full max-w-sm text-center rounded-full py-3.5 text-sm font-medium border border-dashed border-gray-300 text-gray-500"
+            >
+              [개발용] 이메일/비밀번호로 로그인·회원가입
+            </Link>
+          </>
         )}
       </div>
     </main>

@@ -10,56 +10,75 @@ import { BottomTabBar } from "@/components/layout/BottomTabBar";
 import { RecentSearches } from "@/components/search/RecentSearches";
 import { SuggestedKeywords } from "@/components/search/SuggestedKeywords";
 import { RankingSection } from "@/components/home/RankingSection";
-import {
-  recentPopups,
-  popularPopups,
-  openingSoonPopups,
-  freePopups,
-  type PopupItem,
-} from "@/data/mockPopups";
+import { searchPopups } from "@/lib/api/popups";
+import { toPopupItem } from "@/lib/utils/popupMapper";
+import { type PopupItem } from "@/data/mockPopups";
 
-// ⚠️ mock 배열들이 서로 다른 id 체계를 쓰고 있어서(각자 "1"부터 매김),
-//    검색 대상 목록은 이름 기준으로 중복 제거해서 하나로 합칩니다.
-function buildSearchablePopups(): PopupItem[] {
-  const all = [...recentPopups, ...popularPopups, ...openingSoonPopups, ...freePopups];
-  const byName = new Map<string, PopupItem>();
-  all.forEach((item) => {
-    if (!byName.has(item.name)) byName.set(item.name, item);
-  });
-  return [...byName.values()];
-}
-
-const ALL_POPUPS = buildSearchablePopups();
-const REGIONS = [...new Set(ALL_POPUPS.map((p) => p.location).filter((v): v is string => !!v))];
-const CATEGORIES = [...new Set(ALL_POPUPS.map((p) => p.category).filter((v): v is string => !!v))];
 const STATUSES = ["예정", "진행중", "종료"] as const;
 
 export default function SearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; region?: string }>;
 }) {
-  const { q: query } = use(searchParams);
+  const { q: query, status: statusParam, region: regionParam } = use(searchParams);
   const [category, setCategory] = useState<string | null>(null);
-  const [region, setRegion] = useState<string | null>(null);
-  const [status, setStatus] = useState<(typeof STATUSES)[number] | null>(null);
+  const [region, setRegion] = useState<string | null>(regionParam ?? null);
+  const [status, setStatus] = useState<(typeof STATUSES)[number] | null>(
+    (STATUSES as readonly string[]).includes(statusParam ?? "") ? (statusParam as (typeof STATUSES)[number]) : null
+  );
+  const [allPopups, setAllPopups] = useState<PopupItem[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
-  // 검색어 자체가 카테고리/지역/운영여부 키워드와 그대로 일치하면(예: "성수", "홍대")
-  // 전체 텍스트 검색과 별개로 그 필터 버튼도 같이 선택된 상태로 맞춰줍니다.
-  // 그 외의 일반 검색어는 필터 없이 전체 검색으로 동작해요.
+  // 검색어 없이 상태/지역 필터만으로 들어온 경우에도 결과 화면을 보여줍니다.
+  // (예: 홈 화면 "곧 오픈하는 팝업 더보기" → /search?status=예정)
+  const hasActiveFilter = Boolean(query || status || region || category);
+
+  // 검색 대상: 실제 DB의 전체 팝업 (상태 무관하게 다 가져와서 프론트에서 텍스트/필터링)
   useEffect(() => {
-    const q = query?.trim() ?? "";
+    let cancelled = false;
+    searchPopups()
+      .then((list) => {
+        if (!cancelled) setAllPopups(list.map(toPopupItem));
+      })
+      .catch((err) => console.error("검색용 팝업 목록 조회 실패", err))
+      .finally(() => {
+        if (!cancelled) setLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const REGIONS = useMemo(
+    () => [...new Set(allPopups.map((p) => p.location).filter((v): v is string => !!v))],
+    [allPopups]
+  );
+  // ⚠️ category는 백엔드에 아직 없는 필드라 실 데이터에선 항상 비어있어요.
+  //    카테고리 필터는 그래서 지금 선택지가 안 뜹니다 — backend-todo.md 11번 참고.
+  const CATEGORIES = useMemo(
+    () => [...new Set(allPopups.map((p) => p.category).filter((v): v is string => !!v))],
+    [allPopups]
+  );
+
+  // 검색어 자체가 지역/운영여부 키워드와 그대로 일치하면(예: "성수", "홍대")
+  // 전체 텍스트 검색과 별개로 그 필터 버튼도 같이 선택된 상태로 맞춰줍니다.
+  // (q 없이 status/region 파라미터로 바로 들어온 경우는 그 값을 그대로 유지해요.)
+  useEffect(() => {
+    if (!query) return;
+    const q = query.trim();
     setCategory(CATEGORIES.find((c) => c === q) ?? null);
     setRegion(REGIONS.find((r) => r === q) ?? null);
     setStatus(STATUSES.find((s) => s === q) ?? null);
-  }, [query]);
+  }, [query, CATEGORIES, REGIONS]);
 
   const results = useMemo(() => {
-    if (!query) return [];
-    const q = query.trim().toLowerCase();
+    if (!hasActiveFilter) return [];
+    const q = query?.trim().toLowerCase() ?? "";
 
-    return ALL_POPUPS.filter((item) => {
+    return allPopups.filter((item) => {
       const matchesQuery =
+        !q ||
         item.name.toLowerCase().includes(q) ||
         (item.category?.toLowerCase().includes(q) ?? false) ||
         (item.location?.toLowerCase().includes(q) ?? false);
@@ -69,7 +88,12 @@ export default function SearchPage({
       if (status && item.status !== status) return false;
       return true;
     });
-  }, [query, category, region, status]);
+  }, [allPopups, hasActiveFilter, query, category, region, status]);
+
+  const popularForRanking = useMemo(
+    () => allPopups.filter((p) => p.status === "진행중").slice(0, 10),
+    [allPopups]
+  );
 
   return (
     <main className="pb-16 mobile:pb-0 mobile:max-w-[1000px] mobile:mx-auto">
@@ -83,27 +107,35 @@ export default function SearchPage({
         <MobileHeader searchMode initialQuery={query ?? ""} />
       </div>
 
-      {query ? (
+      {hasActiveFilter ? (
         <div>
           <div className="px-4 mobile:px-8 pt-3 pb-1">
             <p className="text-sm text-gray-600">
-              &quot;{query}&quot; 검색 결과 {results.length}건
+              {query ? (
+                <>&quot;{query}&quot; 검색 결과 {loaded ? results.length : "..."}건</>
+              ) : (
+                <>{loaded ? results.length : "..."}건</>
+              )}
             </p>
           </div>
 
           {/* 카테고리 / 지역 / 운영여부로 결과 좁히기 */}
           <div className="flex flex-col gap-2 px-4 mobile:px-8 py-3 border-b border-gray-100">
-            <FilterRow label="카테고리" options={CATEGORIES} selected={category} onSelect={setCategory} />
+            {CATEGORIES.length > 0 && (
+              <FilterRow label="카테고리" options={CATEGORIES} selected={category} onSelect={setCategory} />
+            )}
             <FilterRow label="지역" options={REGIONS} selected={region} onSelect={setRegion} />
             <FilterRow label="운영여부" options={[...STATUSES]} selected={status} onSelect={setStatus} />
           </div>
 
-          {results.length === 0 ? (
+          {!loaded ? (
+            <p className="text-sm text-gray-400 py-16 text-center">불러오는 중...</p>
+          ) : results.length === 0 ? (
             <p className="text-sm text-gray-400 py-16 text-center">검색 결과가 없어요.</p>
           ) : (
             <div className="flex flex-col px-4 mobile:px-8">
               {results.map((item) => (
-                <SearchResultRow key={item.name} item={item} />
+                <SearchResultRow key={item.id} item={item} />
               ))}
             </div>
           )}
@@ -112,7 +144,7 @@ export default function SearchPage({
         <div className="mobile:px-4">
           <RecentSearches />
           <SuggestedKeywords />
-          <RankingSection title="실시간 인기 추천 팝업" items={popularPopups} />
+          <RankingSection title="실시간 인기 추천 팝업" items={popularForRanking} />
         </div>
       )}
 
@@ -167,7 +199,7 @@ function FilterRow<T extends string>({
 function SearchResultRow({ item }: { item: PopupItem }) {
   return (
     <Link href={`/popup/${item.id}`} className="flex gap-4 py-4 border-b border-gray-50">
-      <div className="w-20 h-20 flex-none rounded-lg bg-gray-100 border border-gray-200 overflow-hidden">
+      <div className="w-24 h-24 flex-none rounded-lg bg-gray-100 border border-gray-200 overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/images/popup-placeholder.svg" alt="" className="w-full h-full object-cover" />
       </div>

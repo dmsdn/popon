@@ -22,6 +22,9 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 const MOCK_TOKEN = "TEST_MODE_TOKEN";
 const MOCK_STORAGE_KEY = "mock_customer";
+// 이메일/비밀번호로 만든 "여러 개의" 테스트 계정용 — 토큰이 "MOCK_ACCOUNT:이메일" 형태입니다.
+const MOCK_ACCOUNT_TOKEN_PREFIX = "MOCK_ACCOUNT:";
+const MOCK_ACCOUNTS_KEY = "mock_accounts";
 
 const DEFAULT_MOCK_CUSTOMER: CustomerInfo = {
   id: 0,
@@ -54,6 +57,25 @@ function writeMockCustomer(customer: CustomerInfo | null) {
   }
 }
 
+// 이메일/비밀번호로 회원가입한 "여러 개의" 테스트 계정 저장소 (lib/api/auth.ts의
+// signupWithEmail/loginWithEmail이 여기에 쓰고 읽어요). 이메일을 key로 저장합니다.
+function readMockAccounts(): Record<string, CustomerInfo & { password: string }> {
+  try {
+    const raw = window.localStorage.getItem(MOCK_ACCOUNTS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function findMockAccountCustomer(email: string): CustomerInfo | null {
+  const accounts = readMockAccounts();
+  const account = accounts[email];
+  if (!account) return null;
+  const { password: _password, ...customer } = account;
+  return customer;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [customer, setCustomer] = useState<CustomerInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -73,6 +95,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // 테스트 모드 토큰이면 백엔드 호출 없이 로컬에 저장된 테스트 유저를 그대로 씁니다.
     if (token === MOCK_TOKEN) {
       setCustomer(readMockCustomer() ?? DEFAULT_MOCK_CUSTOMER);
+      setLoading(false);
+      return;
+    }
+
+    // 이메일/비밀번호로 로그인한 테스트 계정 (여러 개 중 하나)
+    if (token.startsWith(MOCK_ACCOUNT_TOKEN_PREFIX)) {
+      const email = token.slice(MOCK_ACCOUNT_TOKEN_PREFIX.length);
+      const account = findMockAccountCustomer(email);
+      setCustomer(account);
       setLoading(false);
       return;
     }
@@ -113,6 +144,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const updateMockCustomer = (patch: Partial<CustomerInfo>) => {
+    const token = getToken();
+
+    // 이메일 계정으로 로그인 중이면 mock_accounts 쪽 데이터를 갱신해요.
+    if (token?.startsWith(MOCK_ACCOUNT_TOKEN_PREFIX)) {
+      const email = token.slice(MOCK_ACCOUNT_TOKEN_PREFIX.length);
+      const accounts = readMockAccounts();
+      const account = accounts[email];
+      if (account) {
+        const nextAccount = { ...account, ...patch };
+        const nextAccounts = { ...accounts, [email]: nextAccount };
+        try {
+          window.localStorage.setItem(MOCK_ACCOUNTS_KEY, JSON.stringify(nextAccounts));
+        } catch (error) {
+          console.error("테스트 계정 저장 실패", error);
+        }
+        const { password: _password, ...customer } = nextAccount;
+        setCustomer(customer);
+      }
+      return;
+    }
+
     setCustomer((prev) => {
       const next = { ...(prev ?? DEFAULT_MOCK_CUSTOMER), ...patch };
       writeMockCustomer(next);

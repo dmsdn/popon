@@ -1,10 +1,18 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { notices } from "@/data/notices";
+import { getMyReviews, toDisplayDate, type Review } from "@/lib/api/reviews";
+import { getPopup, type PopupDetail } from "@/lib/api/popups";
+import {
+  subscribeWishlist,
+  getWishlistSnapshot,
+  ensureWishlistLoaded,
+  toggleWishlist,
+} from "@/lib/wishlistStore";
 
 type MenuKey =
   | "내 정보"
@@ -31,6 +39,7 @@ const SIDEBAR_MENU: MenuKey[] = [
 const PROVIDER_LABEL = {
   KAKAO: "카카오 연결",
   GOOGLE: "구글 연결",
+  EMAIL: "이메일 로그인",
 } as const;
 
 // ==================== 예시용 mock 데이터 (실제로는 백엔드 API로 대체) ====================
@@ -81,6 +90,62 @@ function MyPageContent() {
     { id: "marketing", label: "마케팅 정보 수신", enabled: false },
   ]);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  // 다녀간 팝업 (= 내가 쓴 후기)
+  const [myReviews, setMyReviews] = useState<Review[] | null>(null);
+  const [popupTitles, setPopupTitles] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    let cancelled = false;
+
+    getMyReviews()
+      .then((list) => {
+        if (cancelled) return;
+        setMyReviews(list);
+        // 리뷰에 달린 popupId들의 제목을 한 번씩만 조회
+        const uniqueIds = [...new Set(list.map((r) => r.popupId))];
+        uniqueIds.forEach((popupId) => {
+          getPopup(popupId)
+            .then((detail) => {
+              if (!cancelled) setPopupTitles((prev) => ({ ...prev, [popupId]: detail.title }));
+            })
+            .catch(() => {
+              /* 팝업이 삭제됐을 수도 있어요 - 제목 없이 표시 */
+            });
+        });
+      })
+      .catch((err) => {
+        console.error("다녀간 팝업(내 후기) 조회 실패", err);
+        setMyReviews([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn]);
+
+  // 찜 목록
+  const wishlistIds = useSyncExternalStore(subscribeWishlist, getWishlistSnapshot, () => new Set<number>());
+  const [wishlistPopups, setWishlistPopups] = useState<Record<number, PopupDetail>>({});
+
+  useEffect(() => {
+    if (isLoggedIn) ensureWishlistLoaded();
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    wishlistIds.forEach((popupId) => {
+      if (wishlistPopups[popupId]) return;
+      getPopup(popupId)
+        .then((detail) => {
+          setWishlistPopups((prev) => ({ ...prev, [popupId]: detail }));
+        })
+        .catch(() => {
+          /* 팝업이 삭제됐을 수도 있어요 */
+        });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wishlistIds]);
 
   useEffect(() => {
     if (!loading && !isLoggedIn) {
@@ -223,8 +288,13 @@ if (queryMenu !== syncedQueryMenu) {
 
               <div className="flex items-center justify-between py-4 border-b border-gray-50">
                 <span className="text-sm text-gray-700">연결된 로그인</span>
-                <span className="flex items-center gap-1.5 text-xs font-medium bg-[#FEE500] rounded-full px-3 py-1.5">
-                  💬 {PROVIDER_LABEL[customer.provider]}
+                <span
+                  className={`flex items-center gap-1.5 text-xs font-medium rounded-full px-3 py-1.5 ${
+                    customer.provider === "KAKAO" ? "bg-[#FEE500]" : "bg-gray-100 text-gray-700"
+                  }`}
+                >
+                  {customer.provider === "KAKAO" ? "💬" : customer.provider === "GOOGLE" ? "G" : "✉️"}{" "}
+                  {PROVIDER_LABEL[customer.provider]}
                 </span>
               </div>
 
@@ -256,7 +326,42 @@ if (queryMenu !== syncedQueryMenu) {
             </div>
           )}
 
-          {activeMenu === "찜 목록" && <EmptyState message="찜한 팝업이 없어요." />}
+          {activeMenu === "찜 목록" &&
+            (wishlistIds.size === 0 ? (
+              <EmptyState message="찜한 팝업이 없어요." />
+            ) : (
+              <div className="flex flex-col gap-3">
+                {[...wishlistIds].map((popupId) => {
+                  const p = wishlistPopups[popupId];
+                  return (
+                    <Link
+                      key={popupId}
+                      href={`/popup/${popupId}`}
+                      className="flex items-center gap-4 border border-gray-200 rounded-xl p-4"
+                    >
+                      <div className="w-16 h-16 flex-none bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs">
+                        이미지
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate">{p?.title ?? `팝업 #${popupId}`}</p>
+                        {p?.location && <p className="text-xs text-gray-400 mt-0.5">{p.location}</p>}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          toggleWishlist(popupId);
+                        }}
+                        aria-label="찜 해제"
+                        className="text-gray-300 flex-none"
+                      >
+                        ✕
+                      </button>
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
 
           {activeMenu === "예약 / 웨이팅" && (
             <div className="flex flex-col gap-10">
@@ -314,7 +419,33 @@ if (queryMenu !== syncedQueryMenu) {
           )}
 
           {activeMenu === "쿠폰함" && <EmptyState message="보유한 쿠폰이 없어요." />}
-          {activeMenu === "다녀간 팝업" && <EmptyState message="다녀간 팝업이 없어요." />}
+          {activeMenu === "다녀간 팝업" &&
+            (myReviews === null ? (
+              <p className="text-sm text-gray-400 py-16 text-center">불러오는 중...</p>
+            ) : myReviews.length === 0 ? (
+              <EmptyState message="다녀간 팝업이 없어요." />
+            ) : (
+              <div className="flex flex-col gap-3">
+                {myReviews.map((review) => (
+                  <Link
+                    key={review.id}
+                    href={`/popup/${review.popupId}`}
+                    className="block border border-gray-200 rounded-xl p-4"
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-sm font-semibold truncate">
+                        {popupTitles[review.popupId] ?? `팝업 #${review.popupId}`}
+                      </p>
+                      <span className="text-xs text-gray-400 flex-none ml-2">
+                        {toDisplayDate(review.createdAt)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mb-1">⭐ {review.rating}</p>
+                    <p className="text-sm text-gray-600 line-clamp-2">{review.content}</p>
+                  </Link>
+                ))}
+              </div>
+            ))}
 
           {activeMenu === "알림 설정" && (
             <div className="flex flex-col gap-1">
