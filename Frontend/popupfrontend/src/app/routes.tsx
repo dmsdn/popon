@@ -25,20 +25,8 @@ import CustomerInquiries from "./seller/pages/CustomerInquiries";
 // ── 현장 웨이팅 비회원 접수 (QR 진입 공개 페이지) ──
 import WalkinPage from "./walkin/WalkinPage";
 
-// ── 플랫폼 관리자 UI ──
-import AdminRoot from "./admin/AdminRoot";
-import AdminDashboard from "./admin/pages/AdminDashboard";
-import AdminLogin from "./admin/pages/AdminLogin";
-import AdminPopups from "./admin/pages/AdminPopups";
-import AdminPopupEdit from "./admin/pages/AdminPopupEdit";
-import AdminContracts from "./admin/pages/AdminContracts";
-import Accounts from "./admin/pages/Accounts";
-import Businesses from "./admin/pages/Businesses";
-import Members from "./admin/pages/Members";
-import Masters from "./admin/pages/Masters";
-import PlatformStats from "./admin/pages/PlatformStats";
-import ContentManage from "./admin/pages/ContentManage";
-import CS from "./admin/pages/CS";
+// ※ 플랫폼 관리자 UI는 별도 앱(Frontend/adminfrontend · 5175)으로 분리됨.
+//   origin이 갈라지면서 관리자·주최자 토큰이 localStorage에서 충돌하던 문제도 함께 해소.
 
 export const router = createBrowserRouter([
   // 1) 주최자 정보제공 (최상위 루트: 서비스 소개·등록 안내·정보센터)
@@ -75,24 +63,4 @@ export const router = createBrowserRouter([
 
   // 2.5) 비회원 현장 웨이팅 폼 — 로그인 불필요, 현장 QR로 진입
   { path: "/walkin", Component: WalkinPage },
-
-  // 3) 플랫폼 관리자 (최상위 루트: /admin)
-  {
-    path: "/admin",
-    Component: AdminRoot,
-    children: [
-      { index: true, Component: AdminDashboard },
-      { path: "login", Component: AdminLogin },
-      { path: "popups", Component: AdminPopups },
-      { path: "popups/edit", Component: AdminPopupEdit },
-      { path: "contracts", Component: AdminContracts },
-      { path: "accounts", Component: Accounts },
-      { path: "businesses", Component: Businesses },
-      { path: "members", Component: Members },
-      { path: "masters", Component: Masters },
-      { path: "stats", Component: PlatformStats },
-      { path: "content", Component: ContentManage },
-      { path: "cs", Component: CS },
-    ],
-  },
 ]);

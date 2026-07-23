@@ -4,6 +4,7 @@ import { Menu, X, LogOut, User } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 const EXTERNAL_SERVICE_URL = "http://localhost:5173"; // 소비자 프론트엔드(customerfrontend) 루트
+const ADMIN_CONSOLE_URL = "http://localhost:5175/admin"; // 관리자 프론트엔드(adminfrontend) — 별도 앱으로 분리됨
 
 export default function Root() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -177,7 +178,7 @@ export default function Root() {
             <a href="#" className="hover:text-foreground transition-colors">개인정보처리방침</a>
             <a href={EXTERNAL_SERVICE_URL} target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">소비자 서비스</a>
             <NavLink to="/seller" className="hover:text-foreground transition-colors">주최자센터</NavLink>
-            <NavLink to="/admin" className="hover:text-foreground transition-colors">관리자</NavLink>
+            <a href={ADMIN_CONSOLE_URL} className="hover:text-foreground transition-colors">관리자</a>
           </div>
         </div>
       </footer>

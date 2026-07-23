@@ -17,12 +17,13 @@ popup-store-project/
 │   ├── README.md               실행법·인증 체계·패키지 오너십·팀원 Pull 체크리스트
 │   └── UNIFICATION-README.md   두 백엔드 통합 결정 기록 (비교표·이동표)
 ├── Frontend/
-│   ├── popupfrontend/          ← 관리자·주최자 웹 (Vite + React, 포트 5174)
+│   ├── popupfrontend/          ← 주최자 웹 (Vite + React, 포트 5174)
+│   ├── adminfrontend/          ← 관리자 웹 (Vite + React, 포트 5175 — 7/24 popupfrontend에서 분리)
 │   └── customerfrontend/       ← 소비자 웹 (Next.js 16, 포트 5173)
 └── uploads/                    업로드 이미지 저장소 (백엔드 실행 위치 기준)
 ```
 
-- 두 프론트 모두 API를 **상대경로 `/api`로 호출**하고, 각자의 dev 프록시(Vite proxy / Next rewrites)가 8080으로 전달한다 → 브라우저 CORS가 원천적으로 발생하지 않음.
+- 세 프론트 모두 API를 **상대경로 `/api`로 호출**하고, 각자의 dev 프록시(Vite proxy / Next rewrites)가 8080으로 전달한다 → 브라우저 CORS가 원천적으로 발생하지 않음.
 - 원래 백엔드는 popupbackend(8080)·customerbackend(8081) 2개였으나 **7/22 하나로 통합** — 배경과 방법은 `Backend/UNIFICATION-README.md` 참고.
 
 ---
@@ -35,7 +36,8 @@ popup-store-project/
 flowchart LR
     subgraph 클라이언트
         C[소비자 웹\nNext.js :5173]
-        S[주최자·관리자 웹\nVite React :5174]
+        S[주최자 웹\nVite React :5174]
+        A[관리자 웹\nVite React :5175]
         W[비회원 워크인 폼\n/walkin — QR로 진입]
     end
     subgraph 서버["통합 백엔드 :8080 (popupon-backend)"]
@@ -47,6 +49,7 @@ flowchart LR
 
     C -- "/api (rewrites 프록시)" --> SEC
     S -- "/api (Vite 프록시)" --> SEC
+    A -- "/api (Vite 프록시)" --> SEC
     W --> SEC
     SEC --> CTRL --> DB
     C -- 전체 페이지 이동 --> KAKAO --> SEC
@@ -235,7 +238,9 @@ sequenceDiagram
 
 ## 5. 프론트엔드 상세
 
-### 5-1. popupfrontend (관리자·주최자, :5174)
+### 5-1. popupfrontend (주최자, :5174) · adminfrontend (관리자, :5175)
+
+> 7/24 관리자 콘솔이 `Frontend/adminfrontend`(:5175) 별도 앱으로 분리됨. 아래 내용 중 `/admin` 라우트·관리자 화면은 adminfrontend에, 나머지는 popupfrontend에 있다. `lib/`·`components/ui` 등 공용 모듈은 양쪽에 동일 사본으로 존재한다.
 
 **공용 모듈 (`src/app/lib/`)** — 이 앱의 중추:
 
