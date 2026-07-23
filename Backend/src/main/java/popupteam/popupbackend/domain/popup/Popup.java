@@ -65,6 +65,13 @@ public class Popup {
     @Column(name = "queue_mode", nullable = false)
     private QueueMode queueMode = QueueMode.BOTH;
 
+    // 상태(승인/반려 등)가 마지막으로 확정된 일시
+    private LocalDateTime statusChangedAt;
+
+    // 관리자가 반려/수정 시 남기는 사유 메모 (없으면 null)
+    @Column(length = 1000)
+    private String adminEditNote;
+
     private Double latitude;
     private Double longitude;
 

@@ -24,6 +24,9 @@ public class PopupResponse {
     private Integer avgExperienceMinutes;
     private Double latitude;
     private Double longitude;
+    private String queueMode;
+    private LocalDateTime statusChangedAt;
+    private String adminEditNote;
 
     public static PopupResponse from(Popup popup) {
         return PopupResponse.builder()
@@ -45,6 +48,9 @@ public class PopupResponse {
                 .avgExperienceMinutes(popup.getAvgExperienceMinutes())
                 .latitude(popup.getLatitude())
                 .longitude(popup.getLongitude())
+                .queueMode(popup.getQueueMode() != null ? popup.getQueueMode().name() : null)
+                .statusChangedAt(popup.getStatusChangedAt())
+                .adminEditNote(popup.getAdminEditNote())
                 .build();
     }
 }
