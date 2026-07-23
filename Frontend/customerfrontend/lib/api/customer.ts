@@ -2,7 +2,7 @@ import { apiFetch } from "./client";
 
 export interface CustomerInfo {
   id: number;
-  provider: "KAKAO" | "GOOGLE";
+  provider: "KAKAO" | "GOOGLE" | "EMAIL";
   nickname: string;
   profileImage: string | null;
   phone: string | null;

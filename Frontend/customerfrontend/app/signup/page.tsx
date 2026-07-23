@@ -15,9 +15,11 @@ const OPTIONAL_TERMS = [
   { id: "marketing", label: "[선택] 마케팅 정보 수신 동의" },
 ];
 
+// After
 const PROVIDER_LABEL: Record<CustomerInfo["provider"], string> = {
-  KAKAO: "카카오 로그인",
-  GOOGLE: "구글 로그인",
+  KAKAO: "카카오",
+  GOOGLE: "구글",
+  EMAIL: "이메일",
 };
 
 function formatPhoneNumber(value: string): string {
