@@ -7,14 +7,15 @@ export function NoticeBar() {
   if (!notice) return null;
 
   return (
-    <Link
-      href="/mypage?menu=공지사항"
-      className="mx-4 mobile:mx-8 my-6 flex items-center justify-between bg-gray-100 rounded-lg px-4 py-3 text-sm"
-    >
-      <span className="truncate">
+    <div className="mx-4 mobile:mx-8 my-6 flex items-center justify-between bg-gray-100 rounded-lg px-4 py-3 text-sm">
+      {/* 공지 제목 클릭 → 이 공지 상세 페이지 */}
+      <Link href={`/notice/${notice.id}`} className="truncate">
         <span className="font-medium">[공지]</span> {notice.title}
-      </span>
-      <span className="text-gray-400 text-xs flex-none ml-3">더보기 ›</span>
-    </Link>
+      </Link>
+      {/* 더보기 클릭 → 공지사항 전체 목록 페이지 */}
+      <Link href="/notice" className="text-gray-400 text-xs flex-none ml-3">
+        더보기 ›
+      </Link>
+    </div>
   );
 }
