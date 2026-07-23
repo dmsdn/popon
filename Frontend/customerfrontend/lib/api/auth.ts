@@ -12,7 +12,7 @@ export function redirectToKakaoLogin() {
 }
 
 export function redirectToGoogleLogin() {
-  window.location.href = `${OAUTH_BASE}/oauth2/authorization/kakao`;
+  window.location.href = `${OAUTH_BASE}/oauth2/authorization/google`;
 }
 
 export interface SignupInfoPayload {
