@@ -22,4 +22,7 @@ public interface PopupRepository extends JpaRepository<Popup, Long> {
     List<Popup> findByStatusAndEndDateLessThanEqual(PopupStatus status, java.time.LocalDateTime endDate);
 
     long countByStatus(PopupStatus status);
+
+    // 소비자의 관심지역(customer_region)에 해당하는 팝업만 조회할 때 사용
+    List<Popup> findByAddressKeywordIdInAndStatusOrderByCreatedAtDesc(List<Long> regionIds, PopupStatus status);
 }
