@@ -18,6 +18,7 @@ const OPTIONAL_TERMS = [
 const PROVIDER_LABEL: Record<CustomerInfo["provider"], string> = {
   KAKAO: "카카오 로그인",
   GOOGLE: "구글 로그인",
+  DEV: "개발용 로그인",
 };
 
 function formatPhoneNumber(value: string): string {
@@ -93,7 +94,7 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="w-full mobile:max-w-[1000px] mobile:mx-auto flex flex-col min-h-screen">
+    <main className="w-full mobile:max-w-[1000px] mobile:mx-auto flex flex-col min-h-screen px-6 py-10">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-xl font-bold">회원정보 입력</h1>
         {provider && (
@@ -101,8 +102,10 @@ export default function SignupPage() {
             {PROVIDER_LABEL[provider]}
             {provider === "KAKAO" ? (
               <span className="w-6 h-6 rounded-full bg-[#FEE500] flex items-center justify-center">💬</span>
-            ) : (
+            ) : provider === "GOOGLE" ? (
               <span className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center">G</span>
+            ) : (
+              <span className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center">🛠️</span>
             )}
           </span>
         )}
@@ -122,7 +125,7 @@ export default function SignupPage() {
 
         <label className="block">
           <span className="block text-sm font-medium text-gray-700 mb-2">
-            전화번호 <span className="text-red-500">*</span>
+            전화번호 <span className="text-gray-400">*</span>
           </span>
           <input
             type="tel"
@@ -167,7 +170,7 @@ export default function SignupPage() {
           type="button"
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="w-full rounded-full py-3.5 mt-4 text-sm font-medium bg-gray-100 text-gray-900 disabled:opacity-60 enabled:bg-[#FEE500]"
+          className="w-full rounded-full py-3.5 mt-4 text-sm font-medium bg-gray-100 text-gray-900 disabled:opacity-60 enabled:bg-gray-900 enabled:text-white"
         >
           {submitting ? "저장하는 중..." : "동의하고 가입하기"}
         </button>

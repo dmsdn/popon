@@ -10,41 +10,33 @@ import { PromoCarousel } from "@/components/home/PromoCarousel";
 import { CategoryIconList } from "@/components/home/CategoryIconList";
 import { NoticeBar } from "@/components/home/NoticeBar";
 import { PopupSection } from "@/components/home/PopupSection";
+import { PopularRankingSection } from "@/components/home/PopularRankingSection";
 import { ReviewSection } from "@/components/home/ReviewSection";
 import { searchPopups } from "@/lib/api/popups";
 import { toPopupItem } from "@/lib/utils/popupMapper";
-import { POPUP_STATUS } from "@/lib/constants/status";
-import {
-  recentPopups,
-  type PopupItem,
-} from "@/data/mockPopups";
+import type { PopupItem } from "@/data/mockPopups";
 
 export default function Home() {
-  // "실시간 인기 팝업" / "곧 오픈하는 팝업"만 실제 DB(백엔드 /api/popups)와 연결했습니다.
-  // "최근 본 팝업"(로그인 사용자별 조회 이력)은 아직 백엔드에 해당 데이터가 없어서 mock을 그대로 씁니다.
-  // "무료입장 팝업" 섹션은 요청에 따라 제거했습니다.
-  const [popularPopups, setPopularPopups] = useState<PopupItem[] | null>(null);
-  const [openingSoonPopups, setOpeningSoonPopups] = useState<PopupItem[] | null>(null);
+  const [openingSoon, setOpeningSoon] = useState<PopupItem[]>([]);
+  const [ongoing, setOngoing] = useState<PopupItem[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
-    searchPopups({ status: POPUP_STATUS.OPEN })
+    searchPopups({ status: "BEFOR" })
       .then((list) => {
-        if (!cancelled) setPopularPopups(list.map(toPopupItem));
+        if (!cancelled) setOpeningSoon(list.map(toPopupItem));
       })
-      .catch((err) => {
-        console.error("진행중 팝업 조회 실패", err);
-        if (!cancelled) setPopularPopups([]);
-      });
+      .catch((err) => console.error("오픈예정 팝업 조회 실패", err));
 
-    searchPopups({ status: POPUP_STATUS.BEFOR })
+    searchPopups({ status: "OPEN" })
       .then((list) => {
-        if (!cancelled) setOpeningSoonPopups(list.map(toPopupItem));
+        if (!cancelled) setOngoing(list.map(toPopupItem));
       })
-      .catch((err) => {
-        console.error("오픈예정 팝업 조회 실패", err);
-        if (!cancelled) setOpeningSoonPopups([]);
+      .catch((err) => console.error("진행중 팝업 조회 실패", err))
+      .finally(() => {
+        if (!cancelled) setLoaded(true);
       });
 
     return () => {
@@ -52,12 +44,15 @@ export default function Home() {
     };
   }, []);
 
+  // ⚠️ "최근 본 팝업"(로그인 사용자별 조회 이력)은 백엔드에 해당 데이터가 없어서,
+  // 지금은 실제 진행중 팝업 목록(ongoing)을 그대로 보여주고 있어요. 실제 "최근 본" 구분은 아니에요.
+  // → backend-todo.md 2번 참고. "무료입장 팝업" 섹션은 무료/유료 구분 기준이 없어서 삭제했습니다.
+
   return (
     <main className="pb-16 mobile:pb-0 mobile:max-w-[1000px] mobile:mx-auto">
       <div className="hidden mobile:block">
         <Header />
       </div>
-
       <div className="block mobile:hidden">
         <MobileHeader />
       </div>
@@ -66,15 +61,13 @@ export default function Home() {
       <CategoryIconList />
       <NoticeBar />
 
-      {/* TODO(백엔드 연동): 최근 본 팝업 - 조회 이력 API가 없어서 아직 mock */}
-      <PopupSection title="최근 본 팝업" items={recentPopups} />
-
+      <PopupSection title="최근 본 팝업" items={loaded ? ongoing : []} moreHref="/recent" />
+      <PopularRankingSection />
       <PopupSection
-        title="실시간 인기 팝업 추천 카드"
-        items={popularPopups ?? []}
-        filterOptions={["전체", "성수", "여의도", "홍대"]}
+        title="곧 오픈하는 팝업 추천 카드"
+        items={loaded ? openingSoon : []}
+        moreHref="/search?status=예정"
       />
-      <PopupSection title="곧 오픈하는 팝업 추천 카드" items={openingSoonPopups ?? []} />
 
       <ReviewSection />
 

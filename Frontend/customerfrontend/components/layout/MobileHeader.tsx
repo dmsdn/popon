@@ -1,8 +1,32 @@
 // components/layout/MobileHeader.tsx
+"use client";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { SearchInput } from "@/components/search/SearchInput";
 
-export function MobileHeader() {
+interface MobileHeaderProps {
+  // 검색 결과 화면(/search)에서는 로고 대신 뒤로가기 + 검색창을 보여줍니다.
+  searchMode?: boolean;
+  initialQuery?: string;
+}
+
+export function MobileHeader({ searchMode = false, initialQuery = "" }: MobileHeaderProps) {
+  const router = useRouter();
+
+  if (searchMode) {
+    return (
+      <header className="flex items-center gap-3 px-4 py-3 border-b">
+        <button type="button" onClick={() => router.back()} aria-label="뒤로가기" className="text-gray-500">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
+        <SearchInput autoFocus={!initialQuery} initialQuery={initialQuery} />
+      </header>
+    );
+  }
+
   return (
     <header className="flex items-center justify-between px-4 py-3 border-b">
       <span className="text-lg font-semibold tracking-tight">POPUP</span>
