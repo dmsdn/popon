@@ -7,13 +7,13 @@ import { RecentSearches } from "@/components/search/RecentSearches";
 import { SuggestedKeywords } from "@/components/search/SuggestedKeywords";
 import { useAuth } from "@/lib/auth/AuthContext";
 
-export function Header() {
+export function Header({ initialQuery = "" }: { initialQuery?: string }) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { isLoggedIn } = useAuth();
 
   return (
     <header className="flex items-center gap-4 px-4 py-3 border-b border-gray-100">
-      <span className="font-bold text-lg">팝업</span>
+      <Link href="/" className="font-bold text-lg flex-none">팝업</Link>
 
       <div
         className="relative flex-1"
@@ -24,7 +24,7 @@ export function Header() {
           }
         }}
       >
-        <SearchInput />
+        <SearchInput initialQuery={initialQuery} />
 
         {isSearchOpen && (
           <div className="absolute top-full left-0 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-lg z-50">

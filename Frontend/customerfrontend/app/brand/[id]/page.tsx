@@ -1,4 +1,3 @@
-// app/brand/[id]/page.tsx
 "use client";
 
 import { use, useState } from "react";
@@ -8,7 +7,6 @@ import { Footer } from "@/components/layout/Footer";
 import { BottomTabBar } from "@/components/layout/BottomTabBar";
 import { findBrandById } from "@/data/mockBrands";
 import { getPopupsByBrand, type PopupItem } from "@/data/mockPopups";
-import { POPUP_STATUS_LABEL } from "@/lib/constants/status";
 
 const TABS = ["진행중인 팝업", "완료된 팝업"] as const;
 
@@ -47,7 +45,7 @@ export default function BrandDetailPage({
 
       <div className="px-4 mobile:px-8 py-6">
         {/* 브랜드 로고 */}
-        <div className="w-24 h-24 rounded-2xl bg-gray-100 border border-gray-200 mb-4" />
+        <div className="w-24 h-24 rounded-md bg-gray-100 border border-gray-200 mb-4" />
 
         {/* 브랜드 이름 + 소개 + 찜 */}
         <div className="flex items-start justify-between mb-8">
@@ -105,11 +103,9 @@ export default function BrandDetailPage({
 function BrandPopupRow({ item }: { item: PopupItem }) {
   return (
     <Link href={`/popup/${item.id}`} className="flex gap-4 py-4 border-b border-gray-50">
-      <div className="w-20 h-20 flex-none rounded-xl bg-gray-100 border border-gray-200" />
+      <div className="w-20 h-20 flex-none rounded-md bg-gray-100 border border-gray-200" />
       <div className="flex flex-col justify-center">
-        {item.status && (
-          <p className="text-xs text-gray-400 mb-1">{POPUP_STATUS_LABEL[item.status]}</p>
-        )}
+        {item.status && <p className="text-xs text-gray-400 mb-1">{item.status === "예정" ? "진행예정" : item.status}</p>}
         <p className="text-base font-medium">{item.name}</p>
         {item.dateRange && <p className="text-sm text-gray-400 mt-1">{item.dateRange}</p>}
         {item.location && <p className="text-sm text-gray-400">{item.location}</p>}
