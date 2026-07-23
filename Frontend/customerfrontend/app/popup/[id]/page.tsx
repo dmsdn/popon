@@ -1,9 +1,8 @@
-// app/popup/[id]/page.tsx
 "use client";
 
-import Link from "next/link";
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Footer } from "@/components/layout/Footer";
 import { BottomTabBar } from "@/components/layout/BottomTabBar";
 import { ReviewCard } from "@/components/popup/ReviewCard";
@@ -11,13 +10,13 @@ import { PlaceCard } from "@/components/popup/PlaceCard";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { ReservationModal } from "@/components/popup/ReservationModal";
 import { WaitingModal } from "@/components/popup/WaitingModal";
-import { getPopup, getPopupSlots, type PopupDetail, type PopupSlot } from "@/lib/api/popups";
-import { createReservation } from "@/lib/api/reservations";
-import { registerWaiting, setActiveWaitingId } from "@/lib/api/waiting";
+import { HeartButton } from "@/components/ui/HeartButton";
 import { getMyReviews, toDisplayDate, type Review } from "@/lib/api/reviews";
-import { RESERVATION_MODE, POPUP_STATUS_LABEL } from "@/lib/constants/status";
-import { recentPopups, popularPopups } from "@/data/mockPopups";
-import type { ReviewItem } from "@/data/mockPopups";
+import { getPopup, getPopupSlots, searchPopups, type PopupDetail, type PopupSlot } from "@/lib/api/popups";
+import { createReservation } from "@/lib/api/reservations";
+import { registerWaiting } from "@/lib/api/waiting";
+import { toPopupItem } from "@/lib/utils/popupMapper";
+import { reviews, type PopupItem, type ReviewItem } from "@/data/mockPopups";
 
 const TABS = ["정보", "굿즈", "후기"] as const;
 
@@ -27,47 +26,65 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   const router = useRouter();
 
   const [popup, setPopup] = useState<PopupDetail | null>(null);
-  const [slots, setSlots] = useState<PopupSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [similar, setSimilar] = useState<PopupItem[]>([]);
 
   const [showReservation, setShowReservation] = useState(false);
   const [showWaiting, setShowWaiting] = useState(false);
+  const [slots, setSlots] = useState<PopupSlot[]>([]);
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("정보");
   const [myReviewsForPopup, setMyReviewsForPopup] = useState<Review[]>([]);
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
+    setLoadError(false);
 
-    async function load() {
-      setLoading(true);
-      setLoadError(false);
-      try {
-        const data = await getPopup(id);
-        if (cancelled) return;
-        setPopup(data);
-
-        // SLOT 모드 팝업이면 예약 가능한 시간대 목록도 같이 받아둠
-        if (data.reservationMode === RESERVATION_MODE.SLOT) {
-          const slotList = await getPopupSlots(id);
-          if (!cancelled) setSlots(slotList);
-        }
-      } catch (err) {
+    getPopup(id)
+      .then((data) => {
+        if (!cancelled) setPopup(data);
+      })
+      .catch((err) => {
         console.error("팝업 상세 조회 실패", err);
         if (!cancelled) setLoadError(true);
-      } finally {
+      })
+      .finally(() => {
         if (!cancelled) setLoading(false);
-      }
-    }
+      });
 
-    load();
+    // 비슷한 팝업 - 진행중인 팝업 중 이 팝업을 뺀 나머지에서 몇 개만
+    searchPopups({ status: "OPEN" })
+      .then((list) => {
+        if (!cancelled) {
+          setSimilar(list.filter((p) => String(p.id) !== id).slice(0, 4).map(toPopupItem));
+        }
+      })
+      .catch((err) => console.error("비슷한 팝업 조회 실패", err));
+
     return () => {
       cancelled = true;
     };
   }, [id]);
 
+  // SLOT 방식 팝업이면 예약 모달에서 고를 시간대 목록을 미리 받아둡니다.
+  useEffect(() => {
+    if (!popup || popup.reservationMode !== "SLOT") return;
+    let cancelled = false;
+
+    getPopupSlots(popup.id)
+      .then((list) => {
+        if (!cancelled) setSlots(list);
+      })
+      .catch((err) => console.error("예약 시간대 조회 실패", err));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [popup]);
+
   // 후기 탭: lib/api/reviews.ts(실 API 우선 → 실패 시 localStorage mock)에서
-  // 내가 쓴 리뷰를 불러와 이 팝업(popupId) 것만 걸러서 보여줍니다.
+  // 방금 작성한 리뷰를 불러와, 기존 정적 mock 리뷰 목록과 함께 보여줍니다.
   useEffect(() => {
     if (!popup) return;
     let cancelled = false;
@@ -98,53 +115,18 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  // 내가 이 팝업에 쓴 리뷰들 (lib/api/reviews.ts) → ReviewCard가 쓰는 표시용 형태로 변환
-  const relatedReviews: ReviewItem[] = myReviewsForPopup.map((r) => ({
-    id: String(r.id),
+  // ⚠️ 공지/혜택/소개/이용정보/SNS 영역은 백엔드 PopupResponse에 없는 필드가 섞여 있어서
+  //    지금도 일부는 화면 구조만 맞춘 자리예요. (description, capacity 등은 실제 값입니다)
+  const myReviewsAsItems: ReviewItem[] = myReviewsForPopup.map((r) => ({
+    id: `me-${r.id}`,
     popupName: popup.title,
-    nickname: customer?.nickname ?? "나의 후기",
+    nickname: "나의 후기",
     content: r.content,
     date: toDisplayDate(r.createdAt),
     rating: r.rating,
     photos: r.imageUrls.length > 0 ? r.imageUrls : undefined,
   }));
-
-  const handleReservationSubmit = async (date: Date, count: number, slotId?: number) => {
-    if (!customer) return;
-    try {
-      await createReservation(customer.id, {
-        popupId: popup.id,
-        partySize: count,
-        ...(popup.reservationMode === RESERVATION_MODE.SLOT
-          ? { slotId }
-          : { reservationDate: date.toISOString().slice(0, 10) }),
-      });
-      alert(`${date.getMonth() + 1}월 ${date.getDate()}일 ${count}인 예약이 접수됐어요.`);
-      setShowReservation(false);
-      router.push("/reservations");
-    } catch (err) {
-      console.error("예약 실패", err);
-      alert("예약에 실패했어요. 잠시 후 다시 시도해주세요.");
-    }
-  };
-
-  const handleWaitingSubmit = async (count: number) => {
-    if (!customer) return;
-    try {
-      const waiting = await registerWaiting(
-        popup.id,
-        { phoneNumber: customer.phone ?? "", partySize: count },
-        customer.id
-      );
-      setActiveWaitingId(waiting.id);
-      alert(`웨이팅 ${count}명 등록됐어요.`);
-      setShowWaiting(false);
-      router.push("/reservations");
-    } catch (err) {
-      console.error("웨이팅 등록 실패", err);
-      alert("웨이팅 등록에 실패했어요. 잠시 후 다시 시도해주세요.");
-    }
-  };
+  const relatedReviews = [...myReviewsAsItems, ...reviews.filter((r) => r.popupName === popup.title)];
 
   return (
     <main className="w-full mobile:max-w-[1000px] mobile:mx-auto pb-16 mobile:pb-0">
@@ -160,14 +142,15 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <div className="px-4 mobile:px-8 py-6">
-        {/* 대표 이미지 - TODO: 실제 이미지 업로드 데이터 연결 */}
-        <div className="aspect-[4/5] max-h-[520px] bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 text-sm mb-5">
+        {/* 대표 이미지 */}
+        <div className="relative aspect-[4/5] max-h-[520px] bg-gray-100 rounded-md flex items-center justify-center text-gray-400 text-sm mb-5">
           대표 이미지
+          <HeartButton popupId={popup.id} className="absolute top-3 right-3 w-9 h-9" />
         </div>
 
         <p className="text-xs text-gray-400 mb-2">{popup.companyName}</p>
 
-        {/* 제목 + 상태 */}
+        {/* 제목 + 평점 */}
         <div className="flex items-start justify-between mb-2">
           <h1 className="text-xl font-bold">{popup.title}</h1>
           {/* TODO: 실제 평점 데이터 연결 */}
@@ -181,9 +164,6 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         {popup.location && <p className="text-sm text-gray-500 mb-3">{popup.location}</p>}
 
         <div className="flex gap-2 mb-6">
-          <span className="text-xs border border-gray-200 rounded-full px-3 py-1 text-gray-600">
-            {POPUP_STATUS_LABEL[popup.status]}
-          </span>
           {popup.location && (
             <span className="text-xs border border-gray-200 rounded-full px-3 py-1 text-gray-600">
               {popup.location}
@@ -218,10 +198,28 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         {showReservation && (
           <ReservationModal
             popupName={popup.title}
-            reservationMode={popup.reservationMode}
             slots={slots}
             onClose={() => setShowReservation(false)}
-            onSubmit={handleReservationSubmit}
+            onSubmit={async (date, count, slotId) => {
+              if (!customer) {
+                router.push("/login");
+                return;
+              }
+              try {
+                await createReservation(customer.id, {
+                  popupId: popup.id,
+                  ...(popup.reservationMode === "SLOT"
+                    ? { slotId }
+                    : { reservationDate: date.toISOString().slice(0, 10) }),
+                  partySize: count,
+                });
+                alert(`${date.getMonth() + 1}월 ${date.getDate()}일 ${count}인 예약이 접수됐어요.`);
+                setShowReservation(false);
+              } catch (err) {
+                console.error("예약 실패", err);
+                alert(err instanceof Error ? err.message : "예약에 실패했어요. 잠시 후 다시 시도해주세요.");
+              }
+            }}
           />
         )}
 
@@ -229,7 +227,27 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
           <WaitingModal
             popupName={popup.title}
             onClose={() => setShowWaiting(false)}
-            onSubmit={handleWaitingSubmit}
+            onSubmit={async (count) => {
+              if (!customer) {
+                router.push("/login");
+                return;
+              }
+              if (!customer.phone) {
+                alert("웨이팅 등록에는 전화번호가 필요해요. 마이페이지 > 내 정보에서 먼저 등록해주세요.");
+                return;
+              }
+              try {
+                await registerWaiting(popup.id, customer.id, {
+                  phoneNumber: customer.phone,
+                  partySize: count,
+                });
+                alert(`웨이팅 ${count}명 등록됐어요.`);
+                setShowWaiting(false);
+              } catch (err) {
+                console.error("웨이팅 등록 실패", err);
+                alert(err instanceof Error ? err.message : "웨이팅 등록에 실패했어요. 잠시 후 다시 시도해주세요.");
+              }
+            }}
           />
         )}
 
@@ -283,7 +301,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
             <section>
               <h2 className="text-sm font-semibold mb-2">SNS / 홈페이지</h2>
               {/* TODO: 실제 SNS/홈페이지 링크 연결 */}
-              <div className="bg-gray-900 rounded-xl h-[180px] flex items-center justify-center text-white text-sm">
+              <div className="bg-gray-900 rounded-md h-[180px] flex items-center justify-center text-white text-sm">
                 WELCOME 이미지 영역
               </div>
               <button type="button" className="w-full text-center text-sm text-gray-500 mt-3 py-2">
@@ -298,22 +316,22 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         )}
 
         {activeTab === "후기" && (
-  <section>
-    {isLoggedIn && (
-      <Link
-        href={`/popup/${id}/review`}
-        className="block w-full text-center rounded-full py-3 text-sm font-medium bg-[#FEE500] mb-4"
-      >
-        후기 작성하기
-      </Link>
-    )}
-    {relatedReviews.length === 0 ? (
-      <p className="text-sm text-gray-400 py-10 text-center">아직 후기가 없어요.</p>
-    ) : (
-      relatedReviews.map((review) => <ReviewCard key={review.id} review={review} />)
-    )}
-  </section>
-)}
+          <section>
+            {isLoggedIn && (
+              <Link
+                href={`/popup/${id}/review`}
+                className="block w-full text-center rounded-full py-3 text-sm font-medium bg-gray-900 text-white mb-4"
+              >
+                후기 작성하기
+              </Link>
+            )}
+            {relatedReviews.length === 0 ? (
+              <p className="text-sm text-gray-400 py-10 text-center">아직 후기가 없어요.</p>
+            ) : (
+              relatedReviews.map((review) => <ReviewCard key={review.id} review={review} />)
+            )}
+          </section>
+        )}
       </div>
 
       {/* 팝업 주변 핫플 - TODO: 실제 주변 장소 데이터 연결 */}
@@ -327,16 +345,13 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       </section>
 
-      {/* 비슷한 팝업 - TODO: 실제 추천 로직 연결 (지금은 mock 목록에서 이름만 다른 것 노출) */}
+      {/* 비슷한 팝업 - 진행중인 실제 팝업 중 이 팝업을 뺀 나머지 */}
       <section className="px-4 mobile:px-8 mb-10">
         <h2 className="text-base font-semibold mb-3">비슷한 팝업</h2>
         <div className="flex gap-3 overflow-x-auto pb-1">
-          {[...recentPopups, ...popularPopups]
-            .filter((item) => item.name !== popup.title)
-            .slice(0, 4)
-            .map((item) => (
-              <PlaceCard key={item.id + item.name} category={item.location ?? "팝업"} name={item.name} />
-            ))}
+          {similar.map((item) => (
+            <PlaceCard key={item.id} category={item.location ?? "팝업"} name={item.name} />
+          ))}
         </div>
       </section>
 
