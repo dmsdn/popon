@@ -18,13 +18,16 @@ public class PopupCreateRequest {
 
     private LocalDateTime endDate;
 
-    private Double areaSqm; // 매장 면적(㎡), 선택 입력
+    private Double areaSqm;
 
-    private Integer capacity; // 동시 수용인원 직접 입력 시 (안 주면 areaSqm 기반 자동계산값 사용)
+    private Integer capacity;
 
     @NotBlank
     private String reservationMode; // "SLOT" 또는 "FREE"
 
     @NotNull
-    private Integer avgExperienceMinutes; // 체험 소요시간(분), 필수
+    private Integer avgExperienceMinutes;
+
+    @NotBlank
+    private String queueMode; // "PRERESERVATION_ONLY" / "ONSITE_WAITING_ONLY" / "BOTH"
 }

@@ -15,5 +15,6 @@ public class PopupUpdateRequest {
     private Integer capacity;
     private String reservationMode; // "SLOT" 또는 "FREE"
     private Integer avgExperienceMinutes;
+    private String queueMode; // "PRERESERVATION_ONLY" / "ONSITE_WAITING_ONLY" / "BOTH"
 
 }
