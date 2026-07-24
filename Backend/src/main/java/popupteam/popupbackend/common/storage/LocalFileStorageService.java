@@ -24,10 +24,7 @@ public class LocalFileStorageService implements FileStorageService {
     @Override
     public String store(MultipartFile file) {
         try {
-            Path uploadPath = Paths.get(uploadDir);
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
-            }
+            Path uploadPath = ensureUploadDir();
 
             String originalFilename = file.getOriginalFilename();
             String extension = "";
@@ -43,5 +40,28 @@ public class LocalFileStorageService implements FileStorageService {
         } catch (IOException e) {
             throw new RuntimeException("파일 저장 실패: " + e.getMessage(), e);
         }
+    }
+
+    @Override
+    public String storeBytes(byte[] data, String extension) {
+        try {
+            Path uploadPath = ensureUploadDir();
+
+            String storedFilename = UUID.randomUUID() + extension;
+            Path targetPath = uploadPath.resolve(storedFilename);
+            Files.write(targetPath, data);
+
+            return baseUrl + "/" + storedFilename;
+        } catch (IOException e) {
+            throw new RuntimeException("파일 저장 실패: " + e.getMessage(), e);
+        }
+    }
+
+    private Path ensureUploadDir() throws IOException {
+        Path uploadPath = Paths.get(uploadDir);
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
+        }
+        return uploadPath;
     }
 }
