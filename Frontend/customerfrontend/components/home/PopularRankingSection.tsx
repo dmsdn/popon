@@ -8,10 +8,13 @@ import { searchPopups } from "@/lib/api/popups";
 import { toPopupItem } from "@/lib/utils/popupMapper";
 import type { PopupItem } from "@/data/mockPopups";
 
-// ⚠️ 진짜 "인기순"(방문자 수 랭킹) API가 고객 화면에는 아직 공개돼 있지 않아서
-// (관리자 전용 /api/admin/stats/popup-ranking만 존재 — backend-todo.md 10번 참고),
-// 지금은 선택한 지역의 진행중인 팝업 목록을 순서 그대로 보여주고 있어요.
-// 카드 위 숫자는 실제 인기 순위가 아니라 목록 순서예요.
+// ⚠️ "인기 추천 팝업"을 방문수/찜한 수/후기 개수로 보여달라는 요청이 있었는데, 지금
+// 백엔드엔 이 세 가지를 고객 화면에 알려주는 API가 하나도 없어요.
+//   - 방문수: 관리자 전용 일별 통계만 있고, 팝업별 방문수를 고객에게 보여주는 API 없음
+//   - 찜한 수: WishlistController가 "내가 찜했는지 여부"만 알려주고, 팝업별 전체 찜 수는 없음
+//   - 후기 개수: 레포지토리 레벨엔 countByPopupId가 있지만, 이걸 노출하는 고객용 API가 없음
+// 그래서 지금은 이름만 "인기 추천 팝업"으로 바꾸고, 지역 필터로 걸러진 진행중 팝업 목록
+// 순서를 그대로 보여주고 있어요. 세 지표를 넣으려면 백엔드에 각각의 API 추가가 필요해요.
 const KEYWORDS = ["전체", "성수", "여의도", "홍대"];
 
 export function PopularRankingSection() {
@@ -36,7 +39,7 @@ export function PopularRankingSection() {
   return (
     <section className="mb-10 mobile:mb-14 px-4 mobile:px-8">
       <div className="flex items-baseline justify-between mb-3 mobile:mb-4">
-        <h3 className="text-base mobile:text-lg font-semibold">실시간 인기 팝업 추천 카드</h3>
+        <h3 className="text-base mobile:text-lg font-semibold">인기 추천 팝업</h3>
         <Link href="/ranking" className="text-sm mobile:text-base text-gray-400">
           더보기 ›
         </Link>
