@@ -4,10 +4,12 @@ spring:
   config:
     import: "optional:classpath:application-local.yml"
 
+  # 팀 공용 Aiven 클라우드 MySQL 기준. 비밀번호는 커밋 금지 — 아래 password는 반드시 채워 넣어야 함.
+  # (application-local.yml에 password만 따로 두면 이 파일을 덮어써서 더 안전 — 하단 예시 참고)
   datasource:
-    url: jdbc:mysql://localhost:3306/popupdb?createDatabaseIfNotExist=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-    username: root
-    password: "<내 MySQL 비밀번호>"
+    url: jdbc:mysql://ibm-project1-ibmproject1.l.aivencloud.com:23648/popupdb?useSSL=true&requireSSL=true&serverTimezone=Asia/Seoul
+    username: avnadmin
+    password: "<Aiven DB 비밀번호 — 팀에서 공유받아 입력>"
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
@@ -68,8 +70,8 @@ file:
 
 spring:
   datasource:
-    # 본인 MySQL root 비밀번호가 application.yml 기본값과 다르면 여기서 덮어쓰기
-    password: "<내 MySQL 비밀번호>"
+    # 팀에서 공유받은 Aiven DB 비밀번호를 여기에 (application.yml에 직접 넣지 말 것 — 커밋 사고 방지)
+    password: "<Aiven DB 비밀번호>"
 
   # 웨이팅 입장 QR 메일을 실제로 발송해보고 싶을 때만 (Gmail 앱 비밀번호 필요, 비워두면 발송 스킵)
   # mail:
