@@ -1,15 +1,36 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Footer } from "@/components/layout/Footer";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { REGIONS, CATEGORIES, getPreferredRegions, getPreferredCategories } from "@/lib/preferences";
 
-const CATEGORY_SHORTCUTS = ["뷰티", "패션", "애니", "푸드", "스포츠", "라이프", "굿즈", "문구"];
+// 관심으로 설정해둔 것부터 위로 오게 정렬 (나머지는 원래 순서 유지)
+function sortByPreferred(all: string[], preferred: string[]): string[] {
+  return [...all].sort((a, b) => {
+    const aPreferred = preferred.includes(a);
+    const bPreferred = preferred.includes(b);
+    if (aPreferred === bPreferred) return 0;
+    return aPreferred ? -1 : 1;
+  });
+}
 
 export default function MorePage() {
   const router = useRouter();
   const { isLoggedIn, customer } = useAuth();
+
+  const [preferredRegions, setPreferredRegions] = useState<string[]>([]);
+  const [preferredCategories, setPreferredCategories] = useState<string[]>([]);
+
+  useEffect(() => {
+    setPreferredRegions(getPreferredRegions());
+    setPreferredCategories(getPreferredCategories());
+  }, []);
+
+  const sortedCategories = sortByPreferred(CATEGORIES, preferredCategories);
+  const sortedRegions = sortByPreferred(REGIONS, preferredRegions);
 
   return (
     <main className="w-full mobile:max-w-[1000px] mobile:mx-auto pb-16 mobile:pb-0">
@@ -50,47 +71,51 @@ export default function MorePage() {
         )}
       </section>
 
-      {/* 카테고리별 바로가기 */}
-      <section className="px-4 mobile:px-8 py-6 border-b border-gray-100">
-        <h2 className="text-sm font-semibold mb-3">카테고리별 바로가기</h2>
-        <div className="grid grid-cols-4 gap-2">
-          {CATEGORY_SHORTCUTS.map((category) => (
+      {/* 카테고리별 바로가기 - 관심 카테고리로 설정해둔 게 있으면 맨 위로 */}
+      <section className="px-4 mobile:px-8 py-2 border-b border-gray-100">
+        <h2 className="text-sm font-semibold mb-1 mt-4">카테고리별 바로가기</h2>
+        <nav className="flex flex-col">
+          {sortedCategories.map((category, i) => (
             <Link
               key={category}
               href={`/search?q=${encodeURIComponent(category)}`}
-              className="aspect-square rounded-[4px] border border-gray-200 text-xs font-medium flex items-center justify-center text-gray-600"
+              className={`flex items-center justify-between py-3.5 text-sm text-gray-700 ${
+                i < sortedCategories.length - 1 ? "border-b border-gray-50" : ""
+              }`}
             >
-              {category}
+              <span className="flex items-center gap-1.5">
+                {category}
+                {preferredCategories.includes(category) && (
+                  <span className="text-[10px] text-gray-400">관심</span>
+                )}
+              </span>
+              <span className="text-gray-300">›</span>
             </Link>
           ))}
-        </div>
+        </nav>
       </section>
 
-      {/* 이용 관련 */}
+      {/* 지역별 보기 - 관심 지역으로 설정해둔 게 있으면 맨 위로 */}
       <section className="px-4 mobile:px-8 py-2">
-        <h2 className="text-sm font-semibold mb-1 mt-4">이용</h2>
+        <h2 className="text-sm font-semibold mb-1 mt-4">지역별 보기</h2>
         <nav className="flex flex-col">
-          <Link href="/mypage?menu=예약 / 웨이팅" className="py-3.5 text-sm text-gray-700 border-b border-gray-50">
-            예약 / 웨이팅 내역
-          </Link>
-          <Link href="/mypage?menu=찜 목록" className="py-3.5 text-sm text-gray-700 border-b border-gray-50">
-            찜 목록
-          </Link>
-          <Link href="/mypage?menu=다녀간 팝업" className="py-3.5 text-sm text-gray-700 border-b border-gray-50">
-            다녀간 팝업 (내 후기)
-          </Link>
-          <Link href="/notifications" className="py-3.5 text-sm text-gray-700 border-b border-gray-50">
-            알림
-          </Link>
-          <Link href="/mypage?menu=공지사항" className="py-3.5 text-sm text-gray-700 border-b border-gray-50">
-            공지사항
-          </Link>
-          <Link href="/mypage?menu=1:1 문의" className="py-3.5 text-sm text-gray-700 border-b border-gray-50">
-            1:1 문의
-          </Link>
-          <Link href="/mypage?menu=Q&A" className="py-3.5 text-sm text-gray-700">
-            Q&A
-          </Link>
+          {sortedRegions.map((region, i) => (
+            <Link
+              key={region}
+              href={`/search?q=${encodeURIComponent(region)}`}
+              className={`flex items-center justify-between py-3.5 text-sm text-gray-700 ${
+                i < sortedRegions.length - 1 ? "border-b border-gray-50" : ""
+              }`}
+            >
+              <span className="flex items-center gap-1.5">
+                {region}
+                {preferredRegions.includes(region) && (
+                  <span className="text-[10px] text-gray-400">관심</span>
+                )}
+              </span>
+              <span className="text-gray-300">›</span>
+            </Link>
+          ))}
         </nav>
       </section>
 

@@ -9,9 +9,14 @@ interface MobileHeaderProps {
   // 검색 결과 화면(/search)에서는 로고 대신 뒤로가기 + 검색창을 보여줍니다.
   searchMode?: boolean;
   initialQuery?: string;
+  onSearchFocusChange?: (focused: boolean) => void;
 }
 
-export function MobileHeader({ searchMode = false, initialQuery = "" }: MobileHeaderProps) {
+export function MobileHeader({
+  searchMode = false,
+  initialQuery = "",
+  onSearchFocusChange,
+}: MobileHeaderProps) {
   const router = useRouter();
 
   if (searchMode) {
@@ -22,7 +27,7 @@ export function MobileHeader({ searchMode = false, initialQuery = "" }: MobileHe
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
-        <SearchInput autoFocus={!initialQuery} initialQuery={initialQuery} />
+        <SearchInput autoFocus={!initialQuery} initialQuery={initialQuery} onFocusChange={onSearchFocusChange} />
       </header>
     );
   }

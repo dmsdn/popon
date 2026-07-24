@@ -9,7 +9,7 @@ import { Footer } from "@/components/layout/Footer";
 import { BottomTabBar } from "@/components/layout/BottomTabBar";
 import { getNotifications, type AppNotification, type NotificationType } from "@/lib/api/notifications";
 
-const TABS: ("전체" | NotificationType)[] = ["전체", "공지", "찜", "예약/웨이팅", "기타"];
+const TABS: ("전체" | NotificationType)[] = ["전체", "공지", "예약/웨이팅", "찜"];
 
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -25,7 +25,6 @@ const TYPE_ICON: Record<NotificationType, string> = {
   공지: "📢",
   찜: "❤️",
   "예약/웨이팅": "⏰",
-  기타: "🔔",
 };
 
 export default function NotificationsPage() {
