@@ -7,6 +7,8 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { notices } from "@/data/notices";
 import { getMyReviews, toDisplayDate, type Review } from "@/lib/api/reviews";
 import { getPopup, type PopupDetail } from "@/lib/api/popups";
+import { getMyReservations, type Reservation } from "@/lib/api/reservations";
+import { getMyWaitingStatus, getMyWaitingIds, type Waiting } from "@/lib/api/waiting";
 import {
   subscribeWishlist,
   getWishlistSnapshot,
@@ -34,25 +36,6 @@ const PROVIDER_LABEL = {
   GOOGLE: "구글 연결",
   DEV: "개발용 로그인",
 } as const;
-
-// ==================== 예시용 mock 데이터 (실제로는 백엔드 API로 대체) ====================
-// TODO: getMyWaiting() API로 교체 - 웨이팅이 없으면 null을 내려줘야 프로필 카드가 자동으로 숨겨짐
-const mockWaiting = {
-  id: "w1",
-  popupId: "1",
-  popupName: "팝업 이름",
-  aheadCount: 7,
-  estimatedMinutes: 10,
-  myOrder: 7,
-};
-
-// TODO: getMyReservations() API로 교체
-// 예시로 2건을 넣어서, 아래 "바로가기 카드" 로직이 여러 건일 때 어떻게 동작하는지 확인할 수 있게 했어요.
-const mockReservations = [
-  { id: "r1", popupName: "팝업 이름", dDay: "D-1", date: "26. 07. 16. (목)", time: "오후 13:30", partySize: 2 },
-  { id: "r2", popupName: "다른 팝업 이름", dDay: "D-3", date: "26. 07. 18. (토)", time: "오후 15:00", partySize: 1 },
-];
-// ================================================================================
 
 const FAQS = [
   { q: "웨이팅은 어떻게 신청하나요?", a: "팝업 상세페이지의 '웨이팅' 버튼에서 카카오 로그인으로 바로 신청할 수 있어요." },
@@ -140,6 +123,60 @@ function MyPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wishlistIds]);
 
+  // 예약 / 웨이팅
+  const [myReservations, setMyReservations] = useState<Reservation[] | null>(null);
+  const [myWaitings, setMyWaitings] = useState<Waiting[]>([]);
+  const [reservationPopupTitles, setReservationPopupTitles] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    if (!isLoggedIn || !customer) return;
+    let cancelled = false;
+
+    getMyReservations(customer.id)
+      .then((list) => {
+        if (!cancelled) setMyReservations(list);
+      })
+      .catch((err) => {
+        console.error("내 예약 조회 실패", err);
+        if (!cancelled) setMyReservations([]);
+      });
+
+    // ⚠️ 백엔드에 "내 웨이팅 전체 목록" API가 없어서, 이 브라우저에서 등록할 때
+    // 기록해둔 id들로 하나씩 상태를 조회해요 (lib/api/waiting.ts의 addMyWaitingId 참고).
+    Promise.all(
+      getMyWaitingIds().map((id) =>
+        getMyWaitingStatus(id).catch(() => null)
+      )
+    ).then((results) => {
+      if (!cancelled) {
+        setMyWaitings(results.filter((w): w is Waiting => w !== null));
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn, customer]);
+
+  // 예약/웨이팅에 뜬 팝업들의 제목을 한 번씩만 조회
+  useEffect(() => {
+    const popupIds = [
+      ...(myReservations ?? []).map((r) => r.popupId),
+      ...myWaitings.map((w) => w.popupId),
+    ];
+    [...new Set(popupIds)].forEach((popupId) => {
+      if (reservationPopupTitles[popupId]) return;
+      getPopup(popupId)
+        .then((detail) => {
+          setReservationPopupTitles((prev) => ({ ...prev, [popupId]: detail.title }));
+        })
+        .catch(() => {
+          /* 팝업이 삭제됐을 수도 있어요 */
+        });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myReservations, myWaitings]);
+
   // 비로그인 상태에서도 마이페이지 자체는 보여주고(공지사항/1:1 문의/Q&A는 로그인 없이도 봐야 하니까),
   // 로그인이 필요한 메뉴를 고르려고 할 때만 로그인 화면으로 보냅니다. (handleSelectMenu 참고)
 
@@ -195,7 +232,7 @@ if (queryMenu !== syncedQueryMenu) {
   };
 
   // 웨이팅 + 예약을 합친 총 "대기중" 건수 - 프로필 아래 바로가기 카드 분기에 씁니다.
-  const activeCount = (mockWaiting ? 1 : 0) + mockReservations.length;
+  const activeCount = myWaitings.length + (myReservations?.length ?? 0);
 
   return (
     <main className="w-full mobile:max-w-[1000px] mobile:mx-auto">
@@ -238,11 +275,15 @@ if (queryMenu !== syncedQueryMenu) {
               {activeCount > 0 &&
                 (activeCount === 1 ? (
                   <Link
-                    href={mockWaiting ? `/waiting/${mockWaiting.id}` : `/reservations/${mockReservations[0].id}`}
+                    href={
+                      myWaitings[0]
+                        ? `/waiting/${myWaitings[0].id}`
+                        : `/reservations/${myReservations?.[0]?.id}`
+                    }
                     className="mx-4 mb-4 flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3"
                   >
                     <span className="text-sm text-gray-700">
-                      {mockWaiting ? `웨이팅 ${mockWaiting.myOrder}번째 대기중` : `예약 1건`}
+                      {myWaitings[0] ? `웨이팅 ${myWaitings[0].teamNumber}번째 대기중` : "예약 1건"}
                     </span>
                     <span className="text-xs text-gray-400">›</span>
                   </Link>
@@ -393,36 +434,48 @@ if (queryMenu !== syncedQueryMenu) {
             <div className="flex flex-col gap-10">
               <section>
                 <h2 className="text-sm font-semibold mb-3">웨이팅</h2>
-                {mockWaiting ? (
-                  <Link href={`/waiting/${mockWaiting.id}`} className="block border border-gray-200 rounded-xl p-5">
-                    <div className="flex items-start gap-4">
-                      <div className="w-16 h-16 flex-none bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs">
-                        이미지
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold mb-1">{mockWaiting.popupName}</p>
-                        <p className="text-xs text-gray-500">
-                          앞 {mockWaiting.aheadCount}팀 · 예상 대기 약 {mockWaiting.estimatedMinutes}분
-                        </p>
-                      </div>
-                      <div className="text-right flex-none">
-                        <span className="text-2xl font-bold">{mockWaiting.myOrder}</span>
-                        <span className="text-xs text-gray-500 ml-0.5">번째</span>
-                      </div>
-                    </div>
-                  </Link>
-                ) : (
+                {myWaitings.length === 0 ? (
                   <EmptyState message="진행 중인 웨이팅이 없어요." />
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {myWaitings.map((w) => (
+                      <Link
+                        key={w.id}
+                        href={`/waiting/${w.id}`}
+                        className="block border border-gray-200 rounded-xl p-5"
+                      >
+                        <div className="flex items-start gap-4">
+                          <div className="w-16 h-16 flex-none bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs">
+                            이미지
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold mb-1">
+                              {reservationPopupTitles[w.popupId] ?? `팝업 #${w.popupId}`}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              앞 {w.teamsAhead}팀 · {w.partySize}명 · {w.status}
+                            </p>
+                          </div>
+                          <div className="text-right flex-none">
+                            <span className="text-2xl font-bold">{w.teamNumber}</span>
+                            <span className="text-xs text-gray-500 ml-0.5">번째</span>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
                 )}
               </section>
 
               <section>
                 <h2 className="text-sm font-semibold mb-3">예약</h2>
-                {mockReservations.length === 0 ? (
+                {myReservations === null ? (
+                  <p className="text-sm text-gray-400 py-10 text-center">불러오는 중...</p>
+                ) : myReservations.length === 0 ? (
                   <EmptyState message="예약 내역이 없어요." />
                 ) : (
                   <div className="flex flex-col gap-3">
-                    {mockReservations.map((r) => (
+                    {myReservations.map((r) => (
                       <Link
                         key={r.id}
                         href={`/reservations/${r.id}`}
@@ -432,9 +485,13 @@ if (queryMenu !== syncedQueryMenu) {
                           이미지
                         </div>
                         <div>
-                          <span className="inline-block text-xs text-gray-500 mb-1">{r.dDay}</span>
-                          <p className="text-sm font-semibold mb-1">{r.popupName}</p>
-                          <p className="text-xs text-gray-500">{r.date} {r.time} {r.partySize}명</p>
+                          <span className="inline-block text-xs text-gray-500 mb-1">{r.status}</span>
+                          <p className="text-sm font-semibold mb-1">
+                            {reservationPopupTitles[r.popupId] ?? `팝업 #${r.popupId}`}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {r.reservationDate ?? "시간대 예약"} · {r.partySize}명
+                          </p>
                         </div>
                       </Link>
                     ))}

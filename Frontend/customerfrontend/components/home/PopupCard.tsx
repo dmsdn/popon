@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PopupItem } from "@/data/mockPopups";
 import { HeartButton } from "@/components/ui/HeartButton";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 export function PopupCard({
   id,
@@ -8,6 +9,7 @@ export function PopupCard({
   dateRange,
   location,
   badge,
+  status,
   rank,
 }: PopupItem & { rank?: number }) {
   return (
@@ -31,6 +33,7 @@ export function PopupCard({
 
       {/* 정보: 이미지와 분리해서 아래에 별도로 모음 */}
       <div className="flex flex-col gap-0.5">
+        <StatusBadge status={status} className="self-start mb-0.5" />
         <p className="text-base font-medium text-gray-900 truncate">{name}</p>
         {dateRange && <p className="text-sm text-gray-400">{dateRange}</p>}
         {location && <p className="text-sm text-gray-400">{location}</p>}

@@ -13,6 +13,7 @@ import { RankingSection } from "@/components/home/RankingSection";
 import { searchPopups } from "@/lib/api/popups";
 import { toPopupItem } from "@/lib/utils/popupMapper";
 import { type PopupItem } from "@/data/mockPopups";
+import { HeartButton } from "@/components/ui/HeartButton";
 
 const STATUSES = ["예정", "진행중", "종료"] as const;
 
@@ -209,9 +210,10 @@ function FilterRow<T extends string>({
 function SearchResultRow({ item }: { item: PopupItem }) {
   return (
     <Link href={`/popup/${item.id}`} className="flex gap-4 py-4 border-b border-gray-50">
-      <div className="w-24 h-24 flex-none rounded-lg bg-gray-100 border border-gray-200 overflow-hidden">
+      <div className="relative w-24 h-24 flex-none rounded-lg bg-gray-100 border border-gray-200 overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/images/popup-placeholder.svg" alt="" className="w-full h-full object-cover" />
+        <HeartButton popupId={Number(item.id)} className="absolute top-1.5 right-1.5 w-7 h-7" />
       </div>
       <div className="flex flex-col justify-center">
         {item.status && (
