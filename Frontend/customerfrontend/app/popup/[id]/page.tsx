@@ -15,11 +15,12 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { getMyReviews, toDisplayDate, type Review } from "@/lib/api/reviews";
 import { getPopup, getPopupSlots, searchPopups, type PopupDetail, type PopupSlot } from "@/lib/api/popups";
 import { createReservation } from "@/lib/api/reservations";
-import { registerWaiting, addMyWaitingId } from "@/lib/api/waiting";
+import { registerWaiting, addMyWaitingId, getWaitingBoard } from "@/lib/api/waiting";
 import { toPopupItem } from "@/lib/utils/popupMapper";
+import { recordPopupView } from "@/lib/recentlyViewed";
 import { reviews, type PopupItem, type ReviewItem } from "@/data/mockPopups";
 
-const TABS = ["정보", "굿즈", "후기"] as const;
+const TABS = ["정보", "후기"] as const;
 
 export default function PopupDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -34,6 +35,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   const [showReservation, setShowReservation] = useState(false);
   const [showWaiting, setShowWaiting] = useState(false);
   const [slots, setSlots] = useState<PopupSlot[]>([]);
+  const [waitingTeams, setWaitingTeams] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("정보");
   const [myReviewsForPopup, setMyReviewsForPopup] = useState<Review[]>([]);
 
@@ -44,7 +46,10 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
 
     getPopup(id)
       .then((data) => {
-        if (!cancelled) setPopup(data);
+        if (!cancelled) {
+          setPopup(data);
+          recordPopupView(data.id);
+        }
       })
       .catch((err) => {
         console.error("팝업 상세 조회 실패", err);
@@ -78,6 +83,22 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         if (!cancelled) setSlots(list);
       })
       .catch((err) => console.error("예약 시간대 조회 실패", err));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [popup]);
+
+  // 웨이팅 박스에 "현재 N팀 대기중" 표시용
+  useEffect(() => {
+    if (!popup) return;
+    let cancelled = false;
+
+    getWaitingBoard(popup.id)
+      .then((board) => {
+        if (!cancelled) setWaitingTeams(board.totalWaitingTeams);
+      })
+      .catch((err) => console.error("대기 현황 조회 실패", err));
 
     return () => {
       cancelled = true;
@@ -182,10 +203,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
             onClick={() => setShowReservation(true)}
             className="text-left border border-gray-200 rounded-lg px-4 py-3"
           >
-            <p className="text-sm font-semibold mb-1">사전 예약</p>
-            <p className="text-xs text-gray-400">
-              [Event] 사전 예약 시 소정의 상품을 증정해드립니다 &gt;
-            </p>
+            <p className="text-sm font-semibold">사전 예약</p>
           </button>
           <button
             type="button"
@@ -194,41 +212,34 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
           >
             <p className="text-sm font-semibold mb-1">웨이팅</p>
             <p className="text-xs text-gray-400">
-              [Event] 사전 예약 시 소정의 상품을 증정해드립니다 &gt;
+              {waitingTeams === null ? "대기 현황 불러오는 중..." : `현재 ${waitingTeams}팀 대기중입니다`}
             </p>
           </button>
         </div>
 
         {showReservation && (
           <ReservationModal
-            popupName={popup.title}
-            slots={slots}
-            minDate={new Date(popup.startDate)}
-            maxDate={new Date(popup.endDate)}
-            capacity={popup.capacity}
-            startDate={popup.startDate}
-            endDate={popup.endDate}
-            capacity={popup.capacity}
-            onClose={() => setShowReservation(false)}
-            onSubmit={async (date, count, slotId, time) => {
+  popupName={popup.title}
+  slots={slots}
+  minDate={new Date(popup.startDate)}
+  maxDate={new Date(popup.endDate)}
+  capacity={popup.capacity}
+  onClose={() => setShowReservation(false)}
+  onSubmit={async (date, count, slotId) => {
               if (!customer) {
                 router.push("/login");
                 return;
               }
               try {
-                await createReservation(customer.id, {
+                const reservation = await createReservation(customer.id, {
                   popupId: popup.id,
                   ...(popup.reservationMode === "SLOT"
                     ? { slotId }
                     : { reservationDate: date.toISOString().slice(0, 10) }),
                   partySize: count,
                 });
-                // ⚠️ FREE 방식 팝업의 시간(time)은 지금 백엔드가 저장할 필드가 없어서
-                // 화면 확인용으로만 보여드리고, 실제 예약 데이터에는 아직 안 남아요.
-                const slotTime = slotId ? slots.find((s) => s.id === slotId)?.startTime.slice(0, 5) : null;
-                const timeLabel = slotTime ? ` ${slotTime}` : time ? ` ${time}` : "";
-                alert(`${date.getMonth() + 1}월 ${date.getDate()}일${timeLabel} ${count}인 예약이 접수됐어요.`);
                 setShowReservation(false);
+                router.push(`/reservations/${reservation.id}`);
               } catch (err) {
                 console.error("예약 실패", err);
                 alert(err instanceof Error ? err.message : "예약에 실패했어요. 잠시 후 다시 시도해주세요.");
@@ -324,10 +335,6 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
               </button>
             </section>
           </div>
-        )}
-
-        {activeTab === "굿즈" && (
-          <p className="text-sm text-gray-400 py-10 text-center">등록된 굿즈가 없어요.</p>
         )}
 
         {activeTab === "후기" && (

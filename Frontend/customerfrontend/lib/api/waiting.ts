@@ -27,6 +27,17 @@ export interface Waiting {
   source: string;
 }
 
+export interface WaitingBoard {
+  popupId: number;
+  totalWaitingTeams: number;
+  waitingList: Waiting[];
+}
+
+// 현재 대기 현황(전체 대기팀 수) - 로그인 여부 상관없이 조회 가능
+export function getWaitingBoard(popupId: number) {
+  return apiFetch<WaitingBoard>(`/api/popups/${popupId}/waiting/board`);
+}
+
 // 회원 웨이팅 등록 (로그인 상태 - customerId 전달)
 export function registerWaiting(popupId: number, customerId: number, payload: WaitingCreatePayload) {
   return apiFetch<Waiting>(`/api/popups/${popupId}/waiting?customerId=${customerId}`, {
