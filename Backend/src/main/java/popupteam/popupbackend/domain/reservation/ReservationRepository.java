@@ -64,5 +64,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             "AND r.entryStatus = 'CHECKED_IN' AND r.exitedAt IS NULL " +
             "ORDER BY r.checkedInAt ASC")
     List<Reservation> findCurrentlyInsideByPopupId(@Param("popupId") Long popupId);
+    // 팝업 구분 없이 전체 체크인 상태(아직 퇴장 전) 조회 - 자동퇴장 스케줄러용
+    List<Reservation> findByEntryStatusAndExitedAtIsNull(EntryStatus entryStatus);
 
 }
