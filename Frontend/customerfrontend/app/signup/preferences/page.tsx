@@ -91,7 +91,7 @@ export default function PreferencesPage() {
       <p className="text-sm text-gray-400 mb-8">나중에 마이페이지에서 언제든 수정할 수 있어요.</p>
 
       <section className="mb-8">
-        <h2 className="text-sm font-semibold text-gray-800 mb-3">관심 지역</h2>
+        <h2 className="text-sm font-semibold text-gray-700 mb-3">관심 지역</h2>
         <div className="grid grid-cols-4 mobile:grid-cols-6 gap-2">
           {REGIONS.map((region) => (
             <button
@@ -173,3 +173,4 @@ export default function PreferencesPage() {
     </main>
   );
 }
+
