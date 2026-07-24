@@ -34,6 +34,7 @@ export default function SearchPage({
   const [status, setStatus] = useState<(typeof STATUSES)[number] | null>(
     (STATUSES as readonly string[]).includes(statusParam ?? "") ? (statusParam as (typeof STATUSES)[number]) : null
   );
+  const [mobileSearchFocused, setMobileSearchFocused] = useState(false);
   const [allPopups, setAllPopups] = useState<PopupItem[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -117,10 +118,10 @@ export default function SearchPage({
 
       {/* 모바일: 뒤로가기 + 검색창만 있는 검색 모드 헤더 */}
       <div className="block mobile:hidden">
-        <MobileHeader searchMode initialQuery={query ?? ""} />
+        <MobileHeader searchMode initialQuery={query ?? ""} onSearchFocusChange={setMobileSearchFocused} />
       </div>
 
-      {hasActiveFilter ? (
+      {hasActiveFilter && !mobileSearchFocused ? (
         <div>
           <div className="px-4 mobile:px-8 pt-3 pb-1">
             <p className="text-sm text-gray-600">
@@ -155,7 +156,7 @@ export default function SearchPage({
         <div className="mobile:px-4">
           <RecentSearches />
           <SuggestedKeywords />
-          <RankingSection title="실시간 인기 추천 팝업" items={popularForRanking} />
+          {!hasActiveFilter && <RankingSection title="인기 추천 팝업" items={popularForRanking} />}
         </div>
       )}
 
