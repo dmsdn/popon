@@ -32,7 +32,7 @@ public class BusinessController {
 
     @PutMapping("/me")
     public ResponseEntity<?> updateMyInfo(org.springframework.security.core.Authentication authentication,
-                                          @RequestBody BusinessUpdateRequest request) {
+                                          @Valid @RequestBody BusinessUpdateRequest request) {
         Business business = businessService.updateInfo(authentication.getName(), request);
         return ResponseEntity.ok(BusinessInfoResponse.from(business));
     }
