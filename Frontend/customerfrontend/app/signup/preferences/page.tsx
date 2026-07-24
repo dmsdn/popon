@@ -100,7 +100,7 @@ export default function PreferencesPage() {
               onClick={() => toggleRegion(region)}
               className={`aspect-square rounded-[4px] text-xs font-medium flex items-center justify-center text-center px-1 border ${
                 selectedRegions.includes(region)
-                  ? "bg-gray-900 text-white border-gray-900"
+                  ? "bg-gray-900 text-white border-gray-800"
                   : "border-gray-200 text-gray-600"
               }`}
             >
