@@ -9,7 +9,7 @@ public interface PopupRepository extends JpaRepository<Popup, Long> {
 
     List<Popup> findByBusinessIdOrderByCreatedAtDesc(Long businessId);
 
-    @Query("SELECT p FROM Popup p WHERE " +
+    @Query("SELECT p FROM Popup p JOIN FETCH p.business WHERE " +
             "(:location IS NULL OR p.location = :location) AND " +
             "(:status IS NULL OR p.status = :status) AND " +
             "(:keyword IS NULL OR p.title LIKE %:keyword% OR p.description LIKE %:keyword%) " +
@@ -24,5 +24,9 @@ public interface PopupRepository extends JpaRepository<Popup, Long> {
     long countByStatus(PopupStatus status);
 
     // 소비자의 관심지역(customer_region)에 해당하는 팝업만 조회할 때 사용
-    List<Popup> findByAddressKeywordIdInAndStatusOrderByCreatedAtDesc(List<Long> regionIds, PopupStatus status);
+    @Query("SELECT p FROM Popup p JOIN FETCH p.business WHERE " +
+            "p.addressKeyword.id IN :regionIds AND p.status = :status " +
+            "ORDER BY p.createdAt DESC")
+    List<Popup> findByAddressKeywordIdInAndStatusOrderByCreatedAtDesc(@Param("regionIds") List<Long> regionIds,
+                                                                      @Param("status") PopupStatus status);
 }
