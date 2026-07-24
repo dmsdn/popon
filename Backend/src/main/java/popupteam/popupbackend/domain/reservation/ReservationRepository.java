@@ -15,6 +15,15 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     List<Reservation> findBySlotIdAndStatus(Long slotId, ReservationStatus status);
     List<Reservation> findByPopupIdAndReservationDateAndStatus(Long popupId, LocalDate reservationDate, ReservationStatus status);
 
+    // 슬롯 목록 조회용 예약 인원 집계 — 슬롯마다 findBySlotId를 반복하면 슬롯 수만큼 쿼리가 나가
+    // 원격 DB(Aiven)에서는 수십 초까지 걸리므로, 팝업 단위 GROUP BY 한 번으로 대체 (row: [slotId, SUM(partySize)])
+    @Query("SELECT r.slot.id, SUM(r.partySize) FROM Reservation r " +
+            "WHERE r.slot.popup.id = :popupId AND r.status = 'CONFIRMED' " +
+            "GROUP BY r.slot.id")
+    List<Object[]> sumConfirmedPartySizeBySlot(@Param("popupId") Long popupId);
+
+    boolean existsBySlotId(Long slotId);
+
     @Query("SELECT r FROM Reservation r WHERE r.popup.id = :popupId " +
             "ORDER BY r.reservationDate ASC, r.createdAt ASC")
     List<Reservation> findByPopupId(@Param("popupId") Long popupId);
