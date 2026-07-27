@@ -3,15 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { updateMyInfo } from "@/lib/api/customer";
-import {
-  REGIONS,
-  CATEGORIES,
-  getPreferredRegions,
-  getPreferredCategories,
-  setPreferredRegions,
-  setPreferredCategories,
-} from "@/lib/preferences";
+import { updateMyInfo, getKeywords, getMyInterests, type Keyword } from "@/lib/api/customer";
+import { submitPreferences } from "@/lib/api/auth";
+import { getRegions, getMyRegions, saveMyRegions, type Region } from "@/lib/api/regions";
+import { formatPhoneInput, isValidPhone } from "@/lib/utils/formatPhone";
+import { BirthDatePicker } from "@/components/ui/BirthDatePicker";
 
 export default function EditProfilePage() {
   const router = useRouter();
@@ -19,12 +15,17 @@ export default function EditProfilePage() {
 
   const [nickname, setNickname] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [gender, setGender] = useState<"MALE" | "FEMALE" | "UNKNOWN">("UNKNOWN");
   const [birthDate, setBirthDate] = useState("");
-  const [regions, setRegions] = useState<string[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
+  const [showBirthPicker, setShowBirthPicker] = useState(false);
+  const [keywords, setKeywords] = useState<Keyword[]>([]);
+  const [selectedKeywordIds, setSelectedKeywordIds] = useState<number[]>([]);
+  const [regions, setRegions] = useState<Region[]>([]);
+  const [selectedRegionIds, setSelectedRegionIds] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [nicknameError, setNicknameError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !customer) {
@@ -35,39 +36,71 @@ export default function EditProfilePage() {
   useEffect(() => {
     if (!customer) return;
     setNickname(customer.nickname);
-    setPhone(customer.phone ?? "");
+    // [수정] 저장된 전화번호가 하이픈 없이("01012345678") 들어있으면 isValidPhone
+    // 검증(010-0000-0000 형식만 허용)을 못 통과해서 "저장하기" 버튼이 계속 비활성화
+    // 상태로 남아있었어요. 불러올 때 항상 포맷을 맞춰줍니다.
+    setPhone(formatPhoneInput(customer.phone ?? ""));
     setEmail(customer.email ?? "");
     setGender(customer.gender ?? "UNKNOWN");
     setBirthDate(customer.birthDate ?? "");
-    setRegions(getPreferredRegions());
-    setCategories(getPreferredCategories());
   }, [customer]);
 
-  const toggleRegion = (region: string) => {
-    setRegions((prev) => (prev.includes(region) ? prev.filter((r) => r !== region) : [...prev, region]));
+  // [수정] "관심 카테고리"가 로컬 전용 목록을 쓰고 있어서, 회원가입 때 저장한 실제
+  // 관심 키워드(백엔드)랑 완전히 따로 놀았어요. 이제 signup/preferences와 동일하게
+  // 진짜 keyword API를 쓰고, 새로 생긴 GET /api/customer/interests로 기존 선택값도
+  // 미리 체크된 상태로 보여줍니다.
+  useEffect(() => {
+    getKeywords()
+      .then(setKeywords)
+      .catch((err) => console.error("키워드 목록 조회 실패", err));
+    getMyInterests()
+      .then(({ keywordIds }) => setSelectedKeywordIds(keywordIds))
+      .catch((err) => console.error("내 관심 키워드 조회 실패", err));
+  }, []);
+
+  // [수정] 관심 지역도 백엔드가 이제 동네 단위(성수/강남/홍대)로 관리되기 시작해서,
+  // 로컬 저장 대신 실제 API로 연결했어요. 기존 선택값도 GET .../regions/mine으로
+  // 미리 채웁니다.
+  useEffect(() => {
+    getRegions()
+      .then(setRegions)
+      .catch((err) => console.error("지역 목록 조회 실패", err));
+    getMyRegions()
+      .then(({ regionIds }) => setSelectedRegionIds(regionIds))
+      .catch((err) => console.error("내 관심 지역 조회 실패", err));
+  }, []);
+
+  const toggleRegion = (id: number) => {
+    setSelectedRegionIds((prev) => (prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]));
   };
-  const toggleCategory = (category: string) => {
-    setCategories((prev) =>
-      prev.includes(category) ? prev.filter((c) => c !== category) : [...prev, category]
-    );
+  const toggleKeyword = (id: number) => {
+    setSelectedKeywordIds((prev) => (prev.includes(id) ? prev.filter((k) => k !== id) : [...prev, id]));
   };
 
+  const canSubmit = nickname.trim().length > 0 && isValidPhone(phone);
+
   const handleSubmit = async () => {
+    setNicknameError(null);
+    // [수정] 전화번호가 선택값이었는데, 회원가입 때는 필수로 받으면서 여기선 안 받으면
+    // 나중에 웨이팅 등록처럼 전화번호가 꼭 필요한 기능에서 막히는 사람이 생겨요.
+    // 필수로 바꾸고, 형식도 010-0000-0000으로 맞춰야 저장되게 검증을 추가했어요.
+    if (!isValidPhone(phone)) {
+      setPhoneError("전화번호를 010-0000-0000 형식으로 입력해주세요.");
+      return;
+    }
     if (!nickname.trim()) return;
     setSubmitting(true);
     try {
       await updateMyInfo({
         nickname: nickname.trim(),
-        phone: phone.trim() || undefined,
+        phone,
         email: email.trim() || undefined,
         gender,
         birthDate: birthDate || undefined,
       });
-      setPreferredRegions(regions);
-      setPreferredCategories(categories);
+      await submitPreferences(selectedKeywordIds);
+      await saveMyRegions(selectedRegionIds);
       await refresh();
-      // [수정] 여기도 review 페이지와 같은 이유로 push 대신 back()을 씁니다 —
-      // 마이페이지에서 "내 정보 수정"으로 들어온 화면이라 back()이 자연스러운 복귀예요.
       if (typeof window !== "undefined" && window.history.length > 1) {
         router.back();
       } else {
@@ -75,7 +108,13 @@ export default function EditProfilePage() {
       }
     } catch (err) {
       console.error("정보 수정 실패", err);
-      alert(err instanceof Error ? err.message : "수정에 실패했어요. 잠시 후 다시 시도해주세요.");
+      const message = err instanceof Error ? err.message : "수정에 실패했어요. 잠시 후 다시 시도해주세요.";
+      // 백엔드가 닉네임 중복이면 "이미 사용 중인 닉네임이에요." 메시지를 내려줘요
+      if (message.includes("닉네임")) {
+        setNicknameError(message);
+      } else {
+        alert(message);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -97,20 +136,36 @@ export default function EditProfilePage() {
           <input
             type="text"
             value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
-            className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm outline-none"
+            onChange={(e) => {
+              setNickname(e.target.value);
+              setNicknameError(null);
+            }}
+            className={`w-full bg-gray-100 rounded-lg px-4 py-3 text-sm outline-none ${
+              nicknameError ? "ring-1 ring-red-400" : ""
+            }`}
           />
+          {nicknameError && <p className="text-xs text-red-500 mt-1.5">{nicknameError}</p>}
         </label>
 
         <label className="block">
-          <span className="block text-sm font-medium text-gray-700 mb-2">전화번호</span>
+          <span className="block text-sm font-medium text-gray-700 mb-2">
+            전화번호 <span className="text-red-400">*</span>
+          </span>
           <input
             type="tel"
+            inputMode="numeric"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={(e) => {
+              setPhone(formatPhoneInput(e.target.value));
+              setPhoneError(null);
+            }}
             placeholder="010-0000-0000"
-            className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm outline-none"
+            maxLength={13}
+            className={`w-full bg-gray-100 rounded-lg px-4 py-3 text-sm outline-none ${
+              phoneError ? "ring-1 ring-red-400" : ""
+            }`}
           />
+          {phoneError && <p className="text-xs text-red-500 mt-1.5">{phoneError}</p>}
         </label>
 
         <label className="block">
@@ -138,61 +193,74 @@ export default function EditProfilePage() {
                 key={value}
                 type="button"
                 onClick={() => setGender(value)}
-                className={`flex-1 rounded-full py-2.5 text-sm border ${
-                  gender === value ? "bg-gray-900 text-white border-gray-900" : "border-gray-200 text-gray-600"
+                className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-3 text-sm border ${
+                  gender === value ? "border-gray-900 text-gray-900 font-medium" : "border-gray-200 text-gray-500"
                 }`}
               >
+                <span
+                  className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
+                    gender === value ? "border-gray-900" : "border-gray-300"
+                  }`}
+                >
+                  {gender === value && <span className="w-2 h-2 rounded-full bg-gray-900" />}
+                </span>
                 {label}
               </button>
             ))}
           </div>
         </div>
 
-        <label className="block">
+        <div className="block">
           <span className="block text-sm font-medium text-gray-700 mb-2">생년월일</span>
-          <input
-            type="date"
-            value={birthDate}
-            onChange={(e) => setBirthDate(e.target.value)}
-            className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm outline-none"
-          />
-        </label>
+          <button
+            type="button"
+            onClick={() => setShowBirthPicker(true)}
+            className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm text-left"
+          >
+            {birthDate || <span className="text-gray-400">생년월일을 선택해주세요</span>}
+          </button>
+        </div>
+        {showBirthPicker && (
+          <BirthDatePicker value={birthDate} onChange={setBirthDate} onClose={() => setShowBirthPicker(false)} />
+        )}
 
         <div>
           <span className="block text-sm font-medium text-gray-700 mb-2">관심 카테고리</span>
-          <div className="grid grid-cols-4 gap-2">
-            {CATEGORIES.map((category) => (
+          <div className="flex flex-wrap gap-2">
+            {keywords.map((kw) => (
               <button
-                key={category}
+                key={kw.id}
                 type="button"
-                onClick={() => toggleCategory(category)}
-                className={`aspect-square rounded-[4px] text-xs font-medium flex items-center justify-center text-center px-1 border ${
-                  categories.includes(category)
+                onClick={() => toggleKeyword(kw.id)}
+                className={`px-4 py-2 rounded-full text-sm border ${
+                  selectedKeywordIds.includes(kw.id)
                     ? "bg-gray-900 text-white border-gray-900"
                     : "border-gray-200 text-gray-600"
                 }`}
               >
-                {category}
+                {kw.name}
               </button>
             ))}
           </div>
         </div>
 
+        {/* [수정] 백엔드 region이 이제 동네 단위(성수/강남/홍대)라, 하드코딩 목록 대신
+            실제 GET /api/regions로 받아온 목록을 씁니다. */}
         <div>
           <span className="block text-sm font-medium text-gray-700 mb-2">관심 지역</span>
-          <div className="grid grid-cols-4 gap-2">
-            {REGIONS.map((region) => (
+          <div className="flex flex-wrap gap-2">
+            {regions.map((r) => (
               <button
-                key={region}
+                key={r.id}
                 type="button"
-                onClick={() => toggleRegion(region)}
-                className={`aspect-square rounded-[4px] text-xs font-medium flex items-center justify-center text-center px-1 border ${
-                  regions.includes(region)
+                onClick={() => toggleRegion(r.id)}
+                className={`px-4 py-2 rounded-full text-sm border ${
+                  selectedRegionIds.includes(r.id)
                     ? "bg-gray-900 text-white border-gray-900"
                     : "border-gray-200 text-gray-600"
                 }`}
               >
-                {region}
+                {r.name}
               </button>
             ))}
           </div>
@@ -201,7 +269,7 @@ export default function EditProfilePage() {
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={submitting || !nickname.trim()}
+          disabled={submitting || !canSubmit}
           className="w-full rounded-full py-3.5 text-sm font-medium bg-gray-900 text-white disabled:opacity-50 mt-4"
         >
           {submitting ? "저장하는 중..." : "저장하기"}
