@@ -7,7 +7,7 @@ export function NoticeBar() {
   if (!notice) return null;
 
   return (
-    <div className="mx-4 mobile:mx-8 my-6 flex items-center justify-between bg-gray-100 rounded-lg px-4 py-3 text-sm">
+    <div className="mx-4 mobile:mx-8 mb-14 mobile:mb-16 flex items-center justify-between bg-gray-100 rounded-lg px-4 py-3 text-sm">
       {/* 공지 제목 클릭 → 이 공지의 상세 페이지로 이동 */}
       <Link href={`/notice/${notice.id}`} className="truncate flex-1">
         <span className="font-medium">[공지]</span> {notice.title}

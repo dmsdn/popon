@@ -2,6 +2,8 @@ export type PopupItem = {
   id: string;
   name: string;
   category?: string; // 검색 필터용 카테고리 (뷰티/패션/애니/푸드/스포츠/라이프/굿즈)
+  hashtags?: string[]; // 실제 백엔드 popup_hashtag 데이터 (있으면 category보다 이걸 우선 씀)
+  regionId?: number | null; // 실제 백엔드 region(동네 단위) id - 정확한 지역 필터링용
   dateRange?: string;
   location?: string;
   badge?: string;

@@ -27,10 +27,14 @@ export function toPopupItem(popup: PopupDetail): PopupItem {
   return {
     id: String(popup.id),
     name: popup.title,
-    // ⚠️ category: 백엔드 Popup 테이블에 카테고리 컬럼이 아직 없어서 비워둡니다.
-    //    (검색화면 "카테고리" 필터는 그래서 아직 실 데이터로 안 채워져요 — backend-todo.md 11번 참고)
+    // [수정] 백엔드에 popup_hashtag 실 데이터가 생겨서, 이제 진짜 태그로 카테고리를 채워요.
+    category: popup.hashtags?.[0],
+    hashtags: popup.hashtags,
+    regionId: popup.regionId,
     dateRange: `${formatDate(popup.startDate)} ~ ${formatDate(popup.endDate)}`,
-    location: popup.location ?? undefined,
+    // [수정] regionName(동네 단위 정식 지역명)이 있으면 그걸 우선 쓰고, 없으면 기존
+    // location 자유텍스트로 대체
+    location: popup.regionName ?? popup.location ?? undefined,
     status: STATUS_MAP[popup.status],
   };
 }

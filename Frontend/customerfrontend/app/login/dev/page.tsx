@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { setToken } from "@/lib/api/client";
 import { devLogin, getSignupStatus } from "@/lib/api/auth";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { consumeRedirectTarget } from "@/lib/postLoginRedirect";
 
 // 백엔드의 실제 개발용 로그인(POST /api/customer/dev-login)에 연결된 화면입니다.
 // testId를 다르게 입력하면 서로 다른 테스트 계정으로 로그인/가입돼요.
@@ -35,10 +36,10 @@ export default function DevLoginPage() {
       // 실제 가입완료 여부를 확인해서 그에 맞게 보냅니다.
       try {
         const { signupCompleted } = await getSignupStatus();
-        router.push(signupCompleted ? "/" : "/signup");
+        router.push(signupCompleted ? consumeRedirectTarget() ?? "/" : "/signup");
       } catch (statusError) {
         console.warn("가입 완료 여부 확인 실패", statusError);
-        router.push("/");
+        router.push(consumeRedirectTarget() ?? "/");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "로그인에 실패했어요. 다시 시도해주세요.");

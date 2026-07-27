@@ -59,3 +59,8 @@ export interface Keyword {
 export function getKeywords() {
   return apiFetch<Keyword[]>("/api/keywords");
 }
+
+// [신규] 마이페이지 수정 화면에서 기존 선택값을 미리 체크해줄 방법이 없어서 추가.
+export function getMyInterests() {
+  return apiFetch<{ keywordIds: number[] }>("/api/customer/interests");
+}

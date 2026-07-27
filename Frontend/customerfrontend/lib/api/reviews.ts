@@ -21,6 +21,7 @@ export interface Review {
   imageUrls: string[];
   likeCount: number;
   likedByMe: boolean;
+  visitDate: string | null; // "YYYY-MM-DD", 다녀간 날짜 (선택 입력)
   createdAt: string; // ISO datetime
   updatedAt: string; // ISO datetime
 }
@@ -30,6 +31,7 @@ export interface ReviewCreatePayload {
   rating: number;
   content: string;
   imageUrls?: string[]; // 최대 5장
+  visitDate?: string; // "YYYY-MM-DD"
 }
 
 export interface LikeResult {
@@ -51,6 +53,7 @@ const SEED_REVIEWS: Review[] = [
     imageUrls: [],
     likeCount: 2,
     likedByMe: false,
+    visitDate: "2026-07-09",
     createdAt: "2026-07-10T12:00:00",
     updatedAt: "2026-07-10T12:00:00",
   },
@@ -62,6 +65,7 @@ const SEED_REVIEWS: Review[] = [
     imageUrls: [],
     likeCount: 5,
     likedByMe: true,
+    visitDate: null,
     createdAt: "2026-07-08T09:30:00",
     updatedAt: "2026-07-08T09:30:00",
   },
@@ -126,6 +130,7 @@ function mockCreateReview(payload: ReviewCreatePayload): Review {
     imageUrls: payload.imageUrls ?? [],
     likeCount: 0,
     likedByMe: false,
+    visitDate: payload.visitDate ?? null,
     createdAt: now,
     updatedAt: now,
   };
@@ -153,6 +158,7 @@ function mockUpdateReview(id: number, payload: ReviewCreatePayload): Review {
     rating: payload.rating,
     content: payload.content,
     imageUrls: payload.imageUrls ?? [],
+    visitDate: payload.visitDate ?? reviews[idx].visitDate,
     updatedAt: new Date().toISOString(),
   };
   reviews[idx] = updated;
