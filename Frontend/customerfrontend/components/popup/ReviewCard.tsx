@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ReviewItem } from "@/data/mockPopups";
+import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 
 const CONTENT_PREVIEW_LENGTH = 60;
 
@@ -42,9 +43,14 @@ export function ReviewCard({ review }: { review: ReviewItem }) {
           {photos.map((photo, i) => (
             <div
               key={photo + i}
-              className="w-20 h-20 flex-none bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs"
+              className="w-20 h-20 flex-none bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-xs"
             >
-              사진
+              {photo.startsWith("http") || photo.startsWith("/") ? (
+                <ImageWithFallback src={photo} className="w-full h-full object-cover" />
+              ) : (
+                // mock 데이터(실제 URL이 아닌 "p1" 같은 자리표시자)일 때만 회색 박스로 대체
+                "사진"
+              )}
             </div>
           ))}
         </div>
