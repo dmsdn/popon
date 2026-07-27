@@ -31,4 +31,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     // 인기 팝업 랭킹 계산용 - 팝업별 후기 개수를 한 번에 집계
     @Query("SELECT r.popupId, COUNT(r) FROM Review r GROUP BY r.popupId")
     List<Object[]> countAllGroupByPopupId();
+
+    // 홈 화면 "실시간 후기 모음"용 - 플랫폼 전체 최신 후기
+    Page<Review> findAllByOrderByCreatedAtDesc(Pageable pageable);
 }

@@ -17,6 +17,9 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 @RestController
 @RequestMapping("/api/customer/reviews")
 @RequiredArgsConstructor
@@ -77,6 +80,48 @@ public class ReviewController {
                     return new ReviewResponse(review, imageUrls, likeCount, likedByMe);
                 })
                 .toList();
+    }
+
+    // 특정 팝업의 후기 목록 (공개, 로그인 불필요 - 팝업 상세페이지용)
+    @GetMapping("/popup/{popupId}")
+    public List<ReviewResponse> getPopupReviews(
+            @PathVariable Long popupId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestHeader(value = "Authorization", required = false) String authHeader
+    ) {
+        Long customerId = (authHeader != null) ? extractCustomerId(authHeader) : null;
+        Pageable pageable = PageRequest.of(page, size);
+
+        return reviewRepository.findByPopupIdOrderByCreatedAtDesc(popupId, pageable)
+                .stream()
+                .map(review -> buildResponse(review, customerId))
+                .toList();
+    }
+
+    // 플랫폼 전체 최신 후기 (홈 화면 "실시간 후기 모음"용, 공개)
+    @GetMapping("/recent")
+    public List<ReviewResponse> getRecentReviews(@RequestParam(defaultValue = "10") int limit) {
+        Pageable pageable = PageRequest.of(0, limit);
+
+        return reviewRepository.findAllByOrderByCreatedAtDesc(pageable)
+                .stream()
+                .map(review -> buildResponse(review, null))
+                .toList();
+    }
+
+    // 공통 응답 조립 (비회원이면 customerId null → likedByMe는 항상 false)
+    private ReviewResponse buildResponse(Review review, Long customerId) {
+        List<String> imageUrls = reviewImageRepository
+                .findByReviewIdOrderBySortOrder(review.getId())
+                .stream()
+                .map(ReviewImage::getImageUrl)
+                .toList();
+        long likeCount = reviewLikeRepository.countByReviewId(review.getId());
+        boolean likedByMe = (customerId != null) && reviewLikeRepository
+                .findByReviewIdAndCustomerId(review.getId(), customerId)
+                .isPresent();
+        return new ReviewResponse(review, imageUrls, likeCount, likedByMe);
     }
 
     // 리뷰 수정
