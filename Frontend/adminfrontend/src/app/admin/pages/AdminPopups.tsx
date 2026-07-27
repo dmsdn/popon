@@ -211,9 +211,9 @@ export default function AdminPopups() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-xs">{fmtDate(p.createdAt)}</td>
-                    <td className="px-4 py-3">
+                    {/*<td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-1.5">
-                        {/* ① 심사 — 대기/반려 상태는 확장 심사, 승인 완료면 '심사완료' */}
+                         ① 심사 — 대기/반려 상태는 확장 심사, 승인 완료면 '심사완료'
                         {reviewable ? (
                           <button
                             onClick={() => { setOpenReviewId(reviewOpen ? null : p.id); setReason(""); }}
@@ -232,7 +232,7 @@ export default function AdminPopups() {
                             <CheckCircle2 size={10} /> 심사완료
                           </button>
                         )}
-                        {/* ② 게시중지 토글 — 게시 상태(오픈예정/게시중)에서만 중지 가능 */}
+                         ② 게시중지 토글 — 게시 상태(오픈예정/게시중)에서만 중지 가능
                         <button
                           onClick={() => toggleSuspend(p)}
                           disabled={actingId === p.id || (!suspended && !(p.status === "BEFOR" || p.status === "OPEN"))}
@@ -245,7 +245,7 @@ export default function AdminPopups() {
                         >
                           <PauseCircle size={10} /> {suspended ? "게시중지됨" : "게시중지"}
                         </button>
-                        {/* ③ 수정 */}
+                         ③ 수정
                         <button
                           onClick={() => navigate(`/admin/popups/edit?id=${p.id}`)}
                           className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-sm border border-border hover:border-accent hover:text-accent"
@@ -253,7 +253,7 @@ export default function AdminPopups() {
                           <Pencil size={10} /> 수정
                         </button>
                       </div>
-                    </td>
+                    </td>*/}
                   </tr>
 
                   {/* 심사 확장 행 */}

@@ -154,12 +154,12 @@ export default function AdminPopupDetail() {
           >
             <PauseCircle size={13} /> {suspended ? "게시 재개" : "게시중지"}
           </button>
-          <button
+          {/*<button
             onClick={() => navigate(`/admin/popups/edit?id=${popup.id}`)}
             className="inline-flex items-center gap-1.5 text-xs px-4 py-2 rounded-sm border border-border hover:border-accent hover:text-accent transition-colors"
           >
             <Pencil size={13} /> 수정
-          </button>
+          </button>*/}
         </div>
       </div>
 
