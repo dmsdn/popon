@@ -24,11 +24,17 @@ public class PopupPopularityService {
         popupClickLogRepository.save(log);
     }
 
-    // 찜 + 후기 + 클릭수 단순 합산으로 인기 팝업 랭킹 계산
-    public List<PopularPopupResponse> getPopularPopups(int limit) {
+    // 찜 + 후기 + 클릭수 단순 합산으로 인기 팝업 랭킹 계산 (지역 필터 선택)
+    public List<PopularPopupResponse> getPopularPopups(int limit, String region) {
         List<Popup> targetPopups = new ArrayList<>();
         targetPopups.addAll(popupRepository.findByStatus(PopupStatus.OPEN));
         targetPopups.addAll(popupRepository.findByStatus(PopupStatus.BEFOR));
+
+        if (region != null && !region.isBlank() && !region.equals("전체")) {
+            targetPopups = targetPopups.stream()
+                    .filter(p -> p.getLocation() != null && p.getLocation().contains(region))
+                    .toList();
+        }
 
         Map<Long, Long> wishlistMap = toCountMap(popupWishlistRepository.countAllGroupByPopupId());
         Map<Long, Long> reviewMap = toCountMap(reviewRepository.countAllGroupByPopupId());
