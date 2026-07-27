@@ -5,7 +5,6 @@ import popupteam.popupbackend.domain.reservation.ReservationRepository;
 import popupteam.popupbackend.domain.waiting.WaitingQueueRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -19,12 +18,13 @@ public class PopupLiveStatusService {
         Popup popup = popupRepository.findById(popupId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 팝업입니다."));
 
-        int experienceMinutes = (popup.getAvgExperienceMinutes() != null) ? popup.getAvgExperienceMinutes() : 15;
-        LocalDateTime since = LocalDateTime.now().minusMinutes(experienceMinutes);
-
-        long fromReservations = reservationRepository.countRecentlyCheckedIn(popupId, since);
-        long fromWaiting = waitingQueueRepository.countRecentlyEntered(popupId, since);
-        int currentOccupancy = (int) (fromReservations + fromWaiting);
+        // 체크인/입장했지만 아직 퇴장하지 않은 실제 "인원수" (팀 수가 아니라 partySize 합계여야 정확함)
+        int currentOccupancy = reservationRepository.findCurrentlyInsideByPopupId(popupId).stream()
+                .mapToInt(popupteam.popupbackend.domain.reservation.Reservation::getPartySize)
+                .sum()
+                + waitingQueueRepository.findCurrentlyInsideByPopupId(popupId).stream()
+                .mapToInt(popupteam.popupbackend.domain.waiting.WaitingQueue::getPartySize)
+                .sum();
 
         int capacity = (popup.getCapacity() != null) ? popup.getCapacity() : 1;
         double congestionRate = (double) currentOccupancy / capacity;

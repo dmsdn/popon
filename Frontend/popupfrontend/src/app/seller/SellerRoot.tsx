@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Outlet, NavLink, Link, useNavigate, useLocation, ScrollRestoration } from "react-router";
 import {
   LayoutDashboard, Store, PlusSquare, CalendarCheck, Users, Package,
-  FileText, BarChart3, Megaphone, Bell, ChevronDown, ExternalLink, LogOut, MessageSquare, Inbox, Building2,
+  BarChart3, Megaphone, Bell, ChevronDown, ExternalLink, LogOut, MessageSquare, X,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { getMyPopups, getMyInquiries, getToken, Popup, InquiryItem } from "../lib/api";
@@ -41,13 +41,7 @@ const MENU = [
     group: "굿즈·재고",
     items: [{ to: "/seller/products", icon: Package, label: "상품/재고 관리" }],
   },
-  {
-    group: "견적·계약·정산",
-    items: [
-      { to: "/seller/quotes", icon: FileText, label: "견적·진행 단계" },
-      { to: "/seller/venues", icon: Building2, label: "파트너 공간" },
-    ],
-  },
+  // 견적·계약·정산 그룹(견적·진행 단계, 파트너 공간)은 7/24 멘토 피드백으로 삭제됨
   {
     group: "데이터",
     items: [{ to: "/seller/performance", icon: BarChart3, label: "성과 대시보드" }],
@@ -59,8 +53,7 @@ const MENU = [
   {
     group: "지원",
     items: [
-      { to: "/seller/inquiries", icon: MessageSquare, label: "문의하기" },
-      { to: "/seller/customer-inquiries", icon: Inbox, label: "문의받기" },
+      { to: "/seller/inquiries", icon: MessageSquare, label: "관리자에게 문의하기" }
     ],
   },
 ];
@@ -120,6 +113,63 @@ export default function SellerRoot() {
     return () => clearInterval(t);
   }, [isBusiness]);
 
+  // ── 벨 알림: 우측 슬라이드 패널 (관리자 콘솔과 동일 방식 — 7/25 피드백) ──
+  // 항목 = 심사 결과가 나온 팝업 + 답변 완료된 문의. 키에 상태를 포함해 상태가 바뀌면 새 알림으로 집계.
+  type Notif = { key: string; badge: string; badgeCls: string; title: string; sub: string; date: string; to: string };
+  const SELLER_SEEN_KEY = "sellerSeenNotifs";
+  const SELLER_DISMISSED_KEY = "sellerDismissedNotifs";
+  const loadKeys = (k: string): string[] => {
+    try {
+      return JSON.parse(localStorage.getItem(k) ?? "[]");
+    } catch {
+      return [];
+    }
+  };
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [seenNotifs, setSeenNotifs] = useState<string[]>(() => loadKeys(SELLER_SEEN_KEY));
+  const [dismissedNotifs, setDismissedNotifs] = useState<string[]>(() => loadKeys(SELLER_DISMISSED_KEY));
+
+  const allNotifs: Notif[] = [
+    ...myPopups
+      .filter((p) => p.status !== "PENDING")
+      .map((p) => ({
+        key: `popup:${p.id}:${p.status}`,
+        badge: "팝업 심사",
+        badgeCls: p.status === "REJECTED" ? "bg-red-50 text-red-500 border-red-200" : "bg-emerald-50 text-emerald-600 border-emerald-200",
+        title: p.title,
+        sub: p.status === "REJECTED" ? `반려됨${p.rejectReason ? ` — ${p.rejectReason}` : ""}` : "승인되어 게시 상태가 되었습니다",
+        date: p.statusChangedAt ?? p.createdAt,
+        to: "/seller/popups",
+      })),
+    ...myInquiries
+      .filter((i) => i.status === "ANSWERED")
+      .map((i) => ({
+        key: `inq:${i.id}:ANSWERED`,
+        badge: "문의 답변",
+        badgeCls: "bg-blue-50 text-blue-600 border-blue-200",
+        title: i.title,
+        sub: "관리자 답변이 등록되었습니다",
+        date: i.answeredAt ?? i.createdAt,
+        to: "/seller/inquiries",
+      })),
+  ]
+    .filter((n) => !dismissedNotifs.includes(n.key))
+    .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+  const unseenNotifs = allNotifs.filter((n) => !seenNotifs.includes(n.key));
+
+  // 패널을 열면 현재 목록을 확인함으로 기록 → 배지 해제 (항목은 클릭해서 지울 때까지 유지)
+  const openNotif = () => {
+    setNotifOpen(true);
+    const keys = [...new Set([...seenNotifs, ...allNotifs.map((n) => n.key)])];
+    setSeenNotifs(keys);
+    localStorage.setItem(SELLER_SEEN_KEY, JSON.stringify(keys));
+  };
+  const dismissNotif = (key: string) => {
+    const keys = [...new Set([...dismissedNotifs, key])];
+    setDismissedNotifs(keys);
+    localStorage.setItem(SELLER_DISMISSED_KEY, JSON.stringify(keys));
+  };
+
   // 키에 상태를 포함 — 상태가 바뀐 팝업·새로 답변된 문의만 다시 '새 소식'으로 집계
   const navKeys: Record<string, string[]> = {
     "/seller/popups": myPopups.filter((p) => p.status !== "PENDING").map((p) => `popup:${p.id}:${p.status}`),
@@ -166,17 +216,31 @@ export default function SellerRoot() {
           <Link to="/" className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
             서비스 소개 홈 <ExternalLink size={12} />
           </Link>
-          <button className="relative text-muted-foreground hover:text-foreground">
+          {/* 벨 — 클릭 시 우측 슬라이드 알림 패널 (기존 하드코딩 배지 "3" 제거, 실데이터 연동) */}
+          <button
+            onClick={() => (notifOpen ? setNotifOpen(false) : openNotif())}
+            className="relative text-muted-foreground hover:text-foreground"
+            title="심사 결과·문의 답변 알림"
+          >
             <Bell size={17} />
-            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-accent text-white text-[9px] flex items-center justify-center">3</span>
+            {unseenNotifs.length > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 px-0.5 rounded-full bg-accent text-white text-[9px] flex items-center justify-center">
+                {unseenNotifs.length > 9 ? "9+" : unseenNotifs.length}
+              </span>
+            )}
           </button>
-          <div className="flex items-center gap-2 text-xs border-l border-border pl-4">
+          {/* 계정 영역 클릭 → 마이페이지 (7/25 피드백) */}
+          <Link
+            to="/seller/mypage"
+            title="마이페이지"
+            className="flex items-center gap-2 text-xs border-l border-border pl-4 hover:text-accent transition-colors"
+          >
             <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center font-semibold text-[10px]">
               {(user?.name ?? "게스트").slice(0, 1)}
             </div>
             <span className="hidden sm:inline">{user?.name ?? "게스트"} 님</span>
             <ChevronDown size={13} className="text-muted-foreground" />
-          </div>
+          </Link>
           {user && (
             <button
               onClick={() => { logout(); navigate("/"); }}
@@ -232,6 +296,52 @@ export default function SellerRoot() {
           <Outlet />
         </main>
       </div>
+
+      {/* ── 우측 알림 슬라이드 패널 (관리자 콘솔과 동일 UX) ── */}
+      {notifOpen && (
+        <>
+          <div className="fixed inset-0 bg-black/20 z-40" onClick={() => setNotifOpen(false)} />
+          <aside className="fixed inset-y-0 right-0 w-80 max-w-[85vw] bg-white border-l border-border shadow-xl z-50 flex flex-col">
+            <div className="h-14 px-4 border-b border-border flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <Bell size={15} className="text-accent" /> 새 알림
+                <span className="text-xs font-normal text-muted-foreground">{allNotifs.length}건</span>
+              </div>
+              <button onClick={() => setNotifOpen(false)} className="text-muted-foreground hover:text-foreground">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {allNotifs.length === 0 && (
+                <div className="px-4 py-12 text-center text-xs text-muted-foreground">새 알림이 없습니다.</div>
+              )}
+              <ul className="divide-y divide-border">
+                {allNotifs.map((n) => (
+                  <li key={n.key}>
+                    <Link
+                      to={n.to}
+                      onClick={() => { dismissNotif(n.key); setNotifOpen(false); }}
+                      className="block px-4 py-3.5 hover:bg-secondary/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${n.badgeCls}`}>{n.badge}</span>
+                        <span className="text-[10px] text-muted-foreground ml-auto" style={{ fontFamily: "'DM Mono', monospace" }}>
+                          {n.date ? n.date.slice(5, 16).replace("T", " ") : ""}
+                        </span>
+                      </div>
+                      <div className="text-[13px] font-medium truncate">{n.title}</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5 truncate">{n.sub} — 눌러서 확인하기</div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="px-4 py-3 border-t border-border text-[11px] text-muted-foreground shrink-0">
+              1분마다 자동 갱신 · 항목을 누르면 목록에서 사라집니다 · 긴급공지 수신 알림은 알림 시스템 백엔드 구성 후 연동
+            </div>
+          </aside>
+        </>
+      )}
     </div>
   );
 }

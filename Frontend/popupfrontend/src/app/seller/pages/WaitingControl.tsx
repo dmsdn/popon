@@ -23,6 +23,27 @@ const NOSHOW_GRACE_MS = 5 * 60 * 1000; // 슬롯 종료 +5분 안에 미입장 �
 const fmtTime = (t: string | null) => (t ? t.slice(0, 5) : "");
 const fmtClock = (iso: string | null | undefined) => (iso ? iso.slice(11, 16) : "");
 
+// 로컬 기준 날짜/시각 문자열 (toISOString은 UTC라 자정 근처에 날짜가 밀림 — 사용 금지)
+const localDateStr = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const localTimeStr = (d: Date) => d.toTimeString().slice(0, 8); // "HH:mm:ss"
+
+// 기본 선택 슬롯: 지금 시각이 포함된(진행 중) 슬롯 → 없으면 오늘의 다음 슬롯 → 오늘 마지막 슬롯 → null
+// (7/25 피드백: /seller/waiting 진입 시 항상 "지금 이 시각"의 슬롯이 기본으로 보여야 함)
+function pickCurrentSlot(list: PopupSlot[], now: Date): PopupSlot | null {
+  const today = localDateStr(now);
+  const t = localTimeStr(now);
+  const todays = list
+    .filter((s) => s.slotDate === today)
+    .sort((a, b) => a.startTime.localeCompare(b.startTime));
+  if (todays.length === 0) return null;
+  return (
+    todays.find((s) => s.startTime <= t && t < s.endTime) ?? // 진행 중
+    todays.find((s) => s.startTime > t) ??                   // 다음 슬롯
+    todays[todays.length - 1]                                 // 오늘 영업 종료 후면 마지막 슬롯
+  );
+}
+
 const MODE_LABEL: Record<OpsMode, string> = {
   RESERVATION: "사전예약만",
   WALKIN: "현장 웨이팅만",
@@ -44,7 +65,8 @@ export default function WaitingControl() {
   const [roster, setRoster] = useState<ReservationDetail[]>([]);
   const [board, setBoard] = useState<UnifiedEntry[]>([]);
   const [mode, setMode] = useState<OpsMode>("BOTH");
-  const [slotFilter, setSlotFilter] = useState<number | "ALL">("ALL");
+  // 선택 슬롯 — 사전예약 편입분 필터 (현장 웨이팅은 슬롯과 무관하게 항상 표시). null = 오늘 슬롯 없음
+  const [slotFilter, setSlotFilter] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [actingKey, setActingKey] = useState<string | null>(null);
@@ -91,6 +113,8 @@ export default function WaitingControl() {
           setRoster(r);
           setBoard(b.entries);
           setError("");
+          // 최초 로드 시 기본 선택 = 지금 시각의 슬롯 (30초 갱신 때는 직원이 고른 슬롯 유지)
+          if (withSpinner) setSlotFilter(pickCurrentSlot(s, new Date())?.id ?? null);
         })
         .catch((e) => alive && setError(e instanceof Error ? e.message : "데이터를 불러오지 못했습니다."))
         .finally(() => alive && withSpinner && setLoading(false));
@@ -98,9 +122,16 @@ export default function WaitingControl() {
     };
     fetchAll(true);
     // 운영 방식은 팝업 등록/수정에서 확정 — 여기서는 표시만 (FREE 팝업은 현장 웨이팅만)
+    // 서버 queueMode 우선(7/24 DTO 연동), 값이 없는 구 팝업만 로컬 저장 폴백
     const p = popups.find((x) => x.id === popupId);
-    setMode(p?.reservationMode === "FREE" ? "WALKIN" : loadOpsMode(popupId));
-    setSlotFilter("ALL");
+    const qm = p?.queueMode;
+    setMode(
+      p?.reservationMode === "FREE" ? "WALKIN"
+        : qm === "PRERESERVATION_ONLY" ? "RESERVATION"
+        : qm === "ONSITE_WAITING_ONLY" ? "WALKIN"
+        : qm === "BOTH" ? "BOTH"
+        : loadOpsMode(popupId),
+    );
     const t = setInterval(() => fetchAll(false), 30_000);
     return () => {
       alive = false;
@@ -161,7 +192,20 @@ export default function WaitingControl() {
       });
   }, [board, slotByStart, mode]);
 
-  const filteredRows = queueRows.filter((row) => slotFilter === "ALL" || row.slotId === slotFilter);
+  // 현장 웨이팅은 "지금 대기 중"이므로 슬롯과 무관하게 항상 표시.
+  // 슬롯 선택은 사전예약 편입분에만 적용 (7/25 피드백 — 수동 추가분이 특정 슬롯 뷰에서 사라지던 문제 해결)
+  const filteredRows = queueRows.filter(
+    (row) => row.source === "ONSITE_WAITING" || row.slotId === slotFilter,
+  );
+
+  // 셀렉트에는 오늘 슬롯만 노출 (전 기간 슬롯 수백 개를 다 보여줄 이유가 없음 — 7/25 피드백).
+  // 오늘 슬롯이 없는 팝업(운영 전·종료)은 전체 목록으로 폴백해 사전예약 확인은 가능하게 유지
+  const todaySlots = useMemo(() => {
+    const today = localDateStr(new Date(nowMs));
+    const t = slots.filter((s) => s.slotDate === today);
+    return (t.length > 0 ? t : slots).slice().sort((a, b) => `${a.slotDate}${a.startTime}`.localeCompare(`${b.slotDate}${b.startTime}`));
+  }, [slots, nowMs]);
+  const currentSlotId = useMemo(() => pickCurrentSlot(slots, new Date(nowMs))?.id ?? null, [slots, nowMs]);
 
   // 노쇼 버튼 노출: 슬롯 종료 +5분까지 입장 처리되지 않은 사람 (웨이팅·슬롯 미지정은 직원 재량으로 항상)
   const noShowReady = (row: QueueRow) => {
@@ -265,6 +309,9 @@ export default function WaitingControl() {
       });
       setAddForm({ name: "", partySize: 1, phone: "", email: "" });
       setAddOpen(false);
+      // 수동 추가 = 지금 온 손님 → 현재 시각 슬롯 뷰로 복귀해 방금 추가된 대기가 바로 보이게 (7/25 피드백)
+      const cur = pickCurrentSlot(slots, new Date());
+      if (cur) setSlotFilter(cur.id);
       refreshBoard(popupId);
     } catch (err) {
       alert(err instanceof Error ? err.message : "대기 추가에 실패했습니다.");
@@ -375,8 +422,8 @@ export default function WaitingControl() {
       <div className="flex items-start gap-2.5 bg-blue-50 border border-blue-200 rounded-sm px-4 py-3">
         <Info size={14} className="text-blue-500 shrink-0 mt-0.5" />
         <div className="text-xs text-blue-800 leading-relaxed">
-          통합 대기열(사전예약 자동 편입)·웨이팅 접수/입장/취소·QR 체크인·<strong>퇴장 처리·체류 인원</strong>까지 전부 <strong>백엔드 실연동</strong>.
-          운영 방식 저장만 로컬 기록(등록/수정 DTO에 queueMode 수신 추가 시 연동).
+          통합 대기열(사전예약 자동 편입)·웨이팅 접수/입장/취소·QR 체크인·<strong>퇴장 처리·체류 인원·운영 방식(queueMode)</strong>까지 전부 <strong>백엔드 실연동</strong>.
+          (7/24 이전 등록 팝업의 운영 방식만 로컬 기록 폴백)
         </div>
       </div>
 
@@ -417,8 +464,8 @@ export default function WaitingControl() {
           <div className="grid lg:grid-cols-3 gap-3">
             <div className="bg-white border border-border rounded-sm p-5 lg:col-span-2">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-semibold">현재 체류 인원 (혼잡도)</span>
-                {level && <span className={`text-sm font-bold ${levelColor}`}>{level}</span>}
+                <span className="text-sm font-semibold">현재 체류 인원</span>
+                {/*{level && <span className={`text-sm font-bold ${levelColor}`}>{level}</span>}*/}
               </div>
               <div className="flex items-end gap-3 mb-3">
                 <span className="text-3xl font-semibold">{stayingCount}</span>
@@ -494,21 +541,30 @@ export default function WaitingControl() {
           <div className="bg-white border border-border rounded-sm overflow-x-auto">
             <div className="px-4 py-3 border-b border-border flex flex-wrap items-center gap-2">
               <span className="text-sm font-semibold mr-2">현장 대기열</span>
-              <select
-                value={slotFilter === "ALL" ? "ALL" : String(slotFilter)}
-                onChange={(e) => setSlotFilter(e.target.value === "ALL" ? "ALL" : Number(e.target.value))}
-                className="text-[12px] px-2.5 py-1.5 border border-border rounded-sm bg-white focus:outline-none focus:border-accent"
-                style={{ fontFamily: "'DM Mono', monospace" }}
-              >
-                <option value="ALL">전체 슬롯</option>
-                {[...slots]
-                  .sort((a, b) => `${a.slotDate}${a.startTime}`.localeCompare(`${b.slotDate}${b.startTime}`))
-                  .map((s) => (
+              {/* 오늘 슬롯만 노출, 기본 선택 = 지금 시각의 슬롯 ("전체 슬롯" 옵션 삭제 — 7/25 피드백) */}
+              {slots.length > 0 && (
+                <select
+                  value={slotFilter != null ? String(slotFilter) : ""}
+                  onChange={(e) => setSlotFilter(e.target.value ? Number(e.target.value) : null)}
+                  className="text-[12px] px-2.5 py-1.5 border border-border rounded-sm bg-white focus:outline-none focus:border-accent"
+                  style={{ fontFamily: "'DM Mono', monospace" }}
+                >
+                  {todaySlots.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.slotDate.slice(5)} {fmtTime(s.startTime)}~{fmtTime(s.endTime)}
+                      {s.id === currentSlotId ? " (현재)" : ""}
                     </option>
                   ))}
-              </select>
+                </select>
+              )}
+              {slots.length > 0 && slotFilter !== currentSlotId && currentSlotId != null && (
+                <button
+                  onClick={() => setSlotFilter(currentSlotId)}
+                  className="text-[11px] px-2 py-1 rounded-sm border border-border text-muted-foreground hover:border-accent hover:text-accent"
+                >
+                  현재 슬롯으로
+                </button>
+              )}
               {mode !== "RESERVATION" && (
                 <button
                   onClick={() => setAddOpen((v) => !v)}
@@ -567,19 +623,18 @@ export default function WaitingControl() {
               <table className="w-full text-[13px] min-w-[760px]">
                 <thead>
                   <tr className="border-b border-border bg-secondary/60 text-xs text-muted-foreground">
+                    {/* 슬롯 열 제거 — 선택한 슬롯 기준으로 이미 걸러져 있어 중복 정보 (7/25 피드백) */}
                     <th className="text-left font-medium px-4 py-2.5">순번</th>
                     <th className="text-left font-medium px-4 py-2.5">유형</th>
                     <th className="text-left font-medium px-4 py-2.5">이름</th>
                     <th className="text-left font-medium px-4 py-2.5">연락처</th>
                     <th className="text-right font-medium px-4 py-2.5">인원</th>
-                    <th className="text-left font-medium px-4 py-2.5">슬롯</th>
                     <th className="text-center font-medium px-4 py-2.5">처리</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {filteredRows.map((row, i) => {
                     const [typeLabel, typeCls] = TYPE_BADGE[row.source] ?? TYPE_BADGE.ONSITE_WAITING;
-                    const slot = row.slotId ? slotMap[row.slotId] : null;
                     return (
                       <tr key={row.key} className={row.noShow ? "opacity-50" : row.enteredAt ? "bg-emerald-50/40" : "hover:bg-secondary/40"}>
                         <td className="px-4 py-2.5 font-semibold" style={{ fontFamily: "'DM Mono', monospace" }}>#{i + 1}</td>
@@ -589,9 +644,6 @@ export default function WaitingControl() {
                         <td className="px-4 py-2.5 font-medium">{row.name}</td>
                         <td className="px-4 py-2.5 text-xs text-muted-foreground">{row.contact}</td>
                         <td className="px-4 py-2.5 text-right">{row.partySize}명</td>
-                        <td className="px-4 py-2.5 text-xs" style={{ fontFamily: "'DM Mono', monospace" }}>
-                          {slot ? `${fmtTime(slot.startTime)}~${fmtTime(slot.endTime)}` : "-"}
-                        </td>
                         <td className="px-4 py-2.5">
                           <div className="flex items-center justify-center gap-1.5">
                             {row.noShow ? (
@@ -631,7 +683,7 @@ export default function WaitingControl() {
                   })}
                   {filteredRows.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-4 py-10 text-center text-xs text-muted-foreground">
+                      <td colSpan={6} className="px-4 py-10 text-center text-xs text-muted-foreground">
                         현재 대기열이 비어 있습니다.
                         {mode !== "WALKIN" && " 슬롯 시작 시간이 되면 사전예약자가 자동 편입됩니다."}
                       </td>

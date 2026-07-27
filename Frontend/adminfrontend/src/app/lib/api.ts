@@ -531,6 +531,13 @@ export function processReport(id: number) {
   return request<ReportItem>(`/api/admin/reports/${id}/process`, { method: "PATCH" });
 }
 
+// ── 지역 마스터 (popup.address_keyword가 참조하는 region 테이블 — jmy 도메인, permitAll) ──
+
+export type Region = { id: number; name: string };
+export function getRegions() {
+  return request<Region[]>("/api/regions");
+}
+
 // ── 공간(venue) 마스터 ──
 
 export type Venue = {

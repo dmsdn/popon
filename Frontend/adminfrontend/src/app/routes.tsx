@@ -6,6 +6,7 @@ import AdminRoot from "./admin/AdminRoot";
 import AdminDashboard from "./admin/pages/AdminDashboard";
 import AdminLogin from "./admin/pages/AdminLogin";
 import AdminPopups from "./admin/pages/AdminPopups";
+import AdminPopupDetail from "./admin/pages/AdminPopupDetail";
 import AdminPopupEdit from "./admin/pages/AdminPopupEdit";
 import AdminContracts from "./admin/pages/AdminContracts";
 import Accounts from "./admin/pages/Accounts";
@@ -28,6 +29,8 @@ export const router = createBrowserRouter([
       { path: "login", Component: AdminLogin },
       { path: "popups", Component: AdminPopups },
       { path: "popups/edit", Component: AdminPopupEdit },
+      // 상세페이지 — 목록에서 팝업명 클릭 시 진입, 심사·게시중지·수정 동작 (7/24 회의)
+      { path: "popups/:id", Component: AdminPopupDetail },
       { path: "contracts", Component: AdminContracts },
       { path: "accounts", Component: Accounts },
       { path: "businesses", Component: Businesses },

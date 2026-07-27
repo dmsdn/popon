@@ -7,7 +7,9 @@ import popupteam.popupbackend.domain.reservation.ReservationStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,10 +27,17 @@ public class PopupWaitTimeService {
         if (popup.getReservationMode() == ReservationMode.SLOT) {
             List<PopupSlot> slots = (date != null)
                     ? popupSlotRepository.findByPopupIdAndSlotDate(popupId, date)
-                    : popupSlotRepository.findByPopupId(popupId); // 아래 참고: 없으면 추가 필요
+                    : popupSlotRepository.findByPopupId(popupId);
+
+            // 슬롯마다 개별 조회하지 않고, 팝업 전체 슬롯별 예약합계를 한 번에 계산 (N+1 방지)
+            Map<Long, Integer> reservedBySlot = reservationRepository.sumConfirmedPartySizeBySlot(popupId).stream()
+                    .collect(Collectors.toMap(
+                            row -> (Long) row[0],
+                            row -> ((Number) row[1]).intValue()
+                    ));
 
             List<SlotWaitTimeResponse> slotResults = slots.stream()
-                    .map(slot -> buildSlotResult(slot, popup.getAvgExperienceMinutes()))
+                    .map(slot -> buildSlotResult(slot, reservedBySlot.getOrDefault(slot.getId(), 0), popup.getAvgExperienceMinutes()))
                     .collect(Collectors.toList());
 
             return WaitTimeResponse.builder()
@@ -66,12 +75,7 @@ public class PopupWaitTimeService {
         }
     }
 
-    private SlotWaitTimeResponse buildSlotResult(PopupSlot slot, Integer avgExperienceMinutes) {
-        int reserved = reservationRepository.findBySlotIdAndStatus(slot.getId(), ReservationStatus.CONFIRMED)
-                .stream()
-                .mapToInt(Reservation::getPartySize)
-                .sum();
-
+    private SlotWaitTimeResponse buildSlotResult(PopupSlot slot, int reserved, Integer avgExperienceMinutes) {
         double waitMinutes = calculateWaitMinutes(reserved, slot.getCapacity(), avgExperienceMinutes);
 
         return SlotWaitTimeResponse.builder()

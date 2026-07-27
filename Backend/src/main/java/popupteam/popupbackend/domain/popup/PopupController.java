@@ -17,6 +17,7 @@ public class PopupController {
 
     private final PopupService popupService;
     private final BusinessRepository businessRepository;
+    private final PopupPopularityService popupPopularityService;
 
     private Long getBusinessId(Authentication authentication) {
         String email = authentication.getName();
@@ -73,5 +74,18 @@ public class PopupController {
     public ResponseEntity<List<PopupResponse>> getMyPopups(Authentication authentication) {
         Long businessId = getBusinessId(authentication);
         return ResponseEntity.ok(popupService.getMyPopups(businessId));
+    }
+
+    // 팝업 상세페이지 진입 시 클릭 로그 기록 (회원/비회원 둘 다 가능)
+    @PostMapping("/{id}/click")
+    public ResponseEntity<?> logClick(@PathVariable Long id, @RequestParam(required = false) Long customerId) {
+        popupPopularityService.logClick(id, customerId);
+        return ResponseEntity.ok().build();
+    }
+
+    // 인기 추천 팝업 (찜+후기+클릭수 합산 랭킹)
+    @GetMapping("/popular")
+    public ResponseEntity<?> getPopularPopups(@RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(popupPopularityService.getPopularPopups(limit));
     }
 }

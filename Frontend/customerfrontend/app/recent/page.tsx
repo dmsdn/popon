@@ -5,13 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Footer } from "@/components/layout/Footer";
 import { BottomTabBar } from "@/components/layout/BottomTabBar";
-import { searchPopups } from "@/lib/api/popups";
+import { getPopup } from "@/lib/api/popups";
 import { toPopupItem } from "@/lib/utils/popupMapper";
+import { getRecentlyViewedIds } from "@/lib/recentlyViewed";
 import type { PopupItem } from "@/data/mockPopups";
 
-// ⚠️ 로그인 사용자별 "내가 본 팝업" 조회 이력 API가 백엔드에 아직 없어서
-// (backend-todo.md 2번 참고), 지금은 진행중인 팝업 전체 목록을 그대로 보여주고 있어요.
-// 실제로 내가 봤던 것만 걸러진 목록은 아니에요.
+// 이 브라우저에서 실제로 들어가봤던 팝업 상세페이지 기록 기준이에요 (lib/recentlyViewed.ts).
+// 로그인 계정 기준 서버 저장이 아니라 브라우저 기준이라, 다른 기기에서는 안 보여요.
 export default function RecentListPage() {
   const router = useRouter();
   const [items, setItems] = useState<PopupItem[]>([]);
@@ -19,14 +19,22 @@ export default function RecentListPage() {
 
   useEffect(() => {
     let cancelled = false;
-    searchPopups({ status: "OPEN" })
-      .then((list) => {
-        if (!cancelled) setItems(list.map(toPopupItem));
+    const ids = getRecentlyViewedIds();
+
+    Promise.all(
+      ids.map((id) =>
+        getPopup(id)
+          .then(toPopupItem)
+          .catch(() => null)
+      )
+    )
+      .then((results) => {
+        if (!cancelled) setItems(results.filter((p): p is PopupItem => p !== null));
       })
-      .catch((err) => console.error("팝업 목록 조회 실패", err))
       .finally(() => {
         if (!cancelled) setLoaded(true);
       });
+
     return () => {
       cancelled = true;
     };
@@ -51,7 +59,7 @@ export default function RecentListPage() {
         {!loaded ? (
           <p className="text-sm text-gray-400 py-16 text-center">불러오는 중...</p>
         ) : items.length === 0 ? (
-          <p className="text-sm text-gray-400 py-16 text-center">표시할 팝업이 없어요.</p>
+          <p className="text-sm text-gray-400 py-16 text-center">아직 본 팝업이 없어요.</p>
         ) : (
           <div className="grid grid-cols-2 mobile:grid-cols-4 gap-4">
             {items.map((item) => (

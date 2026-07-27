@@ -1,7 +1,7 @@
 // lib/api/notifications.ts
 import { apiFetch } from "./client";
 
-export type NotificationType = "공지" | "찜" | "예약/웨이팅" | "기타";
+export type NotificationType = "공지" | "찜" | "예약/웨이팅";
 
 export interface AppNotification {
   id: string;
