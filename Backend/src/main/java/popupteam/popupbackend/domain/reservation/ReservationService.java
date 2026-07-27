@@ -3,8 +3,8 @@ package popupteam.popupbackend.domain.reservation;
 import popupteam.popupbackend.common.exception.ForbiddenException;
 import popupteam.popupbackend.domain.business.Business;
 import popupteam.popupbackend.domain.business.BusinessRepository;
-import popupteam.popupbackend.domain.customer.Customer;
-import popupteam.popupbackend.domain.customer.CustomerRepository;
+import popupteam.popupbackend.domain.consumer.Customer;
+import popupteam.popupbackend.domain.consumer.CustomerAccountRepository;
 import popupteam.popupbackend.domain.popup.Popup;
 import popupteam.popupbackend.domain.popup.PopupRepository;
 import popupteam.popupbackend.domain.popup.PopupSlot;
@@ -25,7 +25,7 @@ public class ReservationService {
     private final ReservationRepository reservationRepository;
     private final PopupRepository popupRepository;
     private final PopupSlotRepository popupSlotRepository;
-    private final CustomerRepository customerRepository;
+    private final CustomerAccountRepository customerRepository;
     private final BusinessRepository businessRepository;
     private final popupteam.popupbackend.domain.eventlog.TransactionEventLogService transactionEventLogService;
 
