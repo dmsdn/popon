@@ -3,6 +3,7 @@ package popupteam.popupbackend.domain.popup.dto;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 public class PopupCreateRequest {
