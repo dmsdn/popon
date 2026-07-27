@@ -7,6 +7,7 @@ import { uploadFile } from "@/lib/api/upload";
 import { getPopup, type PopupDetail } from "@/lib/api/popups";
 import { StarRatingInput } from "@/components/popup/StarRatingInput";
 import { ImageCropModal } from "@/components/popup/ImageCropModal";
+import { BirthDatePicker } from "@/components/ui/BirthDatePicker";
 
 const MAX_IMAGE_COUNT = 5;
 
@@ -19,6 +20,8 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
 
   const [rating, setRating] = useState(0);
   const [content, setContent] = useState("");
+  const [visitDate, setVisitDate] = useState("");
+  const [showVisitDatePicker, setShowVisitDatePicker] = useState(false);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [pendingFile, setPendingFile] = useState<File | null>(null); // 크롭 대기 중인 파일
   const [uploading, setUploading] = useState(false);
@@ -111,6 +114,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
         rating,
         content: content.trim(),
         imageUrls,
+        visitDate: visitDate || undefined,
       });
       // [수정] 등록 성공 후에는 back() 대신 replace()로 상세페이지의 후기탭
       // (?tab=review)으로 보냅니다.
@@ -148,6 +152,27 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
           <span className="block text-sm font-medium text-gray-700 mb-2">별점</span>
           <StarRatingInput value={rating} onChange={setRating} />
         </div>
+
+        <div className="block">
+          <span className="block text-sm font-medium text-gray-700 mb-2">
+            다녀간 날짜 <span className="text-gray-400 font-normal">(선택)</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowVisitDatePicker(true)}
+            className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm text-left"
+          >
+            {visitDate || <span className="text-gray-400">다녀간 날짜를 선택해주세요</span>}
+          </button>
+        </div>
+        {showVisitDatePicker && (
+          <BirthDatePicker
+            title="다녀간 날짜 선택"
+            value={visitDate}
+            onChange={setVisitDate}
+            onClose={() => setShowVisitDatePicker(false)}
+          />
+        )}
 
         <label className="block">
           <span className="block text-sm font-medium text-gray-700 mb-2">후기 내용</span>

@@ -6,6 +6,8 @@ import { submitSignupInfo } from "@/lib/api/auth";
 import { getMyInfo, updateMyInfo, type CustomerInfo } from "@/lib/api/customer";
 import { getTerms, type Terms } from "@/lib/api/terms";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { formatPhoneInput, isValidPhone } from "@/lib/utils/formatPhone";
+import { BirthDatePicker } from "@/components/ui/BirthDatePicker";
 
 const REQUIRED_TERMS = [
   { id: "service", label: "[필수] 서비스 이용약관 동의" },
@@ -21,13 +23,6 @@ const PROVIDER_LABEL: Record<CustomerInfo["provider"], string> = {
   GOOGLE: "구글 로그인",
   DEV: "개발용 로그인",
 };
-
-function formatPhoneNumber(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  if (digits.length <= 3) return digits;
-  if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
-  return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
-}
 
 export default function SignupPage() {
   const router = useRouter();
@@ -45,6 +40,7 @@ export default function SignupPage() {
   const [showTerms, setShowTerms] = useState(false);
   const [terms, setTerms] = useState<Terms | null>(null);
   const [termsError, setTermsError] = useState(false);
+  const [showBirthPicker, setShowBirthPicker] = useState(false);
 
   useEffect(() => {
     getMyInfo()
@@ -66,10 +62,8 @@ export default function SignupPage() {
       .finally(() => setLoading(false));
   }, [router]);
 
-  const phoneDigits = phone.replace(/\D/g, "");
   const allRequiredAgreed = REQUIRED_TERMS.every((term) => agreedTerms[term.id]);
-  const canSubmit =
-    nickname.trim().length > 0 && phoneDigits.length === 11 && allRequiredAgreed && !submitting;
+  const canSubmit = nickname.trim().length > 0 && isValidPhone(phone) && allRequiredAgreed && !submitting;
 
   const toggleTerm = (id: string) => {
     setAgreedTerms((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -160,10 +154,12 @@ export default function SignupPage() {
           </span>
           <input
             type="tel"
+            inputMode="numeric"
             value={phone}
-            onChange={(e) => setPhone(formatPhoneNumber(e.target.value))}
+            onChange={(e) => setPhone(formatPhoneInput(e.target.value))}
             placeholder="010-0000-0000"
-            className="w-full bg-transparent border-b border-gray-200 px-1 py-2 text-sm text-gray-400 outline-none focus:text-gray-900"
+            maxLength={13}
+            className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm outline-none"
           />
         </label>
 
@@ -176,22 +172,25 @@ export default function SignupPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="000@example.com"
-            className="w-full bg-transparent border-b border-gray-200 px-1 py-2 text-sm text-gray-400 outline-none focus:text-gray-900"
-          />
-        </label>
-
-        <label className="block">
-          <span className="block text-sm font-medium text-gray-700 mb-2">
-            생년월일 <span className="text-gray-400 font-normal">(선택)</span>
-          </span>
-          <input
-            type="date"
-            value={birthDate}
-            onChange={(e) => setBirthDate(e.target.value)}
-            max={new Date().toISOString().slice(0, 10)}
             className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm outline-none"
           />
         </label>
+
+        <div className="block">
+          <span className="block text-sm font-medium text-gray-700 mb-2">
+            생년월일 <span className="text-gray-400 font-normal">(선택)</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowBirthPicker(true)}
+            className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm text-left"
+          >
+            {birthDate || <span className="text-gray-400">생년월일을 선택해주세요</span>}
+          </button>
+        </div>
+        {showBirthPicker && (
+          <BirthDatePicker value={birthDate} onChange={setBirthDate} onClose={() => setShowBirthPicker(false)} />
+        )}
 
         <div>
           <span className="block text-sm font-medium text-gray-700 mb-2">
@@ -207,10 +206,17 @@ export default function SignupPage() {
                 key={value}
                 type="button"
                 onClick={() => setGender(value)}
-                className={`flex-1 rounded-full py-2.5 text-sm border ${
-                  gender === value ? "bg-gray-900 text-white border-gray-900" : "border-gray-200 text-gray-600"
+                className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-3 text-sm border ${
+                  gender === value ? "border-gray-900 text-gray-900 font-medium" : "border-gray-200 text-gray-500"
                 }`}
               >
+                <span
+                  className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
+                    gender === value ? "border-gray-900" : "border-gray-300"
+                  }`}
+                >
+                  {gender === value && <span className="w-2 h-2 rounded-full bg-gray-900" />}
+                </span>
                 {label}
               </button>
             ))}
