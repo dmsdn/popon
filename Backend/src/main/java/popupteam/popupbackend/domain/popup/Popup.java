@@ -60,6 +60,9 @@ public class Popup {
     @Column(name = "avg_experience_minutes", nullable = false)
     private Integer avgExperienceMinutes;
 
+    @Column(name = "max_party_size_per_team")
+    private Integer maxPartySizePerTeam; // 현장웨이팅 팀당 최대 인원 (null이면 제한 없음)
+
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 
