@@ -22,6 +22,7 @@ public class PopupCreateRequest {
     private Double areaSqm;
 
     private Integer capacity;
+    
 
     @NotBlank
     private String reservationMode; // "SLOT" 또는 "FREE"
@@ -36,4 +37,6 @@ public class PopupCreateRequest {
     private Integer maxPartySizePerTeam; // 현장웨이팅 팀당 최대 인원, 선택입력 (안 주면 제한 없음)
 
     private List<String> hashtags;
+
+    private Long addressKeywordId; // 관심지역 매칭용 Region ID (선택입력)
 }

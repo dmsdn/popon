@@ -11,4 +11,5 @@ public class CustomerUpdateRequest {
     private String profileImage;
     private LocalDate birthDate;
     private String gender;  // "MALE", "FEMALE", "UNKNOWN"
+    private String phone;
 }
