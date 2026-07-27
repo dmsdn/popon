@@ -32,7 +32,8 @@ public interface PopupRepository extends JpaRepository<Popup, Long> {
                                                                       @Param("status") PopupStatus status);
 
     // 혼잡 알림 스케줄러용 - 진행중인 팝업만 체크
-    List<Popup> findByStatus(PopupStatus status);
+    @Query("SELECT p FROM Popup p JOIN FETCH p.business WHERE p.status = :status")
+    List<Popup> findByStatus(@Param("status") PopupStatus status);
 
     // 오픈/종료 임박 알림 스케줄러용 - 특정 날짜에 시작/종료하는 팝업 조회
     @Query("SELECT p FROM Popup p WHERE FUNCTION('DATE', p.startDate) = :date AND p.status IN (popupteam.popupbackend.domain.popup.PopupStatus.BEFOR, popupteam.popupbackend.domain.popup.PopupStatus.OPEN)")
