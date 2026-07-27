@@ -277,4 +277,13 @@ public class PopupService {
                 .map(PopupResponse::from)
                 .collect(Collectors.toList());
     }
+
+    // 곧 오픈하는 팝업 (BEFOR 상태 중 시작일 가까운 순)
+    public List<PopupResponse> getUpcomingPopups(int limit) {
+        return popupRepository.findByStatus(PopupStatus.BEFOR).stream()
+                .sorted(java.util.Comparator.comparing(Popup::getStartDate))
+                .limit(limit)
+                .map(PopupResponse::from)
+                .toList();
+    }
 }
