@@ -20,6 +20,7 @@ public class PopupService {
     private final popupteam.popupbackend.domain.reservation.ReservationRepository reservationRepository;
     private final popupteam.popupbackend.common.geocoding.GeocodingService geocodingService;
     private final popupteam.popupbackend.domain.notice.NoticeService noticeService;
+    private final PopupHashtagRepository popupHashtagRepository;
 
 
     public PopupResponse create(Long businessId, PopupCreateRequest request) {
@@ -59,7 +60,28 @@ public class PopupService {
         popup.setQueueMode(QueueMode.valueOf(request.getQueueMode()));
         popup.setMaxPartySizePerTeam(request.getMaxPartySizePerTeam());
 
-        return PopupResponse.from(popupRepository.save(popup));
+        Popup saved = popupRepository.save(popup);
+        List<String> hashtags = saveHashtags(saved.getId(), request.getHashtags());
+
+        return PopupResponse.from(saved, hashtags);
+    }
+
+    // 해시태그 저장 공용 로직: 기존 거 지우고 새 목록으로 덮어씀 (null이면 손 안 대고 기존 값 그대로 반환)
+    private List<String> saveHashtags(Long popupId, List<String> hashtags) {
+        if (hashtags == null) {
+            return popupHashtagRepository.findByPopupIdOrderBySortOrderAsc(popupId).stream()
+                    .map(PopupHashtag::getTag)
+                    .collect(Collectors.toList());
+        }
+        popupHashtagRepository.deleteByPopupId(popupId);
+        List<String> saved = new java.util.ArrayList<>();
+        int order = 0;
+        for (String tag : hashtags) {
+            if (tag == null || tag.isBlank()) continue;
+            popupHashtagRepository.save(new PopupHashtag(popupId, tag.trim(), order++));
+            saved.add(tag.trim());
+        }
+        return saved;
     }
 
     public List<PopupResponse> search(String location, String status, String keyword) {
@@ -78,7 +100,10 @@ public class PopupService {
     public PopupResponse findById(Long id) {
         Popup popup = popupRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 팝업입니다."));
-        return PopupResponse.from(popup);
+        List<String> hashtags = popupHashtagRepository.findByPopupIdOrderBySortOrderAsc(id).stream()
+                .map(PopupHashtag::getTag)
+                .collect(Collectors.toList());
+        return PopupResponse.from(popup, hashtags);
     }
 
     public PopupResponse update(Long id, Long businessId, PopupUpdateRequest request) {
@@ -132,8 +157,9 @@ public class PopupService {
 
         Popup saved = popupRepository.save(popup);
         noticeService.notifyPopupUpdated(saved);
+        List<String> hashtags = saveHashtags(id, request.getHashtags());
 
-        return PopupResponse.from(saved);
+        return PopupResponse.from(saved, hashtags);
     }
 
     public void delete(Long id, Long businessId) {
@@ -153,6 +179,7 @@ public class PopupService {
         // 예약이 없으면 슬롯/이미지 먼저 정리 후 팝업 삭제
         popupSlotRepository.deleteAll(popupSlotRepository.findByPopupId(id));
         popupImageRepository.deleteAll(popupImageRepository.findByPopupIdOrderBySortOrder(id));
+        popupHashtagRepository.deleteByPopupId(id);
 
         popupRepository.delete(popup);
     }

@@ -17,6 +17,7 @@ public class PopupUpdateRequest {
     private String reservationMode; // "SLOT" 또는 "FREE"
     private Integer avgExperienceMinutes;
     private String queueMode; // "PRERESERVATION_ONLY" / "ONSITE_WAITING_ONLY" / "BOTH"
+    private List<String> hashtags;
 
     @Min(1)
     private Integer maxPartySizePerTeam;

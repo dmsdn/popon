@@ -8,4 +8,8 @@ public interface CustomerKeywordRepository extends JpaRepository<CustomerKeyword
    List<CustomerKeyword> findByCustomerId(Long customerId);
 
    void deleteByCustomerId(Long customerId);
+
+   long countByKeywordId(Long keywordId);
+
+   void deleteByKeywordId(Long keywordId);
 }
