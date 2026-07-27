@@ -74,4 +74,6 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     // 팝업 구분 없이 전체 체크인 상태(아직 퇴장 전) 조회 - 자동퇴장 스케줄러용
     List<Reservation> findByEntryStatusAndExitedAtIsNull(EntryStatus entryStatus);
 
+    List<Reservation> findByPopupIdAndStatus(Long popupId, ReservationStatus status);
+
 }

@@ -32,6 +32,11 @@ public class WaitingQueueService {
         Popup popup = popupRepository.findById(popupId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 팝업입니다."));
 
+        if (popup.getMaxPartySizePerTeam() != null && request.getPartySize() > popup.getMaxPartySizePerTeam()) {
+            throw new IllegalArgumentException(
+                    "팀당 최대 인원은 " + popup.getMaxPartySizePerTeam() + "명입니다. 입력하신 인원(" + request.getPartySize() + "명)이 초과되었습니다.");
+        }
+
         Customer customer = null;
         if (customerId != null) {
             customer = customerRepository.findById(customerId)
