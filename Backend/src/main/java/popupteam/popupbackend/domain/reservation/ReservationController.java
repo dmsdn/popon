@@ -52,15 +52,24 @@ public class ReservationController {
         return ResponseEntity.ok(reservationService.getByPopup(popupId));
     }
 
-    // === 예약 취소 (주최자/관리자용) ===
+    // === 예약 취소 (주최자/관리자 또는 예약 당사자 본인) ===
     @PatchMapping("/{id}/cancel")
     public ResponseEntity<?> cancel(@PathVariable Long id,
                                     Authentication authentication,
+                                    @RequestParam(required = false) Long customerId,
                                     @RequestBody(required = false) ReservationCancelRequest request) {
-        String name = authentication.getName();
-        boolean isAdmin = name != null && name.startsWith("admin:");
         String reason = (request != null) ? request.getCancelReason() : null;
 
+        if (customerId != null) {
+            return ResponseEntity.ok(reservationService.cancelByCustomer(id, customerId, reason));
+        }
+
+        if (authentication == null || authentication.getName() == null) {
+            throw new IllegalArgumentException("인증 정보가 없습니다. customerId를 전달하거나 로그인 후 다시 시도해주세요.");
+        }
+
+        String name = authentication.getName();
+        boolean isAdmin = name != null && name.startsWith("admin:");
         return ResponseEntity.ok(reservationService.cancel(id, name, isAdmin, reason));
     }
 

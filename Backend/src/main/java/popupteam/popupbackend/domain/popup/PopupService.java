@@ -21,6 +21,7 @@ public class PopupService {
     private final popupteam.popupbackend.common.geocoding.GeocodingService geocodingService;
     private final popupteam.popupbackend.domain.notice.NoticeService noticeService;
     private final PopupHashtagRepository popupHashtagRepository;
+    private final popupteam.popupbackend.domain.consumer.RegionRepository regionRepository;
 
 
     public PopupResponse create(Long businessId, PopupCreateRequest request) {
@@ -39,6 +40,8 @@ public class PopupService {
         popup.setStartDate(request.getStartDate());
         popup.setEndDate(request.getEndDate());
         popup.setStatus(PopupStatus.PENDING);
+
+        applyAddressKeyword(popup, request.getAddressKeywordId(), request.getLocation());
 
         // 면적 기반 권장 수용인원 자동계산 (면적 ÷ 4.5)
         Integer recommendedCapacity = null;
@@ -153,6 +156,11 @@ public class PopupService {
                 popup.setLatitude(coord.latitude());
                 popup.setLongitude(coord.longitude());
             });
+        }
+
+        if (request.getAddressKeywordId() != null) {
+            applyAddressKeyword(popup, request.getAddressKeywordId(),
+                    request.getLocation() != null ? request.getLocation() : popup.getLocation());
         }
 
         Popup saved = popupRepository.save(popup);
@@ -285,5 +293,28 @@ public class PopupService {
                 .limit(limit)
                 .map(PopupResponse::from)
                 .toList();
+    }
+
+    private void validateLocationMatchesRegion(String location, popupteam.popupbackend.domain.consumer.Region region) {
+        if (location == null || region == null) return;
+        if (!location.contains(region.getName())) {
+            throw new IllegalArgumentException(
+                    "입력하신 상세주소(\"" + location + "\")가 선택하신 지역(\"" + region.getName() + "\")과 일치하지 않습니다.");
+        }
+    }
+
+    // location(상세주소)과 addressKeyword(선택한 지역)가 서로 맞는지 확인
+    private void applyAddressKeyword(Popup popup, Long addressKeywordId, String location) {
+        if (addressKeywordId == null) return;
+
+        popupteam.popupbackend.domain.consumer.Region region = regionRepository.findById(addressKeywordId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 지역입니다."));
+
+        if (location != null && !location.contains(region.getName())) {
+            throw new IllegalArgumentException(
+                    "입력하신 상세주소(\"" + location + "\")가 선택하신 지역(\"" + region.getName() + "\")과 일치하지 않습니다.");
+        }
+
+        popup.setAddressKeyword(region);
     }
 }

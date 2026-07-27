@@ -260,4 +260,26 @@ public class ReservationService {
 
         return ReservationDetailResponse.from(reservationRepository.save(reservation));
     }
+
+    // 소비자 본인이 예약 취소
+    public ReservationDetailResponse cancelByCustomer(Long reservationId, Long customerId, String cancelReason) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 예약입니다."));
+
+        if (reservation.getCustomer() == null || !reservation.getCustomer().getId().equals(customerId)) {
+            throw new ForbiddenException("본인의 예약만 취소할 수 있습니다.");
+        }
+
+        if (reservation.getStatus() == ReservationStatus.CANCELLED) {
+            throw new IllegalArgumentException("이미 취소된 예약입니다.");
+        }
+
+        reservation.setStatus(ReservationStatus.CANCELLED);
+        reservation.setCancelReason(cancelReason);
+        reservation.setCancelledAt(LocalDateTime.now());
+        transactionEventLogService.log(reservation.getPopup().getId(), "RESERVATION", reservation.getId(),
+                "CANCELLED", "customer:" + customerId, cancelReason);
+
+        return ReservationDetailResponse.from(reservationRepository.save(reservation));
+    }
 }

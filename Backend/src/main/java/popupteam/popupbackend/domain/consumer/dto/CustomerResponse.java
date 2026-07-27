@@ -13,6 +13,7 @@ public class CustomerResponse {
     private final String email;
     private final LocalDate birthDate;
     private final String gender;
+    private final String phone;
 
     public CustomerResponse(Customer customer) {
         this.id = customer.getId();
@@ -22,5 +23,6 @@ public class CustomerResponse {
         this.email = customer.getEmail();
         this.birthDate = customer.getBirthDate();
         this.gender = customer.getGender().name();
+        this.phone = customer.getPhone();
     }
 }

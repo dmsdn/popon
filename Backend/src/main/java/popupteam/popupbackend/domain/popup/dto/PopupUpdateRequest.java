@@ -23,4 +23,6 @@ public class PopupUpdateRequest {
     @Min(1)
     private Integer maxPartySizePerTeam;
 
+    private Long addressKeywordId;
+
 }
