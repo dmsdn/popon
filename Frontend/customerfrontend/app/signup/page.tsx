@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { submitSignupInfo } from "@/lib/api/auth";
-import { getMyInfo, type CustomerInfo } from "@/lib/api/customer";
+import { getMyInfo, updateMyInfo, type CustomerInfo } from "@/lib/api/customer";
+import { getTerms, type Terms } from "@/lib/api/terms";
 import { useAuth } from "@/lib/auth/AuthContext";
 
 const REQUIRED_TERMS = [
@@ -36,15 +37,22 @@ export default function SignupPage() {
   const [nickname, setNickname] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [birthDate, setBirthDate] = useState("");
+  const [gender, setGender] = useState<"MALE" | "FEMALE" | "UNKNOWN">("UNKNOWN");
   const [agreedTerms, setAgreedTerms] = useState<Record<string, boolean>>({});
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showTerms, setShowTerms] = useState(false);
+  const [terms, setTerms] = useState<Terms | null>(null);
+  const [termsError, setTermsError] = useState(false);
 
   useEffect(() => {
     getMyInfo()
       .then((info) => {
         setProvider(info.provider);
         setNickname(info.nickname ?? "");
+        setBirthDate(info.birthDate ?? "");
+        setGender(info.gender ?? "UNKNOWN");
       })
       .catch((error) => {
         console.warn("내 정보 조회 실패(개발 중 CORS 등으로 대체)", error);
@@ -67,11 +75,34 @@ export default function SignupPage() {
     setAgreedTerms((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const handleOpenTerms = () => {
+    setShowTerms(true);
+    if (terms || termsError) return;
+    getTerms()
+      .then(setTerms)
+      .catch((error) => {
+        console.warn("약관 조회 실패", error);
+        setTermsError(true);
+      });
+  };
+
   const handleSubmit = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
     try {
-      await submitSignupInfo({ nickname, phone, email: email || undefined });
+      await submitSignupInfo({
+        nickname,
+        phone,
+        email: email || undefined,
+        termsAgreed: !!agreedTerms.service,
+        privacyAgreed: !!agreedTerms.privacy,
+        locationAgreed: !!agreedTerms.location,
+        marketingAgreed: !!agreedTerms.marketing,
+      });
+      // 생년월일/성별은 signup-info API가 아니라 /api/customer/me(PATCH)에서만 저장돼요.
+      if (birthDate || gender !== "UNKNOWN") {
+        await updateMyInfo({ birthDate: birthDate || undefined, gender });
+      }
     } catch (error) {
       console.warn("회원정보 제출 실패(개발 중 CORS 등으로 무시하고 진행)", error);
       if (process.env.NODE_ENV !== "development") {
@@ -80,7 +111,7 @@ export default function SignupPage() {
         return;
       }
     }
-    updateMockCustomer({ nickname, phone, email: email || null });
+    updateMockCustomer({ nickname, phone, email: email || null, birthDate: birthDate || null, gender });
     setSubmitting(false);
     router.push("/signup/preferences");
   };
@@ -149,8 +180,54 @@ export default function SignupPage() {
           />
         </label>
 
+        <label className="block">
+          <span className="block text-sm font-medium text-gray-700 mb-2">
+            생년월일 <span className="text-gray-400 font-normal">(선택)</span>
+          </span>
+          <input
+            type="date"
+            value={birthDate}
+            onChange={(e) => setBirthDate(e.target.value)}
+            max={new Date().toISOString().slice(0, 10)}
+            className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm outline-none"
+          />
+        </label>
+
         <div>
-          <span className="block text-sm font-medium text-gray-700 mb-2">동의</span>
+          <span className="block text-sm font-medium text-gray-700 mb-2">
+            성별 <span className="text-gray-400 font-normal">(선택)</span>
+          </span>
+          <div className="flex gap-2">
+            {([
+              ["MALE", "남성"],
+              ["FEMALE", "여성"],
+              ["UNKNOWN", "선택 안 함"],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setGender(value)}
+                className={`flex-1 rounded-full py-2.5 text-sm border ${
+                  gender === value ? "bg-gray-900 text-white border-gray-900" : "border-gray-200 text-gray-600"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="block text-sm font-medium text-gray-700">동의</span>
+            <button
+              type="button"
+              onClick={handleOpenTerms}
+              className="text-xs text-gray-400 underline underline-offset-2"
+            >
+              약관 더보기
+            </button>
+          </div>
           <div className="flex flex-col gap-3">
             {[...REQUIRED_TERMS, ...OPTIONAL_TERMS].map((term) => (
               <label key={term.id} className="flex items-center gap-2 text-sm text-gray-700">
@@ -165,6 +242,38 @@ export default function SignupPage() {
             ))}
           </div>
         </div>
+
+        {showTerms && (
+          <div
+            className="fixed inset-0 bg-black/40 flex items-center justify-center px-6 z-50"
+            onClick={() => setShowTerms(false)}
+          >
+            <div
+              className="bg-white rounded-xl px-6 py-6 w-full max-w-md max-h-[70vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {termsError ? (
+                <p className="text-sm text-gray-400 py-10 text-center">약관을 불러오지 못했어요.</p>
+              ) : !terms ? (
+                <p className="text-sm text-gray-400 py-10 text-center">불러오는 중...</p>
+              ) : (
+                <>
+                  <p className="text-base font-semibold mb-3">{terms.title}</p>
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap mb-6">
+                    {terms.content}
+                  </p>
+                </>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowTerms(false)}
+                className="w-full rounded-full py-3 text-sm font-medium bg-gray-100 text-gray-700"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        )}
 
         <button
           type="button"
