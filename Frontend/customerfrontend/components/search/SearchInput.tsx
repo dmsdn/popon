@@ -8,9 +8,13 @@ import { addRecentSearch } from "@/lib/searchHistory";
 export function SearchInput({
   autoFocus = false,
   initialQuery = "",
+  onFocusChange,
 }: {
   autoFocus?: boolean;
   initialQuery?: string;
+  // 입력창 포커스/블러 시점을 부모에게 알려줘요 - 검색결과 화면에서 다시 검색하려고
+  // 입력창을 탭했을 때, 최근검색어/추천검색어를 다시 보여주는 데 씁니다.
+  onFocusChange?: (focused: boolean) => void;
 }) {
   const [value, setValue] = useState(initialQuery);
   const router = useRouter();
@@ -26,6 +30,7 @@ export function SearchInput({
     const trimmed = value.trim();
     if (!trimmed) return;
     addRecentSearch(trimmed);
+    onFocusChange?.(false);
     router.push(`/search?q=${encodeURIComponent(trimmed)}`);
   }
 
@@ -44,6 +49,11 @@ export function SearchInput({
       <input
         value={value}
         onChange={(e) => setValue(e.target.value)}
+        onFocus={() => onFocusChange?.(true)}
+        onBlur={() => {
+          // 추천/최근 검색어를 누르는 클릭이 먼저 처리되도록 살짝 지연 후 닫아요.
+          setTimeout(() => onFocusChange?.(false), 150);
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter") handleSearch();
         }}

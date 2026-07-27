@@ -15,6 +15,7 @@ public class BusinessService {
     private final BusinessConsentRepository businessConsentRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final popupteam.popupbackend.common.nts.NtsBusinessCheckService ntsBusinessCheckService;
 
     public Business signup(BusinessSignupRequest request) {
         if (businessRepository.existsByEmail(request.getEmail())) {
@@ -22,6 +23,14 @@ public class BusinessService {
         }
         if (businessRepository.existsByBusinessNumber(request.getBusinessNumber())) {
             throw new IllegalArgumentException("이미 등록된 사업자번호입니다.");
+        }
+
+        var checkResult = ntsBusinessCheckService.checkStatus(request.getBusinessNumber());
+        if (checkResult == popupteam.popupbackend.common.nts.NtsBusinessCheckService.CheckResult.NOT_FOUND) {
+            throw new IllegalArgumentException("국세청에 등록되지 않은 사업자등록번호입니다.");
+        }
+        if (checkResult == popupteam.popupbackend.common.nts.NtsBusinessCheckService.CheckResult.CLOSED) {
+            throw new IllegalArgumentException("폐업 처리된 사업자등록번호입니다.");
         }
 
         Business business = new Business();

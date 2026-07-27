@@ -55,6 +55,7 @@ public class PopupService {
 
         popup.setReservationMode(ReservationMode.valueOf(request.getReservationMode()));
         popup.setAvgExperienceMinutes(request.getAvgExperienceMinutes());
+        popup.setQueueMode(QueueMode.valueOf(request.getQueueMode()));
 
         return PopupResponse.from(popupRepository.save(popup));
     }
@@ -109,6 +110,10 @@ public class PopupService {
 
         if (request.getAvgExperienceMinutes() != null) {
             popup.setAvgExperienceMinutes(request.getAvgExperienceMinutes());
+        }
+
+        if (request.getQueueMode() != null) {
+            popup.setQueueMode(QueueMode.valueOf(request.getQueueMode()));
         }
 
         popup.setUpdatedAt(java.time.LocalDateTime.now());

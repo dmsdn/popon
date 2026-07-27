@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { Loader2, Send, ChevronDown, ChevronUp, CheckCircle2, Plus, Trash2, RotateCcw } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
@@ -45,12 +45,24 @@ export default function Inquiries() {
     if (openId === r.id) setOpenId(null);
   };
 
-  // 답변 완료 문의 재문의 — 새 문의 폼을 RE: 제목으로 열어줌
-  const handleReask = (r: InquiryItem) => {
-    setForm({ title: r.title.startsWith("RE: ") ? r.title : `RE: ${r.title}`, content: "" });
-    setFormOpen(true);
-    setOpenId(null);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  // 재문의 — 7/25 피드백: 새 섹션을 만들지 않고 원 문의 스레드 안에서 아래로 이어짐.
+  // 서버에는 여전히 "RE: 원제목"의 별도 문의로 저장되고(관리자 화면 호환), 이 화면이 제목 기준으로 묶어 보여준다.
+  const [reaskFor, setReaskFor] = useState<number | null>(null); // 재문의 입력창이 열린 스레드의 root id
+  const [reaskText, setReaskText] = useState("");
+  const [reaskSaving, setReaskSaving] = useState(false);
+  const submitReask = async (rootTitle: string) => {
+    if (!reaskText.trim()) return;
+    setReaskSaving(true);
+    try {
+      const created = await createInquiry({ title: `RE: ${rootTitle}`, content: reaskText.trim() });
+      setList((prev) => [created, ...prev]);
+      setReaskText("");
+      setReaskFor(null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "재문의 등록에 실패했습니다.");
+    } finally {
+      setReaskSaving(false);
+    }
   };
 
   // 주최자 팝업 조회 표의 「문의」 버튼 → ?popup=팝업명 으로 진입 시 폼 자동 오픈 + 제목 프리필
@@ -73,6 +85,27 @@ export default function Inquiries() {
       .finally(() => setLoading(false));
   }, [isBusiness]);
 
+  // "RE: " 접두어(중첩 포함)를 벗겨 원 제목을 얻고, 그 기준으로 문의들을 한 스레드로 묶는다
+  const rootTitleOf = (t: string) => t.replace(/^(RE:\s*)+/, "");
+  type Thread = { root: InquiryItem; items: InquiryItem[] }; // items = 원 문의 포함 시간순 전체
+  const threads = useMemo<Thread[]>(() => {
+    const visible = list.filter((r) => !hiddenIds.includes(r.id));
+    const map = new Map<string, InquiryItem[]>();
+    for (const r of visible) {
+      const key = rootTitleOf(r.title);
+      const arr = map.get(key) ?? [];
+      arr.push(r);
+      map.set(key, arr);
+    }
+    return [...map.values()]
+      .map((items) => {
+        items.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+        return { root: items[0], items };
+      })
+      // 스레드 정렬은 마지막 활동(최신 재문의·문의) 기준 내림차순
+      .sort((a, b) => b.items[b.items.length - 1].createdAt.localeCompare(a.items[a.items.length - 1].createdAt));
+  }, [list, hiddenIds]);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -91,7 +124,7 @@ export default function Inquiries() {
   if (!isBusiness) {
     return (
       <div className="flex flex-col gap-4">
-        <h1 className="text-lg font-semibold">문의하기</h1>
+        <h1 className="text-lg font-semibold">관리자에게 문의하기</h1>
         <div className="bg-amber-50 border border-amber-200 rounded-sm px-4 py-3 text-xs text-amber-700">
           주최자(사업자) 계정으로 로그인해야 사용할 수 있습니다.{" "}
           <Link to="/login" state={{ from: "/seller/inquiries" }} className="underline underline-offset-2">로그인하기</Link>
@@ -104,7 +137,7 @@ export default function Inquiries() {
     <div className="flex flex-col gap-4 max-w-3xl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold">문의하기</h1>
+          <h1 className="text-lg font-semibold">관리자에게 문의하기</h1>
           <p className="text-xs text-muted-foreground mt-0.5">정산·계약·운영 관련 문의를 남기면 플랫폼 관리자가 답변합니다.</p>
         </div>
         <button onClick={() => setFormOpen((v) => !v)} className="flex items-center gap-1 text-xs px-3 py-2 rounded-sm bg-accent text-white hover:bg-accent/90">
@@ -154,47 +187,91 @@ export default function Inquiries() {
             등록한 문의가 없습니다. 「새 문의」로 남겨보세요.
           </div>
         )}
-        {list.filter((r) => !hiddenIds.includes(r.id)).map((r) => {
-          const open = openId === r.id;
+        {/* 스레드 단위 렌더링 — 재문의(RE:)는 새 섹션이 아니라 원 문의 아래로 이어짐 (7/25 피드백) */}
+        {threads.map(({ root, items }) => {
+          const open = openId === root.id;
+          const last = items[items.length - 1];
           return (
-            <div key={r.id} className="bg-white border border-border rounded-sm">
-              <button className="w-full px-4 py-3.5 flex items-center gap-3 text-left" onClick={() => setOpenId(open ? null : r.id)}>
-                <span className={`shrink-0 text-[11px] px-2 py-0.5 rounded-full border ${STATUS_BADGE[r.status]}`}>{STATUS_LABEL[r.status]}</span>
+            <div key={root.id} className="bg-white border border-border rounded-sm">
+              <button className="w-full px-4 py-3.5 flex items-center gap-3 text-left" onClick={() => setOpenId(open ? null : root.id)}>
+                {/* 스레드 상태 = 마지막 문의의 상태 (재문의 후에는 다시 '답변 대기') */}
+                <span className={`shrink-0 text-[11px] px-2 py-0.5 rounded-full border ${STATUS_BADGE[last.status]}`}>{STATUS_LABEL[last.status]}</span>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[13px] font-semibold truncate">{r.title}</div>
-                  <div className="text-[11px] text-muted-foreground mt-0.5">접수 {fmt(r.createdAt)}</div>
+                  <div className="text-[13px] font-semibold truncate">{rootTitleOf(root.title)}</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    접수 {fmt(root.createdAt)}
+                    {items.length > 1 && ` · 재문의 ${items.length - 1}건`}
+                  </div>
                 </div>
                 {open ? <ChevronUp size={15} className="shrink-0 text-muted-foreground" /> : <ChevronDown size={15} className="shrink-0 text-muted-foreground" />}
               </button>
               {open && (
                 <div className="px-4 pb-4 border-t border-border pt-3 flex flex-col gap-3">
-                  <div className="bg-secondary/60 rounded-sm p-3 text-[13px] whitespace-pre-wrap">{r.content}</div>
-                  {r.status === "ANSWERED" ? (
-                    <>
-                      <div className="bg-emerald-50 border border-emerald-200 rounded-sm p-3">
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 mb-1.5">
-                          <CheckCircle2 size={12} /> 관리자 답변 · {fmt(r.answeredAt)}
+                  {items.map((r, idx) => (
+                    <div key={r.id} className="flex flex-col gap-3">
+                      {idx > 0 && (
+                        <div className="flex items-center gap-1.5 text-[11px] font-medium text-accent pt-1">
+                          <RotateCcw size={11} /> 재문의 · {fmt(r.createdAt)}
                         </div>
-                        <p className="text-[13px] text-emerald-900 whitespace-pre-wrap">{r.answerContent}</p>
+                      )}
+                      <div className="bg-secondary/60 rounded-sm p-3 text-[13px] whitespace-pre-wrap">{r.content}</div>
+                      {r.status === "ANSWERED" && (
+                        <div className="bg-emerald-50 border border-emerald-200 rounded-sm p-3">
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 mb-1.5">
+                            <CheckCircle2 size={12} /> 관리자 답변 · {fmt(r.answeredAt)}
+                          </div>
+                          <p className="text-[13px] text-emerald-900 whitespace-pre-wrap">{r.answerContent}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {last.status === "ANSWERED" ? (
+                    reaskFor === root.id ? (
+                      <div className="flex flex-col gap-2 border-t border-border pt-3">
+                        <textarea
+                          rows={3} value={reaskText} autoFocus
+                          onChange={(e) => setReaskText(e.target.value)}
+                          placeholder="추가로 궁금한 내용을 적어주세요. 이 스레드 아래에 이어집니다."
+                          className="px-3 py-2 text-[13px] border border-border rounded-sm resize-y focus:outline-none focus:border-accent"
+                        />
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => { setReaskFor(null); setReaskText(""); }}
+                            className="text-xs px-3 py-1.5 rounded-sm border border-border"
+                          >
+                            취소
+                          </button>
+                          <button
+                            onClick={() => submitReask(rootTitleOf(root.title))}
+                            disabled={reaskSaving || !reaskText.trim()}
+                            className="flex items-center gap-1.5 text-xs px-4 py-1.5 rounded-sm bg-accent text-white hover:bg-accent/90 disabled:opacity-50"
+                          >
+                            {reaskSaving ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />} 재문의 등록
+                          </button>
+                        </div>
                       </div>
+                    ) : (
                       <div className="flex justify-end">
                         <button
-                          onClick={() => handleReask(r)}
+                          onClick={() => { setReaskFor(root.id); setReaskText(""); }}
                           className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-sm border border-accent/40 text-accent hover:bg-accent/5"
                         >
                           <RotateCcw size={12} /> 재문의
                         </button>
                       </div>
-                    </>
+                    )
                   ) : (
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-[11px] text-muted-foreground">관리자 확인 후 답변이 등록됩니다.</p>
-                      <button
-                        onClick={() => handleDelete(r)}
-                        className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-sm border border-border text-muted-foreground hover:border-red-300 hover:text-red-500"
-                      >
-                        <Trash2 size={12} /> 삭제
-                      </button>
+                      {items.length === 1 && (
+                        <button
+                          onClick={() => handleDelete(root)}
+                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-sm border border-border text-muted-foreground hover:border-red-300 hover:text-red-500"
+                        >
+                          <Trash2 size={12} /> 삭제
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

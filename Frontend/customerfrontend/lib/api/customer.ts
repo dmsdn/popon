@@ -7,6 +7,8 @@ export interface CustomerInfo {
   profileImage: string | null;
   phone: string | null;
   email: string | null;
+  birthDate: string | null; // "YYYY-MM-DD"
+  gender: "MALE" | "FEMALE" | "UNKNOWN" | null;
   onboarded: boolean;
 }
 
@@ -25,11 +27,17 @@ export async function getMyInfo(): Promise<CustomerInfo> {
     profileImage: raw.profileImage ?? null,
     phone: raw.phone ?? null,
     email: raw.email ?? null,
+    birthDate: raw.birthDate ?? null,
+    gender: raw.gender ?? null,
     onboarded: raw.onboarded ?? true,
   };
 }
 
-export function updateMyInfo(payload: Partial<Pick<CustomerInfo, "nickname" | "profileImage" | "phone" | "email">>) {
+// ⚠️ phone은 백엔드 CustomerUpdateRequest에 아직 없을 수 있어요(요청은 넣어뒀지만 반영 여부 미확인).
+// 반영 전이면 이 값을 보내도 서버가 조용히 무시해요.
+export function updateMyInfo(
+  payload: Partial<Pick<CustomerInfo, "nickname" | "profileImage" | "phone" | "birthDate" | "gender">>
+) {
   return apiFetch<CustomerInfo>("/api/customer/me", {
     method: "PATCH",
     body: JSON.stringify(payload),

@@ -4,7 +4,7 @@ import {
   FileText, MapPin, Image as ImageIcon, AlignLeft, CalendarClock,
   Ticket, Upload, Plus, X, Info, CheckCircle2,
 } from "lucide-react";
-import { createPopup, updatePopup, getPopup, uploadPopupImage, getVenues } from "../../lib/api";
+import { createPopup, updatePopup, getPopup, uploadPopupImage } from "../../lib/api";
 import { ensureSlots } from "../../lib/slotAutoGen";
 import { loadOpsMode, saveOpsMode, OpsMode } from "../../lib/walkinQueue";
 
@@ -25,8 +25,6 @@ const OPS_MODE_LABEL: Record<OpsMode, string> = {
 
 const CATEGORIES = ["패션", "뷰티", "F&B", "캐릭터", "라이프스타일", "아트", "테크", "엔터테인먼트"];
 const DAYS = ["월", "화", "수", "목", "금", "토", "일"];
-// 파트너 공간: 관리자 공간 마스터(/api/venues, 대관 가능만) 실데이터 — 표기: "이름 (면적㎡)"
-const venueLabel = (name: string, areaSqm: number | null) => (areaSqm != null ? `${name} (${areaSqm}㎡)` : name);
 
 const SECTIONS = [
   { id: "basic", icon: FileText, label: "기본 정보" },
@@ -36,6 +34,20 @@ const SECTIONS = [
   { id: "detail", icon: AlignLeft, label: "상세 설명" },
   { id: "entry", icon: Ticket, label: "예약·입장 정책" },
 ];
+
+// 이미지 업로드 제한: JPG만 · 장당 최대 10MB (7/24 회의 결정 — 형식 강제, 서버 리사이즈 파이프라인과 통일)
+const MAX_IMAGE_MB = 10;
+function filterJpegs(files: File[]): { ok: File[]; rejected: string[] } {
+  const ok: File[] = [];
+  const rejected: string[] = [];
+  for (const f of files) {
+    if (f.type !== "image/jpeg") rejected.push(`${f.name} — JPG 형식만 업로드할 수 있습니다`);
+    else if (f.size > MAX_IMAGE_MB * 1024 * 1024)
+      rejected.push(`${f.name} — ${(f.size / 1024 / 1024).toFixed(1)}MB (최대 ${MAX_IMAGE_MB}MB)`);
+    else ok.push(f);
+  }
+  return { ok, rejected };
+}
 
 const inputCls =
   "w-full px-3 py-2 text-[13px] border border-border rounded-sm bg-white focus:outline-none focus:border-accent placeholder:text-muted-foreground/60";
@@ -61,7 +73,6 @@ export default function PopupRegister() {
   const [cats, setCats] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
-  const [spaceMode, setSpaceMode] = useState<"partner" | "direct">("partner");
   // 운영 방식(사전예약만/현장 웨이팅만/둘 다) — 대기열·인원 관제와 공유 (localStorage, 백엔드 구성 후 연동)
   const [opsMode, setOpsMode] = useState<OpsMode>("BOTH");
   const useReservation = opsMode !== "WALKIN"; // 사전예약 포함 여부 → 슬롯 자동 생성 대상
@@ -85,22 +96,9 @@ export default function PopupRegister() {
   // 예약 정책 (백엔드 필수: reservationMode·avgExperienceMinutes) — 슬롯은 이 값 기준 자동 생성
   const [slotUnit, setSlotUnit] = useState(30); // 슬롯 단위(분) = 체험 소요시간
   const [slotCapacity, setSlotCapacity] = useState(10); // 슬롯당 예약 정원 (자동 생성 시 사용)
-  const [maxCapacity, setMaxCapacity] = useState(120); // 동시 수용 정원
+  // 최대 수용 정원·파트너 공간 선택은 7/25 피드백으로 삭제 (정원은 슬롯당 예약 정원으로 충분)
   const [slotProgress, setSlotProgress] = useState(""); // 자동 생성 진행 안내
-  const [partnerSpaces, setPartnerSpaces] = useState<string[]>([]);
-  const [partnerSpace, setPartnerSpace] = useState("");
   const [directAddress, setDirectAddress] = useState("");
-
-  // 파트너 공간 목록: 관리자 공간 마스터에서 대관 가능(AVAILABLE)만 로드
-  useEffect(() => {
-    getVenues("AVAILABLE")
-      .then((vs) => {
-        const labels = vs.map((v) => venueLabel(v.name, v.areaSqm));
-        setPartnerSpaces(labels);
-        setPartnerSpace((prev) => prev || labels[0] || "");
-      })
-      .catch(() => setPartnerSpaces([]));
-  }, []);
 
   // 수정 모드: 기존 팝업 불러와서 폼 채우기
   useEffect(() => {
@@ -117,27 +115,17 @@ export default function PopupRegister() {
           setEndDate(p.endDate.slice(0, 10));
           setCloseTime(p.endDate.slice(11, 16) || "20:00");
         }
-        // 운영 방식 복원: FREE면 현장 웨이팅만, SLOT이면 저장된 운영 방식(기본 BOTH)
+        // 운영 방식 복원: 서버 queueMode 우선(7/24 DTO 연동), 없는 구 팝업만 로컬 저장 폴백
         if (p.reservationMode === "FREE") setOpsMode("WALKIN");
+        else if (p.queueMode === "PRERESERVATION_ONLY") setOpsMode("RESERVATION");
+        else if (p.queueMode === "ONSITE_WAITING_ONLY") setOpsMode("WALKIN");
+        else if (p.queueMode === "BOTH") setOpsMode("BOTH");
         else if (p.reservationMode === "SLOT") {
           const saved = loadOpsMode(p.id);
           setOpsMode(saved === "WALKIN" ? "BOTH" : saved);
         }
         if (p.avgExperienceMinutes) setSlotUnit(p.avgExperienceMinutes);
-        if (p.capacity) setMaxCapacity(p.capacity);
-        if (p.location) {
-          // 파트너 공간 목록에 있으면 파트너 모드, 아니면 직접 입력으로 간주
-          setSpaceMode("direct");
-          setDirectAddress(p.location);
-          setPartnerSpaces((labels) => {
-            if (labels.includes(p.location!)) {
-              setSpaceMode("partner");
-              setPartnerSpace(p.location!);
-              setDirectAddress("");
-            }
-            return labels;
-          });
-        }
+        if (p.location) setDirectAddress(p.location);
       })
       .catch((e) => setError(e instanceof Error ? e.message : "팝업 정보를 불러오지 못했습니다."));
   }, [editId]);
@@ -151,12 +139,19 @@ export default function PopupRegister() {
     const payload = {
       title: title.trim(),
       description: description.trim(),
-      location: spaceMode === "partner" ? partnerSpace : directAddress.trim(),
+      location: directAddress.trim(),
       startDate: `${startDate}T${openTime}:00`,
       endDate: `${endDate}T${closeTime}:00`,
-      capacity: maxCapacity,
+      // 최대 수용 정원(capacity)은 7/25 피드백으로 폼에서 삭제 — 미전송(서버 optional).
+      // ⚠ FREE 모드 예약 정원 검사가 capacity를 쓰므로, 현장 웨이팅만 팝업에는 영향 확인 필요 (jsw 전달)
       reservationMode: (useReservation ? "SLOT" : "FREE") as "SLOT" | "FREE",
       avgExperienceMinutes: slotUnit,
+      // 7/24 jsw DTO 추가분 — 서버 필수 필드. 화면의 운영 방식(OpsMode)을 서버 enum으로 변환해 전송
+      queueMode: (opsMode === "RESERVATION"
+        ? "PRERESERVATION_ONLY"
+        : opsMode === "WALKIN"
+          ? "ONSITE_WAITING_ONLY"
+          : "BOTH") as "PRERESERVATION_ONLY" | "ONSITE_WAITING_ONLY" | "BOTH",
     };
 
     setSubmitting(true);
@@ -344,60 +339,34 @@ export default function PopupRegister() {
           </div>
         </Section>
 
-        {/* 3. 위치·공간 */}
-        <Section id="location" title="위치·공간" desc="파트너 공간 선택 시 시설정보·반입규정이 자동 연동됩니다. 주소는 위경도 좌표로 변환되어 지도에 노출됩니다.">
-          <div className="flex gap-2">
-            {(["partner", "direct"] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setSpaceMode(m)}
-                className={`text-xs px-4 py-2 rounded-sm border transition-colors ${
-                  spaceMode === m ? "border-accent text-accent bg-accent/5 font-medium" : "border-border text-muted-foreground"
-                }`}
-              >
-                {m === "partner" ? "팝업온 파트너 공간" : "직접 주소 입력"}
-              </button>
-            ))}
-          </div>
-          {spaceMode === "partner" ? (
+        {/* 3. 위치·공간 — 파트너 공간 선택 기능은 7/25 피드백으로 삭제, 직접 주소 입력만 */}
+        <Section id="location" title="위치·공간" desc="주소는 위경도 좌표로 변환되어 지도에 노출됩니다.">
+          <div className="grid sm:grid-cols-[1fr_auto] gap-2 items-end">
             <div>
-              <label className={labelCls}>대관 공간 선택 <Req /></label>
-              <select className={inputCls} value={partnerSpace} onChange={(e) => setPartnerSpace(e.target.value)}>
-                {partnerSpaces.length === 0 && <option value="">등록된 파트너 공간이 없습니다</option>}
-                {partnerSpaces.map((s) => <option key={s}>{s}</option>)}
-              </select>
-              <p className="text-[11px] text-muted-foreground mt-1.5 flex items-center gap-1">
-                <Info size={11} /> 관리자 공간 마스터의 대관 가능 공간이 표시됩니다. 대관 일정은 「견적·진행 단계」에서 확인 후 신청하세요.
-              </p>
+              <label className={labelCls}>주소 <Req /></label>
+              <input className={inputCls} placeholder="도로명 주소 입력" value={directAddress} onChange={(e) => setDirectAddress(e.target.value)} />
             </div>
-          ) : (
-            <div className="grid sm:grid-cols-[1fr_auto] gap-2 items-end">
-              <div>
-                <label className={labelCls}>주소 <Req /></label>
-                <input className={inputCls} placeholder="도로명 주소 입력" value={directAddress} onChange={(e) => setDirectAddress(e.target.value)} />
-              </div>
-              <button type="button" className="text-xs px-4 py-2 border border-border rounded-sm hover:border-accent hover:text-accent">주소 검색</button>
-              <div className="sm:col-span-2 h-36 bg-secondary rounded-sm flex items-center justify-center text-xs text-muted-foreground">
-                <MapPin size={14} className="mr-1.5" /> 주소 입력 시 지도 미리보기 (위경도 자동 변환)
-              </div>
+            <button type="button" className="text-xs px-4 py-2 border border-border rounded-sm hover:border-accent hover:text-accent">주소 검색</button>
+            <div className="sm:col-span-2 h-36 bg-secondary rounded-sm flex items-center justify-center text-xs text-muted-foreground">
+              <MapPin size={14} className="mr-1.5" /> 주소 입력 시 지도 미리보기 (위경도 자동 변환)
             </div>
-          )}
+          </div>
         </Section>
 
         {/* 4. 이미지·미디어 */}
-        <Section id="media" title="이미지·미디어" desc="대표 이미지 1200×900px 이상 · JPG/PNG/WEBP · 장당 최대 10MB · 추가 이미지 최대 20장">
+        <Section id="media" title="이미지·미디어" desc={`대표 이미지 1200×900px 이상 · JPG만 가능 · 장당 최대 ${MAX_IMAGE_MB}MB · 추가 이미지 최대 20장`}>
           <div>
             <label className={labelCls}>대표 이미지 (썸네일) <Req /></label>
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/jpeg,image/png,image/webp"
+              accept="image/jpeg"
               multiple
               className="hidden"
               onChange={(e) => {
-                const files = Array.from(e.target.files ?? []);
-                if (files.length) setImages((prev) => [...prev, ...files].slice(0, 20));
+                const { ok, rejected } = filterJpegs(Array.from(e.target.files ?? []));
+                if (rejected.length) alert(`업로드할 수 없는 파일:\n${rejected.join("\n")}`);
+                if (ok.length) setImages((prev) => [...prev, ...ok].slice(0, 20));
                 e.target.value = "";
               }}
             />
@@ -444,7 +413,7 @@ export default function PopupRegister() {
               ))}
             </div>
             <p className="text-[11px] text-muted-foreground mt-1.5">
-              사전예약과 현장 웨이팅을 동시에 운영할 때의 현장 대기열 조정 의무는 주최자에게 있습니다.
+              사전예약과 현장 웨이팅을 동시에 운영할 때의 현장 대기열 조정 권한은 주최자에게 있습니다.
             </p>
           </div>
           {useReservation && (
@@ -473,34 +442,7 @@ export default function PopupRegister() {
               </p>
             </div>
           )}
-          <div className="grid sm:grid-cols-3 gap-4">
-            <div>
-              <label className={labelCls}>입장료</label>
-              <div className="relative">
-                <input type="number" defaultValue={0} className={inputCls + " pr-8"} />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">원</span>
-              </div>
-            </div>
-            <div>
-              <label className={labelCls}>최대 수용 정원 <Req /></label>
-              <input
-                type="number" min={1} value={maxCapacity}
-                onChange={(e) => setMaxCapacity(Number(e.target.value))}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>혼잡 알림 임계치</label>
-              <select className={inputCls}>
-                <option>정원의 80% (혼잡)</option>
-                <option>정원의 70%</option>
-                <option>정원의 90%</option>
-              </select>
-            </div>
-          </div>
-          <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-            <Info size={11} /> 혼잡도 기준: 정원 대비 80% 이상 "혼잡" · 50~80% "보통" · 이하 "여유"
-          </p>
+          {/* 입장료·혼잡도(7/24)·최대 수용 정원(7/25) 설정 제거 — 정원은 슬롯당 예약 정원으로 관리 */}
         </Section>
 
         {/* 6. 상세 설명 */}
@@ -522,7 +464,11 @@ export default function PopupRegister() {
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
-                if (f) setDetailImage(f);
+                if (f) {
+                  const { ok, rejected } = filterJpegs([f]);
+                  if (rejected.length) alert(`업로드할 수 없는 파일:\n${rejected.join("\n")}`);
+                  if (ok[0]) setDetailImage(ok[0]);
+                }
                 e.target.value = "";
               }}
             />

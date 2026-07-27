@@ -9,14 +9,14 @@ export function BottomTabBar() {
 
   const tabs = [
     { icon: "/icon/Bar_Home.svg", label: "홈", href: "/" },
+    { icon: "/icon/Bar_Other.svg", label: "더보기", href: "/more" },
     { icon: "/icon/Bar_Search.svg", label: "검색", href: "/search" },
-    { icon: "/icon/Bar_Cart.svg", label: "장바구니", href: null },
+    { icon: "/icon/Bar_Cart.svg", label: "예약/웨이팅", href: "/mypage?menu=예약 / 웨이팅" },
     {
       icon: isLoggedIn ? "/icon/loginuser.svg" : "/icon/Bar_User.svg",
       label: "마이",
       href: isLoggedIn ? "/mypage" : "/login",
     },
-    { icon: "/icon/Bar_Other.svg", label: "기타", href: null },
   ];
 
   return (

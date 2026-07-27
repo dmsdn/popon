@@ -67,15 +67,14 @@ public class WaitingQueueService {
 
     // 패드 현황판: 현장웨이팅자만 (기존 방식 유지, 필요시 사용)
     public WaitingBoardResponse getBoard(Long popupId) {
+        // 이미 registeredAt 오름차순 정렬이므로, 리스트 인덱스가 곧 "내 앞 팀 수" (대기자별 COUNT 쿼리 불필요)
         List<WaitingQueue> waitingList = waitingQueueRepository
                 .findByPopupIdAndStatusOrderByRegisteredAtAsc(popupId, WaitingStatus.WAITING);
 
-        List<WaitingResponse> responses = waitingList.stream()
-                .map(w -> {
-                    long ahead = waitingQueueRepository.countAheadOf(popupId, w.getId());
-                    return WaitingResponse.from(w, ahead);
-                })
-                .collect(Collectors.toList());
+        List<WaitingResponse> responses = new java.util.ArrayList<>();
+        for (int i = 0; i < waitingList.size(); i++) {
+            responses.add(WaitingResponse.from(waitingList.get(i), (long) i));
+        }
 
         return WaitingBoardResponse.builder()
                 .popupId(popupId)
