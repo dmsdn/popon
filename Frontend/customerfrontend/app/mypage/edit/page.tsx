@@ -19,6 +19,7 @@ export default function EditProfilePage() {
 
   const [nickname, setNickname] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [gender, setGender] = useState<"MALE" | "FEMALE" | "UNKNOWN">("UNKNOWN");
   const [birthDate, setBirthDate] = useState("");
   const [regions, setRegions] = useState<string[]>([]);
@@ -35,6 +36,7 @@ export default function EditProfilePage() {
     if (!customer) return;
     setNickname(customer.nickname);
     setPhone(customer.phone ?? "");
+    setEmail(customer.email ?? "");
     setGender(customer.gender ?? "UNKNOWN");
     setBirthDate(customer.birthDate ?? "");
     setRegions(getPreferredRegions());
@@ -57,13 +59,20 @@ export default function EditProfilePage() {
       await updateMyInfo({
         nickname: nickname.trim(),
         phone: phone.trim() || undefined,
+        email: email.trim() || undefined,
         gender,
         birthDate: birthDate || undefined,
       });
       setPreferredRegions(regions);
       setPreferredCategories(categories);
       await refresh();
-      router.push("/mypage?menu=내 정보");
+      // [수정] 여기도 review 페이지와 같은 이유로 push 대신 back()을 씁니다 —
+      // 마이페이지에서 "내 정보 수정"으로 들어온 화면이라 back()이 자연스러운 복귀예요.
+      if (typeof window !== "undefined" && window.history.length > 1) {
+        router.back();
+      } else {
+        router.push("/mypage?menu=내 정보");
+      }
     } catch (err) {
       console.error("정보 수정 실패", err);
       alert(err instanceof Error ? err.message : "수정에 실패했어요. 잠시 후 다시 시도해주세요.");
@@ -100,6 +109,19 @@ export default function EditProfilePage() {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="010-0000-0000"
+            className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm outline-none"
+          />
+        </label>
+
+        <label className="block">
+          <span className="block text-sm font-medium text-gray-700 mb-2">
+            이메일 <span className="text-gray-400 font-normal">(선택)</span>
+          </span>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="000@example.com"
             className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm outline-none"
           />
         </label>

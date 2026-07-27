@@ -9,7 +9,8 @@ import { Footer } from "@/components/layout/Footer";
 import { BottomTabBar } from "@/components/layout/BottomTabBar";
 import { RecentSearches } from "@/components/search/RecentSearches";
 import { SuggestedKeywords } from "@/components/search/SuggestedKeywords";
-import { RankingSection } from "@/components/home/RankingSection";
+import { HorizontalCarousel } from "@/components/ui/HorizontalCarousel";
+import { PopupCard } from "@/components/home/PopupCard";
 import { searchPopups } from "@/lib/api/popups";
 import { toPopupItem } from "@/lib/utils/popupMapper";
 import { type PopupItem } from "@/data/mockPopups";
@@ -156,7 +157,16 @@ export default function SearchPage({
         <div className="mobile:px-4">
           <RecentSearches />
           <SuggestedKeywords />
-          {!hasActiveFilter && <RankingSection title="인기 추천 팝업" items={popularForRanking} />}
+          {!hasActiveFilter && popularForRanking.length > 0 && (
+            <section className="px-4 py-4">
+              <h2 className="text-sm font-semibold mb-3">인기 추천 팝업</h2>
+              <HorizontalCarousel>
+                {popularForRanking.map((item, index) => (
+                  <PopupCard key={item.id} {...item} rank={index + 1} />
+                ))}
+              </HorizontalCarousel>
+            </section>
+          )}
         </div>
       )}
 

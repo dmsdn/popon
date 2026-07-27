@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { setToken } from "@/lib/api/client";
-import { devLogin } from "@/lib/api/auth";
+import { devLogin, getSignupStatus } from "@/lib/api/auth";
 import { useAuth } from "@/lib/auth/AuthContext";
 
 // 백엔드의 실제 개발용 로그인(POST /api/customer/dev-login)에 연결된 화면입니다.
@@ -30,10 +30,16 @@ export default function DevLoginPage() {
 
       setToken(result.token);
       await refresh();
-      // 백엔드가 아직 onboarded 여부를 안 내려줘서(고객 정보 조회 API 참고),
-      // 일단 홈으로 보내드려요. 전화번호 등 추가 정보 입력이 필요하면
-      // 마이페이지 > 내 정보에서 채워주세요.
-      router.push("/");
+      // [수정] 이전엔 무조건 홈으로 보냈는데, 그러면 방금 만든 신규 테스트 계정도
+      // 회원정보 입력 화면을 건너뛰어서 phone 등 필수값이 계속 비어있게 됐어요.
+      // 실제 가입완료 여부를 확인해서 그에 맞게 보냅니다.
+      try {
+        const { signupCompleted } = await getSignupStatus();
+        router.push(signupCompleted ? "/" : "/signup");
+      } catch (statusError) {
+        console.warn("가입 완료 여부 확인 실패", statusError);
+        router.push("/");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "로그인에 실패했어요. 다시 시도해주세요.");
     } finally {
