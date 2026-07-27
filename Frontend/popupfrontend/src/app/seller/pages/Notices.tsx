@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Megaphone, Send, CheckCircle2 } from "lucide-react";
+import { getMyPopups, Popup } from "../../lib/api";
 
 const HISTORY = [
   { date: "07-13 08:20", title: "우천으로 야외 포토존 운영 중단 안내", target: "예약자 전체 (SNS·앱 푸시)", sent: 1240 },
@@ -8,6 +9,19 @@ const HISTORY = [
 
 export default function Notices() {
   const [sent, setSent] = useState(false);
+  // 7/24 멘토 피드백: 제목 자유 입력 대신 "어느 팝업에 대한 공지인지"를 팝업명으로 강제
+  const [myPopups, setMyPopups] = useState<Popup[]>([]);
+  const [popupId, setPopupId] = useState("");
+  useEffect(() => {
+    getMyPopups()
+      .then((all) => {
+        // 공지를 보낼 수 있는 건 게시된 팝업(오픈예정·진행중)뿐 — 심사 대기·반려·종료는 제외
+        const notifiable = all.filter((p) => p.status === "BEFOR" || p.status === "OPEN");
+        setMyPopups(notifiable);
+        setPopupId((prev) => prev || (notifiable[0] ? String(notifiable[0].id) : ""));
+      })
+      .catch(() => setMyPopups([]));
+  }, []);
   const inputCls = "w-full px-3 py-2 text-[13px] border border-border rounded-sm bg-white focus:outline-none focus:border-accent";
 
   return (
@@ -29,19 +43,30 @@ export default function Notices() {
           </div>
         </div>
         <div>
-          <label className="block text-xs font-medium mb-1.5">공지 제목 *</label>
-          <input className={inputCls} placeholder="예: 우천으로 인한 야외 프로그램 변경 안내" maxLength={50} />
+          <label className="block text-xs font-medium mb-1.5">공지 대상 팝업 *</label>
+          {/* 제목 자유 입력 제거 — 공지 제목은 선택한 팝업명으로 자동 지정 (7/24 멘토 피드백) */}
+          <select className={inputCls} value={popupId} onChange={(e) => setPopupId(e.target.value)}>
+            {myPopups.length === 0 && <option value="">공지를 보낼 수 있는 게시중 팝업이 없습니다</option>}
+            {myPopups.map((p) => (
+              <option key={p.id} value={p.id}>{p.title}</option>
+            ))}
+          </select>
+          <p className="text-[11px] text-muted-foreground mt-1">공지 제목은 「[긴급공지] 팝업명」 형식으로 자동 발송됩니다.</p>
         </div>
         <div>
           <label className="block text-xs font-medium mb-1.5">공지 내용 *</label>
           <textarea rows={5} className={inputCls + " resize-y leading-relaxed"} placeholder="발송 후에는 수정할 수 없습니다. 내용을 정확히 확인해 주세요." />
         </div>
         <div className="flex items-center justify-between pt-2 border-t border-border">
-          <p className="text-[11px] text-muted-foreground">발송 채널: 앱 푸시 + 카카오 알림톡 · 발송 이력은 하단에 기록됩니다.</p>
+          <p className="text-[11px] text-muted-foreground"></p>
           {sent ? (
             <span className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium"><CheckCircle2 size={14} /> 발송 완료</span>
           ) : (
-            <button onClick={() => setSent(true)} className="flex items-center gap-1.5 text-xs px-5 py-2.5 rounded-sm bg-accent text-white hover:bg-accent/90 font-medium">
+            <button
+              onClick={() => setSent(true)}
+              disabled={!popupId}
+              className="flex items-center gap-1.5 text-xs px-5 py-2.5 rounded-sm bg-accent text-white hover:bg-accent/90 font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+            >
               <Send size={13} /> 즉시 발송
             </button>
           )}
