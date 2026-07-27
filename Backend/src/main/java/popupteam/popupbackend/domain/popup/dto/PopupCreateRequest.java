@@ -30,4 +30,7 @@ public class PopupCreateRequest {
 
     @NotBlank
     private String queueMode; // "PRERESERVATION_ONLY" / "ONSITE_WAITING_ONLY" / "BOTH"
+
+    @Min(1)
+    private Integer maxPartySizePerTeam; // 현장웨이팅 팀당 최대 인원, 선택입력 (안 주면 제한 없음)
 }
