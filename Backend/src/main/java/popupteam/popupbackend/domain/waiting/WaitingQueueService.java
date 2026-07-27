@@ -163,4 +163,22 @@ public class WaitingQueueService {
 
         return WaitingResponse.from(w, 0L);
     }
+
+    // 내 웨이팅 목록 (여러 팝업 통틀어, 현재 대기중/호출됨 상태만)
+    public List<MyWaitingResponse> getMyActiveWaitings(Long customerId) {
+        List<WaitingQueue> myWaitings = waitingQueueRepository
+                .findByCustomerIdAndStatusInOrderByRegisteredAtDesc(customerId, List.of(WaitingStatus.WAITING, WaitingStatus.CALLED));
+
+        return myWaitings.stream()
+                .map(w -> MyWaitingResponse.builder()
+                        .waitingId(w.getId())
+                        .popupId(w.getPopup().getId())
+                        .popupTitle(w.getPopup().getTitle())
+                        .teamNumber(w.getTeamNumber())
+                        .teamsAhead(waitingQueueRepository.countAheadOf(w.getPopup().getId(), w.getId()))
+                        .status(w.getStatus().name())
+                        .registeredAt(w.getRegisteredAt())
+                        .build())
+                .toList();
+    }
 }
