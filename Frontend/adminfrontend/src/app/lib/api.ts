@@ -539,7 +539,9 @@ export function getRegions() {
 }
 
 // ── 공간(venue) 마스터 ──
-
+// ※ 7/28 정리: 공간(대관처) 마스터 화면이 지역 마스터로 교체(7/24)되어 사용처 없음.
+//   백엔드 venue 도메인 정리(팀 합의) 시 이 블록도 함께 삭제할 것 — 그때까지 주석 보존.
+/*
 export type Venue = {
   id: number;
   name: string;
@@ -566,6 +568,8 @@ export function updateVenue(id: number, data: Partial<Omit<Venue, "id" | "create
 export function deleteVenue(id: number) {
   return request<void>(`/api/admin/venues/${id}`, { method: "DELETE" });
 }
+*/
+
 
 // ── 예약자 명단 (해당 팝업 주최자 또는 관리자) ──
 
