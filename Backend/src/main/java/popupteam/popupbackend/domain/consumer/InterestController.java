@@ -1,44 +1,60 @@
-// Source code is decompiled from a .class file using FernFlower decompiler (from Intellij IDEA).
 package popupteam.popupbackend.domain.consumer;
 
-import popupteam.popupbackend.domain.consumer.CustomerKeyword;
-import popupteam.popupbackend.domain.consumer.CustomerKeywordRepository;
-import popupteam.popupbackend.domain.consumer.auth.JwtUtil;
 import java.util.List;
 import java.util.Map;
-import lombok.Generated;
+
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import popupteam.popupbackend.domain.consumer.auth.JwtUtil;
+
 @RestController
-@RequestMapping({"/api/customer"})
+@RequestMapping("/api/customer")
 public class InterestController {
-   private final CustomerKeywordRepository customerKeywordRepository;
-   private final JwtUtil jwtUtil;
 
-   @PostMapping({"/interests"})
-   public Map<String, Object> saveInterests(@RequestHeader("Authorization") String authHeader, @RequestBody Map<String, List<Long>> body) {
-      String token = authHeader.replace("Bearer ", "");
-      Long customerId = this.jwtUtil.getCustomerIdFromToken(token);
-      List<Long> keywordIds = (List)body.get("keywordIds");
-      this.customerKeywordRepository.deleteByCustomerId(customerId);
+    private final CustomerKeywordRepository customerKeywordRepository;
+    private final JwtUtil jwtUtil;
 
-      for(Long keywordId : keywordIds) {
-         CustomerKeyword ck = new CustomerKeyword();
-         ck.setCustomerId(customerId);
-         ck.setKeywordId(keywordId);
-         this.customerKeywordRepository.save(ck);
-      }
+    public InterestController(
+            CustomerKeywordRepository customerKeywordRepository,
+            JwtUtil jwtUtil
+    ) {
+        this.customerKeywordRepository = customerKeywordRepository;
+        this.jwtUtil = jwtUtil;
+    }
 
-      return Map.of("success", true, "count", keywordIds.size());
-   }
+    @Transactional
+    @PostMapping("/interests")
+    public Map<String, Object> saveInterests(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody Map<String, List<Long>> body
+    ) {
+        String token = authHeader.replace("Bearer ", "");
+        Long customerId = jwtUtil.getCustomerIdFromToken(token);
 
-   @Generated
-   public InterestController(final CustomerKeywordRepository customerKeywordRepository, final JwtUtil jwtUtil) {
-      this.customerKeywordRepository = customerKeywordRepository;
-      this.jwtUtil = jwtUtil;
-   }
+        List<Long> keywordIds = body.get("keywordIds");
+
+        if (keywordIds == null) {
+            throw new IllegalArgumentException("keywordIds가 필요합니다.");
+        }
+
+        customerKeywordRepository.deleteByCustomerId(customerId);
+
+        for (Long keywordId : keywordIds) {
+            CustomerKeyword customerKeyword = new CustomerKeyword();
+            customerKeyword.setCustomerId(customerId);
+            customerKeyword.setKeywordId(keywordId);
+
+            customerKeywordRepository.save(customerKeyword);
+        }
+
+        return Map.of(
+                "success", true,
+                "count", keywordIds.size()
+        );
+    }
 }
