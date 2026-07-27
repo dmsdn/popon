@@ -2,6 +2,7 @@ package popupteam.popupbackend.domain.cs;
 
 import popupteam.popupbackend.common.exception.ForbiddenException;
 import popupteam.popupbackend.domain.cs.dto.*;
+import popupteam.popupbackend.domain.consumer.auth.JwtUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +15,7 @@ import java.util.List;
 public class CsRequestController {
 
     private final CsRequestService csRequestService;
+    private final JwtUtil jwtUtil;
 
     private void requireAdmin(Authentication authentication) {
         String name = authentication.getName();
@@ -22,16 +24,23 @@ public class CsRequestController {
         }
     }
 
-    // 참가자: CS 작성
+    private Long extractCustomerId(String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        return jwtUtil.getCustomerIdFromToken(token);
+    }
+
+    // 참가자: CS 작성 (본인 인증 토큰에서 customerId 추출, 위조 불가)
     @PostMapping("/api/cs")
-    public ResponseEntity<?> create(@RequestParam Long customerId,
+    public ResponseEntity<?> create(@RequestHeader("Authorization") String authHeader,
                                     @Valid @RequestBody CsCreateRequest request) {
+        Long customerId = extractCustomerId(authHeader);
         return ResponseEntity.status(201).body(csRequestService.create(customerId, request));
     }
 
-    // 참가자: 본인 CS 목록
+    // 참가자: 본인 CS 목록 (본인 인증 토큰에서 customerId 추출)
     @GetMapping("/api/cs/me")
-    public ResponseEntity<List<CsResponse>> getMyRequests(@RequestParam Long customerId) {
+    public ResponseEntity<List<CsResponse>> getMyRequests(@RequestHeader("Authorization") String authHeader) {
+        Long customerId = extractCustomerId(authHeader);
         return ResponseEntity.ok(csRequestService.getMyRequests(customerId));
     }
 

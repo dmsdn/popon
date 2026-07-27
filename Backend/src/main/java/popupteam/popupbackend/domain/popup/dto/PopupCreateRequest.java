@@ -22,7 +22,8 @@ public class PopupCreateRequest {
     private Double areaSqm;
 
     private Integer capacity;
-    
+
+    private Long addressKeywordId; // 관심지역 매칭용 Region ID (선택입력)
 
     @NotBlank
     private String reservationMode; // "SLOT" 또는 "FREE"
@@ -38,5 +39,5 @@ public class PopupCreateRequest {
 
     private List<String> hashtags;
 
-    private Long addressKeywordId; // 관심지역 매칭용 Region ID (선택입력)
+    private List<Long> keywordIds; // 표준 키워드 ID 목록 (선택)
 }
