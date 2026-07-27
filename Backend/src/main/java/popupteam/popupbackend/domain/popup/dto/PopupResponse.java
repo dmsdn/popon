@@ -27,6 +27,12 @@ public class PopupResponse {
     private String queueMode;
     private LocalDateTime statusChangedAt;
     private String adminEditNote;
+    private Integer maxPartySizePerTeam;
+    private List<String> hashtags;
+
+    public static PopupResponse from(Popup popup) {
+        return from(popup, java.util.Collections.emptyList());
+    }
 
     public static PopupResponse from(Popup popup) {
         return PopupResponse.builder()
@@ -51,6 +57,8 @@ public class PopupResponse {
                 .queueMode(popup.getQueueMode() != null ? popup.getQueueMode().name() : null)
                 .statusChangedAt(popup.getStatusChangedAt())
                 .adminEditNote(popup.getAdminEditNote())
+                .maxPartySizePerTeam(popup.getMaxPartySizePerTeam())
+                .hashtags(hashtags)
                 .build();
     }
 }

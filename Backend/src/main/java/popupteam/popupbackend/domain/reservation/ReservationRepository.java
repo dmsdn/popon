@@ -15,20 +15,26 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     List<Reservation> findBySlotIdAndStatus(Long slotId, ReservationStatus status);
     List<Reservation> findByPopupIdAndReservationDateAndStatus(Long popupId, LocalDate reservationDate, ReservationStatus status);
 
-    // 슬롯 목록 조회용 예약 인원 집계 — 슬롯마다 findBySlotId를 반복하면 슬롯 수만큼 쿼리가 나가
-    // 원격 DB(Aiven)에서는 수십 초까지 걸리므로, 팝업 단위 GROUP BY 한 번으로 대체 (row: [slotId, SUM(partySize)])
-    @Query("SELECT r.slot.id, SUM(r.partySize) FROM Reservation r " +
-            "WHERE r.slot.popup.id = :popupId AND r.status = 'CONFIRMED' " +
-            "GROUP BY r.slot.id")
-    List<Object[]> sumConfirmedPartySizeBySlot(@Param("popupId") Long popupId);
-
+    // 슬롯 삭제 가능 여부 판정용 (PopupSlotService.generate — 예약이 하나라도 있으면 슬롯 유지)
     boolean existsBySlotId(Long slotId);
 
-    @Query("SELECT r FROM Reservation r WHERE r.popup.id = :popupId " +
+    // 예약자 명단 조회용 - popup/customer/slot을 한 번에 JOIN FETCH (N+1 방지)
+    // slot은 FREE 모드면 null이라 LEFT JOIN FETCH
+    @Query("SELECT r FROM Reservation r " +
+            "JOIN FETCH r.popup " +
+            "JOIN FETCH r.customer " +
+            "LEFT JOIN FETCH r.slot " +
+            "WHERE r.popup.id = :popupId " +
             "ORDER BY r.reservationDate ASC, r.createdAt ASC")
     List<Reservation> findByPopupId(@Param("popupId") Long popupId);
 
     Optional<Reservation> findByQrToken(String qrToken);
+
+    // 팝업의 슬롯별 확정 예약 인원 합계를 한 번에 계산 (대기시간 계산 시 N+1 방지)
+    @Query("SELECT r.slot.id, SUM(r.partySize) FROM Reservation r " +
+            "WHERE r.popup.id = :popupId AND r.status = 'CONFIRMED' AND r.slot IS NOT NULL " +
+            "GROUP BY r.slot.id")
+    List<Object[]> sumConfirmedPartySizeBySlot(@Param("popupId") Long popupId);
 
     @Query("SELECT new popupteam.popupbackend.domain.reservation.dto.PopupVisitorCountProjection(" +
             "r.popup.id, r.popup.title, r.popup.business.companyName, COUNT(r)) " +
@@ -64,5 +70,10 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             "AND r.entryStatus = 'CHECKED_IN' AND r.exitedAt IS NULL " +
             "ORDER BY r.checkedInAt ASC")
     List<Reservation> findCurrentlyInsideByPopupId(@Param("popupId") Long popupId);
+
+    // 팝업 구분 없이 전체 체크인 상태(아직 퇴장 전) 조회 - 자동퇴장 스케줄러용
+    List<Reservation> findByEntryStatusAndExitedAtIsNull(EntryStatus entryStatus);
+
+    List<Reservation> findByPopupIdAndStatus(Long popupId, ReservationStatus status);
 
 }
