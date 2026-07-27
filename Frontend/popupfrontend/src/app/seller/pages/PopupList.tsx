@@ -1,8 +1,8 @@
 import { Fragment, useEffect, useState } from "react";
 import { Link } from "react-router";
-import { Search, Pencil, Trash2, Loader2, ShieldAlert, ChevronDown, ChevronUp, MessageSquare, CheckCircle2 } from "lucide-react";
+import { Search, Pencil, Loader2, ShieldAlert, ChevronDown, ChevronUp, MessageSquare, CheckCircle2 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import { getPopups, getMyPopups, getMyInquiries, deletePopup, Popup, PopupStatusCode, InquiryItem } from "../../lib/api";
+import { getPopups, getMyPopups, getMyInquiries, Popup, PopupStatusCode, InquiryItem } from "../../lib/api";
 import { loadAllMeta, isSuspended } from "../../lib/adminPopupMeta";
 
 // 백엔드 PopupStatus → 화면 표기 (등록 직후 PENDING, 관리자 승인 시 BEFOR, 반려 시 REJECTED)
@@ -33,7 +33,6 @@ export default function PopupList() {
   const [popups, setPopups] = useState<Popup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [deletingId, setDeletingId] = useState<number | null>(null);
   // 관리자 수정 이력(수정사항·사유, 상태 확정일) — 관리자 콘솔에서 기록한 값
   const [adminMeta] = useState(loadAllMeta);
   const [openAdminEditId, setOpenAdminEditId] = useState<number | null>(null);
@@ -64,19 +63,7 @@ export default function PopupList() {
     };
   }, [user]);
 
-  const handleDelete = async (p: Popup) => {
-    if (!window.confirm(`「${p.title}」 팝업을 삭제할까요? 되돌릴 수 없습니다.`)) return;
-    setDeletingId(p.id);
-    try {
-      await deletePopup(p.id);
-      setPopups((prev) => prev.filter((x) => x.id !== p.id));
-    } catch (e) {
-      alert(e instanceof Error ? e.message : "삭제에 실패했습니다.");
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
+  // 삭제는 상세페이지(/seller/popups/:id)로 이동 — 7/24 멘토 피드백 (표에서 실수 삭제 방지)
   const rows = popups.filter(
     (p) =>
       (filter === "전체" || p.status === filter) &&
@@ -163,7 +150,10 @@ export default function PopupList() {
                 <Fragment key={p.id}>
                   <tr className="hover:bg-secondary/40">
                     <td className="px-4 py-3">
-                      <div className="font-medium">{p.title}</div>
+                      {/* 제목 클릭 → 상세페이지 (7/24 멘토 피드백) */}
+                      <Link to={`/seller/popups/${p.id}`} className="font-medium hover:text-accent hover:underline underline-offset-2 transition-colors">
+                        {p.title}
+                      </Link>
                     </td>
                     <td className="px-4 py-3 text-xs">{fmtDate(p.startDate)} ~ {fmtDate(p.endDate)}</td>
                     <td className="px-4 py-3 text-xs">{p.location ?? "-"}</td>
@@ -197,9 +187,7 @@ export default function PopupList() {
                           </button>
                         )}
                       </div>
-                      {p.status === "REJECTED" && !suspended && p.rejectReason && (
-                        <div className="text-[11px] text-red-500 mt-1 max-w-[180px]">사유: {p.rejectReason}</div>
-                      )}
+                      {p.status === "REJECTED" && !suspended}
                     </td>
                     {/* 상태 확정일: 7/23부터 서버 기록(statusChangedAt) 사용 — 이전 로컬 기록(meta.statusDate)은 폴백 */}
                     <td className="px-4 py-3 text-xs">{fmtDate(p.statusChangedAt) !== "-" ? fmtDate(p.statusChangedAt) : meta.statusDate ?? "-"}</td>
@@ -216,16 +204,9 @@ export default function PopupList() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
+                      {/* 삭제 버튼은 상세페이지로 이동 — 표에는 편집만 남김 */}
                       <div className="flex items-center justify-center gap-2 text-muted-foreground">
                         <Link to={`/seller/popups/new?id=${p.id}`} title="수정" className="hover:text-foreground"><Pencil size={14} /></Link>
-                        <button
-                          title="삭제"
-                          disabled={deletingId === p.id}
-                          onClick={() => handleDelete(p)}
-                          className="hover:text-red-500 disabled:opacity-40"
-                        >
-                          {deletingId === p.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                        </button>
                       </div>
                     </td>
                   </tr>
