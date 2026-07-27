@@ -15,9 +15,8 @@ const MENU = [
   ]},
   { group: "운영 관리", items: [
     { to: "/admin/popups", icon: Store, label: "팝업 관리" },
-    { to: "/admin/contracts", icon: FileSignature, label: "공간 대관·계약" },
     { to: "/admin/cs", icon: Headphones, label: "문의 및 신고관리" },
-    { to: "/admin/masters", icon: Database, label: "공간·카테고리 마스터" },
+    { to: "/admin/masters", icon: Database, label: "카테고리·지역 마스터" },
     { to: "/admin/content", icon: Newspaper, label: "배너·콘텐츠 관리" },
   ]},
   { group: "계정 관리", items: [
