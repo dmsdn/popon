@@ -42,13 +42,14 @@ public class PopupSlotService {
     }
 
     public List<PopupSlotResponse> findByPopup(Long popupId) {
+        // 예약 인원은 GROUP BY 집계 한 번으로 미리 모아 둔다.
+        // (슬롯마다 개별 조회하면 슬롯 수만큼 쿼리가 나가 원격 DB에서 타임아웃 — 소비자 예약 모달이 빈 슬롯으로 떨어지던 원인)
+        // 정원 계산과 동일하게 CONFIRMED만 집계 (취소 예약 제외)
+        Map<Long, Integer> reservedBySlot = reservationRepository.sumConfirmedPartySizeBySlot(popupId).stream()
+                .collect(Collectors.toMap(row -> (Long) row[0], row -> ((Number) row[1]).intValue()));
+
         return popupSlotRepository.findByPopupId(popupId).stream()
-                .map(slot -> {
-                    int reserved = reservationRepository.findBySlotId(slot.getId()).stream()
-                            .mapToInt(r -> r.getPartySize())
-                            .sum();
-                    return PopupSlotResponse.from(slot, reserved);
-                })
+                .map(slot -> PopupSlotResponse.from(slot, reservedBySlot.getOrDefault(slot.getId(), 0)))
                 .collect(Collectors.toList());
     }
 
@@ -140,7 +141,7 @@ public class PopupSlotService {
         for (PopupSlot slot : existingSlots) {
             String key = slot.getSlotDate() + "|" + slot.getStartTime();
             if (!expectedKeys.contains(key)) {
-                boolean hasReservations = !reservationRepository.findBySlotId(slot.getId()).isEmpty();
+                boolean hasReservations = reservationRepository.existsBySlotId(slot.getId());
                 if (hasReservations) {
                     keptStale++;
                 } else {

@@ -1,12 +1,16 @@
 "use client";
 
-import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
+import { Suspense, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { notices } from "@/data/notices";
 import { getMyReviews, toDisplayDate, type Review } from "@/lib/api/reviews";
 import { getPopup, type PopupDetail } from "@/lib/api/popups";
+import { getMyReservations, type Reservation } from "@/lib/api/reservations";
+import { getMyWaitingStatus, getMyWaitingIds, type Waiting } from "@/lib/api/waiting";
+import { createCsRequest, getMyCsRequests, type CsRequestItem } from "@/lib/api/cs";
+import { getPreferredRegions, getPreferredCategories } from "@/lib/preferences";
 import {
   subscribeWishlist,
   getWishlistSnapshot,
@@ -35,30 +39,24 @@ const PROVIDER_LABEL = {
   DEV: "개발용 로그인",
 } as const;
 
-// ==================== 예시용 mock 데이터 (실제로는 백엔드 API로 대체) ====================
-// TODO: getMyWaiting() API로 교체 - 웨이팅이 없으면 null을 내려줘야 프로필 카드가 자동으로 숨겨짐
-const mockWaiting = {
-  id: "w1",
-  popupId: "1",
-  popupName: "팝업 이름",
-  aheadCount: 7,
-  estimatedMinutes: 10,
-  myOrder: 7,
-};
-
-// TODO: getMyReservations() API로 교체
-// 예시로 2건을 넣어서, 아래 "바로가기 카드" 로직이 여러 건일 때 어떻게 동작하는지 확인할 수 있게 했어요.
-const mockReservations = [
-  { id: "r1", popupName: "팝업 이름", dDay: "D-1", date: "26. 07. 16. (목)", time: "오후 13:30", partySize: 2 },
-  { id: "r2", popupName: "다른 팝업 이름", dDay: "D-3", date: "26. 07. 18. (토)", time: "오후 15:00", partySize: 1 },
-];
-// ================================================================================
-
 const FAQS = [
   { q: "웨이팅은 어떻게 신청하나요?", a: "팝업 상세페이지의 '웨이팅' 버튼에서 카카오 로그인으로 바로 신청할 수 있어요." },
   { q: "예약 취소는 어디서 하나요?", a: "마이페이지 > 예약 / 웨이팅에서 취소할 예약을 선택해 취소할 수 있어요." },
   { q: "쿠폰은 어떻게 받나요?", a: "일부 팝업은 사전 예약/방문 인증 시 쿠폰함에 자동으로 지급돼요." },
 ];
+
+function calculateAge(birthDate: string | null): string {
+  if (!birthDate) return "미입력";
+  const birth = new Date(birthDate);
+  if (Number.isNaN(birth.getTime())) return "미입력";
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const hasNotHadBirthdayThisYear =
+    today.getMonth() < birth.getMonth() ||
+    (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate());
+  if (hasNotHadBirthdayThisYear) age -= 1;
+  return `만 ${age}세`;
+}
 
 const VALID_MENUS: MenuKey[] = ["내 정보", ...SIDEBAR_MENU];
 
@@ -140,6 +138,125 @@ function MyPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wishlistIds]);
 
+  // 예약 / 웨이팅
+  const [myReservations, setMyReservations] = useState<Reservation[] | null>(null);
+  const [myWaitings, setMyWaitings] = useState<Waiting[]>([]);
+  const [reservationPopupTitles, setReservationPopupTitles] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    if (!isLoggedIn || !customer) return;
+    let cancelled = false;
+
+    getMyReservations(customer.id)
+      .then((list) => {
+        if (!cancelled) {
+          const sorted = [...list].sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+          setMyReservations(sorted);
+        }
+      })
+      .catch((err) => {
+        console.error("내 예약 조회 실패", err);
+        if (!cancelled) setMyReservations([]);
+      });
+
+    // ⚠️ 백엔드에 "내 웨이팅 전체 목록" API가 없어서, 이 브라우저에서 등록할 때
+    // 기록해둔 id들로 하나씩 상태를 조회해요 (lib/api/waiting.ts의 addMyWaitingId 참고).
+    Promise.all(
+      getMyWaitingIds().map((id) =>
+        getMyWaitingStatus(id).catch(() => null)
+      )
+    ).then((results) => {
+      if (!cancelled) {
+        setMyWaitings(
+          results
+            .filter((w): w is Waiting => w !== null)
+            .sort((a, b) => new Date(b.registeredAt).getTime() - new Date(a.registeredAt).getTime())
+        );
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn, customer]);
+
+  // 예약/웨이팅에 뜬 팝업들의 제목을 한 번씩만 조회
+  useEffect(() => {
+    const popupIds = [
+      ...(myReservations ?? []).map((r) => r.popupId),
+      ...myWaitings.map((w) => w.popupId),
+    ];
+    [...new Set(popupIds)].forEach((popupId) => {
+      if (reservationPopupTitles[popupId]) return;
+      getPopup(popupId)
+        .then((detail) => {
+          setReservationPopupTitles((prev) => ({ ...prev, [popupId]: detail.title }));
+        })
+        .catch(() => {
+          /* 팝업이 삭제됐을 수도 있어요 */
+        });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myReservations, myWaitings]);
+
+  // 1:1 문의
+  const [myCsRequests, setMyCsRequests] = useState<CsRequestItem[] | null>(null);
+  const [csTitle, setCsTitle] = useState("");
+  const [csContent, setCsContent] = useState("");
+  const [csSubmitting, setCsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isLoggedIn || !customer) return;
+    let cancelled = false;
+
+    getMyCsRequests(customer.id)
+      .then((list) => {
+        if (!cancelled) {
+          setMyCsRequests(
+            [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          );
+        }
+      })
+      .catch((err) => {
+        console.error("내 문의 조회 실패", err);
+        if (!cancelled) setMyCsRequests([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn, customer]);
+
+  const handleSubmitCsRequest = async () => {
+    if (!customer || !csTitle.trim() || !csContent.trim()) return;
+    setCsSubmitting(true);
+    try {
+      const created = await createCsRequest(customer.id, {
+        title: csTitle.trim(),
+        content: csContent.trim(),
+      });
+      setMyCsRequests((prev) => [created, ...(prev ?? [])]);
+      setCsTitle("");
+      setCsContent("");
+    } catch (err) {
+      console.error("문의 등록 실패", err);
+      alert(err instanceof Error ? err.message : "문의 등록에 실패했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setCsSubmitting(false);
+    }
+  };
+
+  // 관심 지역/카테고리 (로컬 저장 - lib/preferences.ts 참고)
+  const [preferredRegions, setPreferredRegionsState] = useState<string[]>([]);
+  const [preferredCategories, setPreferredCategoriesState] = useState<string[]>([]);
+
+  useEffect(() => {
+    setPreferredRegionsState(getPreferredRegions());
+    setPreferredCategoriesState(getPreferredCategories());
+  }, []);
+
   // 비로그인 상태에서도 마이페이지 자체는 보여주고(공지사항/1:1 문의/Q&A는 로그인 없이도 봐야 하니까),
   // 로그인이 필요한 메뉴를 고르려고 할 때만 로그인 화면으로 보냅니다. (handleSelectMenu 참고)
 
@@ -195,7 +312,49 @@ if (queryMenu !== syncedQueryMenu) {
   };
 
   // 웨이팅 + 예약을 합친 총 "대기중" 건수 - 프로필 아래 바로가기 카드 분기에 씁니다.
-  const activeCount = (mockWaiting ? 1 : 0) + mockReservations.length;
+  const activeCount = myWaitings.length + (myReservations?.length ?? 0);
+
+  // "다녀간 팝업" = 후기를 남긴 것 + 실제로 입장(체크인) 처리된 예약/웨이팅
+  // (예약은 entryStatus, 웨이팅은 enteredAt으로 "실제 방문 여부"를 판단해요)
+  type VisitedItem =
+    | { type: "review"; id: string; popupId: number; title: string; date: string; rating: number; content: string }
+    | { type: "reservation" | "waiting"; id: string; popupId: number; title: string; date: string };
+
+  const visitedItems: VisitedItem[] = useMemo(() => {
+    const reviewItems: VisitedItem[] = (myReviews ?? []).map((r) => ({
+      type: "review",
+      id: `review-${r.id}`,
+      popupId: r.popupId,
+      title: popupTitles[r.popupId] ?? `팝업 #${r.popupId}`,
+      date: r.createdAt,
+      rating: r.rating,
+      content: r.content,
+    }));
+
+    const visitedReservations: VisitedItem[] = (myReservations ?? [])
+      .filter((r) => r.entryStatus === "CHECKED_IN")
+      .map((r) => ({
+        type: "reservation",
+        id: `reservation-${r.id}`,
+        popupId: r.popupId,
+        title: reservationPopupTitles[r.popupId] ?? `팝업 #${r.popupId}`,
+        date: r.createdAt,
+      }));
+
+    const visitedWaitings: VisitedItem[] = myWaitings
+      .filter((w) => !!w.enteredAt)
+      .map((w) => ({
+        type: "waiting",
+        id: `waiting-${w.id}`,
+        popupId: w.popupId,
+        title: reservationPopupTitles[w.popupId] ?? `팝업 #${w.popupId}`,
+        date: w.enteredAt as string,
+      }));
+
+    return [...reviewItems, ...visitedReservations, ...visitedWaitings].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+  }, [myReviews, myReservations, myWaitings, popupTitles, reservationPopupTitles]);
 
   return (
     <main className="w-full mobile:max-w-[1000px] mobile:mx-auto">
@@ -238,11 +397,15 @@ if (queryMenu !== syncedQueryMenu) {
               {activeCount > 0 &&
                 (activeCount === 1 ? (
                   <Link
-                    href={mockWaiting ? `/waiting/${mockWaiting.id}` : `/reservations/${mockReservations[0].id}`}
+                    href={
+                      myWaitings[0]
+                        ? `/waiting/${myWaitings[0].id}`
+                        : `/reservations/${myReservations?.[0]?.id}`
+                    }
                     className="mx-4 mb-4 flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3"
                   >
                     <span className="text-sm text-gray-700">
-                      {mockWaiting ? `웨이팅 ${mockWaiting.myOrder}번째 대기중` : `예약 1건`}
+                      {myWaitings[0] ? `웨이팅 ${myWaitings[0].teamNumber}번째 대기중` : "예약 1건"}
                     </span>
                     <span className="text-xs text-gray-400">›</span>
                   </Link>
@@ -307,6 +470,16 @@ if (queryMenu !== syncedQueryMenu) {
 
           {activeMenu === "내 정보" && customer && (
             <div>
+              <div className="flex items-center gap-3 py-4 border-b border-gray-50">
+                <div className="w-14 h-14 rounded-full bg-gray-200 overflow-hidden flex-none">
+                  {customer.profileImage && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={customer.profileImage} alt="" className="w-full h-full object-cover" />
+                  )}
+                </div>
+                <p className="text-sm font-medium">{customer.nickname} 님</p>
+              </div>
+
               <div className="flex items-center justify-between py-4 border-b border-gray-50">
                 <span className="text-sm text-gray-700">닉네임</span>
                 <span className="text-sm text-gray-500">{customer.nickname}</span>
@@ -326,21 +499,62 @@ if (queryMenu !== syncedQueryMenu) {
 
               <div className="flex items-center justify-between py-4 border-b border-gray-50">
                 <span className="text-sm text-gray-700">전화번호</span>
-                <span className="text-sm text-gray-500">{customer.phone || "010 - 0000 - 0000"}</span>
+                <span className="text-sm text-gray-500">{customer.phone || "미입력"}</span>
+              </div>
+
+              <div className="flex items-center justify-between py-4 border-b border-gray-50">
+                <span className="text-sm text-gray-700">이메일</span>
+                <span className="text-sm text-gray-500">{customer.email || "미입력"}</span>
+              </div>
+
+              <div className="flex items-center justify-between py-4 border-b border-gray-50">
+                <span className="text-sm text-gray-700">성별</span>
+                <span className="text-sm text-gray-500">
+                  {customer.gender === "MALE" ? "남성" : customer.gender === "FEMALE" ? "여성" : "미입력"}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between py-4 border-b border-gray-50">
+                <span className="text-sm text-gray-700">나이</span>
+                <span className="text-sm text-gray-500">{calculateAge(customer.birthDate)}</span>
+              </div>
+
+              <div className="py-4 border-b border-gray-50">
+                <p className="text-sm text-gray-700 mb-2">관심 카테고리</p>
+                {preferredCategories.length === 0 ? (
+                  <p className="text-sm text-gray-400">아직 선택한 관심 카테고리가 없어요.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {preferredCategories.map((c) => (
+                      <span key={c} className="text-xs bg-gray-100 text-gray-600 rounded-full px-2.5 py-1">
+                        {c}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="py-4">
-                <p className="text-sm text-gray-700 mb-3">관심 키워드</p>
-                <p className="text-sm text-gray-400">아직 선택한 관심 키워드가 없어요.</p>
+                <p className="text-sm text-gray-700 mb-2">관심 지역</p>
+                {preferredRegions.length === 0 ? (
+                  <p className="text-sm text-gray-400">아직 선택한 관심 지역이 없어요.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {preferredRegions.map((r) => (
+                      <span key={r} className="text-xs bg-gray-100 text-gray-600 rounded-full px-2.5 py-1">
+                        {r}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              <button
-                type="button"
-                onClick={() => alert("준비 중이에요.")}
-                className="w-full border border-gray-300 rounded-full py-3 text-sm font-medium mt-6"
+              <Link
+                href="/mypage/edit"
+                className="block w-full text-center border border-gray-300 rounded-full py-3 text-sm font-medium mt-6"
               >
                 수정하기
-              </button>
+              </Link>
 
               <button
                 type="button"
@@ -393,36 +607,48 @@ if (queryMenu !== syncedQueryMenu) {
             <div className="flex flex-col gap-10">
               <section>
                 <h2 className="text-sm font-semibold mb-3">웨이팅</h2>
-                {mockWaiting ? (
-                  <Link href={`/waiting/${mockWaiting.id}`} className="block border border-gray-200 rounded-xl p-5">
-                    <div className="flex items-start gap-4">
-                      <div className="w-16 h-16 flex-none bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs">
-                        이미지
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold mb-1">{mockWaiting.popupName}</p>
-                        <p className="text-xs text-gray-500">
-                          앞 {mockWaiting.aheadCount}팀 · 예상 대기 약 {mockWaiting.estimatedMinutes}분
-                        </p>
-                      </div>
-                      <div className="text-right flex-none">
-                        <span className="text-2xl font-bold">{mockWaiting.myOrder}</span>
-                        <span className="text-xs text-gray-500 ml-0.5">번째</span>
-                      </div>
-                    </div>
-                  </Link>
-                ) : (
+                {myWaitings.length === 0 ? (
                   <EmptyState message="진행 중인 웨이팅이 없어요." />
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {myWaitings.map((w) => (
+                      <Link
+                        key={w.id}
+                        href={`/waiting/${w.id}`}
+                        className="block border border-gray-200 rounded-xl p-5"
+                      >
+                        <div className="flex items-start gap-4">
+                          <div className="w-16 h-16 flex-none bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs">
+                            이미지
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold mb-1">
+                              {reservationPopupTitles[w.popupId] ?? `팝업 #${w.popupId}`}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              앞 {w.teamsAhead}팀 · {w.partySize}명 · {w.status}
+                            </p>
+                          </div>
+                          <div className="text-right flex-none">
+                            <span className="text-2xl font-bold">{w.teamNumber}</span>
+                            <span className="text-xs text-gray-500 ml-0.5">번째</span>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
                 )}
               </section>
 
               <section>
                 <h2 className="text-sm font-semibold mb-3">예약</h2>
-                {mockReservations.length === 0 ? (
+                {myReservations === null ? (
+                  <p className="text-sm text-gray-400 py-10 text-center">불러오는 중...</p>
+                ) : myReservations.length === 0 ? (
                   <EmptyState message="예약 내역이 없어요." />
                 ) : (
                   <div className="flex flex-col gap-3">
-                    {mockReservations.map((r) => (
+                    {myReservations.map((r) => (
                       <Link
                         key={r.id}
                         href={`/reservations/${r.id}`}
@@ -432,9 +658,13 @@ if (queryMenu !== syncedQueryMenu) {
                           이미지
                         </div>
                         <div>
-                          <span className="inline-block text-xs text-gray-500 mb-1">{r.dDay}</span>
-                          <p className="text-sm font-semibold mb-1">{r.popupName}</p>
-                          <p className="text-xs text-gray-500">{r.date} {r.time} {r.partySize}명</p>
+                          <span className="inline-block text-xs text-gray-500 mb-1">{r.status}</span>
+                          <p className="text-sm font-semibold mb-1">
+                            {reservationPopupTitles[r.popupId] ?? `팝업 #${r.popupId}`}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {r.reservationDate ?? "시간대 예약"} · {r.partySize}명
+                          </p>
                         </div>
                       </Link>
                     ))}
@@ -446,28 +676,36 @@ if (queryMenu !== syncedQueryMenu) {
 
           {activeMenu === "쿠폰함" && <EmptyState message="보유한 쿠폰이 없어요." />}
           {activeMenu === "다녀간 팝업" &&
-            (myReviews === null ? (
+            (myReviews === null || myReservations === null ? (
               <p className="text-sm text-gray-400 py-16 text-center">불러오는 중...</p>
-            ) : myReviews.length === 0 ? (
+            ) : visitedItems.length === 0 ? (
               <EmptyState message="다녀간 팝업이 없어요." />
             ) : (
               <div className="flex flex-col gap-3">
-                {myReviews.map((review) => (
+                {visitedItems.map((item) => (
                   <Link
-                    key={review.id}
-                    href={`/popup/${review.popupId}`}
+                    key={`${item.type}-${item.id}`}
+                    href={`/popup/${item.popupId}`}
                     className="block border border-gray-200 rounded-xl p-4"
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <p className="text-sm font-semibold truncate">
-                        {popupTitles[review.popupId] ?? `팝업 #${review.popupId}`}
-                      </p>
-                      <span className="text-xs text-gray-400 flex-none ml-2">
-                        {toDisplayDate(review.createdAt)}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] font-medium bg-gray-100 text-gray-500 rounded px-1.5 py-0.5">
+                          {item.type === "review" ? "후기" : item.type === "reservation" ? "예약" : "웨이팅"}
+                        </span>
+                        <p className="text-sm font-semibold truncate">{item.title}</p>
+                      </div>
+                      <span className="text-xs text-gray-400 flex-none ml-2">{toDisplayDate(item.date)}</span>
                     </div>
-                    <p className="text-xs text-gray-500 mb-1">⭐ {review.rating}</p>
-                    <p className="text-sm text-gray-600 line-clamp-2">{review.content}</p>
+                    {item.type === "review" && (
+                      <>
+                        <p className="text-xs text-gray-500 mb-1">⭐ {item.rating}</p>
+                        <p className="text-sm text-gray-600 line-clamp-2">{item.content}</p>
+                      </>
+                    )}
+                    {item.type !== "review" && (
+                      <p className="text-sm text-gray-600">방문 완료 · 아직 후기를 남기지 않았어요</p>
+                    )}
                   </Link>
                 ))}
               </div>
@@ -517,14 +755,72 @@ if (queryMenu !== syncedQueryMenu) {
               <p className="text-sm text-gray-500 mb-6">
                 궁금하거나 불편한 점이 있으면 언제든 문의해 주세요. 영업일 기준 1~2일 내에 답변드려요.
               </p>
-              <button
-                type="button"
-                onClick={() => alert("준비 중이에요.")}
-                className="w-full rounded-full py-3.5 text-sm font-medium bg-gray-900 text-white"
-              >
-                문의하기
-              </button>
-              <p className="text-sm text-gray-400 mt-8">아직 문의한 내역이 없어요.</p>
+
+              {!isLoggedIn || !customer ? (
+                <Link
+                  href="/login"
+                  className="block w-full text-center rounded-full py-3.5 text-sm font-medium bg-gray-900 text-white"
+                >
+                  로그인하고 문의하기
+                </Link>
+              ) : (
+                <>
+                  <div className="flex flex-col gap-2 mb-4">
+                    <input
+                      type="text"
+                      value={csTitle}
+                      onChange={(e) => setCsTitle(e.target.value)}
+                      placeholder="제목"
+                      className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm outline-none"
+                    />
+                    <textarea
+                      value={csContent}
+                      onChange={(e) => setCsContent(e.target.value)}
+                      placeholder="문의 내용을 입력해 주세요."
+                      rows={5}
+                      className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm outline-none resize-none"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSubmitCsRequest}
+                    disabled={csSubmitting || !csTitle.trim() || !csContent.trim()}
+                    className="w-full rounded-full py-3.5 text-sm font-medium bg-gray-900 text-white disabled:opacity-50"
+                  >
+                    {csSubmitting ? "등록하는 중..." : "문의하기"}
+                  </button>
+
+                  <div className="mt-8 flex flex-col gap-3">
+                    {myCsRequests === null ? (
+                      <p className="text-sm text-gray-400 text-center py-6">불러오는 중...</p>
+                    ) : myCsRequests.length === 0 ? (
+                      <p className="text-sm text-gray-400 text-center py-6">아직 문의한 내역이 없어요.</p>
+                    ) : (
+                      myCsRequests.map((cs) => (
+                        <div key={cs.id} className="border border-gray-100 rounded-xl p-4">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-sm font-semibold">{cs.title}</p>
+                            <span
+                              className={`text-xs px-2 py-0.5 rounded-full ${
+                                cs.status === "ANSWERED" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-500"
+                              }`}
+                            >
+                              {cs.status === "ANSWERED" ? "답변완료" : "답변대기"}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600 whitespace-pre-wrap mb-2">{cs.content}</p>
+                          {cs.answerContent && (
+                            <div className="bg-gray-50 rounded-lg px-3 py-2 mt-2">
+                              <p className="text-xs text-gray-400 mb-1">답변</p>
+                              <p className="text-sm text-gray-700 whitespace-pre-wrap">{cs.answerContent}</p>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           )}
 

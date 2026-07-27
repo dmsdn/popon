@@ -13,6 +13,7 @@ import { RankingSection } from "@/components/home/RankingSection";
 import { searchPopups } from "@/lib/api/popups";
 import { toPopupItem } from "@/lib/utils/popupMapper";
 import { type PopupItem } from "@/data/mockPopups";
+import { HeartButton } from "@/components/ui/HeartButton";
 
 const STATUSES = ["예정", "진행중", "종료"] as const;
 
@@ -33,6 +34,7 @@ export default function SearchPage({
   const [status, setStatus] = useState<(typeof STATUSES)[number] | null>(
     (STATUSES as readonly string[]).includes(statusParam ?? "") ? (statusParam as (typeof STATUSES)[number]) : null
   );
+  const [mobileSearchFocused, setMobileSearchFocused] = useState(false);
   const [allPopups, setAllPopups] = useState<PopupItem[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -116,10 +118,10 @@ export default function SearchPage({
 
       {/* 모바일: 뒤로가기 + 검색창만 있는 검색 모드 헤더 */}
       <div className="block mobile:hidden">
-        <MobileHeader searchMode initialQuery={query ?? ""} />
+        <MobileHeader searchMode initialQuery={query ?? ""} onSearchFocusChange={setMobileSearchFocused} />
       </div>
 
-      {hasActiveFilter ? (
+      {hasActiveFilter && !mobileSearchFocused ? (
         <div>
           <div className="px-4 mobile:px-8 pt-3 pb-1">
             <p className="text-sm text-gray-600">
@@ -154,7 +156,7 @@ export default function SearchPage({
         <div className="mobile:px-4">
           <RecentSearches />
           <SuggestedKeywords />
-          <RankingSection title="실시간 인기 추천 팝업" items={popularForRanking} />
+          {!hasActiveFilter && <RankingSection title="인기 추천 팝업" items={popularForRanking} />}
         </div>
       )}
 
@@ -209,9 +211,10 @@ function FilterRow<T extends string>({
 function SearchResultRow({ item }: { item: PopupItem }) {
   return (
     <Link href={`/popup/${item.id}`} className="flex gap-4 py-4 border-b border-gray-50">
-      <div className="w-24 h-24 flex-none rounded-lg bg-gray-100 border border-gray-200 overflow-hidden">
+      <div className="relative w-24 h-24 flex-none rounded-lg bg-gray-100 border border-gray-200 overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/images/popup-placeholder.svg" alt="" className="w-full h-full object-cover" />
+        <HeartButton popupId={Number(item.id)} className="absolute top-1.5 right-1.5 w-7 h-7" />
       </div>
       <div className="flex flex-col justify-center">
         {item.status && (

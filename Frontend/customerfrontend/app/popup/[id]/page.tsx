@@ -4,21 +4,23 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Footer } from "@/components/layout/Footer";
-import { BottomTabBar } from "@/components/layout/BottomTabBar";
+import { StickyActionBar } from "@/components/popup/StickyActionBar";
 import { ReviewCard } from "@/components/popup/ReviewCard";
 import { PlaceCard } from "@/components/popup/PlaceCard";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { ReservationModal } from "@/components/popup/ReservationModal";
 import { WaitingModal } from "@/components/popup/WaitingModal";
 import { HeartButton } from "@/components/ui/HeartButton";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { getMyReviews, toDisplayDate, type Review } from "@/lib/api/reviews";
 import { getPopup, getPopupSlots, searchPopups, type PopupDetail, type PopupSlot } from "@/lib/api/popups";
 import { createReservation } from "@/lib/api/reservations";
-import { registerWaiting } from "@/lib/api/waiting";
+import { registerWaiting, addMyWaitingId, getWaitingBoard } from "@/lib/api/waiting";
 import { toPopupItem } from "@/lib/utils/popupMapper";
+import { recordPopupView } from "@/lib/recentlyViewed";
 import { reviews, type PopupItem, type ReviewItem } from "@/data/mockPopups";
 
-const TABS = ["정보", "굿즈", "후기"] as const;
+const TABS = ["정보", "후기"] as const;
 
 export default function PopupDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -33,6 +35,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   const [showReservation, setShowReservation] = useState(false);
   const [showWaiting, setShowWaiting] = useState(false);
   const [slots, setSlots] = useState<PopupSlot[]>([]);
+  const [waitingTeams, setWaitingTeams] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("정보");
   const [myReviewsForPopup, setMyReviewsForPopup] = useState<Review[]>([]);
 
@@ -43,7 +46,10 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
 
     getPopup(id)
       .then((data) => {
-        if (!cancelled) setPopup(data);
+        if (!cancelled) {
+          setPopup(data);
+          recordPopupView(data.id);
+        }
       })
       .catch((err) => {
         console.error("팝업 상세 조회 실패", err);
@@ -77,6 +83,22 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         if (!cancelled) setSlots(list);
       })
       .catch((err) => console.error("예약 시간대 조회 실패", err));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [popup]);
+
+  // 웨이팅 박스에 "현재 N팀 대기중" 표시용
+  useEffect(() => {
+    if (!popup) return;
+    let cancelled = false;
+
+    getWaitingBoard(popup.id)
+      .then((board) => {
+        if (!cancelled) setWaitingTeams(board.totalWaitingTeams);
+      })
+      .catch((err) => console.error("대기 현황 조회 실패", err));
 
     return () => {
       cancelled = true;
@@ -129,7 +151,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   const relatedReviews = [...myReviewsAsItems, ...reviews.filter((r) => r.popupName === popup.title)];
 
   return (
-    <main className="w-full mobile:max-w-[1000px] mobile:mx-auto pb-16 mobile:pb-0">
+    <main className="w-full mobile:max-w-[1000px] mobile:mx-auto pb-24">
       <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100">
         <button
           type="button"
@@ -152,7 +174,10 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* 제목 + 평점 */}
         <div className="flex items-start justify-between mb-2">
-          <h1 className="text-xl font-bold">{popup.title}</h1>
+          <div className="flex items-center gap-2">
+            <StatusBadge status={toPopupItem(popup).status} />
+            <h1 className="text-xl font-bold">{popup.title}</h1>
+          </div>
           {/* TODO: 실제 평점 데이터 연결 */}
           <span className="text-sm text-gray-500 flex-none">★★★★★ 4/5</span>
         </div>
@@ -178,10 +203,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
             onClick={() => setShowReservation(true)}
             className="text-left border border-gray-200 rounded-lg px-4 py-3"
           >
-            <p className="text-sm font-semibold mb-1">사전 예약</p>
-            <p className="text-xs text-gray-400">
-              [Event] 사전 예약 시 소정의 상품을 증정해드립니다 &gt;
-            </p>
+            <p className="text-sm font-semibold">사전 예약</p>
           </button>
           <button
             type="button"
@@ -190,31 +212,34 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
           >
             <p className="text-sm font-semibold mb-1">웨이팅</p>
             <p className="text-xs text-gray-400">
-              [Event] 사전 예약 시 소정의 상품을 증정해드립니다 &gt;
+              {waitingTeams === null ? "대기 현황 불러오는 중..." : `현재 ${waitingTeams}팀 대기중입니다`}
             </p>
           </button>
         </div>
 
         {showReservation && (
           <ReservationModal
-            popupName={popup.title}
-            slots={slots}
-            onClose={() => setShowReservation(false)}
-            onSubmit={async (date, count, slotId) => {
+  popupName={popup.title}
+  slots={slots}
+  minDate={new Date(popup.startDate)}
+  maxDate={new Date(popup.endDate)}
+  capacity={popup.capacity}
+  onClose={() => setShowReservation(false)}
+  onSubmit={async (date, count, slotId) => {
               if (!customer) {
                 router.push("/login");
                 return;
               }
               try {
-                await createReservation(customer.id, {
+                const reservation = await createReservation(customer.id, {
                   popupId: popup.id,
                   ...(popup.reservationMode === "SLOT"
                     ? { slotId }
                     : { reservationDate: date.toISOString().slice(0, 10) }),
                   partySize: count,
                 });
-                alert(`${date.getMonth() + 1}월 ${date.getDate()}일 ${count}인 예약이 접수됐어요.`);
                 setShowReservation(false);
+                router.push(`/reservations/${reservation.id}`);
               } catch (err) {
                 console.error("예약 실패", err);
                 alert(err instanceof Error ? err.message : "예약에 실패했어요. 잠시 후 다시 시도해주세요.");
@@ -237,10 +262,11 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                 return;
               }
               try {
-                await registerWaiting(popup.id, customer.id, {
+                const waiting = await registerWaiting(popup.id, customer.id, {
                   phoneNumber: customer.phone,
                   partySize: count,
                 });
+                addMyWaitingId(waiting.id);
                 alert(`웨이팅 ${count}명 등록됐어요.`);
                 setShowWaiting(false);
               } catch (err) {
@@ -311,10 +337,6 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        {activeTab === "굿즈" && (
-          <p className="text-sm text-gray-400 py-10 text-center">등록된 굿즈가 없어요.</p>
-        )}
-
         {activeTab === "후기" && (
           <section>
             {isLoggedIn && (
@@ -357,9 +379,11 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
 
       <Footer />
 
-      <div className="block mobile:hidden">
-        <BottomTabBar />
-      </div>
+      <StickyActionBar
+        popupId={popup.id}
+        onReserve={() => setShowReservation(true)}
+        onWaiting={() => setShowWaiting(true)}
+      />
     </main>
   );
 }

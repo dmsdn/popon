@@ -33,6 +33,8 @@ const DEFAULT_MOCK_CUSTOMER: CustomerInfo = {
   profileImage: null,
   phone: null,
   email: null,
+  birthDate: null,
+  gender: null,
   onboarded: false, // 회원가입 화면부터 테스트하기 위해 false로 시작
 };
 

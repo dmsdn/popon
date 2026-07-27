@@ -53,7 +53,7 @@ export default function RankingListPage() {
       </div>
 
       <div className="px-4 mobile:px-8 py-4">
-        <h1 className="text-lg font-bold mb-4">실시간 인기 팝업</h1>
+        <h1 className="text-lg font-bold mb-4">인기 추천 팝업</h1>
 
         {/* 키워드(지역) 필터 - 상단 고정 */}
         <div className="flex gap-2 mb-5 overflow-x-auto scrollbar-hide">
