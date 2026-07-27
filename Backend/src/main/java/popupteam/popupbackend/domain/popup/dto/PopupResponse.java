@@ -27,6 +27,7 @@ public class PopupResponse {
     private String queueMode;
     private LocalDateTime statusChangedAt;
     private String adminEditNote;
+    private Integer maxPartySizePerTeam;
 
     public static PopupResponse from(Popup popup) {
         return PopupResponse.builder()
@@ -51,6 +52,7 @@ public class PopupResponse {
                 .queueMode(popup.getQueueMode() != null ? popup.getQueueMode().name() : null)
                 .statusChangedAt(popup.getStatusChangedAt())
                 .adminEditNote(popup.getAdminEditNote())
+                .maxPartySizePerTeam(popup.getMaxPartySizePerTeam())
                 .build();
     }
 }
