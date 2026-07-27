@@ -22,6 +22,7 @@ public class PopupService {
     private final popupteam.popupbackend.domain.notice.NoticeService noticeService;
     private final PopupHashtagRepository popupHashtagRepository;
     private final popupteam.popupbackend.domain.consumer.RegionRepository regionRepository;
+    private final PopupKeywordRepository popupKeywordRepository;
 
 
     public PopupResponse create(Long businessId, PopupCreateRequest request) {
@@ -65,6 +66,7 @@ public class PopupService {
 
         Popup saved = popupRepository.save(popup);
         List<String> hashtags = saveHashtags(saved.getId(), request.getHashtags());
+        savePopupKeywords(saved.getId(), request.getKeywordIds());
 
         return PopupResponse.from(saved, hashtags);
     }
@@ -166,6 +168,9 @@ public class PopupService {
         Popup saved = popupRepository.save(popup);
         noticeService.notifyPopupUpdated(saved);
         List<String> hashtags = saveHashtags(id, request.getHashtags());
+        if (request.getKeywordIds() != null) {
+            savePopupKeywords(id, request.getKeywordIds());
+        }
 
         return PopupResponse.from(saved, hashtags);
     }
@@ -316,5 +321,36 @@ public class PopupService {
         }
 
         popup.setAddressKeyword(region);
+    }
+
+    private void savePopupKeywords(Long popupId, java.util.List<Long> keywordIds) {
+        popupKeywordRepository.deleteByPopupId(popupId);
+        if (keywordIds == null) return;
+        for (Long keywordId : keywordIds) {
+            PopupKeyword pk = new PopupKeyword();
+            pk.setPopupId(popupId);
+            pk.setKeywordId(keywordId);
+            popupKeywordRepository.save(pk);
+        }
+    }
+
+    // 팝업이 가진 표준 키워드 ID 목록 조회
+    public java.util.List<Long> getPopupKeywordIds(Long popupId) {
+        return popupKeywordRepository.findByPopupId(popupId).stream()
+                .map(PopupKeyword::getKeywordId)
+                .toList();
+    }
+
+    // 특정 키워드를 가진 팝업 목록 (소비자 관심키워드 매칭 추천용)
+    public java.util.List<PopupResponse> getPopupsByKeyword(Long keywordId) {
+        java.util.List<Long> popupIds = popupKeywordRepository.findByKeywordId(keywordId).stream()
+                .map(PopupKeyword::getPopupId)
+                .toList();
+
+        if (popupIds.isEmpty()) return java.util.List.of();
+
+        return popupRepository.findAllByIdWithBusiness(popupIds).stream()
+                .map(PopupResponse::from)
+                .toList();
     }
 }

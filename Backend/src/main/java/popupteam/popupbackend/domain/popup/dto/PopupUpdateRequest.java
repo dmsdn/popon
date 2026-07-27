@@ -25,4 +25,6 @@ public class PopupUpdateRequest {
 
     private Long addressKeywordId;
 
+    private List<Long> keywordIds; // 표준 키워드 ID 목록 (선택)
+
 }

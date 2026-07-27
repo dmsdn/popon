@@ -172,4 +172,14 @@ public class PopupController {
         }
         return ResponseEntity.ok(popupVisitorAgeStatsService.getConversionRate(id));
     }
+
+    @GetMapping("/{id}/keywords")
+    public ResponseEntity<?> getPopupKeywords(@PathVariable Long id) {
+        return ResponseEntity.ok(popupService.getPopupKeywordIds(id));
+    }
+
+    @GetMapping("/by-keyword/{keywordId}")
+    public ResponseEntity<?> getPopupsByKeyword(@PathVariable Long keywordId) {
+        return ResponseEntity.ok(popupService.getPopupsByKeyword(keywordId));
+    }
 }

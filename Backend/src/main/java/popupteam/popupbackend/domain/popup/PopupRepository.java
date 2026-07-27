@@ -41,4 +41,8 @@ public interface PopupRepository extends JpaRepository<Popup, Long> {
 
     @Query("SELECT p FROM Popup p WHERE FUNCTION('DATE', p.endDate) = :date AND p.status = popupteam.popupbackend.domain.popup.PopupStatus.OPEN")
     List<Popup> findByEndDateOnDate(@Param("date") LocalDate date);
+
+    // 키워드 매칭 조회용 - N+1 방지
+    @Query("SELECT p FROM Popup p JOIN FETCH p.business WHERE p.id IN :ids")
+    List<Popup> findAllByIdWithBusiness(@Param("ids") List<Long> ids);
 }
