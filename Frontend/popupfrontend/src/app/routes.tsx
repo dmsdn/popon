@@ -11,14 +11,14 @@ import Login from "./info/pages/Login";
 import SellerRoot from "./seller/SellerRoot";
 import SellerDashboard from "./seller/pages/SellerDashboard";
 import PopupList from "./seller/pages/PopupList";
+import PopupDetail from "./seller/pages/PopupDetail";
 import PopupRegister from "./seller/pages/PopupRegister";
 import Reservations from "./seller/pages/Reservations";
 import WaitingControl from "./seller/pages/WaitingControl";
 import Products from "./seller/pages/Products";
-import Quotes from "./seller/pages/Quotes";
-import PartnerVenues from "./seller/pages/PartnerVenues";
 import Performance from "./seller/pages/Performance";
 import Notices from "./seller/pages/Notices";
+import MyPage from "./seller/pages/MyPage";
 import Inquiries from "./seller/pages/Inquiries";
 import CustomerInquiries from "./seller/pages/CustomerInquiries";
 
@@ -49,13 +49,16 @@ export const router = createBrowserRouter([
       { index: true, Component: SellerDashboard },
       { path: "popups", Component: PopupList },
       { path: "popups/new", Component: PopupRegister },
+      // 상세페이지 — 조회 표에서 제목 클릭 시 진입, 삭제는 여기서만 (7/24 멘토 피드백)
+      { path: "popups/:id", Component: PopupDetail },
       { path: "reservations", Component: Reservations },
       { path: "waiting", Component: WaitingControl },
       { path: "products", Component: Products },
-      { path: "quotes", Component: Quotes },
-      { path: "venues", Component: PartnerVenues },
+      // 파트너공간(venues)·견적진행단계(quotes) 메뉴는 7/24 멘토 피드백으로 삭제됨
       { path: "performance", Component: Performance },
       { path: "notices", Component: Notices },
+      // 마이페이지 — 상단바 계정 영역에서 진입 (7/25 피드백)
+      { path: "mypage", Component: MyPage },
       { path: "inquiries", Component: Inquiries },
       { path: "customer-inquiries", Component: CustomerInquiries },
     ],

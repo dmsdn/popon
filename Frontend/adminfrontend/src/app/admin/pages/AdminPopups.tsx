@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Search, Loader2, Info, CheckCircle2, XCircle, ShieldCheck, PauseCircle, Pencil, ChevronUp } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { getPopups, approvePopup, rejectPopup, Popup, PopupStatusCode, ApiError } from "../../lib/api";
@@ -172,7 +172,6 @@ export default function AdminPopups() {
               <th className="text-left font-medium px-4 py-2.5">공간</th>
               <th className="text-left font-medium px-4 py-2.5">상태</th>
               <th className="text-left font-medium px-4 py-2.5">등록일</th>
-              <th className="text-center font-medium px-4 py-2.5">관리</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -193,7 +192,10 @@ export default function AdminPopups() {
                   <tr key={p.id} className="hover:bg-secondary/40">
                     <td className="px-4 py-3 text-xs text-muted-foreground" style={{ fontFamily: "'DM Mono', monospace" }}>{p.id}</td>
                     <td className="px-4 py-3">
-                      <div className="font-medium">{p.title}</div>
+                      {/* 팝업명 클릭 → 상세페이지 (7/24 회의) */}
+                      <Link to={`/admin/popups/${p.id}`} className="font-medium hover:text-accent hover:underline underline-offset-2 transition-colors">
+                        {p.title}
+                      </Link>
                       <div className="text-xs text-muted-foreground">{p.companyName}</div>
                     </td>
                     <td className="px-4 py-3 text-xs">{fmtDate(p.startDate)} ~ {fmtDate(p.endDate)}</td>
@@ -209,9 +211,9 @@ export default function AdminPopups() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-xs">{fmtDate(p.createdAt)}</td>
-                    <td className="px-4 py-3">
+                    {/*<td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-1.5">
-                        {/* ① 심사 — 대기/반려 상태는 확장 심사, 승인 완료면 '심사완료' */}
+                         ① 심사 — 대기/반려 상태는 확장 심사, 승인 완료면 '심사완료'
                         {reviewable ? (
                           <button
                             onClick={() => { setOpenReviewId(reviewOpen ? null : p.id); setReason(""); }}
@@ -230,7 +232,7 @@ export default function AdminPopups() {
                             <CheckCircle2 size={10} /> 심사완료
                           </button>
                         )}
-                        {/* ② 게시중지 토글 — 게시 상태(오픈예정/게시중)에서만 중지 가능 */}
+                         ② 게시중지 토글 — 게시 상태(오픈예정/게시중)에서만 중지 가능
                         <button
                           onClick={() => toggleSuspend(p)}
                           disabled={actingId === p.id || (!suspended && !(p.status === "BEFOR" || p.status === "OPEN"))}
@@ -243,7 +245,7 @@ export default function AdminPopups() {
                         >
                           <PauseCircle size={10} /> {suspended ? "게시중지됨" : "게시중지"}
                         </button>
-                        {/* ③ 수정 */}
+                         ③ 수정
                         <button
                           onClick={() => navigate(`/admin/popups/edit?id=${p.id}`)}
                           className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-sm border border-border hover:border-accent hover:text-accent"
@@ -251,7 +253,7 @@ export default function AdminPopups() {
                           <Pencil size={10} /> 수정
                         </button>
                       </div>
-                    </td>
+                    </td>*/}
                   </tr>
 
                   {/* 심사 확장 행 */}
