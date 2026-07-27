@@ -9,6 +9,7 @@ import {
   ensureWishlistLoaded,
   toggleWishlist,
 } from "@/lib/wishlistStore";
+import { saveRedirectTarget } from "@/lib/postLoginRedirect";
 
 export function HeartButton({ popupId, className = "" }: { popupId: number; className?: string }) {
   const { isLoggedIn } = useAuth();
@@ -29,6 +30,7 @@ export function HeartButton({ popupId, className = "" }: { popupId: number; clas
         e.preventDefault(); // 카드 전체가 <Link>인 경우 상세페이지로 이동하는 걸 막음
         e.stopPropagation();
         if (!isLoggedIn) {
+          saveRedirectTarget(window.location.pathname);
           router.push("/login");
           return;
         }

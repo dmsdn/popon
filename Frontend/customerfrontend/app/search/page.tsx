@@ -88,15 +88,13 @@ export default function SearchPage({
       const matchesQuery =
         !q ||
         item.name.toLowerCase().includes(q) ||
-        (item.category?.toLowerCase().includes(q) ?? false) ||
+        (item.hashtags?.some((h) => h.toLowerCase().includes(q)) ?? false) ||
         (item.location?.toLowerCase().includes(q) ?? false);
       if (!matchesQuery) return false;
-      // ⚠️ 실제 category 데이터가 없어서, 선택한 카테고리 단어가 팝업 이름/지역에
-      // 포함되는지로 대신 걸러요 (정확한 카테고리 분류는 아니에요).
+      // [수정] 백엔드에 실제 popup_hashtag 데이터가 생겨서, 이름/지역 텍스트로 카테고리를
+      // 유추하던 방식 대신 정확한 해시태그 매칭으로 바꿨어요.
       if (category) {
-        const c = category.toLowerCase();
-        const matchesCategory =
-          item.name.toLowerCase().includes(c) || (item.location?.toLowerCase().includes(c) ?? false);
+        const matchesCategory = item.hashtags?.includes(category) ?? false;
         if (!matchesCategory) return false;
       }
       if (region && item.location !== region) return false;
@@ -136,6 +134,12 @@ export default function SearchPage({
 
           {/* 카테고리 / 지역 / 운영여부로 결과 좁히기 */}
           <div className="flex flex-col gap-2 px-4 mobile:px-8 py-3 border-b border-gray-100">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-400">필터</span>
+              <Link href="/map" className="text-xs text-gray-500 underline underline-offset-2">
+                지도로 보기 ›
+              </Link>
+            </div>
             <FilterRow label="카테고리" options={CATEGORIES} selected={category} onSelect={setCategory} />
             <FilterRow label="지역" options={REGIONS} selected={region} onSelect={setRegion} />
             <FilterRow label="운영여부" options={[...STATUSES]} selected={status} onSelect={setStatus} />

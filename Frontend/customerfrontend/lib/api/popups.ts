@@ -15,6 +15,11 @@ export interface PopupDetail {
   title: string;
   description: string;
   location: string | null;
+  // [신규] 백엔드가 popup.addressKeyword(Region FK, 성수/강남/홍대 등 동네 단위)를
+  // 이제 응답에 실어줘요 - 이전엔 location 자유텍스트만 있어서 지역을 정확히 못 걸렀는데,
+  // 이제 이 값으로 정확한 지역 필터링이 가능해요.
+  regionId: number | null;
+  regionName: string | null;
   startDate: string; // ISO datetime
   endDate: string; // ISO datetime
   status: "PENDING" | "REJECTED" | "BEFOR" | "OPEN" | "CLOSED";
@@ -27,6 +32,12 @@ export interface PopupDetail {
   avgExperienceMinutes: number;
   latitude: number | null;
   longitude: number | null;
+  queueMode: string | null;
+  maxPartySizePerTeam: number | null;
+  // [신규] popup_hashtag 테이블 기반 실제 태그 목록. 백엔드에 진짜 카테고리 컬럼이
+  // 없어서 지금까지 검색/홈 카테고리 필터가 팝업 이름 텍스트 매칭으로 흉내만 냈는데,
+  // 이제 이걸로 정확하게 필터링할 수 있어요.
+  hashtags: string[];
 }
 
 // -------------------- 백엔드 연결 안 될 때를 위한 mock (data/mockPopups.ts 재사용) --------------------
@@ -76,6 +87,8 @@ function buildMockPopupDetails(): PopupDetail[] {
       title: item.name,
       description: `${item.name}에서 준비한 팝업스토어예요. (mock 데이터 — 백엔드 연결 시 실제 정보로 교체됩니다)`,
       location: item.location ?? null,
+      regionId: null,
+      regionName: item.location ?? null,
       startDate: start,
       endDate: end,
       status: item.status ? KOREAN_STATUS_TO_BACKEND[item.status] : "OPEN",
@@ -88,6 +101,9 @@ function buildMockPopupDetails(): PopupDetail[] {
       avgExperienceMinutes: 20,
       latitude: null,
       longitude: null,
+      queueMode: null,
+      maxPartySizePerTeam: null,
+      hashtags: item.category ? [item.category] : [],
     };
   });
 }
@@ -137,6 +153,12 @@ export function getPopup(popupId: string | number) {
   );
 }
 
+// [수정] 백엔드가 PENDING(승인대기)/REJECTED(반려) 상태 팝업도 목록에 그대로 섞어서
+// 내려주고 있었어요. 그런데 이 두 상태는 아직 공개되면 안 되는 팝업이라, 소비자
+// 화면에 노출되면 안 돼요 — toPopupItem이 이 둘을 전부 "예정"으로 매핑하다보니
+// 승인도 안 된 팝업이 "곧 오픈"에 섞여 보였어요. 여기서 미리 걸러냅니다.
+const HIDDEN_STATUSES = new Set(["PENDING", "REJECTED"]);
+
 export function searchPopups(params?: { location?: string; status?: string; keyword?: string }) {
   const query = new URLSearchParams();
   if (params?.location) query.set("location", params.location);
@@ -146,7 +168,7 @@ export function searchPopups(params?: { location?: string; status?: string; keyw
   return withMockFallback(
     () => apiFetch<PopupDetail[]>(`/api/popups${qs ? `?${qs}` : ""}`),
     () => mockSearchPopups(params)
-  );
+  ).then((list) => list.filter((p) => !HIDDEN_STATUSES.has(p.status)));
 }
 
 export interface PopupSlot {
@@ -190,6 +212,25 @@ export function getPopupHotPlaces(popupId: string | number) {
   return withMockFallback(
     () => apiFetch<PopupHotPlace[]>(`/api/popups/${popupId}/hot-places`),
     () => [] as PopupHotPlace[]
+  );
+}
+
+// -------------------- 팝업 이미지 (popup_image 테이블) --------------------
+//
+// [신규 연결] popup_image 엔티티/리포지토리는 있었지만 조회 API가 없어서 상세페이지가
+// 항상 "대표 이미지"라는 고정 placeholder만 보여주고 있었어요. 백엔드에
+// GET /api/popups/{popupId}/images를 추가했습니다.
+
+export interface PopupImage {
+  id: number;
+  imageUrl: string;
+  sortOrder: number;
+}
+
+export function getPopupImages(popupId: string | number) {
+  return withMockFallback(
+    () => apiFetch<PopupImage[]>(`/api/popups/${popupId}/images`),
+    () => [] as PopupImage[]
   );
 }
 

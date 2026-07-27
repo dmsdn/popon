@@ -37,7 +37,7 @@ export function PopularRankingSection() {
   }, [keyword]);
 
   return (
-    <section className="mb-10 mobile:mb-14 px-4 mobile:px-8">
+    <section className="mb-14 mobile:mb-16 px-4 mobile:px-8">
       <div className="flex items-baseline justify-between mb-3 mobile:mb-4">
         <h3 className="text-base mobile:text-lg font-semibold">인기 추천 팝업</h3>
         <Link href="/ranking" className="text-sm mobile:text-base text-gray-400">

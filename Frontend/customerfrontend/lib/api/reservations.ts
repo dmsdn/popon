@@ -5,6 +5,7 @@ export interface ReservationCreatePayload {
   popupId: number;
   slotId?: number; // SLOT 모드 팝업이면 필수
   reservationDate?: string; // "YYYY-MM-DD", FREE 모드 팝업이면 필수
+  reservationTime?: string; // "HH:mm:ss" 또는 "HH:mm", FREE 모드에서 시간 선택 시
   partySize: number;
 }
 
@@ -13,6 +14,7 @@ export interface Reservation {
   popupId: number;
   slotId: number | null;
   reservationDate: string | null;
+  reservationTime: string | null;
   customerId: number;
   partySize: number;
   status: string;
@@ -44,6 +46,7 @@ export async function getMyReservationById(customerId: number, reservationId: nu
 export interface ReservationChangePayload {
   newSlotId?: number; // SLOT 모드면 필수
   newReservationDate?: string; // "YYYY-MM-DD", FREE 모드면
+  newReservationTime?: string; // "HH:mm:ss" 또는 "HH:mm"
   partySize?: number;
 }
 
