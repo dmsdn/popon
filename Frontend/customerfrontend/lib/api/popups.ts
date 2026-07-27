@@ -166,3 +166,47 @@ export function getPopupSlots(popupId: string | number) {
     () => [] as PopupSlot[]
   );
 }
+
+// -------------------- 팝업 주변 핫플 (popup_hot_place 테이블) --------------------
+//
+// ⚠️ 백엔드에 popup_hot_place 테이블은 생겼지만, 이걸 조회하는 API는 아직 없어요
+// (컨트롤러 코드 확인 필요 — 백엔드 담당자에게 GET /api/popups/{popupId}/hot-places
+// 엔드포인트 추가를 요청해야 해요). 그래서 지금은 실 API를 시도하고, 없으면(404 등)
+// 빈 배열로 조용히 대체돼요 — 화면에서는 "팝업 주변 핫플" 섹션이 그냥 비어보입니다.
+// 백엔드에 엔드포인트가 생기면 이 함수는 손댈 필요 없이 자동으로 실 데이터를 씁니다.
+
+export interface PopupHotPlace {
+  id: number;
+  popupId: number;
+  category: string; // 예: "카페", "음식점", "패션잡화"
+  name: string;
+  distance: string | null; // 예: "114m"
+  linkUrl: string | null;
+  imageUrl: string | null;
+  sortOrder: number;
+}
+
+export function getPopupHotPlaces(popupId: string | number) {
+  return withMockFallback(
+    () => apiFetch<PopupHotPlace[]>(`/api/popups/${popupId}/hot-places`),
+    () => [] as PopupHotPlace[]
+  );
+}
+
+// -------------------- 실시간 혼잡도 --------------------
+//
+// [신규 연결] 백엔드 PopupLiveStatusController(GET /api/popups/{popupId}/live-status)가
+// 이미 있는데 프론트에서 안 쓰고 있었어요. 최근 체크인/입장 기록 기반으로 계산된
+// 현재 인원/정원/혼잡도(여유·보통·혼잡)를 내려줍니다.
+
+export interface PopupLiveStatus {
+  popupId: number;
+  capacity: number;
+  currentOccupancy: number;
+  congestionRate: number; // 0.0 ~ 1.0+
+  congestionLabel: "여유" | "보통" | "혼잡";
+}
+
+export function getPopupLiveStatus(popupId: string | number) {
+  return apiFetch<PopupLiveStatus>(`/api/popups/${popupId}/live-status`);
+}

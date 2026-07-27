@@ -34,9 +34,12 @@ export async function getMyInfo(): Promise<CustomerInfo> {
 }
 
 // ⚠️ phone은 백엔드 CustomerUpdateRequest에 아직 없을 수 있어요(요청은 넣어뒀지만 반영 여부 미확인).
-// 반영 전이면 이 값을 보내도 서버가 조용히 무시해요.
+// email도 마찬가지예요 — CustomerUpdateRequest.java 확인 결과 nickname/profileImage/birthDate/gender
+// 4개 필드만 있고 phone·email은 없어서, 지금 이 값들을 보내도 서버가 조용히 무시해요.
+// (email은 최초 가입 때 submitSignupInfo로만 저장 가능하고, 가입 이후엔 수정할 방법이 없는
+// 상태예요 — 백엔드에 CustomerUpdateRequest.email 필드 추가를 요청해야 해요.)
 export function updateMyInfo(
-  payload: Partial<Pick<CustomerInfo, "nickname" | "profileImage" | "phone" | "birthDate" | "gender">>
+  payload: Partial<Pick<CustomerInfo, "nickname" | "profileImage" | "phone" | "email" | "birthDate" | "gender">>
 ) {
   return apiFetch<CustomerInfo>("/api/customer/me", {
     method: "PATCH",

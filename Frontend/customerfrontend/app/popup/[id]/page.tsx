@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Footer } from "@/components/layout/Footer";
 import { StickyActionBar } from "@/components/popup/StickyActionBar";
@@ -13,7 +13,18 @@ import { WaitingModal } from "@/components/popup/WaitingModal";
 import { HeartButton } from "@/components/ui/HeartButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { getMyReviews, toDisplayDate, type Review } from "@/lib/api/reviews";
-import { getPopup, getPopupSlots, searchPopups, type PopupDetail, type PopupSlot } from "@/lib/api/popups";
+import {
+  getPopup,
+  getPopupSlots,
+  getPopupHotPlaces,
+  getPopupLiveStatus,
+  searchPopups,
+  type PopupDetail,
+  type PopupSlot,
+  type PopupHotPlace,
+  type PopupLiveStatus,
+} from "@/lib/api/popups";
+import { LiveCongestionPanel } from "@/components/popup/LiveCongestion";
 import { createReservation } from "@/lib/api/reservations";
 import { registerWaiting, addMyWaitingId, getWaitingBoard } from "@/lib/api/waiting";
 import { toPopupItem } from "@/lib/utils/popupMapper";
@@ -26,6 +37,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   const { id } = use(params);
   const { isLoggedIn, customer } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [popup, setPopup] = useState<PopupDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,9 +47,15 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   const [showReservation, setShowReservation] = useState(false);
   const [showWaiting, setShowWaiting] = useState(false);
   const [slots, setSlots] = useState<PopupSlot[]>([]);
-  const [waitingTeams, setWaitingTeams] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("정보");
+  // [수정] 후기 작성 후 돌아올 때 "?tab=review"를 붙여서 보내주면, 새로고침 없이도
+  // 곧바로 후기 탭이 선택된 상태로 상세페이지가 열려요.
+  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>(
+    searchParams.get("tab") === "review" ? "후기" : "정보"
+  );
   const [myReviewsForPopup, setMyReviewsForPopup] = useState<Review[]>([]);
+  const [hotPlaces, setHotPlaces] = useState<PopupHotPlace[]>([]);
+  const [liveStatus, setLiveStatus] = useState<PopupLiveStatus | null>(null);
+  const [waitingTeams, setWaitingTeams] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,6 +86,13 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
       })
       .catch((err) => console.error("비슷한 팝업 조회 실패", err));
 
+    // 팝업 주변 핫플 (popup_hot_place)
+    getPopupHotPlaces(id)
+      .then((list) => {
+        if (!cancelled) setHotPlaces(list);
+      })
+      .catch((err) => console.error("주변 핫플 조회 실패", err));
+
     return () => {
       cancelled = true;
     };
@@ -89,7 +114,24 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     };
   }, [popup]);
 
-  // 웨이팅 박스에 "현재 N팀 대기중" 표시용
+  // 실시간 혼잡도 - 팝업 정보 아래 있던 사전예약/웨이팅 박스 자리에 대신 보여줍니다.
+  useEffect(() => {
+    if (!popup) return;
+    let cancelled = false;
+
+    getPopupLiveStatus(popup.id)
+      .then((status) => {
+        if (!cancelled) setLiveStatus(status);
+      })
+      .catch((err) => console.error("실시간 혼잡도 조회 실패", err));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [popup]);
+
+  // [수정] 대기팀 수를 다시 조회합니다 - 이번엔 삭제된 정보 박스가 아니라
+  // 하단 고정 액션바의 "웨이팅" 버튼에 표시해요.
   useEffect(() => {
     if (!popup) return;
     let cancelled = false;
@@ -141,6 +183,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   //    지금도 일부는 화면 구조만 맞춘 자리예요. (description, capacity 등은 실제 값입니다)
   const myReviewsAsItems: ReviewItem[] = myReviewsForPopup.map((r) => ({
     id: `me-${r.id}`,
+    popupId: String(popup.id),
     popupName: popup.title,
     nickname: "나의 후기",
     content: r.content,
@@ -170,7 +213,10 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
           <HeartButton popupId={popup.id} className="absolute top-3 right-3 w-9 h-9" />
         </div>
 
-        <p className="text-xs text-gray-400 mb-2">{popup.companyName}</p>
+        {/* [수정] 브랜드명을 브랜드 상세페이지로 연결 - 이전엔 텍스트만 있고 링크가 없었어요 */}
+        <Link href={`/brand/${popup.businessId}`} className="text-xs text-gray-400 mb-2 inline-block">
+          {popup.companyName} ›
+        </Link>
 
         {/* 제목 + 평점 */}
         <div className="flex items-start justify-between mb-2">
@@ -182,39 +228,30 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
           <span className="text-sm text-gray-500 flex-none">★★★★★ 4/5</span>
         </div>
 
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-gray-500 mb-3">
           {new Date(popup.startDate).toLocaleDateString("ko-KR")} ~{" "}
           {new Date(popup.endDate).toLocaleDateString("ko-KR")}
         </p>
-        {popup.location && <p className="text-sm text-gray-500 mb-3">{popup.location}</p>}
 
-        <div className="flex gap-2 mb-6">
-          {popup.location && (
+        {/* [수정] 위치가 바로 위 문단과 태그, 두 군데에 중복으로 나오고 있었어요 — 태그 하나로 정리 */}
+        {popup.location && (
+          <div className="flex gap-2 mb-6">
             <span className="text-xs border border-gray-200 rounded-full px-3 py-1 text-gray-600">
               {popup.location}
             </span>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* 사전 예약 / 웨이팅 박스 */}
-        <div className="flex flex-col gap-3 mb-8">
-          <button
-            type="button"
-            onClick={() => setShowReservation(true)}
-            className="text-left border border-gray-200 rounded-lg px-4 py-3"
-          >
-            <p className="text-sm font-semibold">사전 예약</p>
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowWaiting(true)}
-            className="text-left border border-gray-200 rounded-lg px-4 py-3"
-          >
-            <p className="text-sm font-semibold mb-1">웨이팅</p>
-            <p className="text-xs text-gray-400">
-              {waitingTeams === null ? "대기 현황 불러오는 중..." : `현재 ${waitingTeams}팀 대기중입니다`}
-            </p>
-          </button>
+        {/* [수정] 사전 예약 / 웨이팅 박스 제거 - 실시간 혼잡도 표시로 교체.
+            사전예약·웨이팅 기능 자체는 하단 고정 액션바(StickyActionBar)에 그대로 남아있어요. */}
+        <div className="mb-8">
+          {liveStatus ? (
+            <LiveCongestionPanel status={liveStatus} />
+          ) : (
+            <div className="border border-gray-200 rounded-lg px-4 py-4 text-sm text-gray-400">
+              혼잡도 불러오는 중...
+            </div>
+          )}
         </div>
 
         {showReservation && (
@@ -356,16 +393,24 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         )}
       </div>
 
-      {/* 팝업 주변 핫플 - TODO: 실제 주변 장소 데이터 연결 */}
-      <section className="px-4 mobile:px-8 mb-10">
-        <h2 className="text-base font-semibold mb-3">팝업 주변 핫플</h2>
-        <div className="flex gap-3 overflow-x-auto pb-1">
-          <PlaceCard category="카페" name="프롤라" distance="114m" />
-          <PlaceCard category="패션잡화" name="뉴뉴 성수점" distance="89m" />
-          <PlaceCard category="카페" name="대림창고갤러리" distance="407m" />
-          <PlaceCard category="음식점" name="옥수동 화덕피자 성수" distance="240m" />
-        </div>
-      </section>
+      {/* 팝업 주변 핫플 - popup_hot_place 테이블 연동 (데이터 없으면 섹션 자체를 숨김) */}
+      {hotPlaces.length > 0 && (
+        <section className="px-4 mobile:px-8 mb-10">
+          <h2 className="text-base font-semibold mb-3">팝업 주변 핫플</h2>
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            {hotPlaces.map((place) => (
+              <PlaceCard
+                key={place.id}
+                category={place.category}
+                name={place.name}
+                distance={place.distance}
+                imageUrl={place.imageUrl}
+                href={place.linkUrl}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* 비슷한 팝업 - 진행중인 실제 팝업 중 이 팝업을 뺀 나머지 */}
       <section className="px-4 mobile:px-8 mb-10">
@@ -381,6 +426,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
 
       <StickyActionBar
         popupId={popup.id}
+        waitingTeams={waitingTeams}
         onReserve={() => setShowReservation(true)}
         onWaiting={() => setShowWaiting(true)}
       />

@@ -10,6 +10,7 @@ import { getPopup, type PopupDetail } from "@/lib/api/popups";
 import { getMyReservations, type Reservation } from "@/lib/api/reservations";
 import { getMyWaitingStatus, getMyWaitingIds, type Waiting } from "@/lib/api/waiting";
 import { createCsRequest, getMyCsRequests, type CsRequestItem } from "@/lib/api/cs";
+import { getTerms, type Terms } from "@/lib/api/terms";
 import { getPreferredRegions, getPreferredCategories } from "@/lib/preferences";
 import {
   subscribeWishlist,
@@ -27,9 +28,10 @@ type MenuKey =
   | "알림 설정"
   | "공지사항"
   | "1:1 문의"
-  | "Q&A";
+  | "Q&A"
+  | "약관";
 
-const PUBLIC_MENU: MenuKey[] = ["공지사항", "1:1 문의", "Q&A"];
+const PUBLIC_MENU: MenuKey[] = ["공지사항", "1:1 문의", "Q&A", "약관"];
 const PRIVATE_MENU: MenuKey[] = ["찜 목록", "예약 / 웨이팅", "쿠폰함", "다녀간 팝업", "알림 설정"];
 const SIDEBAR_MENU: MenuKey[] = [...PRIVATE_MENU, ...PUBLIC_MENU];
 
@@ -206,6 +208,28 @@ function MyPageContent() {
   const [csTitle, setCsTitle] = useState("");
   const [csContent, setCsContent] = useState("");
   const [csSubmitting, setCsSubmitting] = useState(false);
+
+  // 약관 - 로그인 여부 상관없이 볼 수 있는 공개 정보라 activeMenu가 "약관"일 때만 불러옵니다.
+  const [terms, setTerms] = useState<Terms | null>(null);
+  const [termsError, setTermsError] = useState(false);
+
+  useEffect(() => {
+    if (activeMenu !== "약관" || terms) return;
+    let cancelled = false;
+
+    getTerms()
+      .then((data) => {
+        if (!cancelled) setTerms(data);
+      })
+      .catch((err) => {
+        console.error("약관 조회 실패", err);
+        if (!cancelled) setTermsError(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeMenu, terms]);
 
   useEffect(() => {
     if (!isLoggedIn || !customer) return;
@@ -747,6 +771,26 @@ if (queryMenu !== syncedQueryMenu) {
                   <p className="text-xs text-gray-400 mt-1">{notice.date}</p>
                 </Link>
               ))}
+            </div>
+          )}
+
+          {activeMenu === "약관" && (
+            <div>
+              {termsError ? (
+                <p className="text-sm text-gray-400 py-10 text-center">약관을 불러오지 못했어요.</p>
+              ) : !terms ? (
+                <p className="text-sm text-gray-400 py-10 text-center">불러오는 중...</p>
+              ) : (
+                <div>
+                  <p className="text-base font-semibold mb-1">{terms.title}</p>
+                  <p className="text-xs text-gray-400 mb-4">
+                    최종 수정일 {new Date(terms.updatedAt).toLocaleDateString("ko-KR")}
+                  </p>
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                    {terms.content}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 

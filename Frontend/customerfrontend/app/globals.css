@@ -8,8 +8,6 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
   /* Tailwind의 --breakpoint-*는 항상 min-width(이상) 기준으로 동작합니다.
      즉 mobile:클래스는 "화면 너비가 1000px 이상일 때" 적용되고,
      접두사 없는 기본 클래스가 "1000px 미만(모바일)"의 기본값이 됩니다. */
