@@ -27,4 +27,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     // 특정 팝업스토어 평균 별점
     @Query("SELECT AVG(r.rating) FROM Review r WHERE r.popupId = :popupId")
     BigDecimal findAverageRatingByPopupId(@Param("popupId") Long popupId);
+
+    // 인기 팝업 랭킹 계산용 - 팝업별 후기 개수를 한 번에 집계
+    @Query("SELECT r.popupId, COUNT(r) FROM Review r GROUP BY r.popupId")
+    List<Object[]> countAllGroupByPopupId();
 }
