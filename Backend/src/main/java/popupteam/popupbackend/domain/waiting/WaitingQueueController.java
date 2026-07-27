@@ -71,4 +71,9 @@ public class WaitingQueueController {
         requireStaff(authentication);
         return ResponseEntity.ok(waitingQueueService.cancel(id));
     }
+
+    @GetMapping("/api/waiting/me")
+    public ResponseEntity<?> getMyWaitings(@RequestParam Long customerId) {
+        return ResponseEntity.ok(waitingQueueService.getMyActiveWaitings(customerId));
+    }
 }
