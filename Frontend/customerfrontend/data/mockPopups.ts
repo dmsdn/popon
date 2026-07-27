@@ -11,12 +11,17 @@ export type PopupItem = {
 
 export type ReviewItem = {
   id: string;
+  popupId: string; // 상세페이지(/popup/[id])로 이동할 때 씀
   popupName: string;
   nickname: string;
   content: string;
   date: string;
   rating: number;
   photos?: string[]; // 사진 URL 배열 (없으면 사진 없는 후기)
+  status?: PopupItem["status"]; // 이 후기가 달린 팝업의 현재 상태 (예정/진행중/종료)
+  region?: string; // 팝업 지역 태그 (예: "성수")
+  category?: string; // 팝업 카테고리 태그 (예: "뷰티")
+  reviewCount?: number; // 이 팝업에 달린 전체 후기 개수
 };
 
 export const promoCards = [
@@ -125,10 +130,10 @@ export const popularByKeyword: Record<string, PopupItem[]> = {
 export const popularPopups: PopupItem[] = popularByKeyword["전체"];
 
 export const reviews: ReviewItem[] = [
-  { id: "1", popupName: "산리오 카페", nickname: "말랑젤리", content: "대기는 있었지만 인생샷 건졌어요! 굿즈 라인업도 다양해서 구경하는 재미가 있었고, 직원분들도 친절하게 안내해주셔서 좋았습니다. 다음에 또 방문하고 싶어요.", date: "26.07.10", rating: 4.9, photos: ["p1", "p2"] },
-  { id: "2", popupName: "무신사 스탠다드", nickname: "성수러버", content: "굿즈 퀄리티가 예상보다 좋았어요", date: "26.07.09", rating: 4.7 },
-  { id: "3", popupName: "포켓몬 스토어", nickname: "포켓몬마스터", content: "아이랑 가기 딱 좋아요 강추", date: "26.07.08", rating: 5.0, photos: ["p1"] },
-  { id: "4", popupName: "탬버린즈", nickname: "향수덕후", content: "향 체험존이 인상적이었어요", date: "26.07.07", rating: 4.6 },
+  { id: "1", popupId: "2", popupName: "산리오 카페", nickname: "말랑젤리", content: "대기는 있었지만 인생샷 건졌어요! 굿즈 라인업도 다양해서 구경하는 재미가 있었고, 직원분들도 친절하게 안내해주셔서 좋았습니다. 다음에 또 방문하고 싶어요.", date: "26.07.10", rating: 4.9, photos: ["p1", "p2"], status: "진행중", region: "성수", category: "굿즈", reviewCount: 32 },
+  { id: "2", popupId: "1", popupName: "무신사 스탠다드", nickname: "성수러버", content: "굿즈 퀄리티가 예상보다 좋았어요", date: "26.07.09", rating: 4.7, status: "진행중", region: "성수", category: "패션", reviewCount: 18 },
+  { id: "3", popupId: "1", popupName: "포켓몬 스토어", nickname: "포켓몬마스터", content: "아이랑 가기 딱 좋아요 강추", date: "26.07.08", rating: 5.0, photos: ["p1"], status: "예정", region: "잠실", category: "굿즈", reviewCount: 7 },
+  { id: "4", popupId: "3", popupName: "탬버린즈", nickname: "향수덕후", content: "향 체험존이 인상적이었어요", date: "26.07.07", rating: 4.6, status: "진행중", region: "홍대", category: "뷰티", reviewCount: 20 },
 ];
 
 // TODO(백엔드 연동): 실제 리뷰 생성 API로 교체해주세요.
