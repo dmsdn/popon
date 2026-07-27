@@ -86,8 +86,15 @@ public class PopupController {
 
     // 인기 추천 팝업 (찜+후기+클릭수 합산 랭킹)
     @GetMapping("/popular")
-    public ResponseEntity<?> getPopularPopups(@RequestParam(defaultValue = "10") int limit) {
-        return ResponseEntity.ok(popupPopularityService.getPopularPopups(limit));
+    public ResponseEntity<?> getPopularPopups(@RequestParam(defaultValue = "10") int limit,
+                                              @RequestParam(required = false) String region) {
+        return ResponseEntity.ok(popupPopularityService.getPopularPopups(limit, region));
+    }
+
+    // 곧 오픈하는 팝업 (홈 화면 "곧 오픈하는 팝업 추천 카드"용)
+    @GetMapping("/upcoming")
+    public ResponseEntity<?> getUpcomingPopups(@RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(popupService.getUpcomingPopups(limit));
     }
 
     // 방문객(체크인 완료자) 연령 분포 - 본인 팝업만 조회 가능
