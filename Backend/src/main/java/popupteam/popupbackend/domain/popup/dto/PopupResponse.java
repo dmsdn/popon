@@ -28,6 +28,11 @@ public class PopupResponse {
     private LocalDateTime statusChangedAt;
     private String adminEditNote;
     private Integer maxPartySizePerTeam;
+    private List<String> hashtags;
+
+    public static PopupResponse from(Popup popup) {
+        return from(popup, java.util.Collections.emptyList());
+    }
 
     public static PopupResponse from(Popup popup) {
         return PopupResponse.builder()
@@ -53,6 +58,7 @@ public class PopupResponse {
                 .statusChangedAt(popup.getStatusChangedAt())
                 .adminEditNote(popup.getAdminEditNote())
                 .maxPartySizePerTeam(popup.getMaxPartySizePerTeam())
+                .hashtags(hashtags)
                 .build();
     }
 }
