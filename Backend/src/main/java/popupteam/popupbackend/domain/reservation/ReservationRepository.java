@@ -76,4 +76,40 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     List<Reservation> findByPopupIdAndStatus(Long popupId, ReservationStatus status);
 
+    // 진짜 방문객(체크인 완료)의 연령 분포 통계용 - 예약만 하고 안 온 사람은 제외
+    @Query("SELECT r.customer.birthDate FROM Reservation r WHERE r.popup.id = :popupId " +
+            "AND r.entryStatus = 'CHECKED_IN' AND r.customer.birthDate IS NOT NULL")
+    List<java.time.LocalDate> findBirthDatesOfCheckedInVisitors(@Param("popupId") Long popupId);
+
+    // 진짜 방문객(체크인 완료)의 성별 분포 통계용
+    @Query("SELECT r.customer.gender FROM Reservation r WHERE r.popup.id = :popupId " +
+            "AND r.entryStatus = 'CHECKED_IN'")
+    List<popupteam.popupbackend.domain.consumer.Customer.Gender> findGendersOfCheckedInVisitors(@Param("popupId") Long popupId);
+
+    // 일별 방문자 수 추이 - 날짜별로 몇 명 체크인했는지 집계. 결과: [ [날짜(LocalDate), 인원수(Long)], ... ]
+    @Query("SELECT FUNCTION('DATE', r.checkedInAt), COUNT(r) FROM Reservation r " +
+            "WHERE r.popup.id = :popupId AND r.entryStatus = 'CHECKED_IN' " +
+            "AND r.checkedInAt >= :from AND r.checkedInAt < :to " +
+            "GROUP BY FUNCTION('DATE', r.checkedInAt) ORDER BY FUNCTION('DATE', r.checkedInAt)")
+    List<Object[]> countDailyCheckedInVisitors(@Param("popupId") Long popupId,
+                                                @Param("from") java.time.LocalDateTime from,
+                                                @Param("to") java.time.LocalDateTime to);
+
+    // 누적 방문자 수 - 체크인 완료된 예약의 partySize(인원수) 전체 합산. 그룹 예약이면 인원수만큼 카운트됨
+    @Query("SELECT COALESCE(SUM(r.partySize), 0) FROM Reservation r " +
+            "WHERE r.popup.id = :popupId AND r.entryStatus = 'CHECKED_IN'")
+    Long sumVisitorsOfCheckedIn(@Param("popupId") Long popupId);
+
+    // 일별 예약 건수 - 체크인 여부와 무관하게, 취소되지 않은 예약이 날짜별로 몇 건인지 (reservationDate 기준)
+    @Query("SELECT r.reservationDate, COUNT(r) FROM Reservation r " +
+            "WHERE r.popup.id = :popupId AND r.status = 'CONFIRMED' " +
+            "AND r.reservationDate >= :from AND r.reservationDate <= :to " +
+            "GROUP BY r.reservationDate ORDER BY r.reservationDate")
+    List<Object[]> countDailyReservations(@Param("popupId") Long popupId,
+                                           @Param("from") java.time.LocalDate from,
+                                           @Param("to") java.time.LocalDate to);
+
+    // 예약 전환율 계산용 - 취소되지 않은 전체 예약 건수
+    long countByPopupIdAndStatus(Long popupId, ReservationStatus status);
+
 }
