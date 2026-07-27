@@ -10,6 +10,21 @@ import { ensureSlots } from "../../lib/slotAutoGen";
 
 const fmtTime = (t: string | null) => (t ? t.slice(0, 5) : ""); // HH:mm:ss → HH:mm
 
+// 로컬 기준 오늘 날짜 (toISOString은 UTC라 자정 근처 날짜 밀림 — 사용 금지)
+const todayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+// 기본 날짜: 오늘 슬롯이 있으면 오늘 → 없으면 오늘 이후 가장 가까운 날 → 그것도 없으면 마지막 날
+// (7/25 피드백: 라우팅 시 당일이 default로 보여야 함)
+function pickDefaultDate(dates: string[]): string {
+  if (dates.length === 0) return "";
+  const today = todayStr();
+  if (dates.includes(today)) return today;
+  return dates.find((d) => d > today) ?? dates[dates.length - 1];
+}
+
 // 입장 상태 표기 (PENDING=입장 전, CHECKED_IN=입장완료, NO_SHOW=노쇼)
 const ENTRY_BADGE: Record<string, [string, string]> = {
   PENDING: ["입장 전", "bg-blue-50 text-blue-600 border-blue-200"],
@@ -92,7 +107,11 @@ export default function Reservations() {
         if (!alive) return;
         setSlots(s);
         setRoster(r);
-        setSlotDateFilter((prev) => (s.some((x) => x.slotDate === prev) ? prev : s[0]?.slotDate ?? ""));
+        // 기본 날짜 = 오늘 (직접 고른 날짜가 여전히 유효하면 유지) — 7/25 피드백
+        setSlotDateFilter((prev) => {
+          if (prev && s.some((x) => x.slotDate === prev)) return prev;
+          return pickDefaultDate([...new Set(s.map((x) => x.slotDate))].sort());
+        });
       })
       .catch((e) => alive && setError(e instanceof Error ? e.message : "데이터를 불러오지 못했습니다."))
       .finally(() => alive && setLoading(false));

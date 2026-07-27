@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router";
-import { ArrowRight, ArrowLeft, Eye, EyeOff, CheckCircle, Building2, Check } from "lucide-react";
+import { ArrowRight, ArrowLeft, Eye, EyeOff, CheckCircle, Building2, Check, X, Loader2 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import { signup as apiSignup, businessReconsent } from "../../lib/api";
+import { signup as apiSignup, businessReconsent, getTerms, Terms } from "../../lib/api";
 
 type Tab = "login" | "signup";
 type SignupStep = 1 | 2 | 3;
@@ -30,15 +30,26 @@ export default function Login() {
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [signupForm, setSignupForm] = useState({ name: "", email: "", password: "", passwordConfirm: "", agree: false });
 
-  // 2단계: 사업자등록번호
+  // 2단계: 사업자등록번호 (형식 확인 — 국세청 진위확인은 가입 시 서버가 수행)
   const [bizNo, setBizNo] = useState("");
-  const [bizVerified, setBizVerified] = useState<null | { corpName: string; ceo: string; status: string }>(null);
-  const [verifying, setVerifying] = useState(false);
+  const [bizVerified, setBizVerified] = useState(false);
 
   // 3단계: 주최자 상세 (기존 주최자 등록 신청서의 브랜드명 ~ 희망 팝업 시작일)
   const [detail, setDetail] = useState({
     brandName: "", category: "", contactName: "", phone: "", website: "", expectedDate: "",
   });
+
+  // 약관·개인정보처리방침 모달 (멘토 피드백: 가입 시 본문을 열람할 수 있어야 함)
+  const [termsOpen, setTermsOpen] = useState(false);
+  const [terms, setTerms] = useState<Terms | null>(null);
+  const [termsError, setTermsError] = useState("");
+  const openTerms = () => {
+    setTermsOpen(true);
+    if (terms) return; // 한 번 받아온 본문은 재사용
+    getTerms()
+      .then(setTerms)
+      .catch((e) => setTermsError(e instanceof Error ? e.message : "약관을 불러오지 못했습니다."));
+  };
 
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -82,7 +93,9 @@ export default function Login() {
     setStep(2);
   };
 
-  // 2단계: 사업자등록번호 진위 확인 (목업 — 국세청 API 연동 예정)
+  // 2단계: 사업자등록번호 형식 확인.
+  // 국세청 진위확인(상태조회)은 가입 완료 시 백엔드가 수행한다 (BusinessService.signup → NtsBusinessCheckService).
+  // 미등록·폐업 번호는 가입이 거부되고 그 사유가 3단계에서 오류 메시지로 표시된다.
   const verifyBizNo = () => {
     setError("");
     const digits = bizNo.replace(/[^0-9]/g, "");
@@ -90,17 +103,19 @@ export default function Login() {
       setError("사업자등록번호 10자리를 입력해 주세요. (예: 123-45-67890)");
       return;
     }
-    setVerifying(true);
-    setTimeout(() => {
-      setBizVerified({ corpName: "㈜" + (signupForm.name || "팝업") + "컴퍼니", ceo: signupForm.name || "홍길동", status: "계속사업자 (정상)" });
-      setVerifying(false);
-    }, 700);
+    setBizVerified(true);
   };
 
   // 3단계 → 가입 완료 (백엔드 회원가입 → 자동 로그인)
   const handleStep3 = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    // 연락처: 백엔드 검증(^01[0-9]{8,9}$)과 동일 기준으로 먼저 확인 — 하이픈은 표시용이므로 제거
+    const phoneDigits = detail.phone.replace(/[^0-9]/g, "");
+    if (!/^01[0-9]{8,9}$/.test(phoneDigits)) {
+      setError("연락처는 01로 시작하는 휴대폰 번호 10~11자리여야 합니다.");
+      return;
+    }
     setSubmitting(true);
     try {
       await apiSignup({
@@ -108,7 +123,7 @@ export default function Login() {
         password: signupForm.password,
         companyName: detail.brandName,
         businessNumber: bizNo, // 000-00-00000 형식 (formatBizNo로 보장)
-        phone: detail.phone,
+        phone: phoneDigits, // 백엔드는 숫자만 받음 (하이픈 없이)
         agreeTerms: signupForm.agree, // 개인정보 수집·이용 동의 (백엔드 필수 — 1단계에서 체크 검증됨)
       });
       await login(signupForm.email, signupForm.password);
@@ -131,6 +146,14 @@ export default function Login() {
     if (d.length <= 3) return d;
     if (d.length <= 5) return `${d.slice(0, 3)}-${d.slice(3)}`;
     return `${d.slice(0, 3)}-${d.slice(3, 5)}-${d.slice(5)}`;
+  };
+
+  // 연락처 자동 하이픈 (표시용 — 전송 시에는 숫자만 추출)
+  const formatPhone = (v: string) => {
+    const d = v.replace(/[^0-9]/g, "").slice(0, 11);
+    if (d.length <= 3) return d;
+    if (d.length <= 7) return `${d.slice(0, 3)}-${d.slice(3)}`;
+    return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`;
   };
 
   // ── 가입 완료 화면 ──
@@ -361,7 +384,12 @@ export default function Login() {
                   className="mt-0.5 accent-accent"
                 />
                 <span className="text-xs text-muted-foreground leading-relaxed">
-                  <span className="text-foreground font-medium">[필수]</span> 이용약관 및 개인정보처리방침에 동의합니다. 수집된 정보는 주최자 심사 및 서비스 제공 목적으로만 사용됩니다.
+                  <span className="text-foreground font-medium">[필수]</span>{" "}
+                  {/* 멘토 피드백: 동의 전에 본문을 열람할 수 있어야 함 → 클릭 시 모달로 전문 표시 */}
+                  <button type="button" onClick={openTerms} className="underline underline-offset-2 text-foreground hover:text-accent">
+                    이용약관 및 개인정보처리방침
+                  </button>
+                  에 동의합니다. 수집된 정보는 주최자 심사 및 서비스 제공 목적으로만 사용됩니다.
                 </span>
               </label>
               <label className="flex items-start gap-2">
@@ -397,7 +425,7 @@ export default function Login() {
                   type="text"
                   inputMode="numeric"
                   value={bizNo}
-                  onChange={(e) => { setBizNo(formatBizNo(e.target.value)); setBizVerified(null); }}
+                  onChange={(e) => { setBizNo(formatBizNo(e.target.value)); setBizVerified(false); }}
                   placeholder="123-45-67890"
                   className={inputCls + " flex-1"}
                   style={{ fontFamily: "'DM Mono', monospace" }}
@@ -405,24 +433,22 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={verifyBizNo}
-                  disabled={verifying}
-                  className="shrink-0 px-4 text-sm rounded-sm border border-foreground hover:bg-foreground hover:text-primary-foreground transition-colors disabled:opacity-50"
+                  className="shrink-0 px-4 text-sm rounded-sm border border-foreground hover:bg-foreground hover:text-primary-foreground transition-colors"
                 >
-                  {verifying ? "확인 중…" : "진위 확인"}
+                  형식 확인
                 </button>
               </div>
             </label>
 
             {bizVerified && (
-              <div className="rounded-sm border border-green-200 bg-green-50 p-4 space-y-2">
+              <div className="rounded-sm border border-green-200 bg-green-50 p-4 space-y-1.5">
                 <div className="flex items-center gap-1.5 text-sm font-semibold text-green-700">
-                  <CheckCircle size={14} /> 확인되었습니다
+                  <CheckCircle size={14} /> 형식이 확인되었습니다
                 </div>
-                <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs text-green-800/90">
-                  <span className="text-green-700/60">상호</span><span>{bizVerified.corpName}</span>
-                  <span className="text-green-700/60">대표자</span><span>{bizVerified.ceo}</span>
-                  <span className="text-green-700/60">상태</span><span>{bizVerified.status}</span>
-                </div>
+                <p className="text-xs text-green-800/90 leading-relaxed">
+                  국세청 사업자등록 상태조회(진위확인)는 <span className="font-medium">가입 완료 시 자동으로 수행</span>됩니다.
+                  국세청에 등록되지 않았거나 폐업 처리된 번호는 가입이 거부됩니다.
+                </p>
               </div>
             )}
 
@@ -487,12 +513,13 @@ export default function Login() {
                 />
               </label>
               <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-muted-foreground">연락처 *</span>
+                <span className="text-xs font-medium text-muted-foreground">연락처 (휴대폰) *</span>
                 <input
                   value={detail.phone}
-                  onChange={(e) => setDetail((p) => ({ ...p, phone: e.target.value }))}
+                  onChange={(e) => setDetail((p) => ({ ...p, phone: formatPhone(e.target.value) }))}
                   required
                   type="tel"
+                  inputMode="numeric"
                   placeholder="010-0000-0000"
                   className={smallInputCls}
                 />
@@ -555,6 +582,36 @@ export default function Login() {
           ))}
         </div>
       </div>
+
+      {/* 약관·개인정보처리방침 모달 — 배경 클릭 시 닫힘, 본문은 서버(/api/terms)에서 로드 */}
+      {termsOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-6" onClick={() => setTermsOpen(false)}>
+          <div className="bg-white rounded-sm border border-border w-full max-w-lg max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
+              <span className="text-sm font-semibold">{terms?.title ?? "이용약관 및 개인정보처리방침"}</span>
+              <button onClick={() => setTermsOpen(false)} className="text-muted-foreground hover:text-foreground" title="닫기">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-5 overflow-y-auto text-[13px] leading-relaxed whitespace-pre-wrap">
+              {termsError ? (
+                <span className="text-xs text-red-500">{termsError}</span>
+              ) : terms ? (
+                terms.content
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  <Loader2 size={13} className="inline animate-spin mr-1.5" /> 불러오는 중…
+                </span>
+              )}
+            </div>
+            {terms?.updatedAt && (
+              <div className="px-5 py-2.5 border-t border-border text-[11px] text-muted-foreground">
+                최종 개정: {terms.updatedAt.slice(0, 10)}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   );
 }
