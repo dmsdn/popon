@@ -18,27 +18,48 @@ export function redirectToGoogleLogin() {
 export interface SignupInfoPayload {
   nickname: string;
   phone: string;
-  // ⚠️ 백엔드 CustomerUpdateRequest에 email 필드가 없어서 보내도 무시돼요.
-  // 나중에 백엔드가 지원하면 자동으로 반영될 거예요.
   email?: string;
+  termsAgreed: boolean;
+  privacyAgreed: boolean;
+  locationAgreed: boolean;
+  marketingAgreed: boolean;
 }
 
-// ⚠️ 원래 PATCH /api/customer/me/signup-info를 불렀는데, 백엔드에 그 경로가 아예 없어서
-// (전체 검색해도 없음) 늘 실패했어요. 실제로 존재하는 PATCH /api/customer/me로 바꿨습니다.
-// 다만 백엔드가 아직 phone 필드를 안 받아서(CustomerUpdateRequest에 없음), 이걸 호출해도
-// 지금 당장은 전화번호가 저장되진 않아요 — 백엔드 쪽 phone 처리 코드가 추가돼야 완성됩니다.
+// [수정] 원래 PATCH /api/customer/me를 불렀는데, 그 엔드포인트(CustomerController)는
+// nickname/profileImage/birthDate/gender만 받고 phone·email·약관동의는 아예 받지 않아요.
+// 그래서 전화번호도 저장 안 되고, signupCompleted도 항상 false로 남아서
+// 로그인할 때마다 계속 회원정보 입력 화면으로 돌아가는 문제가 있었어요.
+// 실제로 phone/email/약관동의를 받아서 signupCompleted=true까지 처리하는 엔드포인트는
+// POST /api/customer/signup-info (SignupInfoController) 이므로 그쪽으로 변경했습니다.
 export function submitSignupInfo(payload: SignupInfoPayload) {
-  return apiFetch<{ id: number; nickname: string; phone: string | null }>("/api/customer/me", {
-    method: "PATCH",
+  return apiFetch<{ success: boolean; customerId: number }>("/api/customer/signup-info", {
+    method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
+// [수정] PUT /api/customer/me/keywords는 백엔드에 존재하지 않는 경로였어요(전체 검색해도 없음).
+// 관심 키워드를 실제로 저장하는 엔드포인트는 POST /api/customer/interests (InterestController) —
+// body 형식도 배열이 아니라 { keywordIds: [...] } 형태라 그에 맞춰 같이 고쳤습니다.
 export function submitPreferences(keywordIds: number[]) {
-  return apiFetch<{ success: boolean }>("/api/customer/me/keywords", {
-    method: "PUT",
-    body: JSON.stringify(keywordIds),
+  return apiFetch<{ success: boolean; count: number }>("/api/customer/interests", {
+    method: "POST",
+    body: JSON.stringify({ keywordIds }),
   });
+}
+
+// [신규 연결] 로그인 성공 후 "회원정보 입력 화면으로 보낼지" 판단할 때 지금까지 두 군데서
+// 다 잘못된 값을 썼어요:
+//  - login/success/page.tsx: 백엔드가 리다이렉트 URL에 onboarded 파라미터를 절대 안 붙여줘서
+//    (OAuth2SuccessHandler.java 확인 — "?token=..." 뿐, &onboarded= 없음) 항상 false로 읽혀서
+//    이미 가입 완료한 회원도 로그인할 때마다 계속 회원정보 입력 화면으로 되돌아갔어요.
+//  - login/dev/page.tsx: 반대로 이 값을 아예 안 보고 항상 홈으로 보내서, 방금 만든 신규
+//    테스트 계정도 회원정보 입력 화면을 건너뛰었어요.
+// 실제로 이 여부를 정확히 내려주는 GET /api/customer/signup-info/status
+// (SignupInfoController.getStatus) API가 이미 있는데 프론트 어디서도 안 부르고 있었어서,
+// 이 함수로 연결하고 두 로그인 화면 모두 여기서 받은 실제 값으로 라우팅하게 고쳤습니다.
+export function getSignupStatus() {
+  return apiFetch<{ signupCompleted: boolean }>("/api/customer/signup-info/status");
 }
 
 export function logout() {

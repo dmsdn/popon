@@ -6,15 +6,19 @@ import { getKeywords, type Keyword } from "@/lib/api/customer";
 import { submitPreferences } from "@/lib/api/auth";
 import { useAuth } from "@/lib/auth/AuthContext";
 
-// ⚠️ 지역/카테고리는 백엔드에 아직 저장할 API가 없어요 (customer_region 관련 작업이
-// 진행 중인 걸로 알고 있어요). 그래서 지금은 선택 결과를 브라우저에만 저장해두고,
-// "관심 키워드"만 기존처럼 실제 API(submitPreferences)로 저장돼요.
-// 백엔드에 저장 API가 생기면 handleFinish 안의 저장 부분만 바꿔주면 됩니다.
+// ⚠️ 관심 "지역"은 백엔드 region 테이블과 개념이 달라요 — 백엔드 region은 서울/경기/부산처럼
+// 시/도 단위라서, 이 앱이 쓰는 성수/홍대/여의도 같은 동네(핫플) 단위 지역 선택과 안 맞아요.
+// 그래서 지역은 백엔드에 억지로 연결하지 않고 지금처럼 브라우저에만 저장해뒀어요.
+// (실제 GET /api/regions·POST /api/customer/regions API 자체는 존재하니, 나중에 프론트가
+//  동네 단위 지역을 쓸지 시/도 단위로 바꿀지 팀에서 정하면 그때 연결하면 됩니다.)
+//
+// [수정] "관심 카테고리"(로컬 전용, 하드코딩) 섹션과 "관심 키워드"(실 API) 섹션이 완전히
+// 같은 값(뷰티/패션/애니/푸드/스포츠/라이프/굿즈/문구)을 따로 관리하고 있었어요 — 백엔드
+// keyword 테이블도 그 목록으로 시드 데이터를 추가해뒀으니, 이제 "관심 카테고리" 하나로
+// 합치고 실제 GET /api/keywords · POST /api/customer/interests로만 저장합니다.
 const REGIONS = ["성수", "홍대", "여의도", "용산", "더현대서울"];
-const CATEGORIES = ["뷰티", "패션", "애니", "푸드", "스포츠", "라이프", "굿즈", "문구"];
 
 const REGION_STORAGE_KEY = "preferred_regions";
-const CATEGORY_STORAGE_KEY = "preferred_categories";
 
 export default function PreferencesPage() {
   const router = useRouter();
@@ -22,7 +26,6 @@ export default function PreferencesPage() {
   const [keywords, setKeywords] = useState<Keyword[]>([]);
   const [selectedKeywords, setSelectedKeywords] = useState<number[]>([]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -40,28 +43,20 @@ export default function PreferencesPage() {
     );
   };
 
-  const toggleCategory = (category: string) => {
-    setSelectedCategories((prev) =>
-      prev.includes(category) ? prev.filter((c) => c !== category) : [...prev, category]
-    );
-  };
-
   const toggleKeyword = (id: number) => {
     setSelectedKeywords((prev) => (prev.includes(id) ? prev.filter((k) => k !== id) : [...prev, id]));
   };
 
-  const hasAnySelection =
-    selectedRegions.length > 0 || selectedCategories.length > 0 || selectedKeywords.length > 0;
+  const hasAnySelection = selectedRegions.length > 0 || selectedKeywords.length > 0;
 
   const finish = async (skip: boolean) => {
     setSubmitting(true);
 
-    // 지역/카테고리는 아직 실 API가 없어서 로컬에만 저장
+    // 지역은 아직 실 API에 안 맞아서(위 주석 참고) 로컬에만 저장
     try {
       window.localStorage.setItem(REGION_STORAGE_KEY, JSON.stringify(skip ? [] : selectedRegions));
-      window.localStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(skip ? [] : selectedCategories));
     } catch (error) {
-      console.warn("지역/카테고리 로컬 저장 실패", error);
+      console.warn("지역 로컬 저장 실패", error);
     }
 
     try {
@@ -110,29 +105,9 @@ export default function PreferencesPage() {
         </div>
       </section>
 
-      <section className="mb-8">
-        <h2 className="text-sm font-semibold text-gray-800 mb-3">관심 카테고리</h2>
-        <div className="grid grid-cols-4 mobile:grid-cols-6 gap-2">
-          {CATEGORIES.map((category) => (
-            <button
-              key={category}
-              type="button"
-              onClick={() => toggleCategory(category)}
-              className={`aspect-square rounded-[4px] text-xs font-medium flex items-center justify-center text-center px-1 border ${
-                selectedCategories.includes(category)
-                  ? "bg-gray-900 text-white border-gray-900"
-                  : "border-gray-200 text-gray-600"
-              }`}
-            >
-              {category}
-            </button>
-          ))}
-        </div>
-      </section>
-
       {keywords.length > 0 && (
         <section className="mb-10">
-          <h2 className="text-sm font-semibold text-gray-800 mb-3">관심 키워드</h2>
+          <h2 className="text-sm font-semibold text-gray-800 mb-3">관심 카테고리</h2>
           <div className="flex flex-wrap gap-2">
             {keywords.map((kw) => (
               <button

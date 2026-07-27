@@ -8,10 +8,13 @@ import { HeartButton } from "@/components/ui/HeartButton";
 //   별도 사이드바 레이아웃을 새로 짜지 않고도 스크롤 중에도 항상 보이게 할 수 있어요.
 export function StickyActionBar({
   popupId,
+  waitingTeams,
   onReserve,
   onWaiting,
 }: {
   popupId: number;
+  /** 현재 대기중인 팀 수. null이면 아직 못 불러온 상태(버튼엔 기본 라벨만 표시) */
+  waitingTeams: number | null;
   onReserve: () => void;
   onWaiting: () => void;
 }) {
@@ -34,7 +37,7 @@ export function StickyActionBar({
           onClick={onWaiting}
           className="flex-1 rounded-full py-3 text-sm font-medium bg-gray-900 text-white"
         >
-          웨이팅
+          {waitingTeams !== null && waitingTeams > 0 ? `웨이팅 · ${waitingTeams}팀 대기중` : "웨이팅"}
         </button>
       </div>
     </div>
