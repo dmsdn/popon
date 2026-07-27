@@ -9,4 +9,7 @@ public interface PopupClickLogRepository extends JpaRepository<PopupClickLog, Lo
     // 인기 팝업 랭킹 계산용 - 팝업별 클릭수를 한 번에 집계
     @Query("SELECT c.popupId, COUNT(c) FROM PopupClickLog c GROUP BY c.popupId")
     List<Object[]> countAllGroupByPopupId();
+
+    // 예약 전환율 계산용 - 특정 팝업 하나의 클릭수
+    long countByPopupId(Long popupId);
 }
