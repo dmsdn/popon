@@ -196,7 +196,7 @@ export type Popup = {
   status: PopupStatusCode;
   rejectReason: string | null;
   createdAt: string;
-  capacity: number | null; // 동시 수용 정원
+  capacity: number | null; // 동시 수용 정원 — 등록 폼 필수 (서버는 capacity·areaSqm 둘 다 없으면 400)
   reservationMode: "SLOT" | "FREE" | null; // SLOT=슬롯 예약제, FREE=당일 방문(날짜 단위)
   avgExperienceMinutes: number | null; // 체험 소요시간(분) = 슬롯 단위
   // 7/23 jsw 추가분 — 7/24부터 등록/수정 DTO도 수신(필수) → 신규 팝업은 서버 값 사용, 구 팝업(null)만 로컬 OpsMode 폴백
@@ -224,7 +224,7 @@ export function createPopup(data: {
   location?: string;
   startDate?: string;
   endDate?: string;
-  capacity?: number;
+  capacity?: number; // 사실상 필수 — areaSqm도 안 보내면 서버가 400 (PopupService.create)
   reservationMode: "SLOT" | "FREE"; // 백엔드 필수
   avgExperienceMinutes: number; // 백엔드 필수 (슬롯 단위·분)
   queueMode: "PRERESERVATION_ONLY" | "ONSITE_WAITING_ONLY" | "BOTH"; // 백엔드 필수 (7/24 jsw DTO 추가 — 미전송 시 400)

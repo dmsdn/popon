@@ -96,7 +96,8 @@ export default function PopupRegister() {
   // 예약 정책 (백엔드 필수: reservationMode·avgExperienceMinutes) — 슬롯은 이 값 기준 자동 생성
   const [slotUnit, setSlotUnit] = useState(30); // 슬롯 단위(분) = 체험 소요시간
   const [slotCapacity, setSlotCapacity] = useState(10); // 슬롯당 예약 정원 (자동 생성 시 사용)
-  // 최대 수용 정원·파트너 공간 선택은 7/25 피드백으로 삭제 (정원은 슬롯당 예약 정원으로 충분)
+  // 서버는 capacity·areaSqm 둘 다 없으면 400이므로 (PopupService.create) 최대 정원은 필수 입력·전송
+  const [maxCapacity, setMaxCapacity] = useState(120); // 동시 수용 정원
   const [slotProgress, setSlotProgress] = useState(""); // 자동 생성 진행 안내
   const [directAddress, setDirectAddress] = useState("");
 
@@ -126,6 +127,7 @@ export default function PopupRegister() {
         }
         if (p.avgExperienceMinutes) setSlotUnit(p.avgExperienceMinutes);
         if (p.location) setDirectAddress(p.location);
+        if (p.capacity) setMaxCapacity(p.capacity);
       })
       .catch((e) => setError(e instanceof Error ? e.message : "팝업 정보를 불러오지 못했습니다."));
   }, [editId]);
@@ -135,6 +137,7 @@ export default function PopupRegister() {
     if (!title.trim()) return setError("팝업명을 입력해 주세요.");
     if (!description.trim()) return setError("상세 설명을 입력해 주세요.");
     if (!startDate || !endDate) return setError("운영 기간(시작일·종료일)을 입력해 주세요.");
+    if (!maxCapacity || maxCapacity < 1) return setError("최대 수용 정원을 입력해 주세요.");
 
     const payload = {
       title: title.trim(),
@@ -142,8 +145,8 @@ export default function PopupRegister() {
       location: directAddress.trim(),
       startDate: `${startDate}T${openTime}:00`,
       endDate: `${endDate}T${closeTime}:00`,
-      // 최대 수용 정원(capacity)은 7/25 피드백으로 폼에서 삭제 — 미전송(서버 optional).
-      // ⚠ FREE 모드 예약 정원 검사가 capacity를 쓰므로, 현장 웨이팅만 팝업에는 영향 확인 필요 (jsw 전달)
+      // 서버가 capacity·areaSqm 둘 다 없으면 400을 던지므로 (PopupService.create) capacity는 필수 전송
+      capacity: maxCapacity,
       reservationMode: (useReservation ? "SLOT" : "FREE") as "SLOT" | "FREE",
       avgExperienceMinutes: slotUnit,
       // 7/24 jsw DTO 추가분 — 서버 필수 필드. 화면의 운영 방식(OpsMode)을 서버 enum으로 변환해 전송
@@ -416,6 +419,15 @@ export default function PopupRegister() {
               사전예약과 현장 웨이팅을 동시에 운영할 때의 현장 대기열 조정 권한은 주최자에게 있습니다.
             </p>
           </div>
+          {/* 운영 방식과 무관하게 필수 — 현장 웨이팅(FREE)·라이브 혼잡도 계산이 popup.capacity를 사용 */}
+          <div className="sm:w-1/2 sm:pr-2">
+            <label className={labelCls}>최대 수용 정원 (동시 수용 인원) <Req /></label>
+            <input
+              type="number" min={1} value={maxCapacity}
+              onChange={(e) => setMaxCapacity(Number(e.target.value))}
+              className={inputCls}
+            />
+          </div>
           {useReservation && (
             <div className="p-4 bg-secondary/60 rounded-sm">
               <div className="grid sm:grid-cols-2 gap-4">
@@ -442,7 +454,7 @@ export default function PopupRegister() {
               </p>
             </div>
           )}
-          {/* 입장료·혼잡도(7/24)·최대 수용 정원(7/25) 설정 제거 — 정원은 슬롯당 예약 정원으로 관리 */}
+          {/* 입장료·혼잡도 설정은 7/24 피드백으로 제거. 최대 수용 정원은 서버 필수(capacity/areaSqm 중 하나)라 7/27 복원 */}
         </Section>
 
         {/* 6. 상세 설명 */}
