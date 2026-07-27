@@ -34,4 +34,6 @@ public interface WaitingQueueRepository extends JpaRepository<WaitingQueue, Long
     // 팝업 구분 없이 전체 입장 상태(아직 퇴장 전) 조회 - 자동퇴장 스케줄러용
     List<WaitingQueue> findByStatusAndExitedAtIsNull(WaitingStatus status);
 
+    List<WaitingQueue> findByPopupIdAndStatusIn(Long popupId, List<WaitingStatus> statuses);
+
 }

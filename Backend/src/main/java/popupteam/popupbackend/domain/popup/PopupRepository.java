@@ -3,6 +3,7 @@ package popupteam.popupbackend.domain.popup;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import java.time.LocalDate;
 import java.util.List;
 
 public interface PopupRepository extends JpaRepository<Popup, Long> {
@@ -29,4 +30,14 @@ public interface PopupRepository extends JpaRepository<Popup, Long> {
             "ORDER BY p.createdAt DESC")
     List<Popup> findByAddressKeywordIdInAndStatusOrderByCreatedAtDesc(@Param("regionIds") List<Long> regionIds,
                                                                       @Param("status") PopupStatus status);
+
+    // 혼잡 알림 스케줄러용 - 진행중인 팝업만 체크
+    List<Popup> findByStatus(PopupStatus status);
+
+    // 오픈/종료 임박 알림 스케줄러용 - 특정 날짜에 시작/종료하는 팝업 조회
+    @Query("SELECT p FROM Popup p WHERE FUNCTION('DATE', p.startDate) = :date AND p.status IN (popupteam.popupbackend.domain.popup.PopupStatus.BEFOR, popupteam.popupbackend.domain.popup.PopupStatus.OPEN)")
+    List<Popup> findByStartDateOnDate(@Param("date") LocalDate date);
+
+    @Query("SELECT p FROM Popup p WHERE FUNCTION('DATE', p.endDate) = :date AND p.status = popupteam.popupbackend.domain.popup.PopupStatus.OPEN")
+    List<Popup> findByEndDateOnDate(@Param("date") LocalDate date);
 }

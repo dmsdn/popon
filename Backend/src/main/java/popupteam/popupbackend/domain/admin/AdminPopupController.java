@@ -35,4 +35,18 @@ public class AdminPopupController {
         checkAdmin(authentication);
         return ResponseEntity.ok(popupService.reject(id, request.getReason()));
     }
+
+    @PutMapping("/{id}/suspend")
+    public ResponseEntity<?> suspend(@PathVariable Long id,
+                                     Authentication authentication,
+                                     @RequestBody PopupRejectRequest request) {
+        checkAdmin(authentication);
+        return ResponseEntity.ok(popupService.suspend(id, request.getReason()));
+    }
+
+    @PutMapping("/{id}/resume")
+    public ResponseEntity<?> resume(@PathVariable Long id, Authentication authentication) {
+        checkAdmin(authentication);
+        return ResponseEntity.ok(popupService.resume(id));
+    }
 }
