@@ -2,7 +2,7 @@ package popupteam.popupbackend.domain.reservation;
 
 import jakarta.persistence.*;
 import lombok.*;
-import popupteam.popupbackend.domain.customer.Customer;
+import popupteam.popupbackend.domain.consumer.Customer;
 import popupteam.popupbackend.domain.popup.Popup;
 import popupteam.popupbackend.domain.popup.PopupSlot;
 import java.time.LocalDate;
