@@ -18,6 +18,7 @@ public class PopupController {
     private final PopupService popupService;
     private final BusinessRepository businessRepository;
     private final PopupPopularityService popupPopularityService;
+    private final popupteam.popupbackend.domain.reservation.PopupVisitorAgeStatsService popupVisitorAgeStatsService;
 
     private Long getBusinessId(Authentication authentication) {
         String email = authentication.getName();
@@ -87,5 +88,81 @@ public class PopupController {
     @GetMapping("/popular")
     public ResponseEntity<?> getPopularPopups(@RequestParam(defaultValue = "10") int limit) {
         return ResponseEntity.ok(popupPopularityService.getPopularPopups(limit));
+    }
+
+    // 방문객(체크인 완료자) 연령 분포 - 본인 팝업만 조회 가능
+    @GetMapping("/{id}/visitor-age-stats")
+    public ResponseEntity<java.util.Map<String, Long>> getVisitorAgeStats(
+            @PathVariable Long id, Authentication authentication) {
+        Long businessId = getBusinessId(authentication);
+        PopupResponse popup = popupService.findById(id);
+        if (!popup.getBusinessId().equals(businessId)) {
+            throw new IllegalArgumentException("본인이 등록한 팝업만 조회할 수 있습니다.");
+        }
+        return ResponseEntity.ok(popupVisitorAgeStatsService.getAgeDistribution(id));
+    }
+
+    // 방문객(체크인 완료자) 성별 분포 - 본인 팝업만 조회 가능
+    @GetMapping("/{id}/visitor-gender-stats")
+    public ResponseEntity<java.util.Map<String, Long>> getVisitorGenderStats(
+            @PathVariable Long id, Authentication authentication) {
+        Long businessId = getBusinessId(authentication);
+        PopupResponse popup = popupService.findById(id);
+        if (!popup.getBusinessId().equals(businessId)) {
+            throw new IllegalArgumentException("본인이 등록한 팝업만 조회할 수 있습니다.");
+        }
+        return ResponseEntity.ok(popupVisitorAgeStatsService.getGenderDistribution(id));
+    }
+
+    // 일별 방문자 수 추이 (기본 최근 7일) - 본인 팝업만 조회 가능
+    @GetMapping("/{id}/visitor-trend")
+    public ResponseEntity<java.util.List<java.util.Map<String, Object>>> getVisitorTrend(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "7") int days,
+            Authentication authentication) {
+        Long businessId = getBusinessId(authentication);
+        PopupResponse popup = popupService.findById(id);
+        if (!popup.getBusinessId().equals(businessId)) {
+            throw new IllegalArgumentException("본인이 등록한 팝업만 조회할 수 있습니다.");
+        }
+        return ResponseEntity.ok(popupVisitorAgeStatsService.getDailyVisitorTrend(id, days));
+    }
+
+    // 누적 방문자 + 일평균 방문자 - 본인 팝업만 조회 가능
+    @GetMapping("/{id}/visitor-summary")
+    public ResponseEntity<java.util.Map<String, Object>> getVisitorSummary(
+            @PathVariable Long id, Authentication authentication) {
+        Long businessId = getBusinessId(authentication);
+        PopupResponse popup = popupService.findById(id);
+        if (!popup.getBusinessId().equals(businessId)) {
+            throw new IllegalArgumentException("본인이 등록한 팝업만 조회할 수 있습니다.");
+        }
+        return ResponseEntity.ok(popupVisitorAgeStatsService.getTotalVisitorStats(id));
+    }
+
+    // 일별 예약 건수 (기본 최근 7일, 취소 제외) - 본인 팝업만 조회 가능
+    @GetMapping("/{id}/reservation-trend")
+    public ResponseEntity<java.util.List<java.util.Map<String, Object>>> getReservationTrend(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "7") int days,
+            Authentication authentication) {
+        Long businessId = getBusinessId(authentication);
+        PopupResponse popup = popupService.findById(id);
+        if (!popup.getBusinessId().equals(businessId)) {
+            throw new IllegalArgumentException("본인이 등록한 팝업만 조회할 수 있습니다.");
+        }
+        return ResponseEntity.ok(popupVisitorAgeStatsService.getDailyReservationTrend(id, days));
+    }
+
+    // 예약 전환율(클릭 대비 예약률) - 본인 팝업만 조회 가능
+    @GetMapping("/{id}/conversion-rate")
+    public ResponseEntity<java.util.Map<String, Object>> getConversionRate(
+            @PathVariable Long id, Authentication authentication) {
+        Long businessId = getBusinessId(authentication);
+        PopupResponse popup = popupService.findById(id);
+        if (!popup.getBusinessId().equals(businessId)) {
+            throw new IllegalArgumentException("본인이 등록한 팝업만 조회할 수 있습니다.");
+        }
+        return ResponseEntity.ok(popupVisitorAgeStatsService.getConversionRate(id));
     }
 }

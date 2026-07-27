@@ -3,6 +3,7 @@ package popupteam.popupbackend.domain.popup.dto;
 import lombok.*;
 import popupteam.popupbackend.domain.popup.Popup;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter @Builder
 public class PopupResponse {
@@ -34,7 +35,7 @@ public class PopupResponse {
         return from(popup, java.util.Collections.emptyList());
     }
 
-    public static PopupResponse from(Popup popup) {
+    public static PopupResponse from(Popup popup, List<String> hashtags) {
         return PopupResponse.builder()
                 .id(popup.getId())
                 .businessId(popup.getBusiness().getId())
