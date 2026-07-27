@@ -19,6 +19,7 @@ public class PopupService {
     private final PopupSlotRepository popupSlotRepository;
     private final popupteam.popupbackend.domain.reservation.ReservationRepository reservationRepository;
     private final popupteam.popupbackend.common.geocoding.GeocodingService geocodingService;
+    private final popupteam.popupbackend.domain.notice.NoticeService noticeService;
 
 
     public PopupResponse create(Long businessId, PopupCreateRequest request) {
@@ -56,6 +57,7 @@ public class PopupService {
         popup.setReservationMode(ReservationMode.valueOf(request.getReservationMode()));
         popup.setAvgExperienceMinutes(request.getAvgExperienceMinutes());
         popup.setQueueMode(QueueMode.valueOf(request.getQueueMode()));
+        popup.setMaxPartySizePerTeam(request.getMaxPartySizePerTeam());
 
         return PopupResponse.from(popupRepository.save(popup));
     }
@@ -115,6 +117,9 @@ public class PopupService {
         if (request.getQueueMode() != null) {
             popup.setQueueMode(QueueMode.valueOf(request.getQueueMode()));
         }
+        if (request.getMaxPartySizePerTeam() != null) {
+            popup.setMaxPartySizePerTeam(request.getMaxPartySizePerTeam());
+        }
 
         popup.setUpdatedAt(java.time.LocalDateTime.now());
 
@@ -125,7 +130,10 @@ public class PopupService {
             });
         }
 
-        return PopupResponse.from(popupRepository.save(popup));
+        Popup saved = popupRepository.save(popup);
+        noticeService.notifyPopupUpdated(saved);
+
+        return PopupResponse.from(saved);
     }
 
     public void delete(Long id, Long businessId) {
@@ -189,6 +197,50 @@ public class PopupService {
         popup.setAdminEditNote(reason);
         popup.setUpdatedAt(java.time.LocalDateTime.now());
         popup.setStatusChangedAt(java.time.LocalDateTime.now());
+
+        return PopupResponse.from(popupRepository.save(popup));
+    }
+
+    // 게시중지 (관리자 전용, BEFOR/OPEN 상태에서만 가능)
+    public PopupResponse suspend(Long popupId, String reason) {
+        Popup popup = popupRepository.findById(popupId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 팝업입니다."));
+
+        if (popup.getStatus() != PopupStatus.BEFOR && popup.getStatus() != PopupStatus.OPEN) {
+            throw new IllegalArgumentException("오픈예정 또는 진행중 상태의 팝업만 게시중지할 수 있습니다.");
+        }
+
+        popup.setStatus(PopupStatus.SUSPENDED);
+        popup.setAdminEditNote(reason);
+        popup.setUpdatedAt(java.time.LocalDateTime.now());
+        popup.setStatusChangedAt(java.time.LocalDateTime.now());
+
+        return PopupResponse.from(popupRepository.save(popup));
+    }
+
+    // 게시중지 해제 (재개) - 날짜 기준으로 원래 있어야 할 상태로 복원
+    public PopupResponse resume(Long popupId) {
+        Popup popup = popupRepository.findById(popupId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 팝업입니다."));
+
+        if (popup.getStatus() != PopupStatus.SUSPENDED) {
+            throw new IllegalArgumentException("게시중지 상태의 팝업만 재개할 수 있습니다.");
+        }
+
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        PopupStatus restoredStatus;
+        if (now.isBefore(popup.getStartDate())) {
+            restoredStatus = PopupStatus.BEFOR;
+        } else if (now.isBefore(popup.getEndDate())) {
+            restoredStatus = PopupStatus.OPEN;
+        } else {
+            restoredStatus = PopupStatus.CLOSED;
+        }
+
+        popup.setStatus(restoredStatus);
+        popup.setAdminEditNote(null);
+        popup.setUpdatedAt(now);
+        popup.setStatusChangedAt(now);
 
         return PopupResponse.from(popupRepository.save(popup));
     }
