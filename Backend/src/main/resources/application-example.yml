@@ -78,3 +78,15 @@ spring:
   #   username: "myaccount@gmail.com"
   #   password: "<앱 비밀번호 16자리>"
 
+
+# ── 외부 API 키 (선택 — 없으면 해당 기능만 스킵) ──
+# 국세청 사업자 진위확인: data.go.kr "사업자등록정보 진위확인 및 상태조회" 활용신청 후 인증키
+nts:
+  api:
+    service-key: ""
+
+# 네이버 클라우드(NCP) Maps Geocoding: ncloud.com 콘솔 > Maps > Application 등록 후 발급
+naver:
+  maps:
+    client-id: ""
+    client-secret: ""

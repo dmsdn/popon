@@ -169,7 +169,8 @@ export function getTerms() {
 }
 
 // ── 관리자 인증 ──
-
+// ※ 7/28 정리: 관리자 UI가 adminfrontend(5175)로 분리되어 이 앱에서 사용처 없음 — 삭제 예정, 주석 보존.
+/*
 export type AdminLoginResponse = { accessToken: string; adminId: number; name: string };
 
 export function adminLogin(email: string, password: string) {
@@ -178,6 +179,8 @@ export function adminLogin(email: string, password: string) {
     body: JSON.stringify({ email, password }),
   });
 }
+*/
+
 
 // ── 팝업 ──
 
@@ -545,7 +548,9 @@ export function processReport(id: number) {
 }
 
 // ── 공간(venue) 마스터 ──
-
+// ※ 7/28 정리: 파트너 공간 기능이 7/24 멘토 피드백으로 프론트에서 삭제되어 사용처 없음.
+//   백엔드 venue 도메인 정리(팀 합의) 시 이 블록도 함께 삭제할 것 — 그때까지 주석 보존.
+/*
 export type Venue = {
   id: number;
   name: string;
@@ -572,6 +577,8 @@ export function updateVenue(id: number, data: Partial<Omit<Venue, "id" | "create
 export function deleteVenue(id: number) {
   return request<void>(`/api/admin/venues/${id}`, { method: "DELETE" });
 }
+*/
+
 
 // ── 예약자 명단 (해당 팝업 주최자 또는 관리자) ──
 

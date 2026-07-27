@@ -9,7 +9,8 @@ type AuthContextType = {
   user: User | null;
   // needsReconsent: 개인정보 동의 보관기간 만료 → 재동의 필요 (호출부에서 안내 후 businessReconsent 호출)
   login: (email: string, password: string) => Promise<{ needsReconsent: boolean }>;
-  adminLogin: (email: string, password: string) => Promise<void>;
+  // adminLogin: 관리자 UI가 adminfrontend(5175)로 분리되며 사용처 없음 — 7/28 주석처리 (삭제 예정)
+  // adminLogin: (email: string, password: string) => Promise<void>;
   logout: () => void;
 };
 
@@ -43,13 +44,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { needsReconsent: res.needsReconsent === true };
   };
 
-  const adminLogin = async (email: string, password: string) => {
-    const res = await api.adminLogin(email, password);
-    api.setToken(res.accessToken);
-    const u: User = { role: "admin", name: res.name, email, adminId: res.adminId };
-    localStorage.setItem(USER_KEY, JSON.stringify(u));
-    setUser(u);
-  };
+  // 7/28 주석처리 — 관리자 로그인은 adminfrontend에서만 수행 (이 앱에서 호출하는 화면 없음)
+  // const adminLogin = async (email: string, password: string) => {
+  //   const res = await api.adminLogin(email, password);
+  //   api.setToken(res.accessToken);
+  //   const u: User = { role: "admin", name: res.name, email, adminId: res.adminId };
+  //   localStorage.setItem(USER_KEY, JSON.stringify(u));
+  //   setUser(u);
+  // };
 
   const logout = () => {
     api.clearToken();
@@ -58,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, adminLogin, logout }}>
+    <AuthContext.Provider value={{ user, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
