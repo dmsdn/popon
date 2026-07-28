@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useState, useSyncExternalStore } from "re
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { notices } from "@/data/notices";
+import { getAnnouncements, type Announcement } from "@/lib/api/announcements";
 import { getMyReviews, toDisplayDate, type Review } from "@/lib/api/reviews";
 import { getPopup, type PopupDetail } from "@/lib/api/popups";
 import { getMyReservations, type Reservation } from "@/lib/api/reservations";
@@ -242,6 +242,27 @@ function MyPageContent() {
       cancelled = true;
     };
   }, [activeMenu, terms]);
+
+  // 공지사항 - 마찬가지로 로그인 여부 상관없는 공개 정보
+  const [announcements, setAnnouncements] = useState<Announcement[] | null>(null);
+
+  useEffect(() => {
+    if (activeMenu !== "공지사항" || announcements) return;
+    let cancelled = false;
+
+    getAnnouncements()
+      .then((list) => {
+        if (!cancelled) setAnnouncements(list);
+      })
+      .catch((err) => {
+        console.error("공지사항 조회 실패", err);
+        if (!cancelled) setAnnouncements([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeMenu, announcements]);
 
   useEffect(() => {
     if (!isLoggedIn || !customer) return;
@@ -831,16 +852,24 @@ if (queryMenu !== syncedQueryMenu) {
 
           {activeMenu === "공지사항" && (
             <div className="flex flex-col">
-              {notices.map((notice) => (
-                <Link
-                  key={notice.id}
-                  href={`/notice/${notice.id}`}
-                  className="block py-4 border-b border-gray-50"
-                >
-                  <p className="text-sm text-gray-800">{notice.title}</p>
-                  <p className="text-xs text-gray-400 mt-1">{notice.date}</p>
-                </Link>
-              ))}
+              {!announcements ? (
+                <p className="text-sm text-gray-400 py-16 text-center">불러오는 중...</p>
+              ) : announcements.length === 0 ? (
+                <p className="text-sm text-gray-400 py-16 text-center">등록된 공지사항이 없어요.</p>
+              ) : (
+                announcements.map((notice) => (
+                  <Link
+                    key={notice.id}
+                    href={`/notice/${notice.id}`}
+                    className="block py-4 border-b border-gray-50"
+                  >
+                    <p className="text-sm text-gray-800">{notice.title}</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {new Date(notice.createdAt).toLocaleDateString("ko-KR")}
+                    </p>
+                  </Link>
+                ))
+              )}
             </div>
           )}
 
