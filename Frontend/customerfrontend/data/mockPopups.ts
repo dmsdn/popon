@@ -13,6 +13,8 @@ export type PopupItem = {
 
 export type ReviewItem = {
   id: string;
+  reviewId: number; // [신규] 실제 후기 id (숫자). "id"는 "me-123"/"pop-456"처럼 화면 표시/구분용
+  // 접두어가 붙어있어서 신고 기능처럼 진짜 숫자 id가 필요한 곳에선 이걸 써야 해요.
   popupId: string; // 상세페이지(/popup/[id])로 이동할 때 씀
   popupName: string;
   nickname: string;
@@ -132,10 +134,10 @@ export const popularByKeyword: Record<string, PopupItem[]> = {
 export const popularPopups: PopupItem[] = popularByKeyword["전체"];
 
 export const reviews: ReviewItem[] = [
-  { id: "1", popupId: "2", popupName: "산리오 카페", nickname: "말랑젤리", content: "대기는 있었지만 인생샷 건졌어요! 굿즈 라인업도 다양해서 구경하는 재미가 있었고, 직원분들도 친절하게 안내해주셔서 좋았습니다. 다음에 또 방문하고 싶어요.", date: "26.07.10", rating: 4.9, photos: ["p1", "p2"], status: "진행중", region: "성수", category: "굿즈", reviewCount: 32 },
-  { id: "2", popupId: "1", popupName: "무신사 스탠다드", nickname: "성수러버", content: "굿즈 퀄리티가 예상보다 좋았어요", date: "26.07.09", rating: 4.7, status: "진행중", region: "성수", category: "패션", reviewCount: 18 },
-  { id: "3", popupId: "1", popupName: "포켓몬 스토어", nickname: "포켓몬마스터", content: "아이랑 가기 딱 좋아요 강추", date: "26.07.08", rating: 5.0, photos: ["p1"], status: "예정", region: "잠실", category: "굿즈", reviewCount: 7 },
-  { id: "4", popupId: "3", popupName: "탬버린즈", nickname: "향수덕후", content: "향 체험존이 인상적이었어요", date: "26.07.07", rating: 4.6, status: "진행중", region: "홍대", category: "뷰티", reviewCount: 20 },
+  { id: "1", reviewId: 1, popupId: "2", popupName: "산리오 카페", nickname: "말랑젤리", content: "대기는 있었지만 인생샷 건졌어요! 굿즈 라인업도 다양해서 구경하는 재미가 있었고, 직원분들도 친절하게 안내해주셔서 좋았습니다. 다음에 또 방문하고 싶어요.", date: "26.07.10", rating: 4.9, photos: ["p1", "p2"], status: "진행중", region: "성수", category: "굿즈", reviewCount: 32 },
+  { id: "2", reviewId: 2, popupId: "1", popupName: "무신사 스탠다드", nickname: "성수러버", content: "굿즈 퀄리티가 예상보다 좋았어요", date: "26.07.09", rating: 4.7, status: "진행중", region: "성수", category: "패션", reviewCount: 18 },
+  { id: "3", reviewId: 3, popupId: "1", popupName: "포켓몬 스토어", nickname: "포켓몬마스터", content: "아이랑 가기 딱 좋아요 강추", date: "26.07.08", rating: 5.0, photos: ["p1"], status: "예정", region: "잠실", category: "굿즈", reviewCount: 7 },
+  { id: "4", reviewId: 4, popupId: "3", popupName: "탬버린즈", nickname: "향수덕후", content: "향 체험존이 인상적이었어요", date: "26.07.07", rating: 4.6, status: "진행중", region: "홍대", category: "뷰티", reviewCount: 20 },
 ];
 
 // TODO(백엔드 연동): 실제 리뷰 생성 API로 교체해주세요.

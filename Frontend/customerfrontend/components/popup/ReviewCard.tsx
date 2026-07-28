@@ -9,7 +9,7 @@ import { ReportReviewModal } from "@/components/popup/ReportReviewModal";
 const CONTENT_PREVIEW_LENGTH = 60;
 
 export function ReviewCard({ review }: { review: ReviewItem }) {
-  const { id, nickname, content, date, rating, photos } = review;
+  const { id, reviewId, nickname, content, date, rating, photos } = review;
   const [expanded, setExpanded] = useState(false);
   const [showReport, setShowReport] = useState(false);
 
@@ -44,7 +44,7 @@ export function ReviewCard({ review }: { review: ReviewItem }) {
           신고
         </button>
       </div>
-      {showReport && <ReportReviewModal reviewId={Number(id)} onClose={() => setShowReport(false)} />}
+      {showReport && <ReportReviewModal reviewId={reviewId} onClose={() => setShowReport(false)} />}
 
       {photos && photos.length > 0 && (
         <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-hide">

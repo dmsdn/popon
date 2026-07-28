@@ -191,7 +191,7 @@ export default function MapPage() {
   return (
     <main className="relative w-full h-screen">
       <Script
-        src={`https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${clientId}`}
+        src={`https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${clientId}`}
         onReady={() => setSdkReady(true)}
       />
 
