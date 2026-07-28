@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Outlet, NavLink, Link, useNavigate, useLocation, ScrollRestoration } from "react-router";
 import {
-  LayoutDashboard, Store, PlusSquare, CalendarCheck, Users, Package,
+  LayoutDashboard, Store, PlusSquare, CalendarCheck, Users,
   BarChart3, Megaphone, Bell, ChevronDown, ExternalLink, LogOut, MessageSquare, X, UserRound,
 } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
+import { useAuth, isLocalSessionExpired } from "../context/AuthContext";
 import { getMyPopups, getMyInquiries, getMyNoticeInbox, markNoticeRead, getToken, Popup, InquiryItem, NoticeInboxItem } from "../lib/api";
 import { loadSeen, saveSeen, unseenCount } from "../lib/navBadges";
 
@@ -37,11 +37,8 @@ const MENU = [
       { to: "/seller/waiting", icon: Users, label: "대기열·인원 관제" },
     ],
   },
-  {
-    group: "굿즈·재고",
-    items: [{ to: "/seller/products", icon: Package, label: "상품/재고 관리" }],
-  },
   // 견적·계약·정산 그룹(견적·진행 단계, 파트너 공간)은 7/24 멘토 피드백으로 삭제됨
+  // 굿즈·재고 그룹(상품/재고 관리)은 7/29 기능 탈락 확정으로 삭제됨
   {
     group: "데이터",
     items: [{ to: "/seller/performance", icon: BarChart3, label: "성과 대시보드" }],
@@ -84,6 +81,8 @@ export default function SellerRoot() {
     const check = () => {
       const token = getToken();
       if (!token) return;
+      // 로컬 세션 3시간 초과 — 탭을 계속 열어 둔 경우도 여기서 잡는다 (재접속은 AuthContext.loadUser가 처리)
+      if (isLocalSessionExpired()) return expire();
       const exp = decodeJwtExp(token);
       if (exp !== null && exp * 1000 <= Date.now()) expire();
     };

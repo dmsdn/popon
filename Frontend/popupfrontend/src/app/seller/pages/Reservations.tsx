@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { Loader2, CheckCircle2, XCircle, Info } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -38,7 +38,10 @@ export default function Reservations() {
 
   const [tab, setTab] = useState<"slots" | "roster">("slots");
   const [popups, setPopups] = useState<Popup[]>([]);
-  const [popupId, setPopupId] = useState<number | null>(null);
+  // 7/29 — 상세페이지에서 ?popup=id 로 넘어오면 그 팝업을 바로 선택
+  const [searchParams] = useSearchParams();
+  const initialPopupId = Number(searchParams.get("popup")) || null;
+  const [popupId, setPopupId] = useState<number | null>(initialPopupId);
   const [slots, setSlots] = useState<PopupSlot[]>([]);
   const [roster, setRoster] = useState<ReservationDetail[]>([]);
   const [loading, setLoading] = useState(false);
@@ -69,7 +72,8 @@ export default function Reservations() {
     getMyPopups()
       .then((list) => {
         setPopups(list);
-        if (list.length > 0) setPopupId((prev) => prev ?? list[0].id);
+        // 쿼리로 받은 팝업이 내 목록에 없으면(잘못된 id 등) 첫 팝업으로 폴백
+        if (list.length > 0) setPopupId((prev) => (prev && list.some((p) => p.id === prev) ? prev : list[0].id));
       })
       .catch((e) => setError(e instanceof Error ? e.message : "팝업 목록을 불러오지 못했습니다."));
   }, [isBusiness]);
