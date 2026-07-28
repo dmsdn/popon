@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2, Send, ChevronDown, ChevronUp, CheckCircle2, Info, Flag } from "lucide-react";
 import {
   getAdminCsList, answerCs, getAdminInquiries, answerInquiry,
@@ -93,6 +93,25 @@ export default function CS() {
   };
 
   const rows: (CsItem | InquiryItem)[] = tab === "cs" ? csList : inquiries;
+
+  // 7/29 — 주최자 문의 재문의("RE: " 접두어)를 원 문의 스레드로 묶는다 (주최자센터 문의하기와 동일 규칙)
+  const rootTitleOf = (t: string) => t.replace(/^(RE:\s*)+/, "");
+  type InqThread = { root: InquiryItem; items: InquiryItem[] };
+  const inqThreads = useMemo<InqThread[]>(() => {
+    const map = new Map<string, InquiryItem[]>();
+    for (const r of inquiries) {
+      const key = `${r.companyName}::${rootTitleOf(r.title)}`; // 회사가 다른 동명 문의는 다른 스레드
+      const arr = map.get(key) ?? [];
+      arr.push(r);
+      map.set(key, arr);
+    }
+    return [...map.values()]
+      .map((items) => {
+        items.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+        return { root: items[0], items };
+      })
+      .sort((a, b) => b.items[b.items.length - 1].createdAt.localeCompare(a.items[a.items.length - 1].createdAt));
+  }, [inquiries]);
   const pendingCs = csList.filter((c) => c.status === "PENDING").length;
   const pendingInq = inquiries.filter((c) => c.status === "PENDING").length;
   const pendingRep = reports.filter((c) => c.status === "PENDING").length;
@@ -172,7 +191,7 @@ export default function CS() {
         </div>
       )}
 
-      {tab !== "report" && (
+      {tab === "cs" && (
       <div className="flex flex-col gap-2.5">
         {!loading && rows.length === 0 && !error && (
           <div className="bg-white border border-border rounded-sm px-4 py-10 text-center text-xs text-muted-foreground">
@@ -225,6 +244,81 @@ export default function CS() {
                       </button>
                     </div>
                   )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      )}
+
+      {/* 주최자 문의 탭 — 7/29 스레드형: 재문의가 새 카드가 아니라 원 문의 안에 이어짐 */}
+      {tab === "inquiry" && (
+      <div className="flex flex-col gap-2.5">
+        {!loading && inqThreads.length === 0 && !error && (
+          <div className="bg-white border border-border rounded-sm px-4 py-10 text-center text-xs text-muted-foreground">
+            접수된 문의가 없습니다.
+          </div>
+        )}
+        {inqThreads.map((th) => {
+          const open = openId === th.root.id;
+          const hasPending = th.items.some((i) => i.status === "PENDING");
+          return (
+            <div key={th.root.id} className="bg-white border border-border rounded-sm">
+              <button className="w-full px-4 py-3.5 flex items-center gap-3 text-left" onClick={() => { setOpenId(open ? null : th.root.id); setAnswer(""); }}>
+                <span className={`shrink-0 text-[11px] px-2 py-0.5 rounded-full border ${hasPending ? STATUS_BADGE.PENDING : STATUS_BADGE.ANSWERED}`}>
+                  {hasPending ? "답변 대기" : "답변 완료"}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-semibold truncate">
+                    {rootTitleOf(th.root.title)}
+                    {th.items.length > 1 && <span className="ml-1.5 text-[11px] font-normal text-accent">재문의 {th.items.length - 1}건</span>}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">주최자 · {th.root.companyName} · 접수 {fmt(th.root.createdAt)}</div>
+                </div>
+                {open ? <ChevronUp size={15} className="shrink-0 text-muted-foreground" /> : <ChevronDown size={15} className="shrink-0 text-muted-foreground" />}
+              </button>
+
+              {open && (
+                <div className="px-4 pb-4 border-t border-border pt-3 flex flex-col gap-3">
+                  {th.items.map((item, idx) => (
+                    <div key={item.id} className="flex flex-col gap-2">
+                      <div className="bg-secondary/60 rounded-sm p-3">
+                        <div className="text-[11px] text-muted-foreground mb-1">
+                          {idx === 0 ? "문의" : `재문의 ${idx}`} · {fmt(item.createdAt)}
+                        </div>
+                        <p className="text-[13px] whitespace-pre-wrap">{item.content}</p>
+                      </div>
+                      {item.status === "ANSWERED" ? (
+                        <div className="bg-emerald-50 border border-emerald-200 rounded-sm p-3 ml-4">
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 mb-1.5">
+                            <CheckCircle2 size={12} /> 답변 완료 · {item.answeredBy?.replace("admin:", "")} · {fmt(item.answeredAt)}
+                          </div>
+                          <p className="text-[13px] text-emerald-900 whitespace-pre-wrap">{item.answerContent}</p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-end ml-4">
+                          <label className="flex-1 flex flex-col gap-1.5">
+                            <span className="text-xs font-medium">{idx === 0 ? "답변 작성" : "재문의 답변 작성"}</span>
+                            <textarea
+                              rows={3}
+                              value={answer}
+                              onChange={(e) => setAnswer(e.target.value)}
+                              placeholder="문의에 대한 답변을 입력해 주세요."
+                              className="w-full px-3 py-2 text-[13px] border border-border rounded-sm resize-y focus:outline-none focus:border-accent"
+                            />
+                          </label>
+                          <button
+                            onClick={() => submitAnswer(item.id)}
+                            disabled={savingId === item.id}
+                            className="shrink-0 flex items-center justify-center gap-1.5 text-xs px-5 py-2.5 rounded-sm bg-accent text-white hover:bg-accent/90 disabled:opacity-50"
+                          >
+                            {savingId === item.id ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />} 답변 등록
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
