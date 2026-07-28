@@ -262,6 +262,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   //    지금도 일부는 화면 구조만 맞춘 자리예요. (description, capacity 등은 실제 값입니다)
   const myReviewsAsItems: ReviewItem[] = myReviewsForPopup.map((r) => ({
     id: `me-${r.id}`,
+    reviewId: r.id,
     popupId: String(popup.id),
     popupName: popup.title,
     nickname: "나의 후기",
@@ -276,6 +277,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     .filter((r) => !myReviewIds.has(r.id))
     .map((r) => ({
       id: `pop-${r.id}`,
+      reviewId: r.id,
       popupId: String(popup.id),
       popupName: popup.title,
       nickname: "방문자",
