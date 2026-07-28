@@ -72,6 +72,13 @@ public class Customer {
     @Column(name = "withdrawn_at")
     private LocalDateTime withdrawnAt;
 
+    // 관리자가 강제로 정지시킨 계정인지 여부 (본인 탈퇴와는 별개 개념)
+    @Column(nullable = false)
+    private Boolean suspended = false;
+
+    @Column(name = "suspended_at")
+    private LocalDateTime suspendedAt;
+
     @Column(name = "birth_date")
     private LocalDate birthDate;
 
