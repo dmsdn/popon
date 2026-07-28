@@ -2,11 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import {
   FileText, MapPin, Image as ImageIcon, AlignLeft, CalendarClock,
-  Ticket, Upload, Plus, X, Info, CheckCircle2,
+  Ticket, Upload, Plus, X, Info, CheckCircle2, Search, Loader2, AlertTriangle,
 } from "lucide-react";
 import { createPopup, updatePopup, getPopup, uploadPopupImage } from "../../lib/api";
 import { ensureSlots } from "../../lib/slotAutoGen";
 import { loadOpsMode, saveOpsMode, OpsMode } from "../../lib/walkinQueue";
+import {
+  loadPostcode, loadNaverMaps, geocodeAddress, searchAddressByNaver,
+  DaumPostcodeResult, NaverMap, AddressCandidate,
+} from "../../lib/externalScripts";
 
 // 운영 기간 기본값: 시작일 = 작성 당일, 종료일 = 2주 뒤
 const toDateStr = (d: Date) =>
@@ -101,6 +105,20 @@ export default function PopupRegister() {
   const [slotProgress, setSlotProgress] = useState(""); // 자동 생성 진행 안내
   const [directAddress, setDirectAddress] = useState("");
 
+  // ── 주소 검색(다음 우편번호) + 지도 미리보기(네이버 Dynamic Map) ──
+  const [zonecode, setZonecode] = useState("");           // 우편번호 (표시용, 서버 미전송)
+  const [coord, setCoord] = useState<{ lat: number; lng: number } | null>(null);
+  const [mapError, setMapError] = useState("");
+  const [geocoding, setGeocoding] = useState(false);
+  const mapBoxRef = useRef<HTMLDivElement>(null);         // 지도가 그려질 DOM
+  const mapRef = useRef<NaverMap | null>(null);           // 지도 인스턴스(재사용 — 매번 새로 만들지 않음)
+  const markerRef = useRef<unknown>(null);
+  // 다음 우편번호가 막힌 환경용 대체 검색 (네이버 지오코딩 기반)
+  const [fallbackOpen, setFallbackOpen] = useState(false);
+  const [fallbackQuery, setFallbackQuery] = useState("");
+  const [fallbackList, setFallbackList] = useState<AddressCandidate[]>([]);
+  const [fallbackBusy, setFallbackBusy] = useState(false);
+
   // 수정 모드: 기존 팝업 불러와서 폼 채우기
   useEffect(() => {
     if (!editId) return;
@@ -129,9 +147,105 @@ export default function PopupRegister() {
         if (p.location) setDirectAddress(p.location);
         if (p.capacity) setMaxCapacity(p.capacity);
         if (p.hashtags?.length) setTags(p.hashtags); // 7/27 서버 해시태그 복원
+        if (p.location) previewOnMap(p.location);    // 수정 모드도 지도에 기존 위치 표시
       })
       .catch((e) => setError(e instanceof Error ? e.message : "팝업 정보를 불러오지 못했습니다."));
   }, [editId]);
+
+  // 주소가 정해지면 좌표를 구해 지도에 핀을 찍는다.
+  // 서버도 등록 시 같은 주소를 지오코딩하므로, 여기 좌표는 "등록 전 확인용" 미리보기다.
+  const previewOnMap = async (address: string) => {
+    if (!address.trim()) return;
+    setMapError("");
+    setGeocoding(true);
+    try {
+      await loadNaverMaps();
+      const found = await geocodeAddress(address);
+      if (!found) {
+        setCoord(null);
+        setMapError("이 주소로는 좌표를 찾지 못했습니다. 도로명 주소로 다시 입력해 주세요.");
+        return;
+      }
+      setCoord(found);
+
+      const naver = window.naver!;
+      const center = new naver.maps.LatLng(found.lat, found.lng);
+      if (!mapRef.current && mapBoxRef.current) {
+        // 최초 1회만 지도 생성 — 이후에는 중심만 옮긴다
+        mapRef.current = new naver.maps.Map(mapBoxRef.current, { center, zoom: 16 });
+        markerRef.current = new naver.maps.Marker({ position: center, map: mapRef.current });
+      } else if (mapRef.current) {
+        mapRef.current.setCenter(center);
+        (markerRef.current as { setPosition: (p: unknown) => void } | null)?.setPosition(center);
+      }
+    } catch (e) {
+      setCoord(null);
+      setMapError(e instanceof Error ? e.message : "지도를 불러오지 못했습니다.");
+    } finally {
+      setGeocoding(false);
+    }
+  };
+
+  // 「주소 검색」 — 다음 우편번호 팝업을 띄우고, 고른 도로명 주소를 입력칸에 채운다.
+  // 사내망 등에서 daum.net이 막히면 네이버 지오코딩 기반 대체 검색으로 자동 전환한다.
+  const openAddressSearch = async () => {
+    setMapError("");
+    try {
+      await loadPostcode();
+    } catch {
+      setFallbackOpen(true);
+      setFallbackQuery(directAddress);
+      setMapError("우편번호 검색 서비스에 연결할 수 없어 지도 검색으로 전환했습니다. 도로명 주소를 입력해 주세요.");
+      return;
+    }
+    new window.daum!.Postcode({
+      oncomplete: (data: DaumPostcodeResult) => {
+        // 도로명이 없는 지역은 지번 주소로 대체
+        const base = data.roadAddress || data.jibunAddress;
+        const full = data.buildingName ? `${base} (${data.buildingName})` : base;
+        setDirectAddress(full);
+        setZonecode(data.zonecode);
+        previewOnMap(base); // 좌표 검색은 건물명 없는 순수 주소로
+      },
+    }).open();
+  };
+
+  // 대체 검색 실행 — 네이버 지오코딩이 돌려준 후보 목록을 보여준다
+  const runFallbackSearch = async () => {
+    if (!fallbackQuery.trim()) return;
+    setFallbackBusy(true);
+    setMapError("");
+    try {
+      const list = await searchAddressByNaver(fallbackQuery.trim());
+      setFallbackList(list);
+      if (list.length === 0) setMapError("검색 결과가 없습니다. 도로명 주소를 더 정확히 입력해 주세요.");
+    } catch (e) {
+      setMapError(e instanceof Error ? e.message : "주소 검색에 실패했습니다.");
+    } finally {
+      setFallbackBusy(false);
+    }
+  };
+
+  // 후보 선택 — 주소·좌표를 한 번에 확정 (지오코딩 재호출 불필요)
+  const pickFallback = (c: AddressCandidate) => {
+    const addr = c.roadAddress || c.jibunAddress;
+    setDirectAddress(addr);
+    setZonecode("");
+    setCoord({ lat: c.lat, lng: c.lng });
+    setFallbackOpen(false);
+    setFallbackList([]);
+    setMapError("");
+    const naver = window.naver;
+    if (!naver) return;
+    const center = new naver.maps.LatLng(c.lat, c.lng);
+    if (!mapRef.current && mapBoxRef.current) {
+      mapRef.current = new naver.maps.Map(mapBoxRef.current, { center, zoom: 16 });
+      markerRef.current = new naver.maps.Marker({ position: center, map: mapRef.current });
+    } else if (mapRef.current) {
+      mapRef.current.setCenter(center);
+      (markerRef.current as { setPosition: (p: unknown) => void } | null)?.setPosition(center);
+    }
+  };
 
   const handleSubmit = async () => {
     setError("");
@@ -350,11 +464,112 @@ export default function PopupRegister() {
           <div className="grid sm:grid-cols-[1fr_auto] gap-2 items-end">
             <div>
               <label className={labelCls}>주소 <Req /></label>
-              <input className={inputCls} placeholder="도로명 주소 입력" value={directAddress} onChange={(e) => setDirectAddress(e.target.value)} />
+              <input
+                className={inputCls}
+                placeholder="주소 검색 버튼을 눌러 선택하세요"
+                value={directAddress}
+                onChange={(e) => setDirectAddress(e.target.value)}
+                // 직접 입력한 경우에도 포커스가 빠지면 지도에 반영
+                onBlur={(e) => e.target.value.trim() && previewOnMap(e.target.value)}
+              />
             </div>
-            <button type="button" className="text-xs px-4 py-2 border border-border rounded-sm hover:border-accent hover:text-accent">주소 검색</button>
-            <div className="sm:col-span-2 h-36 bg-secondary rounded-sm flex items-center justify-center text-xs text-muted-foreground">
-              <MapPin size={14} className="mr-1.5" /> 주소 입력 시 지도 미리보기 (위경도 자동 변환)
+            <button
+              type="button"
+              onClick={openAddressSearch}
+              className="flex items-center gap-1.5 text-xs px-4 py-2 border border-border rounded-sm hover:border-accent hover:text-accent"
+            >
+              <Search size={13} /> 주소 검색
+            </button>
+
+            {/* 대체 검색 — 다음 우편번호를 못 쓸 때만 열린다 */}
+            {fallbackOpen && (
+              <div className="sm:col-span-2 border border-accent/40 bg-accent/5 rounded-sm p-3 flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    className={inputCls + " flex-1"}
+                    placeholder="예: 서울 마포구 양화로 45"
+                    value={fallbackQuery}
+                    onChange={(e) => setFallbackQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), runFallbackSearch())}
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={runFallbackSearch}
+                    disabled={fallbackBusy}
+                    className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-sm bg-accent text-white hover:bg-accent/90 disabled:opacity-50 shrink-0"
+                  >
+                    {fallbackBusy ? <Loader2 size={13} className="animate-spin" /> : <Search size={13} />} 검색
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setFallbackOpen(false); setFallbackList([]); }}
+                    className="text-muted-foreground hover:text-foreground shrink-0"
+                    title="닫기"
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+                {fallbackList.length > 0 && (
+                  <ul className="max-h-44 overflow-y-auto divide-y divide-border bg-white border border-border rounded-sm">
+                    {fallbackList.map((c, i) => (
+                      <li key={`${c.lat},${c.lng},${i}`}>
+                        <button
+                          type="button"
+                          onClick={() => pickFallback(c)}
+                          className="w-full text-left px-3 py-2 hover:bg-secondary/60 transition-colors"
+                        >
+                          <div className="text-[13px] font-medium">{c.roadAddress || c.jibunAddress}</div>
+                          {c.roadAddress && c.jibunAddress && (
+                            <div className="text-[11px] text-muted-foreground">지번 {c.jibunAddress}</div>
+                          )}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            {/* 선택 결과 — 주소·우편번호·좌표 */}
+            <div className="sm:col-span-2">
+              {directAddress ? (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 bg-secondary/60 border border-border rounded-sm text-xs">
+                  <span className="flex items-center gap-1.5 font-medium">
+                    <MapPin size={13} className="text-accent shrink-0" /> {directAddress}
+                  </span>
+                  {zonecode && <span className="text-muted-foreground">우편번호 {zonecode}</span>}
+                  {geocoding && (
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <Loader2 size={11} className="animate-spin" /> 좌표 변환 중…
+                    </span>
+                  )}
+                  {coord && (
+                    <span className="text-muted-foreground" style={{ fontFamily: "'DM Mono', monospace" }}>
+                      {coord.lat.toFixed(6)}, {coord.lng.toFixed(6)}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">
+                  주소를 선택하면 아래 지도에 위치가 표시되고, 등록 시 위경도 좌표로 저장됩니다.
+                </p>
+              )}
+              {mapError && (
+                <div className="mt-2 flex items-start gap-1.5 px-3 py-2 bg-amber-50 border border-amber-200 rounded-sm text-[11px] text-amber-800">
+                  <AlertTriangle size={12} className="shrink-0 mt-0.5" /> {mapError}
+                </div>
+              )}
+            </div>
+
+            {/* 지도 — 좌표를 찾기 전에는 안내 문구, 찾으면 이 자리에 네이버 지도가 그려진다 */}
+            <div className="sm:col-span-2 relative h-56 bg-secondary rounded-sm overflow-hidden">
+              <div ref={mapBoxRef} className="absolute inset-0" />
+              {!coord && (
+                <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground pointer-events-none">
+                  <MapPin size={14} className="mr-1.5" /> 주소를 선택하면 지도가 표시됩니다
+                </div>
+              )}
             </div>
           </div>
         </Section>
