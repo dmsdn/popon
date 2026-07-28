@@ -20,6 +20,8 @@ public class PopupUpdateRequest {
     private String queueMode; // "PRERESERVATION_ONLY" / "ONSITE_WAITING_ONLY" / "BOTH"
     private List<String> hashtags;
 
+    private String notice; // 팝업 상세페이지 공지사항
+
     @Min(1)
     private Integer maxPartySizePerTeam;
 
