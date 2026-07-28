@@ -68,6 +68,13 @@ file:
   # 배포 시에는 실제 도메인으로 바꿔야 한다 (기존 행은 별도 일괄 치환 필요).
   base-url: http://localhost:8080/uploads
 
+app:
+  # 개발용 로그인(소셜 없이 테스트 계정 발급) — 로컬에서만 true. 운영 배포 시 반드시 false/삭제.
+  dev-login:
+    enabled: true
+  # 웨이팅 등록 문자/메일에 넣는 입장 QR 링크의 앞부분 (WaitingQueueService가 주입 — ※ 없으면 부팅 실패)
+  qr-base-url: http://localhost:5173
+
 # ── 개인 로컬 오버라이드 예시 ──
 # 이 파일을 같은 폴더에 application-local.yml 로 복사한 뒤 본인 값으로 수정하세요.
 # application-local.yml은 gitignore 대상이라 커밋되지 않습니다 (비밀번호를 application.yml에 직접 고치면 커밋 사고 위험).
