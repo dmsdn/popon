@@ -58,12 +58,11 @@ export function changeReservation(reservationId: number, customerId: number, pay
   });
 }
 
-// ⚠️ 백엔드 ReservationService.cancel()이 "사업자(business) 계정"인지만 확인하고 있어서,
-// 고객이 자기 예약을 취소하는 용도로는 아직 못 써요 (호출하면 "존재하지 않는 사업자입니다"
-// 에러가 나요). 고객이 취소할 수 있게 하려면 백엔드에서 예약 소유자(customerId) 검증
-// 분기를 추가해줘야 해요 - 지금은 그대로 연결만 해두고, 실패 메시지로 안내합니다.
-export function cancelReservation(reservationId: number, cancelReason?: string) {
-  return apiFetch<Reservation>(`/api/reservations/${reservationId}/cancel`, {
+// [수정] 백엔드에 고객 본인 취소 전용 메서드(cancelByCustomer)가 추가됐어요.
+// 다만 customerId를 쿼리파라미터로 넘겨야 그 경로를 타고, 안 넘기면 여전히
+// 예전처럼 "사업자(business) 계정"인지 확인하는 경로로 빠져서 실패해요.
+export function cancelReservation(reservationId: number, customerId: number, cancelReason?: string) {
+  return apiFetch<Reservation>(`/api/reservations/${reservationId}/cancel?customerId=${customerId}`, {
     method: "PATCH",
     body: JSON.stringify({ cancelReason }),
   });

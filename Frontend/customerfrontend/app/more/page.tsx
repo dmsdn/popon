@@ -5,13 +5,14 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Footer } from "@/components/layout/Footer";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { REGIONS, CATEGORIES, getPreferredRegions, getPreferredCategories } from "@/lib/preferences";
+import { REGIONS, getPreferredRegions } from "@/lib/preferences";
+import { getKeywords, getMyInterests, type Keyword } from "@/lib/api/customer";
 
 // 관심으로 설정해둔 것부터 위로 오게 정렬 (나머지는 원래 순서 유지)
-function sortByPreferred(all: string[], preferred: string[]): string[] {
+function sortByPreferred<T>(all: T[], isPreferred: (item: T) => boolean): T[] {
   return [...all].sort((a, b) => {
-    const aPreferred = preferred.includes(a);
-    const bPreferred = preferred.includes(b);
+    const aPreferred = isPreferred(a);
+    const bPreferred = isPreferred(b);
     if (aPreferred === bPreferred) return 0;
     return aPreferred ? -1 : 1;
   });
@@ -22,15 +23,31 @@ export default function MorePage() {
   const { isLoggedIn, customer } = useAuth();
 
   const [preferredRegions, setPreferredRegions] = useState<string[]>([]);
-  const [preferredCategories, setPreferredCategories] = useState<string[]>([]);
+  // [수정] CATEGORIES(하드코딩 목록)와 getPreferredCategories(죽은 로컬 저장소)를
+  // 쓰고 있었어요 - 실제 키워드는 이제 관리자가 추가/삭제하는 백엔드 목록이라
+  // 하드코딩된 목록은 실제 값과 어긋날 수 있고, 관심 표시도 항상 비어 보였어요.
+  const [allKeywords, setAllKeywords] = useState<Keyword[]>([]);
+  const [myKeywordIds, setMyKeywordIds] = useState<number[]>([]);
 
   useEffect(() => {
     setPreferredRegions(getPreferredRegions());
-    setPreferredCategories(getPreferredCategories());
   }, []);
 
-  const sortedCategories = sortByPreferred(CATEGORIES, preferredCategories);
-  const sortedRegions = sortByPreferred(REGIONS, preferredRegions);
+  useEffect(() => {
+    getKeywords()
+      .then(setAllKeywords)
+      .catch((err) => console.error("키워드 목록 조회 실패", err));
+  }, []);
+
+  useEffect(() => {
+    if (!customer) return;
+    getMyInterests()
+      .then(({ keywordIds }) => setMyKeywordIds(keywordIds))
+      .catch((err) => console.error("내 관심 키워드 조회 실패", err));
+  }, [customer]);
+
+  const sortedKeywords = sortByPreferred(allKeywords, (k) => myKeywordIds.includes(k.id));
+  const sortedRegions = sortByPreferred(REGIONS, (r) => preferredRegions.includes(r));
 
   return (
     <main className="w-full mobile:max-w-[1000px] mobile:mx-auto pb-16 mobile:pb-0">
@@ -72,28 +89,30 @@ export default function MorePage() {
       </section>
 
       {/* 카테고리별 바로가기 - 관심 카테고리로 설정해둔 게 있으면 맨 위로 */}
-      <section className="px-4 mobile:px-8 py-2 border-b border-gray-100">
-        <h2 className="text-sm font-semibold mb-1 mt-4">카테고리별 바로가기</h2>
-        <nav className="flex flex-col">
-          {sortedCategories.map((category, i) => (
-            <Link
-              key={category}
-              href={`/search?q=${encodeURIComponent(category)}`}
-              className={`flex items-center justify-between py-3.5 text-sm text-gray-700 ${
-                i < sortedCategories.length - 1 ? "border-b border-gray-50" : ""
-              }`}
-            >
-              <span className="flex items-center gap-1.5">
-                {category}
-                {preferredCategories.includes(category) && (
-                  <span className="text-[10px] text-gray-400">관심</span>
-                )}
-              </span>
-              <span className="text-gray-300">›</span>
-            </Link>
-          ))}
-        </nav>
-      </section>
+      {sortedKeywords.length > 0 && (
+        <section className="px-4 mobile:px-8 py-2 border-b border-gray-100">
+          <h2 className="text-sm font-semibold mb-1 mt-4">카테고리별 바로가기</h2>
+          <nav className="flex flex-col">
+            {sortedKeywords.map((kw, i) => (
+              <Link
+                key={kw.id}
+                href={`/search?q=${encodeURIComponent(kw.name)}`}
+                className={`flex items-center justify-between py-3.5 text-sm text-gray-700 ${
+                  i < sortedKeywords.length - 1 ? "border-b border-gray-50" : ""
+                }`}
+              >
+                <span className="flex items-center gap-1.5">
+                  {kw.name}
+                  {myKeywordIds.includes(kw.id) && (
+                    <span className="text-[10px] text-gray-400">관심</span>
+                  )}
+                </span>
+                <span className="text-gray-300">›</span>
+              </Link>
+            ))}
+          </nav>
+        </section>
+      )}
 
       {/* 지역별 보기 - 관심 지역으로 설정해둔 게 있으면 맨 위로 */}
       <section className="px-4 mobile:px-8 py-2">

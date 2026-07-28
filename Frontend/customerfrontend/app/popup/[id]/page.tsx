@@ -17,11 +17,14 @@ import {
   getPopup,
   getPopupSlots,
   getPopupLiveStatus,
+  getPopupWaitTime,
+  getQueueBoardCount,
   getPopupImages,
   searchPopups,
   type PopupDetail,
   type PopupSlot,
   type PopupLiveStatus,
+  type PopupWaitTime,
   type PopupImage,
 } from "@/lib/api/popups";
 import { getHotPlacesForRegion, type HotPlace } from "@/data/hotplaces";
@@ -60,6 +63,8 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   const [myReviewsForPopup, setMyReviewsForPopup] = useState<Review[]>([]);
   const [hotPlaces, setHotPlaces] = useState<HotPlace[]>([]);
   const [liveStatus, setLiveStatus] = useState<PopupLiveStatus | null>(null);
+  const [waitTime, setWaitTime] = useState<PopupWaitTime | null>(null);
+  const [queueCount, setQueueCount] = useState<number | null>(null);
   const [images, setImages] = useState<PopupImage[]>([]);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [waitingTeams, setWaitingTeams] = useState<number | null>(null);
@@ -135,6 +140,39 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         if (!cancelled) setLiveStatus(status);
       })
       .catch((err) => console.error("실시간 혼잡도 조회 실패", err));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [popup]);
+
+  // [신규] 예상 대기시간 - "지금 가면 대략 N분 대기"를 보여줍니다.
+  useEffect(() => {
+    if (!popup) return;
+    let cancelled = false;
+
+    getPopupWaitTime(popup.id)
+      .then((data) => {
+        if (!cancelled) setWaitTime(data);
+      })
+      .catch((err) => console.error("예상 대기시간 조회 실패", err));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [popup]);
+
+  // [신규] 통합 대기열 총 인원 (사전예약자+현장웨이팅자 합산). 개인정보 노출 우려로
+  // totalCount만 받아와요 (lib/api/popups.ts 주석 참고).
+  useEffect(() => {
+    if (!popup) return;
+    let cancelled = false;
+
+    getQueueBoardCount(popup.id)
+      .then((data) => {
+        if (!cancelled) setQueueCount(data.totalCount);
+      })
+      .catch((err) => console.error("통합 대기열 조회 실패", err));
 
     return () => {
       cancelled = true;
@@ -290,6 +328,30 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           )}
         </div>
+
+        {/* [신규] 예상 대기시간 - "지금 가면 대략 N분 대기" */}
+        {waitTime && (
+          <div className="border border-gray-200 rounded-lg px-4 py-4 mb-8">
+            <p className="text-sm font-semibold mb-1">예상 대기시간</p>
+            {waitTime.reservationMode === "FREE" && waitTime.freeModeResult ? (
+              <p className="text-xs text-gray-400">
+                지금 방문하면 약 {Math.round(waitTime.freeModeResult.estimatedWaitMinutes)}분 대기 예상
+                (현재 {waitTime.freeModeResult.reservedCount}/{waitTime.freeModeResult.capacity}명)
+              </p>
+            ) : waitTime.slots && waitTime.slots.length > 0 ? (
+              <p className="text-xs text-gray-400">
+                가장 빠른 시간대({waitTime.slots[0].startTime.slice(0, 5)}) 기준 약{" "}
+                {Math.round(waitTime.slots[0].estimatedWaitMinutes)}분 대기 예상
+              </p>
+            ) : (
+              <p className="text-xs text-gray-400">예약 가능한 시간대가 없어요.</p>
+            )}
+            {/* 사전예약자+현장웨이팅자를 합친 실제 총 대기/체류 인원 */}
+            {queueCount !== null && (
+              <p className="text-xs text-gray-400 mt-1">현재 대기·체류 중인 인원 총 {queueCount}명</p>
+            )}
+          </div>
+        )}
 
         {showReservation && (
           <ReservationModal
