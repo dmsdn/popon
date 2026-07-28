@@ -4,7 +4,7 @@ import { HorizontalCarousel } from "@/components/ui/HorizontalCarousel";
 
 export function CategoryIconList() {
   return (
-    <div className="px-4 mobile:px-8 py-4 mobile:py-6">
+    <div className="px-4 mobile:px-8 pt-4 mobile:pt-6 mb-14 mobile:mb-16">
       <HorizontalCarousel className="gap-5 mobile:gap-8">
         {categories.map((name, i) => (
           <Link

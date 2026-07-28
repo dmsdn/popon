@@ -169,7 +169,8 @@ export function getTerms() {
 }
 
 // ── 관리자 인증 ──
-
+// ※ 7/28 정리: 관리자 UI가 adminfrontend(5175)로 분리되어 이 앱에서 사용처 없음 — 삭제 예정, 주석 보존.
+/*
 export type AdminLoginResponse = { accessToken: string; adminId: number; name: string };
 
 export function adminLogin(email: string, password: string) {
@@ -178,6 +179,7 @@ export function adminLogin(email: string, password: string) {
     body: JSON.stringify({ email, password }),
   });
 }
+*/
 
 // ── 팝업 ──
 
@@ -203,6 +205,7 @@ export type Popup = {
   queueMode: "PRERESERVATION_ONLY" | "ONSITE_WAITING_ONLY" | "BOTH" | null; // 운영 방식
   statusChangedAt: string | null; // 관리자가 상태를 마지막으로 확정한 일시 (승인/반려/게시중지)
   adminEditNote: string | null;   // 반려·게시중지 사유 (승인 시 서버가 null로 초기화)
+  hashtags: string[] | null;      // 7/27 jmy — 등록/수정 시 전송, 응답에 포함 (구 데이터는 null/[])
 };
 
 export function getPopups(params?: { location?: string; status?: string; keyword?: string }) {
@@ -225,6 +228,7 @@ export function createPopup(data: {
   startDate?: string;
   endDate?: string;
   capacity?: number; // 사실상 필수 — areaSqm도 안 보내면 서버가 400 (PopupService.create)
+  hashtags?: string[]; // 7/27 jmy — 검색 노출용 해시태그
   reservationMode: "SLOT" | "FREE"; // 백엔드 필수
   avgExperienceMinutes: number; // 백엔드 필수 (슬롯 단위·분)
   queueMode: "PRERESERVATION_ONLY" | "ONSITE_WAITING_ONLY" | "BOTH"; // 백엔드 필수 (7/24 jsw DTO 추가 — 미전송 시 400)
@@ -242,6 +246,7 @@ export function updatePopup(
     endDate?: string;
     status?: PopupStatusCode;
     capacity?: number;
+    hashtags?: string[];
     reservationMode?: "SLOT" | "FREE";
     avgExperienceMinutes?: number;
     queueMode?: "PRERESERVATION_ONLY" | "ONSITE_WAITING_ONLY" | "BOTH"; // 수정 시 선택 (7/24 jsw DTO 추가)
@@ -545,7 +550,9 @@ export function processReport(id: number) {
 }
 
 // ── 공간(venue) 마스터 ──
-
+// ※ 7/28 정리: 파트너 공간 기능이 7/24 멘토 피드백으로 프론트에서 삭제되어 사용처 없음.
+//   백엔드 venue 도메인 정리(팀 합의) 시 이 블록도 함께 삭제할 것 — 그때까지 주석 보존.
+/*
 export type Venue = {
   id: number;
   name: string;
@@ -572,6 +579,7 @@ export function updateVenue(id: number, data: Partial<Omit<Venue, "id" | "create
 export function deleteVenue(id: number) {
   return request<void>(`/api/admin/venues/${id}`, { method: "DELETE" });
 }
+*/
 
 // ── 예약자 명단 (해당 팝업 주최자 또는 관리자) ──
 
@@ -612,4 +620,63 @@ export function checkinByQr(qrToken: string) {
     method: "POST",
     body: JSON.stringify({ qrToken }),
   });
+}
+
+// ── 내 팝업 성과 통계 (7/27 jmy — 방문자·예약 분석 6종, 본인 팝업만) ──
+
+export type DailyCount = { date: string; visitorCount?: number; reservationCount?: number };
+export type VisitorSummary = { totalVisitors: number; dailyAverage: number };
+export type ConversionRate = { reservationCount: number; clickCount: number; conversionRate: number };
+
+// 연령대별 방문자 — { "10대": 0, "20대": 3, ..., "미상": 1 }
+export function getVisitorAgeStats(popupId: number | string) {
+  return request<Record<string, number>>(`/api/popups/${popupId}/visitor-age-stats`);
+}
+// 성별 방문자 — { "남성": n, "여성": n, "미상": n }
+export function getVisitorGenderStats(popupId: number | string) {
+  return request<Record<string, number>>(`/api/popups/${popupId}/visitor-gender-stats`);
+}
+export function getVisitorTrend(popupId: number | string, days = 7) {
+  return request<DailyCount[]>(`/api/popups/${popupId}/visitor-trend?days=${days}`);
+}
+export function getVisitorSummary(popupId: number | string) {
+  return request<VisitorSummary>(`/api/popups/${popupId}/visitor-summary`);
+}
+export function getReservationTrend(popupId: number | string, days = 7) {
+  return request<DailyCount[]>(`/api/popups/${popupId}/reservation-trend?days=${days}`);
+}
+export function getConversionRate(popupId: number | string) {
+  return request<ConversionRate>(`/api/popups/${popupId}/conversion-rate`);
+}
+
+// ── 긴급공지 (내 팝업 → 소비자 발송) + 주최자 공지 수신함 ──
+
+export type NoticeTarget = "ALL_RESERVED" | "TODAY_RESERVED" | "ONSITE_WAITING" | "WISHLIST";
+export type NoticeItem = {
+  id: number; popupId: number; category: string;
+  title: string; content: string;
+  recipientCount: number; sentBy: string; sentAt: string;
+};
+
+// 발송 — 서버가 수신자 집계 후 수신함(notice_recipient)에 적재. 제목은 「[긴급공지] 팝업명」 형식
+export function sendPopupNotice(popupId: number | string, data: { targets: NoticeTarget[]; title: string; content: string }) {
+  return request<NoticeItem>(`/api/popups/${popupId}/notices`, { method: "POST", body: JSON.stringify(data) });
+}
+export function getPopupNotices(popupId: number | string) {
+  return request<NoticeItem[]>(`/api/popups/${popupId}/notices`);
+}
+
+// 주최자가 받은 공지(관리자 발송분) — 벨 알림 3번째 원천
+export type NoticeInboxItem = {
+  recipientId: number; noticeId: number; popupId: number | null; popupTitle: string | null;
+  category: string; title: string; content: string; sentAt: string; read: boolean;
+};
+export function getMyNoticeInbox() {
+  return request<NoticeInboxItem[]>("/api/business/notices/my");
+}
+export function getMyNoticeUnreadCount() {
+  return request<{ count: number }>("/api/business/notices/my/unread-count");
+}
+export function markNoticeRead(recipientId: number) {
+  return request<void>(`/api/business/notices/my/${recipientId}/read`, { method: "PATCH" });
 }

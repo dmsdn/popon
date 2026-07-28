@@ -12,6 +12,9 @@ interface ReservationModalProps {
   minDate: Date;
   maxDate: Date;
   capacity?: number;
+  // [신규] 예약 생성과 일정 변경이 같은 모달을 재사용하는데, 버튼이 항상 "예약하기"라고만
+  // 떠서 일정 변경 화면에서도 새로 예약하는 것처럼 보였어요. mode로 문구를 구분합니다.
+  mode?: "create" | "change";
 }
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -47,6 +50,7 @@ export function ReservationModal({
   minDate,
   maxDate,
   capacity,
+  mode = "create",
 }: ReservationModalProps) {
   const today = useMemo(() => startOfDay(new Date()), []);
   const earliestSelectable = useMemo(
@@ -122,9 +126,10 @@ export function ReservationModal({
     : selectedTime
     ? ` ${selectedTime}`
     : "";
+  const actionWord = mode === "change" ? "예약 변경하기" : "예약하기";
   const buttonLabel = canSubmit
-    ? `${dateLabel}${timeLabel} ${count}인 예약하기`
-    : "00월 00일 0시 0인 예약하기";
+    ? `${dateLabel}${timeLabel} ${count}인 ${actionWord}`
+    : `00월 00일 0시 0인 ${actionWord}`;
 
   const handleSubmit = () => {
     if (!selectedDate) return;

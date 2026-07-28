@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ReviewItem } from "@/data/mockPopups";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
+import { StarRatingDisplay } from "@/components/ui/StarRatingDisplay";
 import { ReviewDetailModal } from "./ReviewDetailModal";
 
 /**
@@ -48,8 +49,8 @@ export function ReviewCard(review: ReviewItem) {
                 <span className="text-gray-400"> · 후기 {reviewCount}</span>
               )}
             </span>
-            <span className="text-xs font-medium text-gray-700 flex-none ml-1">
-              ⭐ {rating.toFixed(1)} / 5.0
+            <span className="flex items-center gap-1 text-xs font-medium text-gray-700 flex-none ml-1">
+              <StarRatingDisplay rating={rating} size={12} /> {rating.toFixed(1)} / 5.0
             </span>
           </div>
 

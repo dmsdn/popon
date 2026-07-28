@@ -128,6 +128,7 @@ export default function PopupRegister() {
         if (p.avgExperienceMinutes) setSlotUnit(p.avgExperienceMinutes);
         if (p.location) setDirectAddress(p.location);
         if (p.capacity) setMaxCapacity(p.capacity);
+        if (p.hashtags?.length) setTags(p.hashtags); // 7/27 서버 해시태그 복원
       })
       .catch((e) => setError(e instanceof Error ? e.message : "팝업 정보를 불러오지 못했습니다."));
   }, [editId]);
@@ -147,6 +148,8 @@ export default function PopupRegister() {
       endDate: `${endDate}T${closeTime}:00`,
       // 서버가 capacity·areaSqm 둘 다 없으면 400을 던지므로 (PopupService.create) capacity는 필수 전송
       capacity: maxCapacity,
+      // 7/27 jmy 해시태그 — 화면의 태그 입력을 서버에 실저장 (소비자 검색 노출)
+      hashtags: tags,
       reservationMode: (useReservation ? "SLOT" : "FREE") as "SLOT" | "FREE",
       avgExperienceMinutes: slotUnit,
       // 7/24 jsw DTO 추가분 — 서버 필수 필드. 화면의 운영 방식(OpsMode)을 서버 enum으로 변환해 전송
