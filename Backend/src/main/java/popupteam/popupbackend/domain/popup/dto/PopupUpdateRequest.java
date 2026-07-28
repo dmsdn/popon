@@ -27,4 +27,9 @@ public class PopupUpdateRequest {
 
     private List<Long> keywordIds; // 표준 키워드 ID 목록 (선택)
 
+    // null이면 기존 링크 유지
+    // 빈 배열이면 기존 링크 전체 삭제
+    // 값이 있으면 전달받은 목록으로 교체
+    private List<PopupSnsLinkRequest> snsLinks;
+
 }

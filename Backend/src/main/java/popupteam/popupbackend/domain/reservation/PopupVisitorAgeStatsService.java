@@ -1,5 +1,5 @@
 package popupteam.popupbackend.domain.reservation;
-
+import popupteam.popupbackend.domain.consumer.Customer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -52,26 +52,33 @@ public class PopupVisitorAgeStatsService {
         return "50대 이상";
     }
 
-    public Map<String, Long> getGenderDistribution(Long popupId) {
-        List<popupteam.popupbackend.domain.consumer.Customer.Gender> genders =
-                reservationRepository.findGendersOfCheckedInVisitors(popupId);
+public Map<String, Long> getGenderDistribution(Long popupId) {
+    List<Customer.Gender> genders =
+            reservationRepository.findGendersOfCheckedInVisitors(popupId);
 
-        Map<String, Long> distribution = new LinkedHashMap<>();
-        distribution.put("남성", 0L);
-        distribution.put("여성", 0L);
-        distribution.put("미상", 0L);
+    Map<String, Long> distribution = new LinkedHashMap<>();
+    distribution.put("남성", 0L);
+    distribution.put("여성", 0L);
+    distribution.put("미상", 0L);
 
-        for (popupteam.popupbackend.domain.consumer.Customer.Gender gender : genders) {
-            String bucket = switch (gender) {
+    for (Customer.Gender gender : genders) {
+        String bucket;
+
+        if (gender == null) {
+            bucket = "미상";
+        } else {
+            bucket = switch (gender) {
                 case MALE -> "남성";
                 case FEMALE -> "여성";
-                default -> "미상";
+                case UNKNOWN -> "미상";
             };
-            distribution.merge(bucket, 1L, Long::sum);
         }
 
-        return distribution;
+        distribution.merge(bucket, 1L, Long::sum);
     }
+
+    return distribution;
+}
 
     // 최근 며칠간 날짜별 방문자 수 추이. 방문자가 0명인 날짜도 0으로 채워서 반환 (그래프 끊기지 않게)
     public java.util.List<java.util.Map<String, Object>> getDailyVisitorTrend(Long popupId, int days) {

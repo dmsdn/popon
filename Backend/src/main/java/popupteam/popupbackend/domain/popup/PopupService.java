@@ -24,6 +24,7 @@ public class PopupService {
     private final popupteam.popupbackend.domain.consumer.RegionRepository regionRepository;
     private final PopupKeywordRepository popupKeywordRepository;
     private final popupteam.popupbackend.domain.consumer.KeywordRepository keywordRepository;
+    private final PopupSnsLinkRepository popupSnsLinkRepository;
 
 
     public PopupResponse create(Long businessId, PopupCreateRequest request) {
@@ -68,8 +69,10 @@ public class PopupService {
         Popup saved = popupRepository.save(popup);
         List<String> hashtags = saveHashtags(saved.getId(), request.getHashtags());
         savePopupKeywords(saved.getId(), request.getKeywordIds());
+        List<PopupSnsLinkResponse> snsLinks =
+        replaceSnsLinks(saved, request.getSnsLinks());
 
-        return PopupResponse.from(saved, hashtags, getPopupKeywordNames(saved.getId()));
+        return PopupResponse.from(saved, hashtags, getPopupKeywordNames(saved.getId()), snsLinks);
     }
 
     // 해시태그 저장 공용 로직: 기존 거 지우고 새 목록으로 덮어씀 (null이면 손 안 대고 기존 값 그대로 반환)
@@ -109,7 +112,9 @@ public class PopupService {
         List<String> hashtags = popupHashtagRepository.findByPopupIdOrderBySortOrderAsc(id).stream()
                 .map(PopupHashtag::getTag)
                 .collect(Collectors.toList());
-        return PopupResponse.from(popup, hashtags, getPopupKeywordNames(id));
+
+        List<PopupSnsLinkResponse> snsLinks = getSnsLinks(id);
+        return PopupResponse.from(popup, hashtags, getPopupKeywordNames(id), snsLinks);
     }
 
     public PopupResponse update(Long id, Long businessId, PopupUpdateRequest request) {
@@ -172,8 +177,15 @@ public class PopupService {
         if (request.getKeywordIds() != null) {
             savePopupKeywords(id, request.getKeywordIds());
         }
+        List<PopupSnsLinkResponse> snsLinks;
 
-        return PopupResponse.from(saved, hashtags, getPopupKeywordNames(id));
+        if (request.getSnsLinks() != null) {
+        snsLinks = replaceSnsLinks(saved, request.getSnsLinks());
+        } else {
+        snsLinks = getSnsLinks(id);
+        }
+
+        return PopupResponse.from(saved, hashtags, getPopupKeywordNames(id), snsLinks);
     }
 
     public void delete(Long id, Long businessId) {
@@ -194,6 +206,7 @@ public class PopupService {
         popupSlotRepository.deleteAll(popupSlotRepository.findByPopupId(id));
         popupImageRepository.deleteAll(popupImageRepository.findByPopupIdOrderBySortOrder(id));
         popupHashtagRepository.deleteByPopupId(id);
+        popupSnsLinkRepository.deleteByPopup_Id(id);
 
         popupRepository.delete(popup);
     }
@@ -363,4 +376,54 @@ public class PopupService {
                 .map(PopupResponse::from)
                 .toList();
     }
+
+    private List<PopupSnsLinkResponse> replaceSnsLinks(
+        Popup popup,
+        List<PopupSnsLinkRequest> requests
+) {
+    popupSnsLinkRepository.deleteByPopup_Id(popup.getId());
+
+    if (requests == null || requests.isEmpty()) {
+        return java.util.Collections.emptyList();
+    }
+
+    int defaultOrder = 0;
+
+    for (PopupSnsLinkRequest request : requests) {
+        if (request == null) {
+            continue;
+        }
+
+        PopupSnsLink link = new PopupSnsLink();
+        link.setPopup(popup);
+        link.setPlatform(request.getPlatform());
+        link.setUrl(request.getUrl().trim());
+
+        if (request.getDisplayName() != null
+                && !request.getDisplayName().isBlank()) {
+            link.setDisplayName(request.getDisplayName().trim());
+        }
+
+        link.setSortOrder(
+                request.getSortOrder() != null
+                        ? request.getSortOrder()
+                        : defaultOrder
+        );
+
+        popupSnsLinkRepository.save(link);
+        defaultOrder++;
+    }
+
+    return getSnsLinks(popup.getId());
+}
+
+private List<PopupSnsLinkResponse> getSnsLinks(Long popupId) {
+    return popupSnsLinkRepository
+            .findByPopup_IdOrderBySortOrderAscIdAsc(popupId)
+            .stream()
+            .map(PopupSnsLinkResponse::from)
+            .toList();
+}
+
+    
 }
