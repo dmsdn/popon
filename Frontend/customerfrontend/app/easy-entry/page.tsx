@@ -8,6 +8,7 @@ import { BottomTabBar } from "@/components/layout/BottomTabBar";
 import { searchPopups, getQueueBoardCount } from "@/lib/api/popups";
 import { toPopupItem } from "@/lib/utils/popupMapper";
 import type { PopupItem } from "@/data/mockPopups";
+import { LoadingState, EmptyState } from "@/components/ui/EmptyState";
 
 // 한 번에 너무 많은 팝업의 대기열을 조회하면 요청이 많아져서, 진행중 팝업 중
 // 앞쪽 40개까지만 확인해요 (홈 화면 미리보기는 8개만 봄).
@@ -62,9 +63,9 @@ export default function EasyEntryListPage() {
         <p className="text-sm text-gray-400 mb-5">현재 대기·체류 인원이 적은 순서예요.</p>
 
         {!loaded ? (
-          <p className="text-sm text-gray-400 py-16 text-center">불러오는 중...</p>
+          <LoadingState />
         ) : items.length === 0 ? (
-          <p className="text-sm text-gray-400 py-16 text-center">표시할 팝업이 없어요.</p>
+          <EmptyState message="표시할 팝업이 없어요." />
         ) : (
           <div className="flex flex-col">
             {items.map(({ item, count }) => (

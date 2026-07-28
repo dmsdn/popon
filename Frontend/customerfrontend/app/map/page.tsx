@@ -37,6 +37,7 @@ export default function MapPage() {
   const markersRef = useRef<any[]>([]);
 
   const [sdkReady, setSdkReady] = useState(false);
+  const [sdkAuthFailed, setSdkAuthFailed] = useState(false);
   const [openPopups, setOpenPopups] = useState<PopupDetail[]>([]);
   const [upcomingPopups, setUpcomingPopups] = useState<PopupDetail[]>([]);
   const [showUpcoming, setShowUpcoming] = useState(DEFAULT_SHOW_UPCOMING);
@@ -45,6 +46,14 @@ export default function MapPage() {
   const [query, setQuery] = useState("");
 
   const clientId = process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID;
+
+  // [수정] 네이버 지도는 인증 실패 시에도 스크립트 자체는 로드되지만 naver.maps가
+  // null이 돼서, 그대로 new naver.maps.LatLng(...)를 호출하면 화면이 통째로
+  // 하얗게 죽어버렸어요(Uncaught TypeError). 인증 실패를 감지하는 전역 콜백을
+  // 등록해서, 실패하면 지도 대신 안내 문구를 보여주게 했어요.
+  useEffect(() => {
+    (window as any).navermap_authFailure = () => setSdkAuthFailed(true);
+  }, []);
 
   const q = query.trim().toLowerCase();
   const visibleOpen = q ? openPopups.filter((p) => p.title.toLowerCase().includes(q)) : openPopups;
@@ -85,7 +94,7 @@ export default function MapPage() {
 
   // 지도 최초 생성 (진행중 팝업이 있는 위치들의 중심 근처로 시작)
   useEffect(() => {
-    if (!sdkReady || !mapRef.current || mapInstance.current) return;
+    if (!sdkReady || !window.naver?.maps || !mapRef.current || mapInstance.current) return;
     const center =
       openPopups.length > 0
         ? new window.naver.maps.LatLng(openPopups[0].latitude, openPopups[0].longitude)
@@ -96,7 +105,7 @@ export default function MapPage() {
   // 마커 렌더링 - 진행중(검정 핀)이 우선, 운영예정(회색 핀)은 토글 켰을 때만.
   // 핀마다 팝업 이름을 작은 라벨로 같이 보여줘요.
   useEffect(() => {
-    if (!sdkReady || !mapInstance.current) return;
+    if (!sdkReady || !window.naver?.maps || !mapInstance.current) return;
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
 
@@ -150,11 +159,28 @@ export default function MapPage() {
   if (!clientId) {
     return (
       <main className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
+        <img src="/icons/pin.svg" alt="" className="text-gray-300 mb-3" width={40} height={40}  />
         <p className="text-sm font-medium text-gray-700 mb-2">지도를 표시할 수 없어요</p>
         <p className="text-xs text-gray-400 leading-relaxed">
           네이버 지도 API 키(NEXT_PUBLIC_NAVER_MAP_CLIENT_ID)가 설정되어 있지 않아요.
           <br />
           .env.local에 키를 추가한 뒤 다시 시도해주세요.
+        </p>
+      </main>
+    );
+  }
+
+  if (sdkAuthFailed) {
+    return (
+      <main className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
+        <img src="/icons/pin.svg" alt="" className="text-gray-300 mb-3" width={40} height={40}  />
+        <p className="text-sm font-medium text-gray-700 mb-2">지도 인증에 실패했어요</p>
+        <p className="text-xs text-gray-400 leading-relaxed">
+          네이버 클라우드 플랫폼 콘솔에 등록된 서비스 URL과
+          <br />
+          지금 접속 중인 주소({typeof window !== "undefined" ? window.location.origin : ""})가 달라요.
+          <br />
+          Maps 애플리케이션 설정에서 이 주소를 등록해주세요.
         </p>
       </main>
     );

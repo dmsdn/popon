@@ -1,5 +1,6 @@
 // lib/api/popups.ts
 import { apiFetch } from "./client";
+import { toLocalDateString } from "@/lib/utils/formatLocalDate";
 import {
   recentPopups,
   openingSoonPopups,
@@ -282,8 +283,11 @@ export interface PopupWaitTime {
   freeModeResult: FreeModeWaitTime | null;
 }
 
-export function getPopupWaitTime(popupId: string | number) {
-  return apiFetch<PopupWaitTime>(`/api/popups/${popupId}/wait-time`);
+// [수정] FREE 모드 팝업은 date 파라미터 없이 부르면 400 에러가 나요
+// ("FREE 모드 팝업은 date 파라미터가 필요합니다"). 기본값으로 오늘 날짜를 넘겨요.
+export function getPopupWaitTime(popupId: string | number, date?: string) {
+  const d = date ?? toLocalDateString(new Date());
+  return apiFetch<PopupWaitTime>(`/api/popups/${popupId}/wait-time?date=${d}`);
 }
 
 // -------------------- 통합 대기열 현황판 --------------------

@@ -1,46 +1,8 @@
 // lib/preferences.ts
-// 관심 지역/카테고리 - 백엔드에 저장할 API가 아직 없어서 브라우저에만 저장해요.
-// (app/signup/preferences/page.tsx에서 처음 만든 것과 같은 키를 씁니다)
-
-export const REGIONS = ["성수", "홍대", "여의도", "용산", "더현대서울"];
-export const CATEGORIES = ["뷰티", "패션", "애니", "푸드", "스포츠", "라이프", "굿즈", "문구"];
-
-const REGION_STORAGE_KEY = "preferred_regions";
-const CATEGORY_STORAGE_KEY = "preferred_categories";
-
-function readList(key: string): string[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as string[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-export function getPreferredRegions(): string[] {
-  return readList(REGION_STORAGE_KEY);
-}
-
-export function getPreferredCategories(): string[] {
-  return readList(CATEGORY_STORAGE_KEY);
-}
-
-export function setPreferredRegions(regions: string[]) {
-  try {
-    window.localStorage.setItem(REGION_STORAGE_KEY, JSON.stringify(regions));
-  } catch (error) {
-    console.error("관심 지역 저장 실패", error);
-  }
-}
-
-export function setPreferredCategories(categories: string[]) {
-  try {
-    window.localStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(categories));
-  } catch (error) {
-    console.error("관심 카테고리 저장 실패", error);
-  }
-}
+// [수정] 관심 지역/카테고리는 이제 실제 백엔드 API로 관리해요
+// (lib/api/regions.ts, lib/api/customer.ts의 getKeywords/getMyInterests 참고).
+// 여기 있던 로컬 저장 전용 REGIONS/CATEGORIES, getPreferredRegions 등은 더 이상
+// 어디서도 쓰지 않아서(=실제 저장값과 어긋나기만 하던 죽은 코드) 제거했어요.
 
 // 알림 설정 - 마찬가지로 백엔드에 저장 API가 없어서 브라우저에만 저장해요.
 // (기존엔 이것도 순수 React state라 새로고침하면 항상 기본값으로 리셋됐어요)

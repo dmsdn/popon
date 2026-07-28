@@ -7,12 +7,13 @@ import { Footer } from "@/components/layout/Footer";
 import { StickyActionBar } from "@/components/popup/StickyActionBar";
 import { ReviewCard } from "@/components/popup/ReviewCard";
 import { PlaceCard } from "@/components/popup/PlaceCard";
+import { HorizontalCarousel } from "@/components/ui/HorizontalCarousel";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { ReservationModal } from "@/components/popup/ReservationModal";
 import { WaitingModal } from "@/components/popup/WaitingModal";
 import { HeartButton } from "@/components/ui/HeartButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { getMyReviews, toDisplayDate, type Review } from "@/lib/api/reviews";
+import { getMyReviews, getPopupReviews, toDisplayDate, type Review } from "@/lib/api/reviews";
 import {
   getPopup,
   getPopupSlots,
@@ -29,15 +30,16 @@ import {
 } from "@/lib/api/popups";
 import { getHotPlacesForRegion, type HotPlace } from "@/data/hotplaces";
 import { LiveCongestionPanel } from "@/components/popup/LiveCongestion";
-import { createReservation } from "@/lib/api/reservations";
-import { registerWaiting, addMyWaitingId, getWaitingBoard } from "@/lib/api/waiting";
+import { createReservation, getMyReservations } from "@/lib/api/reservations";
+import { registerWaiting, addMyWaitingId, getWaitingBoard, getMyActiveWaitings } from "@/lib/api/waiting";
 import { toPopupItem } from "@/lib/utils/popupMapper";
 import { recordPopupView } from "@/lib/recentlyViewed";
 import { saveRedirectTarget } from "@/lib/postLoginRedirect";
 import { toLocalDateString } from "@/lib/utils/formatLocalDate";
 import { StarRatingDisplay } from "@/components/ui/StarRatingDisplay";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
-import { reviews, type PopupItem, type ReviewItem } from "@/data/mockPopups";
+import { type PopupItem, type ReviewItem } from "@/data/mockPopups";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 const TABS = ["정보", "후기"] as const;
 
@@ -61,12 +63,12 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     searchParams.get("tab") === "review" ? "후기" : "정보"
   );
   const [myReviewsForPopup, setMyReviewsForPopup] = useState<Review[]>([]);
+  const [popupReviews, setPopupReviews] = useState<Review[]>([]);
   const [hotPlaces, setHotPlaces] = useState<HotPlace[]>([]);
   const [liveStatus, setLiveStatus] = useState<PopupLiveStatus | null>(null);
   const [waitTime, setWaitTime] = useState<PopupWaitTime | null>(null);
   const [queueCount, setQueueCount] = useState<number | null>(null);
   const [images, setImages] = useState<PopupImage[]>([]);
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [waitingTeams, setWaitingTeams] = useState<number | null>(null);
 
   useEffect(() => {
@@ -92,15 +94,6 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-
-    // 비슷한 팝업 - 진행중인 팝업 중 이 팝업을 뺀 나머지에서 몇 개만
-    searchPopups({ status: "OPEN" })
-      .then((list) => {
-        if (!cancelled) {
-          setSimilar(list.filter((p) => String(p.id) !== id).slice(0, 4).map(toPopupItem));
-        }
-      })
-      .catch((err) => console.error("비슷한 팝업 조회 실패", err));
 
     // 팝업 이미지 (주최자가 등록한 실제 이미지)
     getPopupImages(id)
@@ -196,8 +189,8 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     };
   }, [popup]);
 
-  // 후기 탭: lib/api/reviews.ts(실 API 우선 → 실패 시 localStorage mock)에서
-  // 방금 작성한 리뷰를 불러와, 기존 정적 mock 리뷰 목록과 함께 보여줍니다.
+  // 후기 탭: 내가 쓴 리뷰(getMyReviews)와 이 팝업에 달린 전체 후기(getPopupReviews)를
+  // 각각 불러와 합칩니다. (lib/api/reviews.ts: 실 API 우선 → 실패 시 localStorage mock)
   useEffect(() => {
     if (!popup) return;
     let cancelled = false;
@@ -210,6 +203,43 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
       .catch((err) => {
         console.error("내 리뷰 조회 실패", err);
       });
+
+    // [수정] 이 팝업에 달린 모든 사용자의 후기를 실제로 불러옵니다.
+    // 이전엔 이 호출이 아예 없어서, 다른 사람이 쓴 진짜 후기는 화면에 절대 안 보이고
+    // 내 후기 + 이름이 우연히 겹치는 정적 mock 후기만 보였어요.
+    getPopupReviews(popup.id)
+      .then((list) => {
+        if (!cancelled) setPopupReviews(list);
+      })
+      .catch((err) => {
+        console.error("팝업 후기 목록 조회 실패", err);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [popup]);
+
+  // [수정] "비슷한 팝업"이 그냥 진행중 팝업 중 앞에서부터 4개를 보여주는 거라
+  // 실제로 안 비슷해도 나왔었어요. 같은 해시태그가 몇 개 겹치는지 + 같은 지역인지로
+  // 점수를 매겨서 정렬하고, 겹치는 게 하나도 없으면 최근 등록순으로라도 채워줘요.
+  useEffect(() => {
+    if (!popup) return;
+    let cancelled = false;
+
+    searchPopups({ status: "OPEN" })
+      .then((list) => {
+        if (cancelled) return;
+        const others = list.filter((p) => p.id !== popup.id);
+        const scored = others.map((p) => {
+          const sharedTags = (p.hashtags ?? []).filter((t) => popup.hashtags?.includes(t)).length;
+          const sameRegion = popup.regionName && p.regionName === popup.regionName ? 1 : 0;
+          return { popup: p, score: sharedTags * 2 + sameRegion };
+        });
+        scored.sort((a, b) => b.score - a.score);
+        setSimilar(scored.slice(0, 4).map(({ popup }) => toPopupItem(popup)));
+      })
+      .catch((err) => console.error("비슷한 팝업 조회 실패", err));
 
     return () => {
       cancelled = true;
@@ -240,7 +270,25 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     rating: r.rating,
     photos: r.imageUrls.length > 0 ? r.imageUrls : undefined,
   }));
-  const relatedReviews = [...myReviewsAsItems, ...reviews.filter((r) => r.popupName === popup.title)];
+  const myReviewIds = new Set(myReviewsForPopup.map((r) => r.id));
+  // ⚠️ 백엔드 ReviewResponse에 작성자 닉네임이 없어서 "방문자"로만 표시해요. (백엔드 요청사항 참고)
+  const otherReviewsAsItems: ReviewItem[] = popupReviews
+    .filter((r) => !myReviewIds.has(r.id))
+    .map((r) => ({
+      id: `pop-${r.id}`,
+      popupId: String(popup.id),
+      popupName: popup.title,
+      nickname: "방문자",
+      content: r.content,
+      date: toDisplayDate(r.createdAt),
+      rating: r.rating,
+      photos: r.imageUrls.length > 0 ? r.imageUrls : undefined,
+    }));
+  const relatedReviews = [...myReviewsAsItems, ...otherReviewsAsItems];
+  const averageRating =
+    relatedReviews.length > 0
+      ? relatedReviews.reduce((sum, r) => sum + r.rating, 0) / relatedReviews.length
+      : null;
 
   return (
     <main className="w-full mobile:max-w-[1000px] mobile:mx-auto pb-24">
@@ -256,34 +304,17 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <div className="px-4 mobile:px-8 py-6">
-        {/* [수정] "대표 이미지"라는 고정 문구 박스였던 걸 실제 주최자 등록 이미지로 교체.
-            popup_image 테이블은 있었는데 조회 API가 없어서 프론트가 절대 못 보여주고
-            있었어요 - 백엔드에 GET /api/popups/{popupId}/images 추가하고 연결했습니다. */}
+        {/* [수정] 대표 이미지는 첫 번째 이미지 하나만 - 나머지는 아래 "정보" 탭의
+            "상세 이미지" 섹션에서 따로 보여줘요 (대표 이미지 / 상세 이미지를 분리). */}
         <div className="relative aspect-[4/5] max-h-[520px] bg-gray-100 rounded-md overflow-hidden mb-5">
           {images.length > 0 ? (
-            <ImageWithFallback
-              src={images[activeImageIndex].imageUrl}
-              className="w-full h-full object-cover"
-            />
+            <ImageWithFallback src={images[0].imageUrl} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
               등록된 이미지가 없어요
             </div>
           )}
           <HeartButton popupId={popup.id} className="absolute top-3 right-3 w-9 h-9" />
-          {images.length > 1 && (
-            <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
-              {images.map((img, i) => (
-                <button
-                  key={img.id}
-                  type="button"
-                  aria-label={`${i + 1}번째 이미지`}
-                  onClick={() => setActiveImageIndex(i)}
-                  className={`w-1.5 h-1.5 rounded-full ${i === activeImageIndex ? "bg-white" : "bg-white/50"}`}
-                />
-              ))}
-            </div>
-          )}
         </div>
 
         {/* [수정] 브랜드명을 브랜드 상세페이지로 연결 - 이전엔 텍스트만 있고 링크가 없었어요 */}
@@ -297,10 +328,11 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
             <StatusBadge status={toPopupItem(popup).status} />
             <h1 className="text-xl font-bold">{popup.title}</h1>
           </div>
-          {/* TODO: 실제 평점 데이터 연결 */}
-          <span className="flex items-center gap-1 text-sm text-gray-500 flex-none">
-            <StarRatingDisplay rating={4} size={13} /> 4/5
-          </span>
+          {averageRating !== null && (
+            <span className="flex items-center gap-1 text-sm text-gray-500 flex-none">
+              <StarRatingDisplay rating={averageRating} size={13} /> {averageRating.toFixed(1)}/5
+            </span>
+          )}
         </div>
 
         <p className="text-sm text-gray-500 mb-3">
@@ -367,12 +399,28 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                 router.push("/login");
                 return;
               }
+              // [수정] 이전엔 "다른 팝업"일 때만 막았는데, 같은 팝업에 같은 날짜로 또
+              // 예약하는 것도 막아야 "하나만"이라는 요청에 맞아서, 팝업 구분 없이
+              // 같은 날짜에 활성 예약이 하나라도 있으면 무조건 막도록 강화했어요.
+              const targetDateStr = toLocalDateString(date);
+              try {
+                const myReservations = await getMyReservations(customer.id);
+                const sameDay = myReservations.find(
+                  (r) => r.status !== "CANCELLED" && r.reservationDate === targetDateStr
+                );
+                if (sameDay) {
+                  alert("같은 날짜에 이미 예약이 있어요. 한 번에 하나의 예약만 가능해요.");
+                  return;
+                }
+              } catch (err) {
+                console.error("기존 예약 확인 실패", err);
+              }
               try {
                 const reservation = await createReservation(customer.id, {
                   popupId: popup.id,
                   ...(popup.reservationMode === "SLOT"
                     ? { slotId }
-                    : { reservationDate: toLocalDateString(date), reservationTime: time }),
+                    : { reservationDate: targetDateStr, reservationTime: time }),
                   partySize: count,
                 });
                 setShowReservation(false);
@@ -398,6 +446,19 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
               if (!customer.phone) {
                 alert("웨이팅 등록에는 전화번호가 필요해요. 마이페이지 > 내 정보에서 먼저 등록해주세요.");
                 return;
+              }
+              // [수정] 여러 팝업에 동시에 대기하는 건 이제 허용해요 - 대신 "같은 팝업"에
+              // 이미 웨이팅 중인데 또 등록하는 것만 막아요 (중복 줄서기 방지).
+              try {
+                const activeWaitings = await getMyActiveWaitings(customer.id);
+                const already = activeWaitings.find((w) => w.popupId === popup.id);
+                if (already) {
+                  alert("이미 이 팝업에 웨이팅 중이에요.");
+                  return;
+                }
+              } catch (err) {
+                console.error("활성 웨이팅 확인 실패", err);
+                // 확인 자체가 실패해도 등록은 계속 진행해요 (막는 게 목적이 아니라 안내가 목적)
               }
               try {
                 const waiting = await registerWaiting(popup.id, customer.id, {
@@ -463,14 +524,25 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
             </section>
 
             <section>
-              <h2 className="text-sm font-semibold mb-2">SNS / 홈페이지</h2>
-              {/* TODO: 실제 SNS/홈페이지 링크 연결 */}
-              <div className="bg-gray-900 rounded-md h-[180px] flex items-center justify-center text-white text-sm">
-                WELCOME 이미지 영역
-              </div>
-              <button type="button" className="w-full text-center text-sm text-gray-500 mt-3 py-2">
-                모두 보기 ⌄
-              </button>
+              <h2 className="text-sm font-semibold mb-2">상세 이미지</h2>
+              {/* [수정] 여기 원래 "SNS / 홈페이지"라는 이름의 섹션이 있었는데, 실제로는
+                  아무 데이터도 연결 안 된 고정 문구("WELCOME 이미지 영역") placeholder였어요.
+                  이게 대표 이미지랑 헷갈리게 만든 원인이었어서, 실제 상세 이미지 데이터로
+                  교체했어요. 대표 이미지(첫 번째)를 제외한 나머지를 보여주고, 더보기 없이
+                  이미지마다 높이를 고정해서 짧게 보여줘요. */}
+              {images.length > 1 ? (
+                <div className="flex flex-col gap-2">
+                  {images.slice(1).map((img) => (
+                    <ImageWithFallback
+                      key={img.id}
+                      src={img.imageUrl}
+                      className="w-full aspect-[16/9] rounded-md bg-gray-100 object-cover"
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400">이미지가 없습니다.</p>
+              )}
             </section>
           </div>
         )}
@@ -486,7 +558,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
               </Link>
             )}
             {relatedReviews.length === 0 ? (
-              <p className="text-sm text-gray-400 py-10 text-center">아직 후기가 없어요.</p>
+              <EmptyState message="아직 후기가 없어요." />
             ) : (
               relatedReviews.map((review) => <ReviewCard key={review.id} review={review} />)
             )}
@@ -498,7 +570,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
       {hotPlaces.length > 0 && (
         <section className="px-4 mobile:px-8 mb-10">
           <h2 className="text-base font-semibold mb-3">팝업 주변 핫플</h2>
-          <div className="flex gap-3 overflow-x-auto pb-1">
+          <HorizontalCarousel>
             {hotPlaces.map((place) => (
               <PlaceCard
                 key={place.name}
@@ -509,18 +581,18 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                 href={place.linkUrl}
               />
             ))}
-          </div>
+          </HorizontalCarousel>
         </section>
       )}
 
       {/* 비슷한 팝업 - 진행중인 실제 팝업 중 이 팝업을 뺀 나머지 */}
       <section className="px-4 mobile:px-8 mb-10">
         <h2 className="text-base font-semibold mb-3">비슷한 팝업</h2>
-        <div className="flex gap-3 overflow-x-auto pb-1">
+        <HorizontalCarousel>
           {similar.map((item) => (
             <PlaceCard key={item.id} category={item.location ?? "팝업"} name={item.name} />
           ))}
-        </div>
+        </HorizontalCarousel>
       </section>
 
       <Footer />
@@ -528,8 +600,33 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
       <StickyActionBar
         popupId={popup.id}
         waitingTeams={waitingTeams}
-        onReserve={() => setShowReservation(true)}
-        onWaiting={() => setShowWaiting(true)}
+        onReserve={() => {
+          // [수정] 이전엔 로그인 여부 확인 없이 바로 모달이 열려서, 폼을 다 채운 뒤에야
+          // (제출 시점에) 로그인하라고 튕겨서 입력한 내용이 다 날아갔어요. 버튼을
+          // 누르는 즉시 확인하도록 앞으로 옮겼어요.
+          if (!customer) {
+            saveRedirectTarget(`/popup/${id}`);
+            router.push("/login");
+            return;
+          }
+          // [수정] SLOT 모드 팝업인데 slots가 비어있으면(아직 시간대가 하나도 등록 안 됨),
+          // 모달이 자유입력(FREE) UI로 잘못 보여지면서 결국 slotId 없이 제출돼서
+          // "slotId를 입력해주세요" 에러가 나는 문제가 있었어요. 슬롯이 실제로 없는
+          // 경우엔 애초에 예약할 수 없는 상태라, 모달을 열지 않고 바로 안내해요.
+          if (popup.reservationMode === "SLOT" && slots.length === 0) {
+            alert("아직 예약 가능한 시간대가 등록되지 않았어요. 잠시 후 다시 시도해주세요.");
+            return;
+          }
+          setShowReservation(true);
+        }}
+        onWaiting={() => {
+          if (!customer) {
+            saveRedirectTarget(`/popup/${id}`);
+            router.push("/login");
+            return;
+          }
+          setShowWaiting(true);
+        }}
       />
     </main>
   );

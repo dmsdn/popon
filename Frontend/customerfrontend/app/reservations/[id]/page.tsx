@@ -13,6 +13,7 @@ import {
 import { getPopup, getPopupSlots, type PopupDetail, type PopupSlot } from "@/lib/api/popups";
 import { toLocalDateString } from "@/lib/utils/formatLocalDate";
 import { ReservationModal } from "@/components/popup/ReservationModal";
+import { QRCodeDisplay } from "@/components/ui/QRCodeDisplay";
 
 const POLICY = [
   "예약 시간 10분 전까지 입장해 주세요. 시간이 지나면 예약이 자동 취소될 수 있어요.",
@@ -149,6 +150,14 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
           <Row label="인원" value={`${reservation.partySize}명`} />
           {popup.location && <Row label="위치" value={popup.location} />}
         </section>
+
+        {/* [신규] 취소되지 않았고 아직 입장 전이면 QR을 보여줘요. */}
+        {!isCancelled && reservation.entryStatus !== "CHECKED_IN" && (
+          <section className="border border-gray-200 rounded-xl p-5 flex flex-col items-center">
+            <p className="text-sm font-semibold mb-3">입장 QR</p>
+            <QRCodeDisplay qrToken={reservation.qrToken} />
+          </section>
+        )}
 
         {!isCancelled && (
           <button

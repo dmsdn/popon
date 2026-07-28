@@ -9,6 +9,7 @@ import { getPopup } from "@/lib/api/popups";
 import { toPopupItem } from "@/lib/utils/popupMapper";
 import { getRecentlyViewedIds } from "@/lib/recentlyViewed";
 import type { PopupItem } from "@/data/mockPopups";
+import { LoadingState, EmptyState } from "@/components/ui/EmptyState";
 
 // 이 브라우저에서 실제로 들어가봤던 팝업 상세페이지 기록 기준이에요 (lib/recentlyViewed.ts).
 // 로그인 계정 기준 서버 저장이 아니라 브라우저 기준이라, 다른 기기에서는 안 보여요.
@@ -57,9 +58,9 @@ export default function RecentListPage() {
         <h1 className="text-lg font-bold mb-4">최근 본 팝업</h1>
 
         {!loaded ? (
-          <p className="text-sm text-gray-400 py-16 text-center">불러오는 중...</p>
+          <LoadingState />
         ) : items.length === 0 ? (
-          <p className="text-sm text-gray-400 py-16 text-center">아직 본 팝업이 없어요.</p>
+          <EmptyState message="아직 본 팝업이 없어요." />
         ) : (
           <div className="grid grid-cols-2 mobile:grid-cols-4 gap-4">
             {items.map((item) => (
