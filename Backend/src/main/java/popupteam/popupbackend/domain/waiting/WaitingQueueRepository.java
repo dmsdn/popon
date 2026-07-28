@@ -39,4 +39,7 @@ public interface WaitingQueueRepository extends JpaRepository<WaitingQueue, Long
     // 내 웨이팅 목록 조회용 (현재 대기중/호출됨 상태만, 여러 팝업 통틀어)
     List<WaitingQueue> findByCustomerIdAndStatusInOrderByRegisteredAtDesc(Long customerId, List<WaitingStatus> statuses);
 
+    // 같은 계정의 동일 팝업 중복 웨이팅 방지용 - 이미 대기중/호출됨 상태인 웨이팅이 있는지 확인
+    boolean existsByPopupIdAndCustomerIdAndStatusIn(Long popupId, Long customerId, List<WaitingStatus> statuses);
+
 }
