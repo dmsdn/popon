@@ -77,10 +77,18 @@ export default function Login() {
     }
   };
 
+  // 비밀번호 확인란과의 일치 여부 — 입력 중 실시간 표시용 (7/29)
+  const pwMatch = signupForm.passwordConfirm.length > 0 ? signupForm.password === signupForm.passwordConfirm : null;
+
   // 1단계 → 2단계
   const handleStep1 = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    // 이메일 형식 강제 — type="email"은 브라우저마다 느슨해서 명시 검증 추가 (7/29)
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(signupForm.email.trim())) {
+      setError("올바른 이메일 형식이 아닙니다. (예: hello@brand.com)");
+      return;
+    }
     if (signupForm.password !== signupForm.passwordConfirm) {
       setError("비밀번호가 일치하지 않습니다.");
       return;
@@ -355,10 +363,21 @@ export default function Login() {
                   onChange={(e) => setSignupForm((p) => ({ ...p, passwordConfirm: e.target.value }))}
                   placeholder="재입력"
                   required
-                  className={inputCls}
+                  className={
+                    inputCls +
+                    (pwMatch === true ? " border-green-400 focus:ring-green-400 focus:border-green-400" : pwMatch === false ? " border-red-300" : "")
+                  }
                 />
               </label>
             </div>
+
+            {/* 비밀번호 일치 실시간 표시 (7/29) — 확인란에 입력이 있을 때만 */}
+            {pwMatch !== null && (
+              <div className={`flex items-center gap-1.5 text-xs -mt-3 ${pwMatch ? "text-green-600" : "text-red-500"}`}>
+                {pwMatch ? <Check size={13} /> : <X size={13} />}
+                {pwMatch ? "비밀번호가 일치합니다" : "비밀번호가 일치하지 않습니다"}
+              </div>
+            )}
 
             {/* Password strength hint */}
             {signupForm.password && (
