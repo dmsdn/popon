@@ -23,6 +23,7 @@ public class PopupService {
     private final PopupHashtagRepository popupHashtagRepository;
     private final popupteam.popupbackend.domain.consumer.RegionRepository regionRepository;
     private final PopupKeywordRepository popupKeywordRepository;
+    private final popupteam.popupbackend.domain.consumer.KeywordRepository keywordRepository;
 
 
     public PopupResponse create(Long businessId, PopupCreateRequest request) {
@@ -68,7 +69,7 @@ public class PopupService {
         List<String> hashtags = saveHashtags(saved.getId(), request.getHashtags());
         savePopupKeywords(saved.getId(), request.getKeywordIds());
 
-        return PopupResponse.from(saved, hashtags);
+        return PopupResponse.from(saved, hashtags, getPopupKeywordNames(saved.getId()));
     }
 
     // 해시태그 저장 공용 로직: 기존 거 지우고 새 목록으로 덮어씀 (null이면 손 안 대고 기존 값 그대로 반환)
@@ -108,7 +109,7 @@ public class PopupService {
         List<String> hashtags = popupHashtagRepository.findByPopupIdOrderBySortOrderAsc(id).stream()
                 .map(PopupHashtag::getTag)
                 .collect(Collectors.toList());
-        return PopupResponse.from(popup, hashtags);
+        return PopupResponse.from(popup, hashtags, getPopupKeywordNames(id));
     }
 
     public PopupResponse update(Long id, Long businessId, PopupUpdateRequest request) {
@@ -172,7 +173,7 @@ public class PopupService {
             savePopupKeywords(id, request.getKeywordIds());
         }
 
-        return PopupResponse.from(saved, hashtags);
+        return PopupResponse.from(saved, hashtags, getPopupKeywordNames(id));
     }
 
     public void delete(Long id, Long businessId) {
@@ -335,6 +336,15 @@ public class PopupService {
     }
 
     // 팝업이 가진 표준 키워드 ID 목록 조회
+    // 팝업이 가진 표준 키워드 "이름" 목록 조회 (PopupResponse용)
+    private List<String> getPopupKeywordNames(Long popupId) {
+        List<Long> keywordIds = getPopupKeywordIds(popupId);
+        if (keywordIds.isEmpty()) return List.of();
+        return keywordRepository.findAllById(keywordIds).stream()
+                .map(popupteam.popupbackend.domain.consumer.Keyword::getName)
+                .collect(Collectors.toList());
+    }
+
     public java.util.List<Long> getPopupKeywordIds(Long popupId) {
         return popupKeywordRepository.findByPopupId(popupId).stream()
                 .map(PopupKeyword::getKeywordId)
