@@ -11,6 +11,7 @@ import {
   type Reservation,
 } from "@/lib/api/reservations";
 import { getPopup, getPopupSlots, type PopupDetail, type PopupSlot } from "@/lib/api/popups";
+import { toLocalDateString } from "@/lib/utils/formatLocalDate";
 import { ReservationModal } from "@/components/popup/ReservationModal";
 
 const POLICY = [
@@ -113,7 +114,12 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
       const slot = slots.find((s) => s.id === reservation.slotId);
       return slot ? `${slot.slotDate} ${slot.startTime.slice(0, 5)}` : "시간대 예약";
     }
-    return reservation.reservationDate ?? "-";
+    if (!reservation.reservationDate) return "-";
+    // [수정] reservationTime을 안 붙이고 있었어요 - 백엔드에 시간 컬럼을 새로 추가한 값이라
+    // 이 부분도 같이 고쳐야 실제로 시간이 화면에 보여요.
+    return reservation.reservationTime
+      ? `${reservation.reservationDate} ${reservation.reservationTime.slice(0, 5)}`
+      : reservation.reservationDate;
   })();
 
   return (
@@ -213,17 +219,18 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
       {showChange && customer && (
         <ReservationModal
           popupName={`${popup.title} - 일정 변경`}
+          mode="change"
           slots={slots}
           minDate={new Date(popup.startDate)}
           maxDate={new Date(popup.endDate)}
           capacity={popup.capacity}
           onClose={() => setShowChange(false)}
-          onSubmit={async (date, count, slotId) => {
+          onSubmit={async (date, count, slotId, time) => {
             try {
               const updated = await changeReservation(reservation.id, customer.id, {
                 ...(popup.reservationMode === "SLOT"
                   ? { newSlotId: slotId }
-                  : { newReservationDate: date.toISOString().slice(0, 10) }),
+                  : { newReservationDate: toLocalDateString(date), newReservationTime: time }),
                 partySize: count,
               });
               setReservation(updated);

@@ -16,19 +16,24 @@ import { getMyReviews, toDisplayDate, type Review } from "@/lib/api/reviews";
 import {
   getPopup,
   getPopupSlots,
-  getPopupHotPlaces,
   getPopupLiveStatus,
+  getPopupImages,
   searchPopups,
   type PopupDetail,
   type PopupSlot,
-  type PopupHotPlace,
   type PopupLiveStatus,
+  type PopupImage,
 } from "@/lib/api/popups";
+import { getHotPlacesForRegion, type HotPlace } from "@/data/hotplaces";
 import { LiveCongestionPanel } from "@/components/popup/LiveCongestion";
 import { createReservation } from "@/lib/api/reservations";
 import { registerWaiting, addMyWaitingId, getWaitingBoard } from "@/lib/api/waiting";
 import { toPopupItem } from "@/lib/utils/popupMapper";
 import { recordPopupView } from "@/lib/recentlyViewed";
+import { saveRedirectTarget } from "@/lib/postLoginRedirect";
+import { toLocalDateString } from "@/lib/utils/formatLocalDate";
+import { StarRatingDisplay } from "@/components/ui/StarRatingDisplay";
+import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 import { reviews, type PopupItem, type ReviewItem } from "@/data/mockPopups";
 
 const TABS = ["정보", "후기"] as const;
@@ -53,8 +58,10 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     searchParams.get("tab") === "review" ? "후기" : "정보"
   );
   const [myReviewsForPopup, setMyReviewsForPopup] = useState<Review[]>([]);
-  const [hotPlaces, setHotPlaces] = useState<PopupHotPlace[]>([]);
+  const [hotPlaces, setHotPlaces] = useState<HotPlace[]>([]);
   const [liveStatus, setLiveStatus] = useState<PopupLiveStatus | null>(null);
+  const [images, setImages] = useState<PopupImage[]>([]);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [waitingTeams, setWaitingTeams] = useState<number | null>(null);
 
   useEffect(() => {
@@ -67,6 +74,10 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         if (!cancelled) {
           setPopup(data);
           recordPopupView(data.id);
+          // [수정] 백엔드 API 대신 프론트에 직접 넣어둔 지역별 데이터에서 바로 찾아요
+          // (data/hotplaces.ts 참고). 관리자용 업로드 화면이 없는 지금 상황에선
+          // 이게 훨씬 빨라요 - SQL 안 만지고 코드에 몇 줄 추가하면 바로 반영돼요.
+          setHotPlaces(getHotPlacesForRegion(data.regionName, data.location));
         }
       })
       .catch((err) => {
@@ -86,12 +97,12 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
       })
       .catch((err) => console.error("비슷한 팝업 조회 실패", err));
 
-    // 팝업 주변 핫플 (popup_hot_place)
-    getPopupHotPlaces(id)
+    // 팝업 이미지 (주최자가 등록한 실제 이미지)
+    getPopupImages(id)
       .then((list) => {
-        if (!cancelled) setHotPlaces(list);
+        if (!cancelled) setImages(list);
       })
-      .catch((err) => console.error("주변 핫플 조회 실패", err));
+      .catch((err) => console.error("팝업 이미지 조회 실패", err));
 
     return () => {
       cancelled = true;
@@ -207,10 +218,34 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <div className="px-4 mobile:px-8 py-6">
-        {/* 대표 이미지 */}
-        <div className="relative aspect-[4/5] max-h-[520px] bg-gray-100 rounded-md flex items-center justify-center text-gray-400 text-sm mb-5">
-          대표 이미지
+        {/* [수정] "대표 이미지"라는 고정 문구 박스였던 걸 실제 주최자 등록 이미지로 교체.
+            popup_image 테이블은 있었는데 조회 API가 없어서 프론트가 절대 못 보여주고
+            있었어요 - 백엔드에 GET /api/popups/{popupId}/images 추가하고 연결했습니다. */}
+        <div className="relative aspect-[4/5] max-h-[520px] bg-gray-100 rounded-md overflow-hidden mb-5">
+          {images.length > 0 ? (
+            <ImageWithFallback
+              src={images[activeImageIndex].imageUrl}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
+              등록된 이미지가 없어요
+            </div>
+          )}
           <HeartButton popupId={popup.id} className="absolute top-3 right-3 w-9 h-9" />
+          {images.length > 1 && (
+            <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
+              {images.map((img, i) => (
+                <button
+                  key={img.id}
+                  type="button"
+                  aria-label={`${i + 1}번째 이미지`}
+                  onClick={() => setActiveImageIndex(i)}
+                  className={`w-1.5 h-1.5 rounded-full ${i === activeImageIndex ? "bg-white" : "bg-white/50"}`}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* [수정] 브랜드명을 브랜드 상세페이지로 연결 - 이전엔 텍스트만 있고 링크가 없었어요 */}
@@ -225,7 +260,9 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
             <h1 className="text-xl font-bold">{popup.title}</h1>
           </div>
           {/* TODO: 실제 평점 데이터 연결 */}
-          <span className="text-sm text-gray-500 flex-none">★★★★★ 4/5</span>
+          <span className="flex items-center gap-1 text-sm text-gray-500 flex-none">
+            <StarRatingDisplay rating={4} size={13} /> 4/5
+          </span>
         </div>
 
         <p className="text-sm text-gray-500 mb-3">
@@ -262,8 +299,9 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   maxDate={new Date(popup.endDate)}
   capacity={popup.capacity}
   onClose={() => setShowReservation(false)}
-  onSubmit={async (date, count, slotId) => {
+  onSubmit={async (date, count, slotId, time) => {
               if (!customer) {
+                saveRedirectTarget(`/popup/${id}`);
                 router.push("/login");
                 return;
               }
@@ -272,7 +310,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                   popupId: popup.id,
                   ...(popup.reservationMode === "SLOT"
                     ? { slotId }
-                    : { reservationDate: date.toISOString().slice(0, 10) }),
+                    : { reservationDate: toLocalDateString(date), reservationTime: time }),
                   partySize: count,
                 });
                 setShowReservation(false);
@@ -291,6 +329,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
             onClose={() => setShowWaiting(false)}
             onSubmit={async (count) => {
               if (!customer) {
+                saveRedirectTarget(`/popup/${id}`);
                 router.push("/login");
                 return;
               }
@@ -400,7 +439,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
           <div className="flex gap-3 overflow-x-auto pb-1">
             {hotPlaces.map((place) => (
               <PlaceCard
-                key={place.id}
+                key={place.name}
                 category={place.category}
                 name={place.name}
                 distance={place.distance}

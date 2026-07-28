@@ -8,10 +8,12 @@ import { Footer } from "@/components/layout/Footer";
 import { BottomTabBar } from "@/components/layout/BottomTabBar";
 import { PromoCarousel } from "@/components/home/PromoCarousel";
 import { CategoryIconList } from "@/components/home/CategoryIconList";
+import { NearbyHotPlacesSection } from "@/components/home/NearbyHotPlacesSection";
 import { NoticeBar } from "@/components/home/NoticeBar";
 import { PopupSection } from "@/components/home/PopupSection";
 import { PopularRankingSection } from "@/components/home/PopularRankingSection";
 import { ReviewSection } from "@/components/home/ReviewSection";
+import { HorizontalCarousel } from "@/components/ui/HorizontalCarousel";
 import { searchPopups, getPopup, getPopupLiveStatus, type PopupLiveStatus } from "@/lib/api/popups";
 import { toPopupItem } from "@/lib/utils/popupMapper";
 import { getRecentlyViewedIds } from "@/lib/recentlyViewed";
@@ -118,6 +120,7 @@ export default function Home() {
       <PromoCarousel />
       <CategoryIconList />
       <NoticeBar />
+      <NearbyHotPlacesSection />
 
       {recentlyViewed.length > 0 && (
         <PopupSection title="최근 본 팝업" items={recentlyViewed} moreHref="/recent" />
@@ -145,9 +148,9 @@ export default function Home() {
       )}
 
       {congestionItems.length > 0 && (
-        <section className="mb-10 mobile:mb-14 px-4 mobile:px-8">
+        <section className="mb-14 mobile:mb-16 px-4 mobile:px-8">
           <h3 className="text-base mobile:text-lg font-semibold mb-3 mobile:mb-4">실시간 혼잡도</h3>
-          <div className="flex gap-3 overflow-x-auto pb-1">
+          <HorizontalCarousel>
             {congestionItems.map(({ item, status }) => (
               <Link
                 key={item.id}
@@ -158,12 +161,12 @@ export default function Home() {
                 <LiveCongestionMini status={status} />
               </Link>
             ))}
-          </div>
+          </HorizontalCarousel>
         </section>
       )}
 
       <PopupSection
-        title="곧 오픈하는 팝업 추천 카드"
+        title="곧 오픈하는 팝업"
         items={loaded ? openingSoon : []}
         moreHref="/search?status=예정"
       />

@@ -539,7 +539,9 @@ export function getRegions() {
 }
 
 // ── 공간(venue) 마스터 ──
-
+// ※ 7/28 정리: 공간(대관처) 마스터 화면이 지역 마스터로 교체(7/24)되어 사용처 없음.
+//   백엔드 venue 도메인 정리(팀 합의) 시 이 블록도 함께 삭제할 것 — 그때까지 주석 보존.
+/*
 export type Venue = {
   id: number;
   name: string;
@@ -566,6 +568,7 @@ export function updateVenue(id: number, data: Partial<Omit<Venue, "id" | "create
 export function deleteVenue(id: number) {
   return request<void>(`/api/admin/venues/${id}`, { method: "DELETE" });
 }
+*/
 
 // ── 예약자 명단 (해당 팝업 주최자 또는 관리자) ──
 
@@ -606,4 +609,49 @@ export function checkinByQr(qrToken: string) {
     method: "POST",
     body: JSON.stringify({ qrToken }),
   });
+}
+
+// ── 배너 관리 (소비자 홈 상단 배너 — 7/28 실연동) ──
+
+export type Banner = {
+  id: number; title: string; imageUrl: string; linkUrl: string | null;
+  sortOrder: number; startDate: string | null; endDate: string | null; active: boolean;
+};
+export function getAdminBanners() {
+  return request<Banner[]>("/api/admin/banners");
+}
+export function createBanner(data: { title: string; imageUrl: string; linkUrl?: string; sortOrder?: number; startDate?: string; endDate?: string; active?: boolean }) {
+  return request<Banner>("/api/admin/banners", { method: "POST", body: JSON.stringify(data) });
+}
+export function updateBanner(id: number, data: Partial<Omit<Banner, "id">>) {
+  return request<Banner>(`/api/admin/banners/${id}`, { method: "PUT", body: JSON.stringify(data) });
+}
+export function deleteBanner(id: number) {
+  return request<void>(`/api/admin/banners/${id}`, { method: "DELETE" });
+}
+
+// ── 공지 배너 (소비자 홈 공지줄 — 7/27 jsw 신설 announcement 도메인) ──
+
+export type Announcement = { id: number; title: string; content: string | null; createdAt: string };
+export function getAdminAnnouncements() {
+  return request<Announcement[]>("/api/admin/announcements");
+}
+export function createAnnouncement(data: { title: string; content?: string }) {
+  return request<Announcement>("/api/admin/announcements", { method: "POST", body: JSON.stringify(data) });
+}
+export function deleteAnnouncement(id: number) {
+  return request<void>(`/api/admin/announcements/${id}`, { method: "DELETE" });
+}
+
+// ── 플랫폼 통계 실데이터 (PlatformStats — 7/28 연동) ──
+
+// 팝업별 방문자(체크인) 랭킹 — date 생략 시 누적, 지정 시 해당 일자
+export type PopupVisitorRanking = { rank: number; popupId: number; popupTitle: string; companyName: string; visitorCount: number };
+export function getPopupRanking(date?: string) {
+  return request<PopupVisitorRanking[]>(`/api/admin/stats/popup-ranking${date ? `?date=${date}` : ""}`);
+}
+
+// 매출(계약금) 추이 — unit: DAILY(최근 amount일) | MONTHLY(최근 amount개월)
+export function getRevenueTrend(unit: "DAILY" | "MONTHLY" = "DAILY", amount = 30) {
+  return request<RevenueTrend[]>(`/api/admin/stats/revenue?unit=${unit}&amount=${amount}`);
 }

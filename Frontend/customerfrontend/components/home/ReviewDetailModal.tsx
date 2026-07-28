@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ReviewItem } from "@/data/mockPopups";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
+import { StarRatingDisplay } from "@/components/ui/StarRatingDisplay";
 
 /**
  * 후기 카드를 눌렀을 때 뜨는 "크게 보기" 모달입니다.
@@ -89,7 +90,9 @@ export function ReviewDetailModal({ review, onClose }: { review: ReviewItem; onC
               <span className="text-gray-400"> · 이 팝업 후기 {review.reviewCount}개</span>
             )}
           </span>
-          <span className="text-sm font-medium text-gray-800">⭐ {review.rating.toFixed(1)} / 5.0</span>
+          <span className="flex items-center gap-1 text-sm font-medium text-gray-800">
+            <StarRatingDisplay rating={review.rating} size={14} /> {review.rating.toFixed(1)} / 5.0
+          </span>
         </div>
 
         {/* 후기 본문 - 전체 다 보여줌 (홈 카드에선 2줄로 잘려있던 것) */}

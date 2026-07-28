@@ -11,7 +11,12 @@ import { getMyReservations, type Reservation } from "@/lib/api/reservations";
 import { getMyWaitingStatus, getMyWaitingIds, type Waiting } from "@/lib/api/waiting";
 import { createCsRequest, getMyCsRequests, type CsRequestItem } from "@/lib/api/cs";
 import { getTerms, type Terms } from "@/lib/api/terms";
-import { getPreferredRegions, getPreferredCategories } from "@/lib/preferences";
+import { StarRatingDisplay } from "@/components/ui/StarRatingDisplay";
+import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
+import { reservationStatusLabel, waitingStatusLabel } from "@/lib/utils/statusLabels";
+import { getNotifSettings, setNotifSettingsStorage } from "@/lib/preferences";
+import { getRegions, getMyRegions } from "@/lib/api/regions";
+import { getKeywords, getMyInterests } from "@/lib/api/customer";
 import {
   subscribeWishlist,
   getWishlistSnapshot,
@@ -77,11 +82,18 @@ function MyPageContent() {
   const [activeMenu, setActiveMenu] = useState<MenuKey>("내 정보");
   const [mobileView, setMobileView] = useState<"list" | "detail">("list");
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [notifSettings, setNotifSettings] = useState([
+  const DEFAULT_NOTIF_SETTINGS = [
     { id: "popup", label: "팝업 소식 알림", enabled: true },
     { id: "reservation", label: "예약 · 웨이팅 알림", enabled: true },
     { id: "marketing", label: "마케팅 정보 수신", enabled: false },
-  ]);
+  ];
+  // [수정] 이전엔 순수 React state라 새로고침하면 항상 이 기본값으로 리셋됐어요.
+  // 서버 렌더링과 안 맞을 수 있어 초기값은 기본값 그대로 두고, 마운트 후에
+  // localStorage에 저장된 값이 있으면 그걸로 덮어써요.
+  const [notifSettings, setNotifSettings] = useState(DEFAULT_NOTIF_SETTINGS);
+  useEffect(() => {
+    setNotifSettings(getNotifSettings(DEFAULT_NOTIF_SETTINGS));
+  }, []);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   // 다녀간 팝업 (= 내가 쓴 후기)
@@ -272,14 +284,28 @@ function MyPageContent() {
     }
   };
 
-  // 관심 지역/카테고리 (로컬 저장 - lib/preferences.ts 참고)
+  // [수정] 로컬 저장(lib/preferences.ts) 대신 실제 관심 지역/카테고리 API로 교체 -
+  // 백엔드 region이 이제 동네 단위로 바뀌었고, 키워드 조회 API도 새로 생겼어요.
   const [preferredRegions, setPreferredRegionsState] = useState<string[]>([]);
   const [preferredCategories, setPreferredCategoriesState] = useState<string[]>([]);
 
   useEffect(() => {
-    setPreferredRegionsState(getPreferredRegions());
-    setPreferredCategoriesState(getPreferredCategories());
-  }, []);
+    if (!customer) return;
+    Promise.all([getRegions(), getMyRegions()])
+      .then(([all, mine]) => {
+        const nameById = new Map(all.map((r) => [r.id, r.name]));
+        setPreferredRegionsState(mine.regionIds.map((id) => nameById.get(id)).filter((n): n is string => !!n));
+      })
+      .catch((err) => console.error("관심 지역 조회 실패", err));
+    Promise.all([getKeywords(), getMyInterests()])
+      .then(([all, mine]) => {
+        const nameById = new Map(all.map((k) => [k.id, k.name]));
+        setPreferredCategoriesState(
+          mine.keywordIds.map((id) => nameById.get(id)).filter((n): n is string => !!n)
+        );
+      })
+      .catch((err) => console.error("관심 카테고리 조회 실패", err));
+  }, [customer]);
 
   // 비로그인 상태에서도 마이페이지 자체는 보여주고(공지사항/1:1 문의/Q&A는 로그인 없이도 봐야 하니까),
   // 로그인이 필요한 메뉴를 고르려고 할 때만 로그인 화면으로 보냅니다. (handleSelectMenu 참고)
@@ -330,9 +356,11 @@ if (queryMenu !== syncedQueryMenu) {
   };
 
   const toggleNotif = (id: string) => {
-    setNotifSettings((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, enabled: !item.enabled } : item))
-    );
+    setNotifSettings((prev) => {
+      const next = prev.map((item) => (item.id === id ? { ...item, enabled: !item.enabled } : item));
+      setNotifSettingsStorage(next);
+      return next;
+    });
   };
 
   // 웨이팅 + 예약을 합친 총 "대기중" 건수 - 프로필 아래 바로가기 카드 분기에 씁니다.
@@ -341,7 +369,17 @@ if (queryMenu !== syncedQueryMenu) {
   // "다녀간 팝업" = 후기를 남긴 것 + 실제로 입장(체크인) 처리된 예약/웨이팅
   // (예약은 entryStatus, 웨이팅은 enteredAt으로 "실제 방문 여부"를 판단해요)
   type VisitedItem =
-    | { type: "review"; id: string; popupId: number; title: string; date: string; rating: number; content: string }
+    | {
+        type: "review";
+        id: string;
+        popupId: number;
+        title: string;
+        date: string;
+        rating: number;
+        content: string;
+        photos: string[];
+        visitDate: string | null;
+      }
     | { type: "reservation" | "waiting"; id: string; popupId: number; title: string; date: string };
 
   const visitedItems: VisitedItem[] = useMemo(() => {
@@ -353,10 +391,21 @@ if (queryMenu !== syncedQueryMenu) {
       date: r.createdAt,
       rating: r.rating,
       content: r.content,
+      photos: r.imageUrls,
+      visitDate: r.visitDate,
     }));
 
+    // [수정] 이전엔 entryStatus가 "CHECKED_IN"(직원이 직접 체크인 처리)인 예약만 다녀간
+    // 걸로 쳤어요. 근데 체크인 처리를 안 해도 예약 날짜 자체가 지났으면 "다녀간" 걸로
+    // 보는 게 자연스러워서, 취소되지 않은 예약 중 날짜가 지난 것도 포함시켰어요.
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const visitedReservations: VisitedItem[] = (myReservations ?? [])
-      .filter((r) => r.entryStatus === "CHECKED_IN")
+      .filter((r) => {
+        if (r.status === "CANCELLED") return false;
+        if (r.entryStatus === "CHECKED_IN") return true;
+        return !!r.reservationDate && new Date(r.reservationDate) < today;
+      })
       .map((r) => ({
         type: "reservation",
         id: `reservation-${r.id}`,
@@ -650,7 +699,7 @@ if (queryMenu !== syncedQueryMenu) {
                               {reservationPopupTitles[w.popupId] ?? `팝업 #${w.popupId}`}
                             </p>
                             <p className="text-xs text-gray-500">
-                              앞 {w.teamsAhead}팀 · {w.partySize}명 · {w.status}
+                              앞 {w.teamsAhead}팀 · {w.partySize}명 · {waitingStatusLabel(w.status)}
                             </p>
                           </div>
                           <div className="text-right flex-none">
@@ -682,12 +731,17 @@ if (queryMenu !== syncedQueryMenu) {
                           이미지
                         </div>
                         <div>
-                          <span className="inline-block text-xs text-gray-500 mb-1">{r.status}</span>
+                          <span className="inline-block text-xs text-gray-500 mb-1">
+                            {reservationStatusLabel(r.status)}
+                          </span>
                           <p className="text-sm font-semibold mb-1">
                             {reservationPopupTitles[r.popupId] ?? `팝업 #${r.popupId}`}
                           </p>
                           <p className="text-xs text-gray-500">
-                            {r.reservationDate ?? "시간대 예약"} · {r.partySize}명
+                            {r.reservationDate
+                              ? `${r.reservationDate}${r.reservationTime ? ` ${r.reservationTime.slice(0, 5)}` : ""}`
+                              : "시간대 예약"}{" "}
+                            · {r.partySize}명
                           </p>
                         </div>
                       </Link>
@@ -723,8 +777,24 @@ if (queryMenu !== syncedQueryMenu) {
                     </div>
                     {item.type === "review" && (
                       <>
-                        <p className="text-xs text-gray-500 mb-1">⭐ {item.rating}</p>
-                        <p className="text-sm text-gray-600 line-clamp-2">{item.content}</p>
+                        <p className="flex items-center gap-1 text-xs text-gray-500 mb-1">
+                          <StarRatingDisplay rating={item.rating} size={12} /> {item.rating}
+                          {item.visitDate && (
+                            <span className="text-gray-400">· {item.visitDate} 다녀옴</span>
+                          )}
+                        </p>
+                        <p className="text-sm text-gray-600 line-clamp-2 mb-2">{item.content}</p>
+                        {item.photos.length > 0 && (
+                          <div className="flex gap-1.5">
+                            {item.photos.slice(0, 4).map((photo) => (
+                              <ImageWithFallback
+                                key={photo}
+                                src={photo}
+                                className="w-14 h-14 rounded-lg object-cover flex-none"
+                              />
+                            ))}
+                          </div>
+                        )}
                       </>
                     )}
                     {item.type !== "review" && (

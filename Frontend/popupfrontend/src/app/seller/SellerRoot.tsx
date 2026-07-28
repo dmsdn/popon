@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { Outlet, NavLink, Link, useNavigate, useLocation, ScrollRestoration } from "react-router";
 import {
   LayoutDashboard, Store, PlusSquare, CalendarCheck, Users, Package,
-  BarChart3, Megaphone, Bell, ChevronDown, ExternalLink, LogOut, MessageSquare, X,
+  BarChart3, Megaphone, Bell, ChevronDown, ExternalLink, LogOut, MessageSquare, X, UserRound,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { getMyPopups, getMyInquiries, getToken, Popup, InquiryItem } from "../lib/api";
+import { getMyPopups, getMyInquiries, getMyNoticeInbox, markNoticeRead, getToken, Popup, InquiryItem, NoticeInboxItem } from "../lib/api";
 import { loadSeen, saveSeen, unseenCount } from "../lib/navBadges";
 
 // JWT payload에서 만료(exp, 초 단위 epoch) 추출 — 세션 만료 감지용
@@ -101,12 +101,14 @@ export default function SellerRoot() {
   const isBusiness = user?.role === "business";
   const [myPopups, setMyPopups] = useState<Popup[]>([]);
   const [myInquiries, setMyInquiries] = useState<InquiryItem[]>([]);
+  const [myInbox, setMyInbox] = useState<NoticeInboxItem[]>([]); // 7/28 — 관리자 발송 공지 수신함
 
   useEffect(() => {
     if (!isBusiness) return;
     const fetchNews = () => {
       getMyPopups().then(setMyPopups).catch(() => {});
       getMyInquiries().then(setMyInquiries).catch(() => {});
+      getMyNoticeInbox().then(setMyInbox).catch(() => {});
     };
     fetchNews();
     const t = setInterval(fetchNews, 60_000);
@@ -126,6 +128,7 @@ export default function SellerRoot() {
     }
   };
   const [notifOpen, setNotifOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false); // 상단바 계정 드롭다운 (7/28)
   const [seenNotifs, setSeenNotifs] = useState<string[]>(() => loadKeys(SELLER_SEEN_KEY));
   const [dismissedNotifs, setDismissedNotifs] = useState<string[]>(() => loadKeys(SELLER_DISMISSED_KEY));
 
@@ -152,6 +155,16 @@ export default function SellerRoot() {
         date: i.answeredAt ?? i.createdAt,
         to: "/seller/inquiries",
       })),
+    // 7/28 — 관리자가 보낸 공지(수신함). 클릭 시 서버에도 읽음 처리(dismissNotif에서)
+    ...myInbox.map((n) => ({
+      key: `notice:${n.recipientId}`,
+      badge: "공지",
+      badgeCls: "bg-amber-50 text-amber-600 border-amber-200",
+      title: n.title,
+      sub: n.content,
+      date: n.sentAt,
+      to: "/seller",
+    })),
   ]
     .filter((n) => !dismissedNotifs.includes(n.key))
     .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
@@ -168,6 +181,10 @@ export default function SellerRoot() {
     const keys = [...new Set([...dismissedNotifs, key])];
     setDismissedNotifs(keys);
     localStorage.setItem(SELLER_DISMISSED_KEY, JSON.stringify(keys));
+    // 공지 항목이면 서버 수신함에도 읽음 기록 (실패해도 로컬 dismiss는 유지)
+    if (key.startsWith("notice:")) {
+      markNoticeRead(Number(key.slice("notice:".length))).catch(() => {});
+    }
   };
 
   // 키에 상태를 포함 — 상태가 바뀐 팝업·새로 답변된 문의만 다시 '새 소식'으로 집계
@@ -229,18 +246,35 @@ export default function SellerRoot() {
               </span>
             )}
           </button>
-          {/* 계정 영역 클릭 → 마이페이지 (7/25 피드백) */}
-          <Link
-            to="/seller/mypage"
-            title="마이페이지"
-            className="flex items-center gap-2 text-xs border-l border-border pl-4 hover:text-accent transition-colors"
-          >
-            <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center font-semibold text-[10px]">
-              {(user?.name ?? "게스트").slice(0, 1)}
-            </div>
-            <span className="hidden sm:inline">{user?.name ?? "게스트"} 님</span>
-            <ChevronDown size={13} className="text-muted-foreground" />
-          </Link>
+          {/* 계정 영역 — ChevronDown 클릭 시 드롭다운, 「내 정보 보기」로 마이페이지 진입 (7/28 피드백) */}
+          <div className="relative border-l border-border pl-4">
+            <button
+              onClick={() => setAccountOpen((v) => !v)}
+              className="flex items-center gap-2 text-xs hover:text-accent transition-colors"
+              title="계정 메뉴"
+            >
+              <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center font-semibold text-[10px]">
+                {(user?.name ?? "게스트").slice(0, 1)}
+              </div>
+              <span className="hidden sm:inline">{user?.name ?? "게스트"} 님</span>
+              <ChevronDown size={13} className={`text-muted-foreground transition-transform ${accountOpen ? "rotate-180" : ""}`} />
+            </button>
+            {accountOpen && (
+              <>
+                {/* 바깥 클릭 시 닫힘 */}
+                <div className="fixed inset-0 z-40" onClick={() => setAccountOpen(false)} />
+                <div className="absolute right-0 top-full mt-2 w-40 bg-white border border-border rounded-sm shadow-lg z-50 py-1">
+                  <Link
+                    to="/seller/mypage"
+                    onClick={() => setAccountOpen(false)}
+                    className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-secondary/60 hover:text-accent transition-colors"
+                  >
+                    <UserRound size={13} className="text-muted-foreground" /> 내 정보 보기
+                  </Link>
+                </div>
+              </>
+            )}
+          </div>
           {user && (
             <button
               onClick={() => { logout(); navigate("/"); }}
@@ -337,7 +371,7 @@ export default function SellerRoot() {
               </ul>
             </div>
             <div className="px-4 py-3 border-t border-border text-[11px] text-muted-foreground shrink-0">
-              1분마다 자동 갱신 · 항목을 누르면 목록에서 사라집니다 · 긴급공지 수신 알림은 알림 시스템 백엔드 구성 후 연동
+              1분마다 자동 갱신 · 항목을 누르면 목록에서 사라집니다 (공지는 수신함에도 읽음 처리)
             </div>
           </aside>
         </>

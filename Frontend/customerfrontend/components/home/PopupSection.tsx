@@ -19,7 +19,7 @@ export function PopupSection({
   const visibleItems = items.slice(0, limit);
 
   return (
-    <section className="mb-10 mobile:mb-14 px-4 mobile:px-8">
+    <section className="mb-14 mobile:mb-16 px-4 mobile:px-8">
       <div className="flex items-baseline justify-between mb-3 mobile:mb-4">
         <h3 className="text-base mobile:text-lg font-semibold">{title}</h3>
         {moreHref ? (

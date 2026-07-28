@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ReviewItem } from "@/data/mockPopups";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
+import { StarRatingDisplay } from "@/components/ui/StarRatingDisplay";
 
 const CONTENT_PREVIEW_LENGTH = 60;
 
@@ -22,7 +23,9 @@ export function ReviewCard({ review }: { review: ReviewItem }) {
           <p className="text-sm font-medium truncate">{nickname}</p>
           <p className="text-xs text-gray-400">{date}</p>
         </div>
-        <span className="text-xs font-medium text-gray-700 flex-none">⭐ {rating}</span>
+        <span className="flex items-center gap-1 text-xs font-medium text-gray-700 flex-none">
+          <StarRatingDisplay rating={rating} size={12} /> {rating}
+        </span>
       </div>
 
       <p className={`text-sm text-gray-700 leading-relaxed ${!expanded && isLong ? "line-clamp-2" : ""}`}>
