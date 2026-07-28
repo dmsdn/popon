@@ -193,9 +193,10 @@ export default function PopupRegister() {
     try {
       await loadPostcode();
     } catch {
+      // 다음 우편번호가 막힌 환경 — 네이버 지오코딩 기반 검색으로 조용히 전환한다.
+      // 우편번호까지 같이 나오므로 사용자가 잃는 정보는 없다(경고 대신 안내만).
       setFallbackOpen(true);
       setFallbackQuery(directAddress);
-      setMapError("우편번호 검색 서비스에 연결할 수 없어 지도 검색으로 전환했습니다. 도로명 주소를 입력해 주세요.");
       return;
     }
     new window.daum!.Postcode({
@@ -230,7 +231,7 @@ export default function PopupRegister() {
   const pickFallback = (c: AddressCandidate) => {
     const addr = c.roadAddress || c.jibunAddress;
     setDirectAddress(addr);
-    setZonecode("");
+    setZonecode(c.postalCode);
     setCoord({ lat: c.lat, lng: c.lng });
     setFallbackOpen(false);
     setFallbackList([]);
@@ -484,6 +485,9 @@ export default function PopupRegister() {
             {/* 대체 검색 — 다음 우편번호를 못 쓸 때만 열린다 */}
             {fallbackOpen && (
               <div className="sm:col-span-2 border border-accent/40 bg-accent/5 rounded-sm p-3 flex flex-col gap-2">
+                <p className="text-[11px] text-muted-foreground">
+                  도로명 주소를 입력하고 검색하면 후보가 나옵니다. 선택하면 우편번호와 좌표가 함께 채워집니다.
+                </p>
                 <div className="flex items-center gap-2">
                   <input
                     className={inputCls + " flex-1"}
@@ -562,9 +566,12 @@ export default function PopupRegister() {
               )}
             </div>
 
-            {/* 지도 — 좌표를 찾기 전에는 안내 문구, 찾으면 이 자리에 네이버 지도가 그려진다 */}
+            {/* 지도 — 좌표를 찾기 전에는 안내 문구, 찾으면 이 자리에 네이버 지도가 그려진다.
+                주의: 지도 컨테이너에는 반드시 실제 높이(h-full)를 줘야 한다.
+                naver.maps.Map은 생성 시 컨테이너의 position을 relative로 덮어쓰므로,
+                absolute+inset-0으로 높이를 잡으면 그 순간 높이가 0이 되어 타일이 보이지 않는다. */}
             <div className="sm:col-span-2 relative h-56 bg-secondary rounded-sm overflow-hidden">
-              <div ref={mapBoxRef} className="absolute inset-0" />
+              <div ref={mapBoxRef} className="h-full w-full" />
               {!coord && (
                 <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground pointer-events-none">
                   <MapPin size={14} className="mr-1.5" /> 주소를 선택하면 지도가 표시됩니다
