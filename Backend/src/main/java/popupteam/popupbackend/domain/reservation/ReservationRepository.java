@@ -87,15 +87,17 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             "AND r.entryStatus = 'CHECKED_IN'")
     List<popupteam.popupbackend.domain.consumer.Customer.Gender> findGendersOfCheckedInVisitors(@Param("popupId") Long popupId);
 
-    // 일별 방문자 수 추이 - 날짜별로 몇 명 체크인했는지 집계. 결과: [ [날짜(LocalDate), 인원수(Long)], ... ]
-    @Query("SELECT FUNCTION('DATE', r.checkedInAt), COALESCE(SUM(r.partySize), 0) FROM Reservation r " +
+// 일별 방문자 수 추이 - 예약 건수가 아니라 partySize 합계로 실제 방문 인원을 집계
+// 예: 1건의 예약으로 3명이 체크인한 경우 방문자 3명으로 계산
+@Query("SELECT FUNCTION('DATE', r.checkedInAt), COALESCE(SUM(r.partySize), 0) FROM Reservation r " +
         "WHERE r.popup.id = :popupId AND r.entryStatus = 'CHECKED_IN' " +
         "AND r.checkedInAt >= :from AND r.checkedInAt < :to " +
         "GROUP BY FUNCTION('DATE', r.checkedInAt) ORDER BY FUNCTION('DATE', r.checkedInAt)")
-    List<Object[]> countDailyCheckedInVisitors(
+List<Object[]> countDailyCheckedInVisitors(
         @Param("popupId") Long popupId,
-        @Param("from") LocalDateTime from,
-        @Param("to") LocalDateTime to);
+        @Param("from") java.time.LocalDateTime from,
+        @Param("to") java.time.LocalDateTime to
+);
 
     // 누적 방문자 수 - 체크인 완료된 예약의 partySize(인원수) 전체 합산. 그룹 예약이면 인원수만큼 카운트됨
     @Query("SELECT COALESCE(SUM(r.partySize), 0) FROM Reservation r " +

@@ -1,9 +1,11 @@
+
 package popupteam.popupbackend.domain.consumer;
 
 import java.util.List;
 import java.util.Map;
 
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -17,14 +19,36 @@ import popupteam.popupbackend.domain.consumer.auth.JwtUtil;
 public class InterestController {
 
     private final CustomerKeywordRepository customerKeywordRepository;
+    private final KeywordRepository keywordRepository;
     private final JwtUtil jwtUtil;
 
     public InterestController(
             CustomerKeywordRepository customerKeywordRepository,
+            KeywordRepository keywordRepository,
             JwtUtil jwtUtil
     ) {
         this.customerKeywordRepository = customerKeywordRepository;
+        this.keywordRepository = keywordRepository;
         this.jwtUtil = jwtUtil;
+    }
+
+    // 내가 고른 관심 키워드 목록 조회 (id + name 같이 내려줌)
+    @GetMapping("/interests")
+    public List<Map<String, Object>> getMyInterests(@RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        Long customerId = jwtUtil.getCustomerIdFromToken(token);
+
+        List<Long> keywordIds = customerKeywordRepository.findByCustomerId(customerId).stream()
+                .map(CustomerKeyword::getKeywordId)
+                .toList();
+
+        if (keywordIds.isEmpty()) {
+            return List.of();
+        }
+
+        return keywordRepository.findAllById(keywordIds).stream()
+                .map(k -> Map.<String, Object>of("id", k.getId(), "name", k.getName()))
+                .toList();
     }
 
     @Transactional

@@ -1,12 +1,17 @@
 package popupteam.popupbackend.domain.popup.dto;
 
-import lombok.*;
+import lombok.Builder;
+import lombok.Getter;
 import popupteam.popupbackend.domain.popup.Popup;
+
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 
-@Getter @Builder
+@Getter
+@Builder
 public class PopupResponse {
+
     private Long id;
     private Long businessId;
     private String companyName;
@@ -34,61 +39,119 @@ public class PopupResponse {
     private Long reviewCount;
     private String notice;
     private List<String> keywordNames; // 이 팝업이 연결된 표준 카테고리 이름들 (예: ["패션", "라이프스타일"])
+    private List<PopupSnsLinkResponse> snsLinks;
     private String businessProfileImage;
     private List<String> thumbnailImages;
     private List<String> detailImages;
 
     public static PopupResponse from(Popup popup) {
-        return from(popup, java.util.Collections.emptyList());
+        return from(popup, Collections.emptyList());
     }
 
     public static PopupResponse from(Popup popup, List<String> hashtags) {
-        return from(popup, hashtags, null, 0L, java.util.Collections.emptyList());
+        return from(popup, hashtags, Collections.emptyList());
     }
 
-    // 목록/검색·등록·수정용 - 이미지는 N+1 방지를 위해 안 채운다
+    // 키워드까지 (평점·SNS·이미지 미조회)
+    public static PopupResponse from(Popup popup, List<String> hashtags, List<String> keywordNames) {
+        return from(popup, hashtags, null, 0L, keywordNames, Collections.emptyList());
+    }
+
+    // 키워드 + SNS (평점·이미지 미조회) — 등록/수정 응답용
     public static PopupResponse from(Popup popup, List<String> hashtags,
-                                     java.math.BigDecimal avgRating, Long reviewCount, List<String> keywordNames) {
-        return from(popup, hashtags, avgRating, reviewCount, keywordNames,
-                java.util.Collections.emptyList(), java.util.Collections.emptyList());
+                                     List<String> keywordNames, List<PopupSnsLinkResponse> snsLinks) {
+        return from(popup, hashtags, null, 0L, keywordNames, snsLinks);
     }
 
-    // 상세조회(findById)용 - 키워드·이미지 목록까지 한 번에 채워서 리턴
+    // 목록/검색용 — 이미지는 N+1 방지를 위해 안 채운다
     public static PopupResponse from(Popup popup, List<String> hashtags,
                                      java.math.BigDecimal avgRating, Long reviewCount,
-                                     List<String> keywordNames,
+                                     List<String> keywordNames, List<PopupSnsLinkResponse> snsLinks) {
+        return from(popup, hashtags, avgRating, reviewCount, keywordNames, snsLinks,
+                Collections.emptyList(), Collections.emptyList());
+    }
+
+    // 상세조회(findById)용 — 키워드·SNS·이미지까지 한 번에 채워서 리턴
+    public static PopupResponse from(Popup popup, List<String> hashtags,
+                                     java.math.BigDecimal avgRating, Long reviewCount,
+                                     List<String> keywordNames, List<PopupSnsLinkResponse> snsLinks,
                                      List<String> thumbnailImages, List<String> detailImages) {
         return PopupResponse.builder()
                 .id(popup.getId())
-                .businessId(popup.getBusiness().getId())
-                .companyName(popup.getBusiness().getCompanyName())
-                .businessProfileImage(popup.getBusiness().getProfileImage())
+                .businessId(
+                        popup.getBusiness() != null
+                                ? popup.getBusiness().getId()
+                                : null
+                )
+                .companyName(
+                        popup.getBusiness() != null
+                                ? popup.getBusiness().getCompanyName()
+                                : null
+                )
+                .businessProfileImage(
+                        popup.getBusiness() != null
+                                ? popup.getBusiness().getProfileImage()
+                                : null
+                )
                 .title(popup.getTitle())
                 .description(popup.getDescription())
                 .location(popup.getLocation())
                 .startDate(popup.getStartDate())
                 .endDate(popup.getEndDate())
-                .status(popup.getStatus().name())
+                .status(
+                        popup.getStatus() != null
+                                ? popup.getStatus().name()
+                                : null
+                )
                 .rejectReason(popup.getRejectReason())
                 .createdAt(popup.getCreatedAt())
                 .areaSqm(popup.getAreaSqm())
                 .recommendedCapacity(popup.getRecommendedCapacity())
                 .capacity(popup.getCapacity())
-                .reservationMode(popup.getReservationMode() != null ? popup.getReservationMode().name() : null)
+                .reservationMode(
+                        popup.getReservationMode() != null
+                                ? popup.getReservationMode().name()
+                                : null
+                )
                 .avgExperienceMinutes(popup.getAvgExperienceMinutes())
                 .latitude(popup.getLatitude())
                 .longitude(popup.getLongitude())
-                .queueMode(popup.getQueueMode() != null ? popup.getQueueMode().name() : null)
+                .queueMode(
+                        popup.getQueueMode() != null
+                                ? popup.getQueueMode().name()
+                                : null
+                )
                 .statusChangedAt(popup.getStatusChangedAt())
                 .adminEditNote(popup.getAdminEditNote())
                 .maxPartySizePerTeam(popup.getMaxPartySizePerTeam())
-                .hashtags(hashtags)
-                .keywordNames(keywordNames)
+                .hashtags(
+                        hashtags != null
+                                ? hashtags
+                                : Collections.emptyList()
+                )
+                .keywordNames(
+                        keywordNames != null
+                                ? keywordNames
+                                : Collections.emptyList()
+                )
+                .snsLinks(
+                        snsLinks != null
+                                ? snsLinks
+                                : Collections.emptyList()
+                )
                 .avgRating(avgRating != null ? avgRating.setScale(1, java.math.RoundingMode.HALF_UP) : null)
                 .reviewCount(reviewCount)
                 .notice(popup.getNotice())
-                .thumbnailImages(thumbnailImages)
-                .detailImages(detailImages)
+                .thumbnailImages(
+                        thumbnailImages != null
+                                ? thumbnailImages
+                                : Collections.emptyList()
+                )
+                .detailImages(
+                        detailImages != null
+                                ? detailImages
+                                : Collections.emptyList()
+                )
                 .build();
     }
 }
