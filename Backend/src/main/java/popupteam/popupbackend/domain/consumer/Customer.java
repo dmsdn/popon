@@ -55,6 +55,12 @@ public class Customer {
     @Column(name = "marketing_agreed", nullable = false)
     private Boolean marketingAgreed = false; // [선택] 마케팅 정보 수신 동의
 
+    @Column(name = "popup_news_agreed", nullable = false)
+    private Boolean popupNewsAgreed = true; // 팝업 소식 알림 ON/OFF (기본 ON)
+
+    @Column(name = "reservation_waiting_agreed", nullable = false)
+    private Boolean reservationWaitingAgreed = true; // 예약·웨이팅 알림 ON/OFF (기본 ON)
+
     // "회원정보 입력" 화면(닉네임/전화번호/이메일/약관동의)을 마쳤는지 여부.
     // 이게 false면 프론트가 로그인 직후 이 화면으로 보내면 됨.
     @Column(name = "signup_completed", nullable = false)

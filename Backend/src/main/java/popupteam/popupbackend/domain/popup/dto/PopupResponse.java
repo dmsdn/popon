@@ -1,12 +1,17 @@
 package popupteam.popupbackend.domain.popup.dto;
 
-import lombok.*;
+import lombok.Builder;
+import lombok.Getter;
 import popupteam.popupbackend.domain.popup.Popup;
+
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 
-@Getter @Builder
+@Getter
+@Builder
 public class PopupResponse {
+
     private Long id;
     private Long businessId;
     private String companyName;
@@ -30,42 +35,107 @@ public class PopupResponse {
     private String adminEditNote;
     private Integer maxPartySizePerTeam;
     private List<String> hashtags;
-    private List<String> keywordNames; // 이 팝업이 연결된 표준 카테고리 이름들 (예: ["패션", "라이프스타일"])
+    private List<String> keywordNames;
+    private List<PopupSnsLinkResponse> snsLinks;
 
     public static PopupResponse from(Popup popup) {
-        return from(popup, java.util.Collections.emptyList(), java.util.Collections.emptyList());
+        return from(
+                popup,
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyList()
+        );
     }
 
-    public static PopupResponse from(Popup popup, List<String> hashtags) {
-        return from(popup, hashtags, java.util.Collections.emptyList());
+    public static PopupResponse from(
+            Popup popup,
+            List<String> hashtags
+    ) {
+        return from(
+                popup,
+                hashtags,
+                Collections.emptyList(),
+                Collections.emptyList()
+        );
     }
 
-    public static PopupResponse from(Popup popup, List<String> hashtags, List<String> keywordNames) {
+    public static PopupResponse from(
+            Popup popup,
+            List<String> hashtags,
+            List<String> keywordNames
+    ) {
+        return from(
+                popup,
+                hashtags,
+                keywordNames,
+                Collections.emptyList()
+        );
+    }
+
+    public static PopupResponse from(
+            Popup popup,
+            List<String> hashtags,
+            List<String> keywordNames,
+            List<PopupSnsLinkResponse> snsLinks
+    ) {
         return PopupResponse.builder()
                 .id(popup.getId())
-                .businessId(popup.getBusiness().getId())
-                .companyName(popup.getBusiness().getCompanyName())
+                .businessId(
+                        popup.getBusiness() != null
+                                ? popup.getBusiness().getId()
+                                : null
+                )
+                .companyName(
+                        popup.getBusiness() != null
+                                ? popup.getBusiness().getCompanyName()
+                                : null
+                )
                 .title(popup.getTitle())
                 .description(popup.getDescription())
                 .location(popup.getLocation())
                 .startDate(popup.getStartDate())
                 .endDate(popup.getEndDate())
-                .status(popup.getStatus().name())
+                .status(
+                        popup.getStatus() != null
+                                ? popup.getStatus().name()
+                                : null
+                )
                 .rejectReason(popup.getRejectReason())
                 .createdAt(popup.getCreatedAt())
                 .areaSqm(popup.getAreaSqm())
                 .recommendedCapacity(popup.getRecommendedCapacity())
                 .capacity(popup.getCapacity())
-                .reservationMode(popup.getReservationMode() != null ? popup.getReservationMode().name() : null)
+                .reservationMode(
+                        popup.getReservationMode() != null
+                                ? popup.getReservationMode().name()
+                                : null
+                )
                 .avgExperienceMinutes(popup.getAvgExperienceMinutes())
                 .latitude(popup.getLatitude())
                 .longitude(popup.getLongitude())
-                .queueMode(popup.getQueueMode() != null ? popup.getQueueMode().name() : null)
+                .queueMode(
+                        popup.getQueueMode() != null
+                                ? popup.getQueueMode().name()
+                                : null
+                )
                 .statusChangedAt(popup.getStatusChangedAt())
                 .adminEditNote(popup.getAdminEditNote())
                 .maxPartySizePerTeam(popup.getMaxPartySizePerTeam())
-                .hashtags(hashtags)
-                .keywordNames(keywordNames)
+                .hashtags(
+                        hashtags != null
+                                ? hashtags
+                                : Collections.emptyList()
+                )
+                .keywordNames(
+                        keywordNames != null
+                                ? keywordNames
+                                : Collections.emptyList()
+                )
+                .snsLinks(
+                        snsLinks != null
+                                ? snsLinks
+                                : Collections.emptyList()
+                )
                 .build();
     }
 }
