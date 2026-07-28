@@ -12,4 +12,5 @@ public class CustomerUpdateRequest {
     private LocalDate birthDate;
     private String gender;  // "MALE", "FEMALE", "UNKNOWN"
     private String phone;
+    private String email;
 }

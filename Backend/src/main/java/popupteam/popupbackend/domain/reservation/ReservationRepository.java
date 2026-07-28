@@ -6,6 +6,7 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDateTime;
 
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
     List<Reservation> findBySlotId(Long slotId);
@@ -87,13 +88,14 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     List<popupteam.popupbackend.domain.consumer.Customer.Gender> findGendersOfCheckedInVisitors(@Param("popupId") Long popupId);
 
     // 일별 방문자 수 추이 - 날짜별로 몇 명 체크인했는지 집계. 결과: [ [날짜(LocalDate), 인원수(Long)], ... ]
-    @Query("SELECT FUNCTION('DATE', r.checkedInAt), COUNT(r) FROM Reservation r " +
-            "WHERE r.popup.id = :popupId AND r.entryStatus = 'CHECKED_IN' " +
-            "AND r.checkedInAt >= :from AND r.checkedInAt < :to " +
-            "GROUP BY FUNCTION('DATE', r.checkedInAt) ORDER BY FUNCTION('DATE', r.checkedInAt)")
-    List<Object[]> countDailyCheckedInVisitors(@Param("popupId") Long popupId,
-                                                @Param("from") java.time.LocalDateTime from,
-                                                @Param("to") java.time.LocalDateTime to);
+    @Query("SELECT FUNCTION('DATE', r.checkedInAt), COALESCE(SUM(r.partySize), 0) FROM Reservation r " +
+        "WHERE r.popup.id = :popupId AND r.entryStatus = 'CHECKED_IN' " +
+        "AND r.checkedInAt >= :from AND r.checkedInAt < :to " +
+        "GROUP BY FUNCTION('DATE', r.checkedInAt) ORDER BY FUNCTION('DATE', r.checkedInAt)")
+    List<Object[]> countDailyCheckedInVisitors(
+        @Param("popupId") Long popupId,
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to);
 
     // 누적 방문자 수 - 체크인 완료된 예약의 partySize(인원수) 전체 합산. 그룹 예약이면 인원수만큼 카운트됨
     @Query("SELECT COALESCE(SUM(r.partySize), 0) FROM Reservation r " +
