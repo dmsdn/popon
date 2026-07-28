@@ -60,7 +60,12 @@ jwt:
   expiration: 86400000   # 24시간 (ms)
 
 file:
-  upload-dir: uploads
+  # ※ 반드시 절대경로로 적을 것. 상대경로(uploads)면 백엔드를 어디서 실행하느냐에 따라
+  #   저장 폴더가 갈린다 (IDE 실행 = 리포 루트/uploads, 터미널에서 Backend/ 진입 = Backend/uploads).
+  #   같은 기계인데도 방금 업로드한 이미지가 404가 되는 원인. 본인 경로로 바꿔 쓰세요.
+  upload-dir: C:/경로/popup-store-project/uploads
+  # 파일이 서빙되는 주소. 이 값이 DB(popup_image.image_url)에 그대로 저장되므로
+  # 배포 시에는 실제 도메인으로 바꿔야 한다 (기존 행은 별도 일괄 치환 필요).
   base-url: http://localhost:8080/uploads
 
 # ── 개인 로컬 오버라이드 예시 ──
