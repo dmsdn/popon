@@ -52,6 +52,8 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/keywords").permitAll()   // === 추가: 관심 카테고리 목록 조회 ===
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/regions").permitAll()   // === 추가: 관심 지역 목록 조회 ===
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/geocode").permitAll()   // === 추가: 팝업 등록폼 지도 미리보기용 주소->좌표 변환 ===
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/announcements").permitAll()   // === 추가: 공지사항 조회, 비로그인 403 수정 ===
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/banners").permitAll()   // === 추가: 배너 조회, 비로그인 403 수정 ===
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

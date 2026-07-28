@@ -19,6 +19,7 @@ public class PopupController {
     private final BusinessRepository businessRepository;
     private final PopupPopularityService popupPopularityService;
     private final popupteam.popupbackend.domain.reservation.PopupVisitorAgeStatsService popupVisitorAgeStatsService;
+    private final PopupImageRepository popupImageRepository;
 
     private Long getBusinessId(Authentication authentication) {
         String email = authentication.getName();
@@ -86,6 +87,15 @@ public class PopupController {
         Long businessId = getBusinessId(authentication);
         popupService.deleteImage(id, imageId, businessId);
         return ResponseEntity.noContent().build();
+    }
+
+    // 팝업 이미지 목록 조회 - 로그인 여부 무관, 누구나 조회 가능
+    @GetMapping("/{id}/images")
+    public ResponseEntity<List<java.util.Map<String, Object>>> getImages(@PathVariable Long id) {
+        List<java.util.Map<String, Object>> images = popupImageRepository.findByPopupIdOrderBySortOrder(id).stream()
+                .map(img -> java.util.Map.<String, Object>of("id", img.getId(), "imageUrl", img.getImageUrl()))
+                .toList();
+        return ResponseEntity.ok(images);
     }
 
     @GetMapping("/my")

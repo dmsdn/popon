@@ -42,4 +42,6 @@ public class PopupCreateRequest {
     private String notice; // 팝업 상세페이지 공지사항 (선택입력)
 
     private List<Long> keywordIds; // 표준 키워드 ID 목록 (선택)
+
+    private List<PopupSnsLinkRequest> snsLinks; // 팝업과 함께 등록할 SNS/홈페이지 링크 목록
 }
