@@ -32,6 +32,7 @@ public class PopupResponse {
     private List<String> hashtags;
     private java.math.BigDecimal avgRating;
     private Long reviewCount;
+    private String notice;
 
     public static PopupResponse from(Popup popup) {
         return from(popup, java.util.Collections.emptyList());
@@ -69,6 +70,7 @@ public class PopupResponse {
                 .hashtags(hashtags)
                 .avgRating(avgRating != null ? avgRating.setScale(1, java.math.RoundingMode.HALF_UP) : null)
                 .reviewCount(reviewCount)
+                .notice(popup.getNotice())
                 .build();
     }
 }

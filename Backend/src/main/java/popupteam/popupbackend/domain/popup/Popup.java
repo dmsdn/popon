@@ -80,6 +80,10 @@ public class Popup {
     @Column(length = 1000)
     private String adminEditNote;
 
+    // 팝업 상세페이지에 노출되는 공지사항 (운영시간 변경 안내 등, 주최자가 직접 입력)
+    @Column(columnDefinition = "TEXT")
+    private String notice;
+
     private Double latitude;
     private Double longitude;
 

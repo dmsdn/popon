@@ -39,5 +39,7 @@ public class PopupCreateRequest {
 
     private List<String> hashtags;
 
+    private String notice; // 팝업 상세페이지 공지사항 (선택입력)
+
     private List<Long> keywordIds; // 표준 키워드 ID 목록 (선택)
 }
