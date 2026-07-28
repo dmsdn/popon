@@ -8,6 +8,7 @@ import { BottomTabBar } from "@/components/layout/BottomTabBar";
 import { searchPopups } from "@/lib/api/popups";
 import { toPopupItem } from "@/lib/utils/popupMapper";
 import type { PopupItem } from "@/data/mockPopups";
+import { LoadingState, EmptyState } from "@/components/ui/EmptyState";
 
 // ⚠️ 방문자 수 기반 진짜 "인기순" 랭킹 API는 고객 화면에 아직 공개돼 있지 않아서
 // (관리자 전용 /api/admin/stats/popup-ranking만 존재), 지금은 선택한 지역의
@@ -74,9 +75,9 @@ export default function RankingListPage() {
         </div>
 
         {!loaded ? (
-          <p className="text-sm text-gray-400 py-16 text-center">불러오는 중...</p>
+          <LoadingState />
         ) : items.length === 0 ? (
-          <p className="text-sm text-gray-400 py-16 text-center">표시할 팝업이 없어요.</p>
+          <EmptyState message="표시할 팝업이 없어요." />
         ) : (
           <div className="flex flex-col">
             {items.map((item, index) => (

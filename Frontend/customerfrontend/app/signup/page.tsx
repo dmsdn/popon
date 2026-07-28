@@ -8,6 +8,7 @@ import { getTerms, type Terms } from "@/lib/api/terms";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { formatPhoneInput, isValidPhone } from "@/lib/utils/formatPhone";
 import { BirthDatePicker } from "@/components/ui/BirthDatePicker";
+import { LoadingState, EmptyState } from "@/components/ui/EmptyState";
 
 const REQUIRED_TERMS = [
   { id: "service", label: "[필수] 서비스 이용약관 동의" },
@@ -259,9 +260,9 @@ export default function SignupPage() {
               onClick={(e) => e.stopPropagation()}
             >
               {termsError ? (
-                <p className="text-sm text-gray-400 py-10 text-center">약관을 불러오지 못했어요.</p>
+                <EmptyState message="약관을 불러오지 못했어요." />
               ) : !terms ? (
-                <p className="text-sm text-gray-400 py-10 text-center">불러오는 중...</p>
+                <LoadingState />
               ) : (
                 <>
                   <p className="text-base font-semibold mb-3">{terms.title}</p>

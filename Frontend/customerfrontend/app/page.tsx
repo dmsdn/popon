@@ -9,15 +9,18 @@ import { BottomTabBar } from "@/components/layout/BottomTabBar";
 import { PromoCarousel } from "@/components/home/PromoCarousel";
 import { CategoryIconList } from "@/components/home/CategoryIconList";
 import { NearbyHotPlacesSection } from "@/components/home/NearbyHotPlacesSection";
+import { NearbyRegionPopupSection } from "@/components/home/NearbyRegionPopupSection";
+import { MapSearchEntry } from "@/components/home/MapSearchEntry";
 import { NoticeBar } from "@/components/home/NoticeBar";
 import { PopupSection } from "@/components/home/PopupSection";
 import { PopularRankingSection } from "@/components/home/PopularRankingSection";
 import { ReviewSection } from "@/components/home/ReviewSection";
 import { HorizontalCarousel } from "@/components/ui/HorizontalCarousel";
-import { searchPopups, getPopup, getPopupLiveStatus, getQueueBoardCount, type PopupLiveStatus } from "@/lib/api/popups";
+import { searchPopups, getPopup, getPopupLiveStatus, getQueueBoardCount, getPopupImages, type PopupLiveStatus } from "@/lib/api/popups";
+import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 import { toPopupItem } from "@/lib/utils/popupMapper";
 import { getRecentlyViewedIds } from "@/lib/recentlyViewed";
-import { getPreferredRegions } from "@/lib/preferences";
+import { getRegions, getMyRegions, type Region } from "@/lib/api/regions";
 import { getKeywords, getMyInterests, type Keyword } from "@/lib/api/customer";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { LiveCongestionMini } from "@/components/popup/LiveCongestion";
@@ -29,11 +32,15 @@ export default function Home() {
   const [openingSoon, setOpeningSoon] = useState<PopupItem[]>([]);
   const [recentlyViewed, setRecentlyViewed] = useState<PopupItem[]>([]);
   const [allOpenPopups, setAllOpenPopups] = useState<PopupItem[]>([]);
-  const [congestionItems, setCongestionItems] = useState<{ item: PopupItem; status: PopupLiveStatus }[]>([]);
+  const [congestionItems, setCongestionItems] = useState<
+    { item: PopupItem; status: PopupLiveStatus; imageUrl: string | null }[]
+  >([]);
   const [easyEntryItems, setEasyEntryItems] = useState<{ item: PopupItem; count: number }[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [allKeywords, setAllKeywords] = useState<Keyword[]>([]);
   const [myKeywordIds, setMyKeywordIds] = useState<number[]>([]);
+  const [allRegions, setAllRegions] = useState<Region[]>([]);
+  const [myRegionIds, setMyRegionIds] = useState<number[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,13 +80,15 @@ export default function Home() {
         const targets = items.slice(0, 8);
         Promise.all(
           targets.map((item) =>
-            getPopupLiveStatus(item.id)
-              .then((status) => ({ item, status }))
+            Promise.all([getPopupLiveStatus(item.id), getPopupImages(item.id).catch(() => [])])
+              .then(([status, images]) => ({ item, status, imageUrl: images[0]?.imageUrl ?? null }))
               .catch(() => null)
           )
         ).then((results) => {
           if (cancelled) return;
-          const valid = results.filter((r): r is { item: PopupItem; status: PopupLiveStatus } => r !== null);
+          const valid = results.filter(
+            (r): r is { item: PopupItem; status: PopupLiveStatus; imageUrl: string | null } => r !== null
+          );
           valid.sort((a, b) => b.status.congestionRate - a.status.congestionRate);
           setCongestionItems(valid);
         });
@@ -120,7 +129,23 @@ export default function Home() {
       .catch((err) => console.error("내 관심 키워드 조회 실패", err));
   }, [customer]);
 
-  const preferredRegions = useMemo(() => getPreferredRegions(), []);
+  // [수정] "내 관심 지역 팝업" 섹션도 마찬가지로 죽은 로컬 저장 함수(getPreferredRegions)를
+  // 읽고 있어서, 마이페이지 수정화면에서 저장한 진짜 관심 지역이 전혀 반영이 안 되고
+  // 이 섹션이 항상 비어 있었어요. 실제 지역 API로 교체했어요.
+  useEffect(() => {
+    if (!customer) return;
+    getRegions()
+      .then(setAllRegions)
+      .catch((err) => console.error("지역 목록 조회 실패", err));
+    getMyRegions()
+      .then(({ regionIds }) => setMyRegionIds(regionIds))
+      .catch((err) => console.error("내 관심 지역 조회 실패", err));
+  }, [customer]);
+
+  const preferredRegions = useMemo(() => {
+    const nameById = new Map(allRegions.map((r) => [r.id, r.name]));
+    return myRegionIds.map((id) => nameById.get(id)).filter((n): n is string => !!n);
+  }, [allRegions, myRegionIds]);
   const easyEntryPopupItems = useMemo(
     () => easyEntryItems.map(({ item, count }) => ({ ...item, badge: `현재 ${count}명` })),
     [easyEntryItems]
@@ -154,8 +179,10 @@ export default function Home() {
       </div>
 
       <PromoCarousel />
+      <MapSearchEntry />
       <CategoryIconList />
       <NoticeBar />
+      <NearbyRegionPopupSection />
       <NearbyHotPlacesSection />
 
       {recentlyViewed.length > 0 && (
@@ -187,14 +214,23 @@ export default function Home() {
         <section className="mb-14 mobile:mb-16 px-4 mobile:px-8">
           <h3 className="text-base mobile:text-lg font-semibold mb-3 mobile:mb-4">실시간 혼잡도</h3>
           <HorizontalCarousel>
-            {congestionItems.map(({ item, status }) => (
+            {congestionItems.map(({ item, status, imageUrl }) => (
               <Link
                 key={item.id}
                 href={`/popup/${item.id}`}
-                className="flex-none w-[140px] border border-gray-100 rounded-lg p-3"
+                className="flex-none w-[140px] border border-gray-100 rounded-lg overflow-hidden"
               >
-                <p className="text-sm font-medium truncate mb-1">{item.name}</p>
-                <LiveCongestionMini status={status} />
+                {imageUrl ? (
+                  <ImageWithFallback src={imageUrl} className="w-full aspect-[4/3] object-cover" />
+                ) : (
+                  <div className="w-full aspect-[4/3] bg-gray-100 flex items-center justify-center text-xs text-gray-400">
+                    이미지
+                  </div>
+                )}
+                <div className="p-3">
+                  <p className="text-sm font-medium truncate mb-1">{item.name}</p>
+                  <LiveCongestionMini status={status} />
+                </div>
               </Link>
             ))}
           </HorizontalCarousel>

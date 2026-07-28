@@ -50,6 +50,37 @@ export function getMyWaitingStatus(waitingId: number) {
   return apiFetch<Waiting>(`/api/waiting/${waitingId}`);
 }
 
+// [신규 연결] 백엔드에 "로그인한 내 활성 웨이팅 전체 목록"을 돌려주는 API가 이미
+// 있었어요(GET /api/waiting/me) - 예전엔 이게 없는 줄 알고 브라우저에 id를
+// 하나씩 저장해두는 방식으로 우회하고 있었는데, 이제 진짜 API로 바로 받아와요.
+// WAITING/CALLED 상태만 내려줘서(취소·입장완료 제외) "지금 활성 웨이팅이 있는지"
+// 확인하는 용도로도 그대로 쓸 수 있어요.
+export interface MyActiveWaiting {
+  waitingId: number;
+  popupId: number;
+  popupTitle: string;
+  teamNumber: number;
+  teamsAhead: number;
+  status: string;
+  registeredAt: string;
+}
+
+export function getMyActiveWaitings(customerId: number) {
+  return apiFetch<MyActiveWaiting[]>(`/api/waiting/me?customerId=${customerId}`);
+}
+
+// 웨이팅 취소
+// ⚠️ 백엔드 참고: 이 엔드포인트는 원래 "주최자/관리자 수동 취소"용으로 만들어져 있어서
+// (PATCH /api/waiting/{id}/cancel), 소비자가 본인 웨이팅을 취소할 수 있는 전용 API가 아니에요.
+// 현재는 로그인만 되어 있으면(스태프 여부/본인 소유 여부 확인 없이) 호출이 성공하길래
+// 일단 이걸로 연결해뒀지만, 다른 사람의 웨이팅 id를 넣어도 취소가 되는 상태라 백엔드에서
+// 소유권 확인(또는 소비자 전용 취소 API 분리)이 꼭 필요해요.
+export function cancelWaiting(waitingId: number) {
+  return apiFetch<Waiting>(`/api/waiting/${waitingId}/cancel`, {
+    method: "PATCH",
+  });
+}
+
 // -------------------- 내 웨이팅 id 로컬 기록 --------------------
 // ⚠️ 백엔드에 "로그인한 내 웨이팅 전체 목록"을 돌려주는 API가 없어서
 // (GET /api/waiting/{id} 하나씩만 조회 가능), 웨이팅 등록에 성공할 때마다

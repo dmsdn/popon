@@ -21,7 +21,7 @@ export interface Review {
   imageUrls: string[];
   likeCount: number;
   likedByMe: boolean;
-  visitDate: string | null; // "YYYY-MM-DD", 다녀간 날짜 (선택 입력)
+  visitDate: string | null; // "YYYY-MM-DD", 다녀간 날짜 (예약/웨이팅 방문 기록에서 자동 채움)
   createdAt: string; // ISO datetime
   updatedAt: string; // ISO datetime
 }
@@ -31,7 +31,7 @@ export interface ReviewCreatePayload {
   rating: number;
   content: string;
   imageUrls?: string[]; // 최대 5장
-  visitDate?: string; // "YYYY-MM-DD"
+  visitDate?: string; // "YYYY-MM-DD", 방문 기록에서 자동으로 채워진 값 (기록 없으면 생략)
 }
 
 export interface LikeResult {
@@ -145,6 +145,12 @@ function mockGetMyReviews(): Review[] {
   );
 }
 
+function mockGetPopupReviews(popupId: number): Review[] {
+  return readMockReviews()
+    .filter((r) => r.popupId === popupId)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
 function mockUpdateReview(id: number, payload: ReviewCreatePayload): Review {
   validateRating(payload.rating);
   validateImageCount(payload.imageUrls);
@@ -232,6 +238,18 @@ export function getMyReviews() {
   return withMockFallback(
     () => apiFetch<Review[]>("/api/customer/reviews"),
     () => mockGetMyReviews()
+  );
+}
+
+// [신규 연결] GET /api/customer/reviews/popup/{popupId} — 팝업 상세페이지용 공개 후기 목록
+// (로그인 없이도 조회 가능, 이 팝업에 달린 "모든" 사용자의 후기).
+// ⚠️ 백엔드 참고: 응답(ReviewResponse)에 작성자 식별 정보(닉네임/customerId)가 전혀 없어서
+// 화면에 "누가" 썼는지 표시할 수 없어요. 지금은 임시로 "방문자"라고만 표시합니다.
+// getMyReviews()로 가져온 내 리뷰 id와 겹치는 항목만 "나의 후기"로 구분해서 보여줘요.
+export function getPopupReviews(popupId: number, page = 0, size = 20) {
+  return withMockFallback(
+    () => apiFetch<Review[]>(`/api/customer/reviews/popup/${popupId}?page=${page}&size=${size}`),
+    () => mockGetPopupReviews(popupId)
   );
 }
 
