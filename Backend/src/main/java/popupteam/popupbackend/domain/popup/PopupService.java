@@ -307,6 +307,72 @@ public class PopupService {
                 .toList();
     }
 
+    // 비슷한 팝업 추천 (해시태그 겹침 +2점/개, 같은 지역 +1점, 점수순 정렬 / 부족하면 최근 팝업으로 채움)
+    public List<PopupResponse> getSimilarPopups(Long id, int limit) {
+        Popup base = popupRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 팝업입니다."));
+
+        List<String> baseTags = popupHashtagRepository.findByPopupIdOrderBySortOrderAsc(id).stream()
+                .map(PopupHashtag::getTag)
+                .toList();
+
+        List<PopupStatus> visibleStatuses = List.of(PopupStatus.BEFOR, PopupStatus.OPEN, PopupStatus.CLOSED);
+
+        java.util.Map<Long, Integer> scoreMap = new java.util.HashMap<>();
+
+        // 해시태그 겹침: 매칭된 태그 1개당 +2점
+        if (!baseTags.isEmpty()) {
+            popupHashtagRepository.findByTagInAndPopupIdNot(baseTags, id)
+                    .forEach(ph -> scoreMap.merge(ph.getPopupId(), 2, Integer::sum));
+        }
+
+        // 같은 지역: +1점
+        if (base.getLocation() != null && !base.getLocation().isBlank()) {
+            popupRepository.findByLocationAndStatusInAndIdNot(base.getLocation(), visibleStatuses, id)
+                    .forEach(p -> scoreMap.merge(p.getId(), 1, Integer::sum));
+        }
+
+        List<Popup> ranked = new java.util.ArrayList<>();
+        if (!scoreMap.isEmpty()) {
+            java.util.Map<Long, Popup> popupMap = popupRepository
+                    .findAllByIdWithBusiness(new java.util.ArrayList<>(scoreMap.keySet())).stream()
+                    .filter(p -> visibleStatuses.contains(p.getStatus()))
+                    .collect(Collectors.toMap(Popup::getId, p -> p));
+
+            ranked = popupMap.values().stream()
+                    .sorted((a, b) -> {
+                        int scoreCompare = scoreMap.getOrDefault(b.getId(), 0) - scoreMap.getOrDefault(a.getId(), 0);
+                        if (scoreCompare != 0) return scoreCompare;
+                        return a.getStartDate().compareTo(b.getStartDate());
+                    })
+                    .limit(limit)
+                    .collect(Collectors.toList());
+        }
+
+        List<PopupResponse> result = new java.util.ArrayList<>(ranked.stream().map(PopupResponse::from).toList());
+
+        // 유사 팝업이 limit보다 부족하면 최근 오픈예정/진행중 팝업으로 채움 (빈 화면 방지)
+        if (result.size() < limit) {
+            java.util.Set<Long> excludeIds = ranked.stream().map(Popup::getId).collect(Collectors.toSet());
+            excludeIds.add(id);
+
+            List<Popup> fillCandidates = new java.util.ArrayList<>();
+            fillCandidates.addAll(popupRepository.findByStatus(PopupStatus.OPEN));
+            fillCandidates.addAll(popupRepository.findByStatus(PopupStatus.BEFOR));
+
+            List<PopupResponse> filler = fillCandidates.stream()
+                    .filter(p -> !excludeIds.contains(p.getId()))
+                    .sorted(java.util.Comparator.comparing(Popup::getCreatedAt).reversed())
+                    .limit(limit - result.size())
+                    .map(PopupResponse::from)
+                    .toList();
+
+            result.addAll(filler);
+        }
+
+        return result;
+    }
+
     private void validateLocationMatchesRegion(String location, popupteam.popupbackend.domain.consumer.Region region) {
         if (location == null || region == null) return;
         if (!location.contains(region.getName())) {
