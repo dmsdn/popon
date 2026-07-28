@@ -45,6 +45,12 @@ public class CustomerController {
         if (request.getGender() != null) {
             customer.setGender(Customer.Gender.valueOf(request.getGender().toUpperCase()));
         }
+        if (request.getPhone() != null && !request.getPhone().isBlank()) {
+            customer.setPhone(request.getPhone());
+        }
+        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+            customer.setEmail(request.getEmail().trim());
+        }
 
         Customer saved = customerRepository.save(customer);
         return new CustomerResponse(saved);

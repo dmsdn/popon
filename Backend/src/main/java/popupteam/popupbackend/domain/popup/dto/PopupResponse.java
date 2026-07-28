@@ -30,12 +30,17 @@ public class PopupResponse {
     private String adminEditNote;
     private Integer maxPartySizePerTeam;
     private List<String> hashtags;
+    private List<String> keywordNames; // 이 팝업이 연결된 표준 카테고리 이름들 (예: ["패션", "라이프스타일"])
 
     public static PopupResponse from(Popup popup) {
-        return from(popup, java.util.Collections.emptyList());
+        return from(popup, java.util.Collections.emptyList(), java.util.Collections.emptyList());
     }
 
     public static PopupResponse from(Popup popup, List<String> hashtags) {
+        return from(popup, hashtags, java.util.Collections.emptyList());
+    }
+
+    public static PopupResponse from(Popup popup, List<String> hashtags, List<String> keywordNames) {
         return PopupResponse.builder()
                 .id(popup.getId())
                 .businessId(popup.getBusiness().getId())
@@ -60,6 +65,7 @@ public class PopupResponse {
                 .adminEditNote(popup.getAdminEditNote())
                 .maxPartySizePerTeam(popup.getMaxPartySizePerTeam())
                 .hashtags(hashtags)
+                .keywordNames(keywordNames)
                 .build();
     }
 }
