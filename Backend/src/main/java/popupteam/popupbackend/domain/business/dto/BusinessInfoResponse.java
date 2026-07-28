@@ -10,6 +10,7 @@ public class BusinessInfoResponse {
     private String companyName;
     private String businessNumber;
     private String phone;
+    private String profileImage;
 
     public static BusinessInfoResponse from(Business b) {
         return BusinessInfoResponse.builder()
@@ -18,6 +19,7 @@ public class BusinessInfoResponse {
                 .companyName(b.getCompanyName())
                 .businessNumber(b.getBusinessNumber())
                 .phone(b.getPhone())
+                .profileImage(b.getProfileImage())
                 .build();
     }
 }

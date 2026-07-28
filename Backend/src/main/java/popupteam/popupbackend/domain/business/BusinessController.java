@@ -50,4 +50,12 @@ public class BusinessController {
         return ResponseEntity.ok(java.util.Map.of("message", "약관에 다시 동의했습니다."));
     }
 
+    // 대표 브랜드 이미지(프로필) 등록/교체
+    @PostMapping("/me/profile-image")
+    public ResponseEntity<?> uploadProfileImage(org.springframework.security.core.Authentication authentication,
+                                                @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        Business business = businessService.updateProfileImage(authentication.getName(), file);
+        return ResponseEntity.ok(BusinessInfoResponse.from(business));
+    }
+
 }
