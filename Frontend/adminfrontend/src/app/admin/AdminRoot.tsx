@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Outlet, NavLink, Link, Navigate, useLocation, ScrollRestoration } from "react-router";
 import {
-  LayoutDashboard, KeyRound, Database,
+  LayoutDashboard, KeyRound, Database, Megaphone,
   LineChart, Newspaper, Headphones, Bell, ExternalLink, Users, LogIn, Store, Building2, X, Clock3, FileSignature,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -16,6 +16,7 @@ const MENU = [
   { group: "운영 관리", items: [
     { to: "/admin/popups", icon: Store, label: "팝업 관리" },
     { to: "/admin/cs", icon: Headphones, label: "문의 및 신고관리" },
+    { to: "/admin/notices", icon: Megaphone, label: "주최자 공지 발송" }, // 7/29 신설
     { to: "/admin/masters", icon: Database, label: "카테고리·지역 마스터" },
     { to: "/admin/content", icon: Newspaper, label: "배너·콘텐츠 관리" },
   ]},

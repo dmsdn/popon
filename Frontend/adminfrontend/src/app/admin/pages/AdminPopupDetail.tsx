@@ -44,6 +44,7 @@ export default function AdminPopupDetail() {
   const [loadError, setLoadError] = useState("");
   const [reason, setReason] = useState("");
   const [acting, setActing] = useState(false);
+  const [viewerUrl, setViewerUrl] = useState<string | null>(null); // 이미지 확대 보기 (7/29)
 
   useEffect(() => {
     if (!id) return;
@@ -252,11 +253,50 @@ export default function AdminPopupDetail() {
         </div>
       </div>
 
+      {/* 등록 이미지 — 7/29 심사에 필요한 실제 이미지 확인 (썸네일·상세, 클릭 시 확대) */}
+      {((popup.thumbnailImages?.length ?? 0) > 0 || (popup.detailImages?.length ?? 0) > 0) && (
+        <div className="bg-white border border-border rounded-sm">
+          <div className="px-5 py-3 border-b border-border text-sm font-semibold">
+            등록 이미지
+            <span className="text-xs font-normal text-muted-foreground ml-2">
+              썸네일 {popup.thumbnailImages?.length ?? 0}장 · 상세 {popup.detailImages?.length ?? 0}장 · 클릭하면 크게 볼 수 있습니다
+            </span>
+          </div>
+          <div className="p-4 flex flex-col gap-4">
+            {(popup.thumbnailImages?.length ?? 0) > 0 && (
+              <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-6 gap-2">
+                {popup.thumbnailImages!.map((url, i) => (
+                  <button key={url} type="button" onClick={() => setViewerUrl(url)} className="group relative aspect-square overflow-hidden rounded-sm border border-border">
+                    <img src={url} alt={`썸네일 ${i + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                  </button>
+                ))}
+              </div>
+            )}
+            {(popup.detailImages?.length ?? 0) > 0 && (
+              <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                {popup.detailImages!.map((url, i) => (
+                  <button key={url} type="button" onClick={() => setViewerUrl(url)} className="group relative aspect-[3/4] overflow-hidden rounded-sm border border-border">
+                    <img src={url} alt={`상세 이미지 ${i + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* 소개글 */}
       <div className="bg-white border border-border rounded-sm">
         <div className="px-5 py-3 border-b border-border text-sm font-semibold">소개글</div>
         <p className="p-5 text-[13px] leading-relaxed whitespace-pre-wrap">{popup.description || "(소개글 없음)"}</p>
       </div>
+
+      {/* 이미지 확대 보기 모달 */}
+      {viewerUrl && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6" onClick={() => setViewerUrl(null)}>
+          <img src={viewerUrl} alt="확대 보기" className="max-w-full max-h-full rounded-sm" onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
     </div>
   );
 }

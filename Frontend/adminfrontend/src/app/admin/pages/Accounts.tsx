@@ -1,14 +1,28 @@
-import { Info, ShieldCheck } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Info, ShieldCheck, Loader2 } from "lucide-react";
+import { getAdminAccounts, AdminAccount } from "../../lib/api";
 
-// 실제 DB(admin 테이블) 계정 목록.
-// 관리자 목록 조회 API가 아직 없어 DB 기준으로 수동 반영 — 백엔드 구성 후 연동 필요.
+// 관리자 계정 목록 — 7/29 실연동 (GET /api/admin/admins, 조회 전용)
 // 계정 추가/변경은 회원가입 없이 운영팀이 DB에 직접 등록한다 (비밀번호는 BCrypt 해시).
-const DB_ACCOUNTS = [
-  { id: 1, email: "admin@popupon.kr", name: "플랫폼운영팀", createdAt: "2026-07-20" },
-  { id: 2, email: "leejk@gmail.com", name: "이정기", createdAt: "2026-07-20" },
-];
+
+const fmtDate = (iso: string | null) => (iso ? iso.slice(0, 10) : "-");
 
 export default function Accounts() {
+  const [accounts, setAccounts] = useState<AdminAccount[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let alive = true;
+    getAdminAccounts()
+      .then((list) => alive && setAccounts(list))
+      .catch((e) => alive && setError(e instanceof Error ? e.message : "계정 목록을 불러오지 못했습니다."))
+      .finally(() => alive && setLoading(false));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -23,13 +37,17 @@ export default function Accounts() {
         <Info size={14} className="text-blue-500 shrink-0 mt-0.5" />
         <div className="text-xs text-blue-800 leading-relaxed">
           현재 admin 테이블의 모든 계정은 <strong>마스터(전권)</strong>입니다. 역할 구분(슈퍼관리자/운영관리자 등)은
-          백엔드에 role 컬럼·권한 검사 로직 추가 후 지원 예정이며, 아래 목록은 DB 기준 수동 반영입니다
-          (관리자 목록 조회 API 백엔드 구성 후 연동 필요).
+          백엔드에 role 컬럼·권한 검사 로직 추가 후 지원 예정입니다.
         </div>
       </div>
 
-      {/* 계정 테이블 */}
+      {error && <div className="bg-red-50 border border-red-200 rounded-sm px-4 py-3 text-xs text-red-600">{error}</div>}
+
+      {/* 계정 테이블 — 7/29 GET /api/admin/admins 실데이터 (기존 수동 반영 목록 대체) */}
       <div className="bg-white border border-border rounded-sm overflow-x-auto">
+        <div className="px-4 py-3 border-b border-border text-sm font-semibold">
+          관리자 계정{!loading && accounts.length > 0 ? ` ${accounts.length}개` : ""}
+        </div>
         <table className="w-full text-[13px] min-w-[560px]">
           <thead>
             <tr className="border-b border-border bg-secondary/60 text-xs text-muted-foreground">
@@ -41,7 +59,14 @@ export default function Accounts() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {DB_ACCOUNTS.map((a) => (
+            {loading && (
+              <tr>
+                <td colSpan={5} className="px-4 py-10 text-center text-xs text-muted-foreground">
+                  <Loader2 size={14} className="inline animate-spin mr-1.5" /> 불러오는 중…
+                </td>
+              </tr>
+            )}
+            {!loading && accounts.map((a) => (
               <tr key={a.id} className="hover:bg-secondary/40">
                 <td className="px-4 py-3 text-xs text-muted-foreground" style={{ fontFamily: "'DM Mono', monospace" }}>{a.id}</td>
                 <td className="px-4 py-3 text-xs" style={{ fontFamily: "'DM Mono', monospace" }}>{a.email}</td>
@@ -51,9 +76,12 @@ export default function Accounts() {
                     <ShieldCheck size={10} /> 마스터 (전권)
                   </span>
                 </td>
-                <td className="px-4 py-3 text-xs text-muted-foreground">{a.createdAt}</td>
+                <td className="px-4 py-3 text-xs text-muted-foreground">{fmtDate(a.createdAt)}</td>
               </tr>
             ))}
+            {!loading && !error && accounts.length === 0 && (
+              <tr><td colSpan={5} className="px-4 py-10 text-center text-xs text-muted-foreground">등록된 관리자 계정이 없습니다.</td></tr>
+            )}
           </tbody>
         </table>
       </div>

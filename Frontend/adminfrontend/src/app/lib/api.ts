@@ -192,6 +192,10 @@ export type Popup = {
   queueMode: "PRERESERVATION_ONLY" | "ONSITE_WAITING_ONLY" | "BOTH" | null; // 운영 방식 (⚠ 등록/수정 요청 DTO에는 아직 미수신 — 값이 채워지면 로컬 OpsMode 대체)
   statusChangedAt: string | null; // 관리자가 상태를 마지막으로 확정한 일시 (승인/반려/게시중지)
   adminEditNote: string | null;   // 반려·게시중지 사유 (승인 시 서버가 null로 초기화)
+  keywordNames: string[] | null;  // 7/28 jmy — 표준 카테고리 이름 목록 (상세 조회에서 채워짐)
+  regionName?: string | null;     // 7/29 — 지역(region) 이름. ⚠ 백엔드 PopupResponse 노출 대기
+  thumbnailImages: string[] | null; // 7/28 jsw — 썸네일 이미지 URL (상세 조회에서만)
+  detailImages: string[] | null;    // 7/28 jsw — 상세 설명 이미지 URL (상세 조회에서만)
 };
 
 export function getPopups(params?: { location?: string; status?: string; keyword?: string }) {
@@ -536,6 +540,50 @@ export function processReport(id: number) {
 export type Region = { id: number; name: string };
 export function getRegions() {
   return request<Region[]>("/api/regions");
+}
+
+// 카테고리(keyword 테이블) 마스터 — 팝업 목록 카테고리 필터용 (7/29, permitAll)
+export function getKeywords() {
+  return request<Region[]>("/api/keywords"); // 응답 형태 동일 {id, name}
+}
+
+// ── 계정 관리 (7/29 jmy AdminAccountController — 관리자/주최자/소비자 목록 + 소비자 정지) ──
+
+export type AdminAccount = { id: number; email: string; name: string; createdAt: string };
+export function getAdminAccounts() {
+  return request<AdminAccount[]>("/api/admin/admins");
+}
+
+export type BusinessAccount = {
+  id: number; email: string; companyName: string; businessNumber: string;
+  phone: string | null; profileImage: string | null; createdAt: string;
+};
+export function getBusinessAccounts() {
+  return request<BusinessAccount[]>("/api/admin/businesses");
+}
+
+export type CustomerAccount = {
+  id: number; email: string | null; nickname: string | null; provider: string | null;
+  createdAt: string; withdrawn: boolean | null; suspended: boolean | null;
+};
+export function getCustomerAccounts() {
+  return request<CustomerAccount[]>("/api/admin/customers");
+}
+export function suspendCustomer(id: number) {
+  return request<{ success: boolean }>(`/api/admin/customers/${id}/suspend`, { method: "PATCH" });
+}
+export function resumeCustomer(id: number) {
+  return request<{ success: boolean }>(`/api/admin/customers/${id}/resume`, { method: "PATCH" });
+}
+
+// ── 관리자 → 주최자 공지 발송 (7/29 jsw AdminNoticeController — 주최자 수신함으로 전달) ──
+
+export type AdminNoticeResult = {
+  id: number; popupId: number | null; category: string | null; title: string; content: string;
+  recipientCount: number; sentBy: string; sentAt: string;
+};
+export function sendNoticeToBusiness(data: { businessId: number; popupId?: number; title: string; content: string }) {
+  return request<AdminNoticeResult>("/api/admin/notices/business", { method: "POST", body: JSON.stringify(data) });
 }
 
 // ── 공간(venue) 마스터 ──
