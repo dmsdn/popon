@@ -82,6 +82,14 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         if (existing.isPresent()) {
             // 이미 가입 완료된 활성 계정 -> 바로 로그인. DB 안 건드림.
             Customer customer = existing.get();
+
+            if (Boolean.TRUE.equals(customer.getSuspended())) {
+                String message = java.net.URLEncoder.encode(
+                        "관리자에 의해 정지된 계정입니다. 관리자에게 문의하세요.", java.nio.charset.StandardCharsets.UTF_8);
+                response.sendRedirect(FRONTEND_BASE_URL + "/login/error?message=" + message);
+                return;
+            }
+
             String token = jwtUtil.generateToken(customer.getId(), customer.getNickname(), customer.getProvider().name());
             response.sendRedirect(FRONTEND_BASE_URL + "/login/success?token=" + token);
             return;
