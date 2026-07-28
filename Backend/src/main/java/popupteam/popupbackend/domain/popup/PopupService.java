@@ -64,6 +64,7 @@ public class PopupService {
         popup.setAvgExperienceMinutes(request.getAvgExperienceMinutes());
         popup.setQueueMode(QueueMode.valueOf(request.getQueueMode()));
         popup.setMaxPartySizePerTeam(request.getMaxPartySizePerTeam());
+        popup.setNotice(request.getNotice());
 
         Popup saved = popupRepository.save(popup);
         List<String> hashtags = saveHashtags(saved.getId(), request.getHashtags());
@@ -152,6 +153,9 @@ public class PopupService {
         }
         if (request.getMaxPartySizePerTeam() != null) {
             popup.setMaxPartySizePerTeam(request.getMaxPartySizePerTeam());
+        }
+        if (request.getNotice() != null) {
+            popup.setNotice(request.getNotice());
         }
 
         popup.setUpdatedAt(java.time.LocalDateTime.now());
