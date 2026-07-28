@@ -51,6 +51,7 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/popups/*/live-status").permitAll()   // === 추가 ===
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/keywords").permitAll()   // === 추가: 관심 카테고리 목록 조회 ===
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/regions").permitAll()   // === 추가: 관심 지역 목록 조회 ===
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/geocode").permitAll()   // === 추가: 팝업 등록폼 지도 미리보기용 주소->좌표 변환 ===
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
