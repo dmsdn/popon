@@ -26,6 +26,9 @@ public class WaitingQueueService {
     private final popupteam.popupbackend.common.notification.SmsNotificationService smsNotificationService;
     private final popupteam.popupbackend.domain.eventlog.TransactionEventLogService transactionEventLogService;
 
+    @org.springframework.beans.factory.annotation.Value("${app.qr-base-url}")
+    private String qrBaseUrl;
+
 
     // 현장 웨이팅 등록 (회원: customerId 있음 / 비회원: name+email 있음)
     public WaitingResponse register(Long popupId, Long customerId, WaitingCreateRequest request) {
@@ -41,6 +44,12 @@ public class WaitingQueueService {
         if (customerId != null) {
             customer = customerRepository.findById(customerId)
                     .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 소비자입니다."));
+
+            boolean alreadyWaiting = waitingQueueRepository.existsByPopupIdAndCustomerIdAndStatusIn(
+                    popupId, customerId, List.of(WaitingStatus.WAITING, WaitingStatus.CALLED));
+            if (alreadyWaiting) {
+                throw new IllegalArgumentException("이미 이 팝업에 웨이팅 등록이 되어 있습니다. 중복으로 등록할 수 없습니다.");
+            }
         } else {
             if (request.getName() == null || request.getName().isBlank()
                     || request.getEmail() == null || request.getEmail().isBlank()) {
@@ -64,7 +73,7 @@ public class WaitingQueueService {
         WaitingQueue saved = waitingQueueRepository.save(waiting);
         long teamsAhead = waitingQueueRepository.countAheadOf(popupId, saved.getId());
 
-        String qrMessage = "팝업스토어 입장 QR: https://your-domain.com/qr/" + saved.getQrToken();
+        String qrMessage = "팝업스토어 입장 QR: " + qrBaseUrl + "/qr/" + saved.getQrToken();
         emailNotificationService.sendQrCode(saved.getEmail(), "팝업스토어 입장 QR 코드", qrMessage);
         smsNotificationService.sendQrCode(saved.getPhoneNumber(), qrMessage);
         return WaitingResponse.from(saved, teamsAhead);
