@@ -89,14 +89,8 @@ public class PopupController {
         return ResponseEntity.noContent().build();
     }
 
-    // 팝업 이미지 목록 조회 - 로그인 여부 무관, 누구나 조회 가능
-    @GetMapping("/{id}/images")
-    public ResponseEntity<List<java.util.Map<String, Object>>> getImages(@PathVariable Long id) {
-        List<java.util.Map<String, Object>> images = popupImageRepository.findByPopupIdOrderBySortOrder(id).stream()
-                .map(img -> java.util.Map.<String, Object>of("id", img.getId(), "imageUrl", img.getImageUrl()))
-                .toList();
-        return ResponseEntity.ok(images);
-    }
+    // (7/29 머지 정리) jmy의 GET /{id}/images 무필터 버전은 위 jsw 버전(type 선택 파라미터)과
+    // 경로가 겹쳐 Ambiguous mapping으로 부팅이 깨져 제거 — type 미지정 호출이 동일 동작을 대체한다.
 
     @GetMapping("/my")
     public ResponseEntity<List<PopupResponse>> getMyPopups(Authentication authentication) {
