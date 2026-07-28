@@ -61,6 +61,11 @@ public class DevAuthController {
                     return customerRepository.save(newCustomer);
                 });
 
+        if (Boolean.TRUE.equals(customer.getSuspended())) {
+            throw new popupteam.popupbackend.common.exception.ForbiddenException(
+                    "관리자에 의해 정지된 계정입니다. 관리자에게 문의하세요.");
+        }
+
         String token = jwtUtil.generateToken(customer.getId(), customer.getNickname(), customer.getProvider().name());
 
         return Map.of(
