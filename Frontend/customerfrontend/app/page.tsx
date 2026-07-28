@@ -14,20 +14,26 @@ import { PopupSection } from "@/components/home/PopupSection";
 import { PopularRankingSection } from "@/components/home/PopularRankingSection";
 import { ReviewSection } from "@/components/home/ReviewSection";
 import { HorizontalCarousel } from "@/components/ui/HorizontalCarousel";
-import { searchPopups, getPopup, getPopupLiveStatus, type PopupLiveStatus } from "@/lib/api/popups";
+import { searchPopups, getPopup, getPopupLiveStatus, getQueueBoardCount, type PopupLiveStatus } from "@/lib/api/popups";
 import { toPopupItem } from "@/lib/utils/popupMapper";
 import { getRecentlyViewedIds } from "@/lib/recentlyViewed";
-import { getPreferredRegions, getPreferredCategories } from "@/lib/preferences";
+import { getPreferredRegions } from "@/lib/preferences";
+import { getKeywords, getMyInterests, type Keyword } from "@/lib/api/customer";
+import { useAuth } from "@/lib/auth/AuthContext";
 import { LiveCongestionMini } from "@/components/popup/LiveCongestion";
 import Link from "next/link";
 import type { PopupItem } from "@/data/mockPopups";
 
 export default function Home() {
+  const { customer } = useAuth();
   const [openingSoon, setOpeningSoon] = useState<PopupItem[]>([]);
   const [recentlyViewed, setRecentlyViewed] = useState<PopupItem[]>([]);
   const [allOpenPopups, setAllOpenPopups] = useState<PopupItem[]>([]);
   const [congestionItems, setCongestionItems] = useState<{ item: PopupItem; status: PopupLiveStatus }[]>([]);
+  const [easyEntryItems, setEasyEntryItems] = useState<{ item: PopupItem; count: number }[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [allKeywords, setAllKeywords] = useState<Keyword[]>([]);
+  const [myKeywordIds, setMyKeywordIds] = useState<number[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -77,6 +83,21 @@ export default function Home() {
           valid.sort((a, b) => b.status.congestionRate - a.status.congestionRate);
           setCongestionItems(valid);
         });
+
+        // [신규] 지금 입장하기 좋은 팝업 - 통합 대기열 총 인원이 적은 순. 개인정보
+        // 노출 우려로 totalCount만 씁니다 (lib/api/popups.ts getQueueBoardCount 참고).
+        Promise.all(
+          targets.map((item) =>
+            getQueueBoardCount(item.id)
+              .then((data) => ({ item, count: data.totalCount }))
+              .catch(() => null)
+          )
+        ).then((results) => {
+          if (cancelled) return;
+          const valid = results.filter((r): r is { item: PopupItem; count: number } => r !== null);
+          valid.sort((a, b) => a.count - b.count);
+          setEasyEntryItems(valid);
+        });
       })
       .catch((err) => console.error("진행중 팝업 조회 실패", err));
 
@@ -85,11 +106,29 @@ export default function Home() {
     };
   }, []);
 
-  // 관심 지역/카테고리는 백엔드 저장 API와 개념이 아직 안 맞아서(지난번 지역 정리 이슈)
-  // 브라우저에 저장된 값 기준으로 필터링해요. 실제 category 컬럼이 없어서 이름/지역
-  // 텍스트에 포함되는지로 대신 걸러요 (검색 화면 카테고리 필터와 동일한 방식).
+  // [수정] 관심 카테고리가 죽은 로컬 저장 함수(getPreferredCategories)를 읽고 있었어요 -
+  // signup/preferences·마이페이지수정에서 이미 실제 keyword API로 옮겨서 그 로컬
+  // 저장소엔 더 이상 아무것도 안 쓰여지고 있었고, 그래서 이 섹션이 항상 빈 채로
+  // 사라져 있었어요. 실제 API로 교체하고, 매칭도 해시태그 정확 매칭으로 바꿨어요.
+  useEffect(() => {
+    if (!customer) return;
+    getKeywords()
+      .then(setAllKeywords)
+      .catch((err) => console.error("키워드 목록 조회 실패", err));
+    getMyInterests()
+      .then(({ keywordIds }) => setMyKeywordIds(keywordIds))
+      .catch((err) => console.error("내 관심 키워드 조회 실패", err));
+  }, [customer]);
+
   const preferredRegions = useMemo(() => getPreferredRegions(), []);
-  const preferredCategories = useMemo(() => getPreferredCategories().slice(0, 2), []);
+  const easyEntryPopupItems = useMemo(
+    () => easyEntryItems.map(({ item, count }) => ({ ...item, badge: `현재 ${count}명` })),
+    [easyEntryItems]
+  );
+  const preferredCategories = useMemo(() => {
+    const nameById = new Map(allKeywords.map((k) => [k.id, k.name]));
+    return myKeywordIds.map((id) => nameById.get(id)).filter((n): n is string => !!n).slice(0, 2);
+  }, [allKeywords, myKeywordIds]);
 
   const regionPopups = useMemo(() => {
     if (preferredRegions.length === 0) return [];
@@ -101,10 +140,7 @@ export default function Home() {
   const categoryPopupLists = useMemo(() => {
     return preferredCategories.map((category) => ({
       category,
-      items: allOpenPopups.filter((p) => {
-        const c = category.toLowerCase();
-        return p.name.toLowerCase().includes(c) || (p.location?.toLowerCase().includes(c) ?? false);
-      }),
+      items: allOpenPopups.filter((p) => p.hashtags?.includes(category) ?? false),
     }));
   }, [allOpenPopups, preferredCategories]);
 
@@ -163,6 +199,10 @@ export default function Home() {
             ))}
           </HorizontalCarousel>
         </section>
+      )}
+
+      {easyEntryPopupItems.length > 0 && (
+        <PopupSection title="지금 입장하기 좋은 팝업" items={easyEntryPopupItems} moreHref="/easy-entry" />
       )}
 
       <PopupSection

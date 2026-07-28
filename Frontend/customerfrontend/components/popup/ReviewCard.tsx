@@ -4,12 +4,14 @@ import { useState } from "react";
 import { ReviewItem } from "@/data/mockPopups";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 import { StarRatingDisplay } from "@/components/ui/StarRatingDisplay";
+import { ReportReviewModal } from "@/components/popup/ReportReviewModal";
 
 const CONTENT_PREVIEW_LENGTH = 60;
 
 export function ReviewCard({ review }: { review: ReviewItem }) {
-  const { nickname, content, date, rating, photos } = review;
+  const { id, nickname, content, date, rating, photos } = review;
   const [expanded, setExpanded] = useState(false);
+  const [showReport, setShowReport] = useState(false);
 
   const isLong = content.length > CONTENT_PREVIEW_LENGTH;
 
@@ -31,15 +33,18 @@ export function ReviewCard({ review }: { review: ReviewItem }) {
       <p className={`text-sm text-gray-700 leading-relaxed ${!expanded && isLong ? "line-clamp-2" : ""}`}>
         {content}
       </p>
-      {isLong && (
-        <button
-          type="button"
-          onClick={() => setExpanded((prev) => !prev)}
-          className="text-xs text-gray-400 mt-1"
-        >
-          {expanded ? "접기" : "더보기"}
+      <div className="flex items-center gap-3 mt-1">
+        {isLong && (
+          <button type="button" onClick={() => setExpanded((prev) => !prev)} className="text-xs text-gray-400">
+            {expanded ? "접기" : "더보기"}
+          </button>
+        )}
+        {/* [신규] 후기 신고 버튼 - 백엔드 API는 있었는데 프론트에 진입점이 없었어요 */}
+        <button type="button" onClick={() => setShowReport(true)} className="text-xs text-gray-300">
+          신고
         </button>
-      )}
+      </div>
+      {showReport && <ReportReviewModal reviewId={Number(id)} onClose={() => setShowReport(false)} />}
 
       {photos && photos.length > 0 && (
         <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-hide">

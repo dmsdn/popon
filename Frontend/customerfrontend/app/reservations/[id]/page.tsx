@@ -67,17 +67,15 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
   }, [id, customer, authLoading, router]);
 
   const handleCancel = async () => {
-    if (!reservation) return;
+    if (!reservation || !customer) return;
     if (!confirm("예약을 취소할까요?")) return;
     try {
-      await cancelReservation(reservation.id);
+      await cancelReservation(reservation.id, customer.id);
       alert("예약이 취소됐어요.");
       router.back();
     } catch (err) {
       console.error("예약 취소 실패", err);
-      // ⚠️ 지금 백엔드는 고객 본인 취소를 허용하지 않아서(사업자 계정만 취소 가능),
-      // 이 버튼을 눌러도 실패할 수 있어요. 백엔드에 고객 취소 권한 추가가 필요해요.
-      alert("예약 취소에 실패했어요. (지금은 고객이 직접 취소하는 기능이 백엔드에서 아직 지원되지 않아요)");
+      alert(err instanceof Error ? err.message : "예약 취소에 실패했어요. 잠시 후 다시 시도해주세요.");
     }
   };
 
