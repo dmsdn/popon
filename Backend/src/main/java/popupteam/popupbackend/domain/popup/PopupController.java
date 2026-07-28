@@ -62,13 +62,30 @@ public class PopupController {
         return ResponseEntity.noContent().build();
     }
 
+    // 이미지 업로드 - type: THUMBNAIL(기본, 목록/카드용) 또는 DETAIL(상세페이지 본문용), 여러 장 등록 가능(반복 호출)
     @PostMapping("/{id}/images")
     public ResponseEntity<?> uploadImage(@PathVariable Long id,
                                          Authentication authentication,
-                                         @org.springframework.web.bind.annotation.RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+                                         @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+                                         @RequestParam(defaultValue = "THUMBNAIL") PopupImageType type) {
         Long businessId = getBusinessId(authentication);
-        String imageUrl = popupService.uploadImage(id, businessId, file);
-        return ResponseEntity.ok(java.util.Map.of("imageUrl", imageUrl));
+        return ResponseEntity.ok(popupService.uploadImage(id, businessId, file, type));
+    }
+
+    // 이미지 목록 조회 - 인증 불필요 (소비자/주최자/관리자 다 같은 API로 조회). type 안 주면 전체(썸네일+상세) 다 나옴
+    @GetMapping("/{id}/images")
+    public ResponseEntity<?> getImages(@PathVariable Long id,
+                                       @RequestParam(required = false) PopupImageType type) {
+        return ResponseEntity.ok(popupService.getImages(id, type));
+    }
+
+    // 이미지 삭제 - 본인이 등록한 팝업만 가능
+    @DeleteMapping("/{id}/images/{imageId}")
+    public ResponseEntity<?> deleteImage(@PathVariable Long id, @PathVariable Long imageId,
+                                         Authentication authentication) {
+        Long businessId = getBusinessId(authentication);
+        popupService.deleteImage(id, imageId, businessId);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/my")

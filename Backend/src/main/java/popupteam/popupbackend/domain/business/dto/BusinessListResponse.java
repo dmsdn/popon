@@ -13,6 +13,7 @@ public class BusinessListResponse {
     private String companyName;
     private String businessNumber;
     private String phone;
+    private String profileImage;
     private LocalDateTime createdAt;
 
     public static BusinessListResponse from(Business business) {
@@ -22,6 +23,7 @@ public class BusinessListResponse {
                 .companyName(business.getCompanyName())
                 .businessNumber(business.getBusinessNumber())
                 .phone(business.getPhone())
+                .profileImage(business.getProfileImage())
                 .createdAt(business.getCreatedAt())
                 .build();
     }

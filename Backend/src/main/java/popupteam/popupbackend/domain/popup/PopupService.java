@@ -24,6 +24,7 @@ public class PopupService {
     private final popupteam.popupbackend.domain.consumer.RegionRepository regionRepository;
     private final PopupKeywordRepository popupKeywordRepository;
     private final popupteam.popupbackend.domain.review.ReviewRepository reviewRepository;
+    private final popupteam.popupbackend.common.image.ImageProcessingService imageProcessingService;
 
 
     public PopupResponse create(Long businessId, PopupCreateRequest request) {
@@ -112,7 +113,11 @@ public class PopupService {
                 .collect(Collectors.toList());
         java.math.BigDecimal avgRating = reviewRepository.findAverageRatingByPopupId(id);
         long reviewCount = reviewRepository.countByPopupId(id);
-        return PopupResponse.from(popup, hashtags, avgRating, reviewCount);
+        List<String> thumbnailImages = popupImageRepository.findByPopupIdAndTypeOrderBySortOrder(id, PopupImageType.THUMBNAIL)
+                .stream().map(PopupImage::getImageUrl).toList();
+        List<String> detailImages = popupImageRepository.findByPopupIdAndTypeOrderBySortOrder(id, PopupImageType.DETAIL)
+                .stream().map(PopupImage::getImageUrl).toList();
+        return PopupResponse.from(popup, hashtags, avgRating, reviewCount, thumbnailImages, detailImages);
     }
 
     public PopupResponse update(Long id, Long businessId, PopupUpdateRequest request) {
@@ -204,7 +209,9 @@ public class PopupService {
         popupRepository.delete(popup);
     }
 
-    public String uploadImage(Long popupId, Long businessId, org.springframework.web.multipart.MultipartFile file) {
+    // 팝업 이미지 업로드 - 썸네일(목록/카드용, 정사각형) / 상세(본문용, 세로형) 구분해서 리사이즈
+    public PopupImageResponse uploadImage(Long popupId, Long businessId, org.springframework.web.multipart.MultipartFile file,
+                                          PopupImageType type) {
         Popup popup = popupRepository.findById(popupId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 팝업입니다."));
 
@@ -212,14 +219,50 @@ public class PopupService {
             throw new IllegalArgumentException("본인이 등록한 팝업에만 이미지를 추가할 수 있습니다.");
         }
 
-        String imageUrl = fileStorageService.store(file);
+        byte[] resized = (type == PopupImageType.DETAIL)
+                ? imageProcessingService.resizeToJpeg(file, 1080, 1440, 0.88f)   // 상세 이미지: 세로형, 쿠팡 상세페이지 이미지 비율
+                : imageProcessingService.resizeToJpeg(file, 800, 800, 0.85f);     // 썸네일: 정사각형 카드용
+
+        String imageUrl = fileStorageService.storeBytes(resized, ".jpg");
+
+        int nextOrder = popupImageRepository.findMaxSortOrder(popupId, type) + 1;
 
         PopupImage image = new PopupImage();
         image.setPopup(popup);
         image.setImageUrl(imageUrl);
+        image.setType(type);
+        image.setSortOrder(nextOrder);
 
-        popupImageRepository.save(image);
-        return imageUrl;
+        PopupImage saved = popupImageRepository.save(image);
+        return PopupImageResponse.from(saved);
+    }
+
+    // 팝업 이미지 목록 조회 (type 안 주면 전체, 소비자/주최자/관리자 다 조회 가능 - 인증 불필요)
+    public List<PopupImageResponse> getImages(Long popupId, PopupImageType type) {
+        List<PopupImage> images = (type != null)
+                ? popupImageRepository.findByPopupIdAndTypeOrderBySortOrder(popupId, type)
+                : popupImageRepository.findByPopupIdOrderBySortOrder(popupId);
+
+        return images.stream().map(PopupImageResponse::from).toList();
+    }
+
+    // 팝업 이미지 삭제 - 본인이 등록한 팝업만 가능
+    public void deleteImage(Long popupId, Long imageId, Long businessId) {
+        Popup popup = popupRepository.findById(popupId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 팝업입니다."));
+
+        if (!popup.getBusiness().getId().equals(businessId)) {
+            throw new IllegalArgumentException("본인이 등록한 팝업의 이미지만 삭제할 수 있습니다.");
+        }
+
+        PopupImage image = popupImageRepository.findById(imageId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 이미지입니다."));
+
+        if (!image.getPopup().getId().equals(popupId)) {
+            throw new IllegalArgumentException("해당 팝업의 이미지가 아닙니다.");
+        }
+
+        popupImageRepository.delete(image);
     }
 
     public PopupResponse approve(Long popupId) {
