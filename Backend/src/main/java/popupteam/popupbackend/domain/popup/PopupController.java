@@ -97,6 +97,13 @@ public class PopupController {
         return ResponseEntity.ok(popupService.getUpcomingPopups(limit));
     }
 
+    // 비슷한 팝업 추천 (팝업 상세페이지 하단용, 인증 불필요)
+    @GetMapping("/{id}/similar")
+    public ResponseEntity<?> getSimilarPopups(@PathVariable Long id,
+                                              @RequestParam(defaultValue = "4") int limit) {
+        return ResponseEntity.ok(popupService.getSimilarPopups(id, limit));
+    }
+
     // 방문객(체크인 완료자) 연령 분포 - 본인 팝업만 조회 가능
     @GetMapping("/{id}/visitor-age-stats")
     public ResponseEntity<java.util.Map<String, Long>> getVisitorAgeStats(

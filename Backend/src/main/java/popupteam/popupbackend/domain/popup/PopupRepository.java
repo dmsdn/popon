@@ -45,4 +45,6 @@ public interface PopupRepository extends JpaRepository<Popup, Long> {
     // 키워드 매칭 조회용 - N+1 방지
     @Query("SELECT p FROM Popup p JOIN FETCH p.business WHERE p.id IN :ids")
     List<Popup> findAllByIdWithBusiness(@Param("ids") List<Long> ids);
+    // 비슷한 팝업 추천용 - 같은 지역의 다른 팝업 (자기 자신 제외, 특정 상태만)
+    List<Popup> findByLocationAndStatusInAndIdNot(String location, List<PopupStatus> statuses, Long id);
 }
