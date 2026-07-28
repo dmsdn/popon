@@ -1,8 +1,18 @@
-import Link from "next/link";
-import { getLatestNotice } from "@/data/notices";
+"use client";
 
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { getAnnouncements, type Announcement } from "@/lib/api/announcements";
+
+// [수정] 목업(data/notices.ts) 대신 실제 공지사항 API로 최신 공지 하나를 가져와요.
 export function NoticeBar() {
-  const notice = getLatestNotice();
+  const [notice, setNotice] = useState<Announcement | null>(null);
+
+  useEffect(() => {
+    getAnnouncements()
+      .then((list) => setNotice(list[0] ?? null))
+      .catch((err) => console.error("공지사항 조회 실패", err));
+  }, []);
 
   if (!notice) return null;
 

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth/AuthContext";
 import { BackendStatusBanner } from "@/components/layout/BackendStatusBanner";
+import { VisitLogger } from "@/components/layout/VisitLogger";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -16,6 +17,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
+        <VisitLogger />
         <BackendStatusBanner />
         <AuthProvider>{children}</AuthProvider>
       </body>

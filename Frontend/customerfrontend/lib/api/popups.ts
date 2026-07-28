@@ -251,3 +251,51 @@ export interface PopupLiveStatus {
 export function getPopupLiveStatus(popupId: string | number) {
   return apiFetch<PopupLiveStatus>(`/api/popups/${popupId}/live-status`);
 }
+
+// -------------------- 예상 대기시간 --------------------
+//
+// [신규 연결] GET /api/popups/{popupId}/wait-time API가 있었는데 프론트에서 안 쓰고
+// 있었어요. SLOT 모드면 슬롯별 예상 대기시간 목록을, FREE 모드면 통짜 예상 대기시간을 줘요.
+
+export interface SlotWaitTime {
+  slotId: number;
+  slotDate: string;
+  startTime: string;
+  endTime: string;
+  reservedCount: number;
+  capacity: number;
+  estimatedWaitMinutes: number;
+}
+
+export interface FreeModeWaitTime {
+  popupId: number;
+  date: string;
+  reservedCount: number;
+  capacity: number;
+  estimatedWaitMinutes: number;
+}
+
+export interface PopupWaitTime {
+  popupId: number;
+  reservationMode: "SLOT" | "FREE";
+  slots: SlotWaitTime[] | null;
+  freeModeResult: FreeModeWaitTime | null;
+}
+
+export function getPopupWaitTime(popupId: string | number) {
+  return apiFetch<PopupWaitTime>(`/api/popups/${popupId}/wait-time`);
+}
+
+// -------------------- 통합 대기열 현황판 --------------------
+//
+// [신규 연결] GET /api/popups/{popupId}/queue/board — 사전예약자+현장웨이팅자를
+// 합친 통합 현황판이에요.
+//
+// ⚠️ 보안 주의: 이 API가 로그인 없이 누구나 호출 가능(permitAll)한데, entries 배열에
+// 다른 고객의 전화번호와 QR 토큰이 그대로 들어있어요. 그래서 여기선 일부러 totalCount만
+// 타입에 노출하고 entries는 아예 안 받아와요 - 개인정보가 화면에 실수로라도 노출되는
+// 걸 막기 위해서예요. 백엔드에 이 엔드포인트 접근 제한(직원/사업자 전용) 추가를
+// 요청해야 해요.
+export function getQueueBoardCount(popupId: string | number) {
+  return apiFetch<{ popupId: number; totalCount: number }>(`/api/popups/${popupId}/queue/board`);
+}
