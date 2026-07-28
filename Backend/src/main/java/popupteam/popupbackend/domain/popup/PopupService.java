@@ -71,7 +71,7 @@ public class PopupService {
         List<String> hashtags = saveHashtags(saved.getId(), request.getHashtags());
         savePopupKeywords(saved.getId(), request.getKeywordIds());
 
-        return PopupResponse.from(saved, hashtags, getPopupKeywordNames(saved.getId()));
+        return PopupResponse.from(saved, hashtags, null, 0L, getPopupKeywordNames(saved.getId()));
     }
 
     // 해시태그 저장 공용 로직: 기존 거 지우고 새 목록으로 덮어씀 (null이면 손 안 대고 기존 값 그대로 반환)
@@ -113,7 +113,7 @@ public class PopupService {
                 .collect(Collectors.toList());
         java.math.BigDecimal avgRating = reviewRepository.findAverageRatingByPopupId(id);
         long reviewCount = reviewRepository.countByPopupId(id);
-        return PopupResponse.from(popup, hashtags, avgRating, reviewCount,getPopupKeywordNames(id));
+        return PopupResponse.from(popup, hashtags, avgRating, reviewCount, getPopupKeywordNames(id));
     }
 
     public PopupResponse update(Long id, Long businessId, PopupUpdateRequest request) {
@@ -180,7 +180,7 @@ public class PopupService {
             savePopupKeywords(id, request.getKeywordIds());
         }
 
-        return PopupResponse.from(saved, hashtags, getPopupKeywordNames(id));
+        return PopupResponse.from(saved, hashtags, null, 0L, getPopupKeywordNames(id));
     }
 
     public void delete(Long id, Long businessId) {
