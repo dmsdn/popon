@@ -20,6 +20,10 @@ public class PopupImage {
     @Column(name = "image_url", nullable = false)
     private String imageUrl;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PopupImageType type = PopupImageType.THUMBNAIL;
+
     @Column(name = "sort_order")
     private Integer sortOrder = 0;
 }

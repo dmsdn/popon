@@ -16,6 +16,8 @@ public class BusinessService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final popupteam.popupbackend.common.nts.NtsBusinessCheckService ntsBusinessCheckService;
+    private final popupteam.popupbackend.common.storage.FileStorageService fileStorageService;
+    private final popupteam.popupbackend.common.image.ImageProcessingService imageProcessingService;
 
     public Business signup(BusinessSignupRequest request) {
         if (businessRepository.existsByEmail(request.getEmail())) {
@@ -109,5 +111,17 @@ public class BusinessService {
         business.setPassword(passwordEncoder.encode(request.getNewPassword()));
         business.setUpdatedAt(LocalDateTime.now());
         businessRepository.save(business);
+    }
+
+    // 대표 브랜드 이미지 (프로필) 등록/교체 - 정사각형 500x500으로 통일
+    public Business updateProfileImage(String email, org.springframework.web.multipart.MultipartFile file) {
+        Business business = findByEmail(email);
+
+        byte[] resized = imageProcessingService.resizeToJpeg(file, 500, 500, 0.85f);
+        String imageUrl = fileStorageService.storeBytes(resized, ".jpg");
+
+        business.setProfileImage(imageUrl);
+        business.setUpdatedAt(LocalDateTime.now());
+        return businessRepository.save(business);
     }
 }
