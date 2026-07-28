@@ -8,6 +8,7 @@ import { MobileHeader } from "@/components/layout/MobileHeader";
 import { Footer } from "@/components/layout/Footer";
 import { BottomTabBar } from "@/components/layout/BottomTabBar";
 import { getNotifications, type AppNotification, type NotificationType } from "@/lib/api/notifications";
+import { LoadingState, EmptyState } from "@/components/ui/EmptyState";
 
 const TABS: ("전체" | NotificationType)[] = ["전체", "공지", "예약/웨이팅", "찜"];
 
@@ -73,9 +74,9 @@ export default function NotificationsPage() {
       </div>
 
       {notifications === null ? (
-        <p className="text-sm text-gray-400 py-16 text-center">불러오는 중...</p>
+        <LoadingState />
       ) : filtered.length === 0 ? (
-        <p className="text-sm text-gray-400 py-16 text-center">알림이 없어요.</p>
+        <EmptyState message="알림이 없어요." />
       ) : (
         <div className="flex flex-col px-4 mobile:px-8">
           {filtered.map((item) => (

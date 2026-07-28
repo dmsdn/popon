@@ -5,23 +5,30 @@ import { useRouter } from "next/navigation";
 import { createReview } from "@/lib/api/reviews";
 import { uploadFile } from "@/lib/api/upload";
 import { getPopup, type PopupDetail } from "@/lib/api/popups";
+import { getMyReservations } from "@/lib/api/reservations";
+import { getMyWaitingIds, getMyWaitingStatus } from "@/lib/api/waiting";
+import { useAuth } from "@/lib/auth/AuthContext";
 import { StarRatingInput } from "@/components/popup/StarRatingInput";
 import { ImageCropModal } from "@/components/popup/ImageCropModal";
-import { BirthDatePicker } from "@/components/ui/BirthDatePicker";
 
 const MAX_IMAGE_COUNT = 5;
 
 export default function WriteReviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const { customer } = useAuth();
 
   const [popup, setPopup] = useState<PopupDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [rating, setRating] = useState(0);
   const [content, setContent] = useState("");
-  const [visitDate, setVisitDate] = useState("");
-  const [showVisitDatePicker, setShowVisitDatePicker] = useState(false);
+  // [수정] "다녀간 날짜"를 직접 고르게 하던 걸 없앴어요. 이 팝업에 대해 내가 실제로
+  // 체크인 완료했거나(예약 - entryStatus === "CHECKED_IN" / 예약일이 이미 지남) 입장
+  // 완료한(웨이팅 - enteredAt) 기록이 있으면 그 중 가장 최근 날짜를 자동으로 채워서
+  // 읽기 전용으로 보여주고, 그런 기록이 하나도 없으면 이 항목 자체를 화면과 제출
+  // payload에서 완전히 뺍니다. (거짓으로 날짜를 입력할 수 있던 문제를 해소)
+  const [visitDate, setVisitDate] = useState<string | null>(null);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [pendingFile, setPendingFile] = useState<File | null>(null); // 크롭 대기 중인 파일
   const [uploading, setUploading] = useState(false);
@@ -42,6 +49,44 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
       cancelled = true;
     };
   }, [id]);
+
+  useEffect(() => {
+    if (!customer || !popup) return;
+    let cancelled = false;
+    const popupId = popup.id;
+
+    const reservationDates = getMyReservations(customer.id)
+      .then((list) =>
+        list
+          .filter((r) => r.popupId === popupId && r.status !== "CANCELLED")
+          .filter((r) => {
+            if (r.entryStatus === "CHECKED_IN") return true;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            return !!r.reservationDate && new Date(r.reservationDate) < today;
+          })
+          .map((r) => r.reservationDate ?? r.createdAt.slice(0, 10))
+      )
+      .catch(() => [] as string[]);
+
+    const waitingDates = Promise.all(
+      getMyWaitingIds().map((waitingId) => getMyWaitingStatus(waitingId).catch(() => null))
+    ).then((results) =>
+      results
+        .filter((w): w is NonNullable<typeof w> => w !== null && w.popupId === popupId && !!w.enteredAt)
+        .map((w) => (w.enteredAt as string).slice(0, 10))
+    );
+
+    Promise.all([reservationDates, waitingDates]).then(([resDates, waitDates]) => {
+      if (cancelled) return;
+      const allDates = [...resDates, ...waitDates].filter(Boolean).sort();
+      setVisitDate(allDates.length > 0 ? allDates[allDates.length - 1] : null);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [customer, popup]);
 
   if (loading) {
     return <main className="px-6 py-20 text-center text-gray-400">불러오는 중이에요...</main>;
@@ -114,7 +159,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
         rating,
         content: content.trim(),
         imageUrls,
-        visitDate: visitDate || undefined,
+        visitDate: visitDate ?? undefined,
       });
       // [수정] 등록 성공 후에는 back() 대신 replace()로 상세페이지의 후기탭
       // (?tab=review)으로 보냅니다.
@@ -153,25 +198,14 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
           <StarRatingInput value={rating} onChange={setRating} />
         </div>
 
-        <div className="block">
-          <span className="block text-sm font-medium text-gray-700 mb-2">
-            다녀간 날짜 <span className="text-gray-400 font-normal">(선택)</span>
-          </span>
-          <button
-            type="button"
-            onClick={() => setShowVisitDatePicker(true)}
-            className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm text-left"
-          >
-            {visitDate || <span className="text-gray-400">다녀간 날짜를 선택해주세요</span>}
-          </button>
-        </div>
-        {showVisitDatePicker && (
-          <BirthDatePicker
-            title="다녀간 날짜 선택"
-            value={visitDate}
-            onChange={setVisitDate}
-            onClose={() => setShowVisitDatePicker(false)}
-          />
+        {visitDate && (
+          <div className="block">
+            <span className="block text-sm font-medium text-gray-700 mb-2">다녀간 날짜</span>
+            <div className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm text-gray-700">
+              {visitDate}
+            </div>
+            <p className="text-xs text-gray-400 mt-1.5">예약/웨이팅 방문 기록에서 자동으로 채워졌어요.</p>
+          </div>
         )}
 
         <label className="block">

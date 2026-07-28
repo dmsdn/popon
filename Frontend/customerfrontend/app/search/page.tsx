@@ -15,13 +15,12 @@ import { searchPopups } from "@/lib/api/popups";
 import { toPopupItem } from "@/lib/utils/popupMapper";
 import { type PopupItem } from "@/data/mockPopups";
 import { HeartButton } from "@/components/ui/HeartButton";
+import { LoadingState, EmptyState } from "@/components/ui/EmptyState";
 
 const STATUSES = ["예정", "진행중", "종료"] as const;
 
-// ⚠️ 백엔드 Popup 테이블에 카테고리 컬럼이 없어서, 실제 팝업 데이터에는 category 값이
-// 전혀 안 붙어있어요. 그래서 목록에서 자동으로 뽑는 대신 고정된 카테고리 목록을 보여주고,
-// 선택하면 일단 팝업 이름/지역에 그 단어가 들어간 것만 걸러주는 임시 방식으로 동작해요.
-// (진짜 카테고리 분류가 아니라 텍스트 매칭이라 정확하진 않아요)
+// 카테고리 목록 자체는 아직 고정값이지만(관리자 키워드 API와 완전히 통일하는 건 별도 작업),
+// 선택 시 필터링은 아래에서 실제 popup_hashtag 기반 정확 매칭을 사용해요.
 const CATEGORIES = ["뷰티", "패션", "애니", "푸드", "스포츠", "라이프", "굿즈", "문구"] as const;
 
 export default function SearchPage({
@@ -63,11 +62,6 @@ export default function SearchPage({
     () => [...new Set(allPopups.map((p) => p.location).filter((v): v is string => !!v))],
     [allPopups]
   );
-
-  // ⚠️ 백엔드 Popup 테이블에 카테고리 컬럼이 없어서, 실제 팝업 데이터에는 category 값이
-  // 전혀 안 붙어있어요. 그래서 목록에서 자동으로 뽑는 대신 고정된 카테고리 목록을 보여주고,
-  // 선택하면 일단 팝업 이름/지역에 그 단어가 들어간 것만 걸러주는 임시 방식으로 동작해요.
-  // (진짜 카테고리 분류가 아니라 텍스트 매칭이라 정확하진 않아요 - 아래 관련 안내 참고)
 
   // 검색어 자체가 지역/운영여부 키워드와 그대로 일치하면(예: "성수", "홍대")
   // 전체 텍스트 검색과 별개로 그 필터 버튼도 같이 선택된 상태로 맞춰줍니다.
@@ -136,8 +130,12 @@ export default function SearchPage({
           <div className="flex flex-col gap-2 px-4 mobile:px-8 py-3 border-b border-gray-100">
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-400">필터</span>
-              <Link href="/map" className="text-xs text-gray-500 underline underline-offset-2">
-                지도로 보기 ›
+              <Link
+                href="/map"
+                className="flex items-center gap-1 text-xs text-gray-600 border border-gray-200 rounded-full px-2.5 py-1"
+              >
+                <img src="/icons/pin.svg" alt="" width={13} height={13} className="text-gray-500"  />
+                지도로 보기
               </Link>
             </div>
             <FilterRow label="카테고리" options={CATEGORIES} selected={category} onSelect={setCategory} />
@@ -146,9 +144,9 @@ export default function SearchPage({
           </div>
 
           {!loaded ? (
-            <p className="text-sm text-gray-400 py-16 text-center">불러오는 중...</p>
+            <LoadingState />
           ) : results.length === 0 ? (
-            <p className="text-sm text-gray-400 py-16 text-center">검색 결과가 없어요.</p>
+            <EmptyState message="검색 결과가 없어요." />
           ) : (
             <div className="flex flex-col px-4 mobile:px-8">
               {results.map((item) => (
@@ -160,6 +158,19 @@ export default function SearchPage({
       ) : (
         <div className="mobile:px-4">
           <RecentSearches />
+          <Link
+            href="/map"
+            className="flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-4 mx-4 mobile:mx-0 mb-4"
+          >
+            <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center flex-none">
+              <img src="/icons/pin.svg" alt="" className="text-gray-500" width={18} height={18}  />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">지도로 팝업 찾기</p>
+              <p className="text-xs text-gray-400">내 주변 팝업을 지도에서 확인해보세요</p>
+            </div>
+            <span className="text-gray-300 text-lg flex-none">›</span>
+          </Link>
           <SuggestedKeywords />
           {!hasActiveFilter && popularForRanking.length > 0 && (
             <section className="px-4 py-4">

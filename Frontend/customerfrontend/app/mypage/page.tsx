@@ -23,6 +23,7 @@ import {
   ensureWishlistLoaded,
   toggleWishlist,
 } from "@/lib/wishlistStore";
+import { LoadingState, EmptyState } from "@/components/ui/EmptyState";
 
 type MenuKey =
   | "내 정보"
@@ -484,35 +485,32 @@ if (queryMenu !== syncedQueryMenu) {
                 <p className="text-sm font-medium">{customer.nickname} 님</p>
               </button>
 
-              {/* 프로필 바로 아래 - 진행 중인 웨이팅/예약 바로가기 카드
-                  - 대기중인 게 하나도 없으면(activeCount === 0) 카드 자체를 숨김
-                  - 딱 1건이면 그 항목 상세페이지로 바로 이동
-                  - 2건 이상이면 문구를 바꾸고, 마이페이지 안의 "예약 / 웨이팅" 탭으로 전환 */}
-              {activeCount > 0 &&
-                (activeCount === 1 ? (
-                  <Link
-                    href={
-                      myWaitings[0]
-                        ? `/waiting/${myWaitings[0].id}`
-                        : `/reservations/${myReservations?.[0]?.id}`
-                    }
-                    className="mx-4 mb-4 flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3"
-                  >
-                    <span className="text-sm text-gray-700">
-                      {myWaitings[0] ? `웨이팅 ${myWaitings[0].teamNumber}번째 대기중` : "예약 1건"}
-                    </span>
-                    <span className="text-xs text-gray-400">›</span>
-                  </Link>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => handleSelectMenu("예약 / 웨이팅")}
-                    className="mx-4 mb-4 flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 text-left"
-                  >
-                    <span className="text-sm text-gray-700">현재 대기중인 예약 · 웨이팅 내역 확인하기</span>
-                    <span className="text-xs text-gray-400">›</span>
-                  </button>
-                ))}
+              {/* [수정] 예전엔 웨이팅/예약이 합쳐진 카드 하나만 있어서 찜한 개수는
+                  아예 안 보였어요. 찜 / 웨이팅·예약을 각각 개수와 함께 보여주는
+                  카드 2개로 나눴어요. 개수가 0이어도 카드 자체는 보여주되(눌러서
+                  둘러볼 수 있게), "N개"는 1개 이상일 때만 붙여요. */}
+              <div className="grid grid-cols-2 gap-3 mx-4 mb-4">
+                <button
+                  type="button"
+                  onClick={() => handleSelectMenu("찜 목록")}
+                  className="flex flex-col items-start rounded-xl border border-gray-200 px-4 py-3 text-left"
+                >
+                  <span className="text-xs text-gray-400 mb-1">찜</span>
+                  <span className="text-sm font-semibold text-gray-800">
+                    {wishlistIds.size > 0 ? `${wishlistIds.size}개` : "둘러보기"}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSelectMenu("예약 / 웨이팅")}
+                  className="flex flex-col items-start rounded-xl border border-gray-200 px-4 py-3 text-left"
+                >
+                  <span className="text-xs text-gray-400 mb-1">웨이팅 · 예약</span>
+                  <span className="text-sm font-semibold text-gray-800">
+                    {activeCount > 0 ? `${activeCount}개` : "둘러보기"}
+                  </span>
+                </button>
+              </div>
             </>
           ) : (
             <div className="px-4 mobile:px-6 mb-6">
@@ -737,7 +735,7 @@ if (queryMenu !== syncedQueryMenu) {
               <section>
                 <h2 className="text-sm font-semibold mb-3">예약</h2>
                 {myReservations === null ? (
-                  <p className="text-sm text-gray-400 py-10 text-center">불러오는 중...</p>
+                  <LoadingState />
                 ) : myReservations.length === 0 ? (
                   <EmptyState message="예약 내역이 없어요." />
                 ) : (
@@ -776,7 +774,7 @@ if (queryMenu !== syncedQueryMenu) {
           {activeMenu === "쿠폰함" && <EmptyState message="보유한 쿠폰이 없어요." />}
           {activeMenu === "다녀간 팝업" &&
             (myReviews === null || myReservations === null ? (
-              <p className="text-sm text-gray-400 py-16 text-center">불러오는 중...</p>
+              <LoadingState />
             ) : visitedItems.length === 0 ? (
               <EmptyState message="다녀간 팝업이 없어요." />
             ) : (
@@ -853,9 +851,9 @@ if (queryMenu !== syncedQueryMenu) {
           {activeMenu === "공지사항" && (
             <div className="flex flex-col">
               {!announcements ? (
-                <p className="text-sm text-gray-400 py-16 text-center">불러오는 중...</p>
+                <LoadingState />
               ) : announcements.length === 0 ? (
-                <p className="text-sm text-gray-400 py-16 text-center">등록된 공지사항이 없어요.</p>
+                <EmptyState message="등록된 공지사항이 없어요." />
               ) : (
                 announcements.map((notice) => (
                   <Link
@@ -876,9 +874,9 @@ if (queryMenu !== syncedQueryMenu) {
           {activeMenu === "약관" && (
             <div>
               {termsError ? (
-                <p className="text-sm text-gray-400 py-10 text-center">약관을 불러오지 못했어요.</p>
+                <EmptyState message="약관을 불러오지 못했어요." />
               ) : !terms ? (
-                <p className="text-sm text-gray-400 py-10 text-center">불러오는 중...</p>
+                <LoadingState />
               ) : (
                 <div>
                   <p className="text-base font-semibold mb-1">{terms.title}</p>
@@ -1011,13 +1009,5 @@ if (queryMenu !== syncedQueryMenu) {
         </div>
       )}
     </main>
-  );
-}
-
-function EmptyState({ message }: { message: string }) {
-  return (
-    <div className="py-16 text-center">
-      <p className="text-sm text-gray-400">{message}</p>
-    </div>
   );
 }

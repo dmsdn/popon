@@ -9,6 +9,7 @@ import { findBrandById, type Brand } from "@/data/mockBrands";
 import { getPopupsByBrand, type PopupItem } from "@/data/mockPopups";
 import { searchPopups } from "@/lib/api/popups";
 import { toPopupItem } from "@/lib/utils/popupMapper";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 const TABS = ["진행중인 팝업", "완료된 팝업"] as const;
 
@@ -126,9 +127,9 @@ export default function BrandDetailPage({
 
         {/* 팝업 목록 */}
         {activeList.length === 0 ? (
-          <p className="text-sm text-gray-400 py-16 text-center">
-            {activeTab === "진행중인 팝업" ? "진행중인 팝업이 없어요." : "완료된 팝업이 없어요."}
-          </p>
+          <EmptyState
+            message={activeTab === "진행중인 팝업" ? "진행중인 팝업이 없어요." : "완료된 팝업이 없어요."}
+          />
         ) : (
           <div className="flex flex-col">
             {activeList.map((item) => (
