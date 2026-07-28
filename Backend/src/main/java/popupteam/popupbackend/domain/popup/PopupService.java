@@ -23,6 +23,7 @@ public class PopupService {
     private final PopupHashtagRepository popupHashtagRepository;
     private final popupteam.popupbackend.domain.consumer.RegionRepository regionRepository;
     private final PopupKeywordRepository popupKeywordRepository;
+    private final popupteam.popupbackend.domain.review.ReviewRepository reviewRepository;
 
 
     public PopupResponse create(Long businessId, PopupCreateRequest request) {
@@ -108,7 +109,9 @@ public class PopupService {
         List<String> hashtags = popupHashtagRepository.findByPopupIdOrderBySortOrderAsc(id).stream()
                 .map(PopupHashtag::getTag)
                 .collect(Collectors.toList());
-        return PopupResponse.from(popup, hashtags);
+        java.math.BigDecimal avgRating = reviewRepository.findAverageRatingByPopupId(id);
+        long reviewCount = reviewRepository.countByPopupId(id);
+        return PopupResponse.from(popup, hashtags, avgRating, reviewCount);
     }
 
     public PopupResponse update(Long id, Long businessId, PopupUpdateRequest request) {
