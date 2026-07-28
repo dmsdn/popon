@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { getAnnouncements, type Announcement } from "@/lib/api/announcements";
+import { LoadingState, EmptyState } from "@/components/ui/EmptyState";
 
 // [수정] 목업(data/notices.ts) 대신 실제 API에서 목록을 받아 id로 찾아요.
 // 단건 조회 API는 없고 목록 API만 있어서, 목록을 받아 그 안에서 찾는 방식이에요.
@@ -26,9 +27,9 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
       </Link>
 
       {notice === undefined ? (
-        <p className="text-sm text-gray-400 py-16 text-center">불러오는 중...</p>
+        <LoadingState />
       ) : notice === null ? (
-        <p className="text-sm text-gray-400 py-16 text-center">공지사항을 찾을 수 없어요.</p>
+        <EmptyState message="공지사항을 찾을 수 없어요." />
       ) : (
         <>
           <h1 className="text-lg font-bold mb-2">{notice.title}</h1>

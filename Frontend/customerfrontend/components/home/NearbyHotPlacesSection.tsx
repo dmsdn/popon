@@ -3,13 +3,16 @@
 import { useEffect, useState } from "react";
 import { getHotPlacesForRegion, findNearestRegion, type HotPlace } from "@/data/hotplaces";
 import { HorizontalCarousel } from "@/components/ui/HorizontalCarousel";
-import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
+import { PlaceCard } from "@/components/popup/PlaceCard";
 
 /**
  * 브라우저 위치 권한을 물어보고, 허용하면 제일 가까운 동네의 핫플을 보여줘요.
  * 권한을 거부하거나 위치를 못 가져오면 그냥 조용히 섹션 자체를 안 보여줍니다
  * (에러 메시지나 재요청 팝업 없음 - 홈 화면에서 위치 권한을 강요하는 느낌을 주지
  * 않으려고 최소한으로만 시도해요).
+ *
+ * [수정] 카드 마크업을 따로 두지 않고 PlaceCard를 그대로 재사용해요 - 팝업 상세페이지
+ * 핫플 카드랑 크기/비율/아이콘이 항상 자동으로 같이 맞춰지게 됩니다.
  */
 export function NearbyHotPlacesSection() {
   const [region, setRegion] = useState<string | null>(null);
@@ -43,23 +46,14 @@ export function NearbyHotPlacesSection() {
       </h3>
       <HorizontalCarousel>
         {places.map((place) => (
-          <a
+          <PlaceCard
             key={place.name}
+            category={place.category}
+            name={place.name}
+            distance={place.distance}
+            imageUrl={place.imageUrl}
             href={place.linkUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-none w-[130px]"
-          >
-            {place.imageUrl ? (
-              <ImageWithFallback src={place.imageUrl} className="h-[130px] w-full rounded-lg object-cover mb-2" />
-            ) : (
-              <div className="h-[130px] bg-gray-100 rounded-lg mb-2 flex items-center justify-center text-xs text-gray-400">
-                이미지
-              </div>
-            )}
-            <p className="text-xs text-gray-400">{place.category}</p>
-            <p className="text-sm font-medium truncate">{place.name}</p>
-          </a>
+          />
         ))}
       </HorizontalCarousel>
     </section>

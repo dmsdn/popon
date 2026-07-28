@@ -5,8 +5,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Footer } from "@/components/layout/Footer";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { REGIONS, getPreferredRegions } from "@/lib/preferences";
 import { getKeywords, getMyInterests, type Keyword } from "@/lib/api/customer";
+import { getRegions, getMyRegions, type Region } from "@/lib/api/regions";
 
 // 관심으로 설정해둔 것부터 위로 오게 정렬 (나머지는 원래 순서 유지)
 function sortByPreferred<T>(all: T[], isPreferred: (item: T) => boolean): T[] {
@@ -22,7 +22,11 @@ export default function MorePage() {
   const router = useRouter();
   const { isLoggedIn, customer } = useAuth();
 
-  const [preferredRegions, setPreferredRegions] = useState<string[]>([]);
+  // [수정] 하드코딩된 REGIONS 목록과 getPreferredRegions(죽은 로컬 저장소)를 쓰고
+  // 있었어요. 마이페이지 수정 화면에서 저장한 진짜 관심 지역(백엔드)이 여기엔
+  // 전혀 반영이 안 됐던 버그라, 카테고리와 동일하게 실제 지역 API로 교체했어요.
+  const [allRegions, setAllRegions] = useState<Region[]>([]);
+  const [myRegionIds, setMyRegionIds] = useState<number[]>([]);
   // [수정] CATEGORIES(하드코딩 목록)와 getPreferredCategories(죽은 로컬 저장소)를
   // 쓰고 있었어요 - 실제 키워드는 이제 관리자가 추가/삭제하는 백엔드 목록이라
   // 하드코딩된 목록은 실제 값과 어긋날 수 있고, 관심 표시도 항상 비어 보였어요.
@@ -30,7 +34,9 @@ export default function MorePage() {
   const [myKeywordIds, setMyKeywordIds] = useState<number[]>([]);
 
   useEffect(() => {
-    setPreferredRegions(getPreferredRegions());
+    getRegions()
+      .then(setAllRegions)
+      .catch((err) => console.error("지역 목록 조회 실패", err));
   }, []);
 
   useEffect(() => {
@@ -44,10 +50,13 @@ export default function MorePage() {
     getMyInterests()
       .then(({ keywordIds }) => setMyKeywordIds(keywordIds))
       .catch((err) => console.error("내 관심 키워드 조회 실패", err));
+    getMyRegions()
+      .then(({ regionIds }) => setMyRegionIds(regionIds))
+      .catch((err) => console.error("내 관심 지역 조회 실패", err));
   }, [customer]);
 
   const sortedKeywords = sortByPreferred(allKeywords, (k) => myKeywordIds.includes(k.id));
-  const sortedRegions = sortByPreferred(REGIONS, (r) => preferredRegions.includes(r));
+  const sortedRegions = sortByPreferred(allRegions, (r) => myRegionIds.includes(r.id));
 
   return (
     <main className="w-full mobile:max-w-[1000px] mobile:mx-auto pb-16 mobile:pb-0">
@@ -120,15 +129,15 @@ export default function MorePage() {
         <nav className="flex flex-col">
           {sortedRegions.map((region, i) => (
             <Link
-              key={region}
-              href={`/search?q=${encodeURIComponent(region)}`}
+              key={region.id}
+              href={`/search?q=${encodeURIComponent(region.name)}`}
               className={`flex items-center justify-between py-3.5 text-sm text-gray-700 ${
                 i < sortedRegions.length - 1 ? "border-b border-gray-50" : ""
               }`}
             >
               <span className="flex items-center gap-1.5">
-                {region}
-                {preferredRegions.includes(region) && (
+                {region.name}
+                {myRegionIds.includes(region.id) && (
                   <span className="text-[10px] text-gray-400">관심</span>
                 )}
               </span>
