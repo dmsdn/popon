@@ -99,8 +99,29 @@ export function loadNaverMaps(): Promise<void> {
   return naverMapsPromise;
 }
 
-// 주소 → 좌표 (네이버 geocoder 서브모듈). 못 찾으면 null
-export function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+// 주소 → 좌표. 서버(GET /api/geocode)를 먼저 쓰고, 실패하면 브라우저 geocoder로 넘어간다.
+//  - 서버 경로(7/28 jsw): secret key가 서버 안에만 있고, 등록 시 서버가 좌표를 채우는 것과 같은 경로라
+//    미리보기 좌표와 저장 좌표가 어긋나지 않는다.
+//  - 브라우저 경로: 백엔드가 안 떠 있거나 구버전일 때의 안전망.
+export async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+  const fromServer = await geocodeViaServer(address);
+  if (fromServer) return fromServer;
+  return geocodeViaBrowser(address);
+}
+
+async function geocodeViaServer(address: string): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const res = await fetch(`/api/geocode?address=${encodeURIComponent(address)}`);
+    if (!res.ok) return null; // 404 = 못 찾음 또는 구버전 백엔드 → 브라우저 경로로
+    const body = (await res.json()) as { latitude?: number; longitude?: number };
+    if (typeof body.latitude !== "number" || typeof body.longitude !== "number") return null;
+    return { lat: body.latitude, lng: body.longitude };
+  } catch {
+    return null;
+  }
+}
+
+function geocodeViaBrowser(address: string): Promise<{ lat: number; lng: number } | null> {
   return new Promise((resolve) => {
     if (!window.naver?.maps?.Service) return resolve(null);
     window.naver.maps.Service.geocode({ query: address }, (status: string, response: NaverGeocodeResponse) => {
@@ -112,16 +133,17 @@ export function geocodeAddress(address: string): Promise<{ lat: number; lng: num
   });
 }
 
-// 주소 검색 결과 후보 (다음 우편번호를 못 쓸 때의 대체 검색용)
+// 주소 검색 결과 후보
 export type AddressCandidate = {
   roadAddress: string;
   jibunAddress: string;
+  postalCode: string;   // 우편번호 — 지오코딩 응답의 addressElements에서 뽑는다
   lat: number;
   lng: number;
 };
 
 // 네이버 지오코딩으로 주소 후보 목록을 받는다.
-// 다음 우편번호 서비스가 막힌 환경(사내망·차단 등)에서 대체 검색으로 사용.
+// 다음 우편번호 서비스가 막힌 환경(사내망·차단 등)에서 주소 검색 본 경로로 사용.
 export async function searchAddressByNaver(query: string): Promise<AddressCandidate[]> {
   await loadNaverMaps();
   return new Promise((resolve) => {
@@ -131,6 +153,7 @@ export async function searchAddressByNaver(query: string): Promise<AddressCandid
       const list = (response?.v2?.addresses ?? []).map((a) => ({
         roadAddress: a.roadAddress ?? "",
         jibunAddress: a.jibunAddress ?? "",
+        postalCode: a.addressElements?.find((e) => e.types?.includes("POSTAL_CODE"))?.longName ?? "",
         lat: Number(a.y),
         lng: Number(a.x),
       }));
@@ -141,8 +164,17 @@ export async function searchAddressByNaver(query: string): Promise<AddressCandid
 
 // ── 전역 타입 선언 (외부 스크립트라 d.ts가 없어 최소한만 정의) ──
 
+type NaverAddressElement = { types?: string[]; longName?: string };
 type NaverGeocodeResponse = {
-  v2?: { addresses?: { x: string; y: string; roadAddress?: string; jibunAddress?: string }[] };
+  v2?: {
+    addresses?: {
+      x: string;
+      y: string;
+      roadAddress?: string;
+      jibunAddress?: string;
+      addressElements?: NaverAddressElement[];
+    }[];
+  };
 };
 
 declare global {
