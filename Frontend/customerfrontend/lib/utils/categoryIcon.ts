@@ -8,20 +8,18 @@
 // 반환하도록 바꿨어요. (요청: "아이콘은 svg 파일로 저장해서 넣어줘")
 
 const ICON_RULES: [string[], string][] = [
-  [["카페", "베이커리", "티하우스", "브런치"], "/icons/cafe.svg"],
-  [["한식", "일식", "중식", "맛집", "국수", "육류", "냉면", "음식점", "고깃집"], "/icons/food.svg"],
-  [["박물관", "미술관", "전시", "갤러리"], "/icons/art.svg"],
-  [["공원", "숲", "산책"], "/icons/park.svg"],
+  [["카페"], "/icons/cafe.svg"],
+  [["음식점"], "/icons/food.svg"],
+  [["전시"], "/icons/art.svg"],
+  [["공원"], "/icons/park.svg"],
   [["아쿠아리움"], "/icons/aquarium.svg"],
-  [["쇼핑", "몰", "편집숍", "백화점"], "/icons/shopping.svg"],
+  [["쇼핑, 컨벤션"], "/icons/shopping.svg"],
   [["야구장"], "/icons/sports.svg"],
-  [["K-POP", "케이팝"], "/icons/music.svg"],
   [["도서관"], "/icons/book.svg"],
-  [["야경", "전망"], "/icons/skyline.svg"],
+  [["야경"], "/icons/moon.svg"],
   [["테마파크"], "/icons/ferris-wheel.svg"],
-  [["체험관"], "/icons/flask.svg"],
-  [["거리", "골목"], "/icons/walk.svg"],
-  [["컨벤션"], "/icons/building.svg"],
+  [["체험관"], "/icons/idea.svg"],
+  [["거리"], "/icons/walk.svg"],
 ];
 
 export function getCategoryIcon(category: string): string {

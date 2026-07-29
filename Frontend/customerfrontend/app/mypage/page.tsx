@@ -348,7 +348,7 @@ function MyPageContent() {
 
   // /mypage?menu=공지사항 처럼 쿼리로 들어오면 해당 메뉴가 바로 선택된 상태로 열립니다.
   const queryMenu = searchParams.get("menu");
-const [syncedQueryMenu, setSyncedQueryMenu] = useState(queryMenu);
+const [syncedQueryMenu, setSyncedQueryMenu] = useState<string | null>(null);
 
 if (queryMenu !== syncedQueryMenu) {
   setSyncedQueryMenu(queryMenu);

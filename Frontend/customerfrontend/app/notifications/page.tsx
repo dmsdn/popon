@@ -23,9 +23,9 @@ function timeAgo(iso: string): string {
 }
 
 const TYPE_ICON: Record<NotificationType, string> = {
-  공지: "📢",
-  찜: "❤️",
-  "예약/웨이팅": "⏰",
+  공지: "/Icon/notice.svg",
+  찜: "/Icon/heart.svg",
+  "예약/웨이팅": "/Icon/alarm.svg",
 };
 
 export default function NotificationsPage() {
@@ -86,7 +86,10 @@ export default function NotificationsPage() {
                 item.read ? "" : "bg-gray-50/60"
               }`}
             >
-              <span className="text-lg flex-none">{TYPE_ICON[item.type]}</span>
+              <span className="text-lg flex-none">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={TYPE_ICON[item.type]} alt="" width={16} height={16} />
+              </span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 mb-0.5">
                   {!item.read && <span className="w-1.5 h-1.5 rounded-full bg-gray-900 flex-none" />}

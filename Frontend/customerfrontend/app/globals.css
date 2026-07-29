@@ -62,3 +62,14 @@ body {
 .page-scrollbar {
   scrollbar-width: thin;
 }
+
+/* [신규] HorizontalCarousel용 - 가로 스크롤은 되지만 스크롤바는 안 보이게.
+   Tailwind 기본 유틸이 아니라서 직접 정의했어요. */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
