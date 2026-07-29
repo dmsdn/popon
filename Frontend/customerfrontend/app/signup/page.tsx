@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { submitSignupInfo } from "@/lib/api/auth";
 import { getMyInfo, updateMyInfo, type CustomerInfo } from "@/lib/api/customer";
 import { getTerms, type Terms } from "@/lib/api/terms";
@@ -9,6 +9,8 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { formatPhoneInput, isValidPhone } from "@/lib/utils/formatPhone";
 import { BirthDatePicker } from "@/components/ui/BirthDatePicker";
 import { LoadingState, EmptyState } from "@/components/ui/EmptyState";
+import { setToken } from "@/lib/api/client";
+import { decodeJwtPayload } from "@/lib/utils/decodeJwtPayload";
 
 const REQUIRED_TERMS = [
   { id: "service", label: "[필수] 서비스 이용약관 동의" },
@@ -26,8 +28,22 @@ const PROVIDER_LABEL: Record<CustomerInfo["provider"], string> = {
 };
 
 export default function SignupPage() {
+  return (
+    <Suspense fallback={<LoadingState message="불러오는 중..." />}>
+      <SignupPageInner />
+    </Suspense>
+  );
+}
+
+function SignupPageInner() {
   const router = useRouter();
-  const { updateMockCustomer } = useAuth();
+  const searchParams = useSearchParams();
+  const { updateMockCustomer, refresh } = useAuth();
+
+  // [신규] 백엔드가 신규 소셜 가입자를 /signup/info?pendingToken=... 으로 보내고
+  // 있었는데, 이 페이지가 그 파라미터를 아예 처리하지 않고 있었어요 - 그래서
+  // "가입대기 토큰"으로 로그인 성공해도 회원정보 입력 화면 자체가 404였어요.
+  const pendingToken = searchParams.get("pendingToken");
 
   const [provider, setProvider] = useState<CustomerInfo["provider"] | null>(null);
   const [nickname, setNickname] = useState("");
@@ -44,6 +60,20 @@ export default function SignupPage() {
   const [showBirthPicker, setShowBirthPicker] = useState(false);
 
   useEffect(() => {
+    if (pendingToken) {
+      // [신규] 가입대기 토큰은 아직 실제 회원이 아니라서 GET /api/customer/me가
+      // 통하지 않아요(백엔드에 아직 그 회원 row가 없음). 대신 토큰 자체에 카카오/구글이
+      // 준 닉네임이 이미 들어있어서, 그걸 그대로 읽어서 미리 채워줘요.
+      // 제출(submit) API를 부를 때 이 토큰을 같이 실어 보내야 하니 우선 저장해둬요 -
+      // 백엔드가 이 토큰을 보고 "신규 가입"인지 판단해서 이 시점에 회원을 만들어줘요.
+      setToken(pendingToken);
+      const claims = decodeJwtPayload<{ provider?: string; nickname?: string }>(pendingToken);
+      setProvider((claims?.provider as CustomerInfo["provider"]) ?? null);
+      setNickname(claims?.nickname ?? "");
+      setLoading(false);
+      return;
+    }
+
     getMyInfo()
       .then((info) => {
         setProvider(info.provider);
@@ -61,7 +91,7 @@ export default function SignupPage() {
         }
       })
       .finally(() => setLoading(false));
-  }, [router]);
+  }, [router, pendingToken]);
 
   const allRequiredAgreed = REQUIRED_TERMS.every((term) => agreedTerms[term.id]);
   const canSubmit = nickname.trim().length > 0 && isValidPhone(phone) && allRequiredAgreed && !submitting;
@@ -85,7 +115,7 @@ export default function SignupPage() {
     if (!canSubmit) return;
     setSubmitting(true);
     try {
-      await submitSignupInfo({
+      const result = await submitSignupInfo({
         nickname,
         phone,
         email: email || undefined,
@@ -94,6 +124,13 @@ export default function SignupPage() {
         locationAgreed: !!agreedTerms.location,
         marketingAgreed: !!agreedTerms.marketing,
       });
+      // [신규] 가입대기 토큰으로 제출한 거면, 이 시점에 백엔드가 방금 만든 진짜 회원의
+      // 진짜 토큰을 돌려줘요. 이걸 저장하고 인증 상태를 새로고침해야, 바로 다음 줄의
+      // updateMyInfo 호출이나 이후 화면들이 "로그인된 상태"로 정상 동작해요.
+      if (result.token) {
+        setToken(result.token);
+        await refresh();
+      }
       // 생년월일/성별은 signup-info API가 아니라 /api/customer/me(PATCH)에서만 저장돼요.
       if (birthDate || gender !== "UNKNOWN") {
         await updateMyInfo({ birthDate: birthDate || undefined, gender });
