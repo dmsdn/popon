@@ -50,9 +50,9 @@ public class RegionController {
         return Map.of("success", true, "count", regionIds.size());
     }
 
-    // 내가 고른 관심 지역 목록 조회 (id + name 같이 내려줌)
+    // 내가 고른 관심 지역 목록 조회 (id 배열로 반환 - 프론트가 { regionIds: [...] } 형태를 기대함)
     @GetMapping("/api/customer/regions/mine")
-    public List<Map<String, Object>> getMyRegions(@RequestHeader("Authorization") String authHeader) {
+    public Map<String, Object> getMyRegions(@RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         Long customerId = jwtUtil.getCustomerIdFromToken(token);
 
@@ -60,13 +60,7 @@ public class RegionController {
                 .map(CustomerRegion::getRegionId)
                 .toList();
 
-        if (regionIds.isEmpty()) {
-            return List.of();
-        }
-
-        return regionRepository.findAllById(regionIds).stream()
-                .map(r -> Map.<String, Object>of("id", r.getId(), "name", r.getName()))
-                .toList();
+        return Map.of("regionIds", regionIds);
     }
 
     // 내 관심 지역에 해당하는 진행중(OPEN) 팝업만 조회
