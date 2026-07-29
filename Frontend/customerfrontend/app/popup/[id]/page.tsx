@@ -9,11 +9,11 @@ import { ReviewCard } from "@/components/popup/ReviewCard";
 import { PlaceCard } from "@/components/popup/PlaceCard";
 import { PopupSnsLinks } from "@/components/popup/PopupSnsLinks";
 import { ReviewImageModal } from "@/components/popup/ReviewImageModal";
+import { SimpleMarkdown } from "@/components/ui/SimpleMarkdown";
 import { HorizontalCarousel } from "@/components/ui/HorizontalCarousel";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { ReservationModal } from "@/components/popup/ReservationModal";
 import { WaitingModal } from "@/components/popup/WaitingModal";
-import { HeartButton } from "@/components/ui/HeartButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { getMyReviews, getPopupReviews, toDisplayDate, type Review } from "@/lib/api/reviews";
 import {
@@ -70,6 +70,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   const [reviewSort, setReviewSort] = useState<"latest" | "recommended">("latest");
   const [photoOnly, setPhotoOnly] = useState(false);
   const [imageModal, setImageModal] = useState<{ reviewIndex: number; photoIndex: number } | null>(null);
+  const [detailImagesExpanded, setDetailImagesExpanded] = useState(false);
   const [hotPlaces, setHotPlaces] = useState<HotPlace[]>([]);
   const [liveStatus, setLiveStatus] = useState<PopupLiveStatus | null>(null);
   const [waitTime, setWaitTime] = useState<PopupWaitTime | null>(null);
@@ -313,20 +314,20 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         </button>
       </div>
 
-      <div className="px-4 mobile:px-8 py-6">
-        {/* [수정] 대표 이미지는 첫 번째 이미지 하나만 - 나머지는 아래 "정보" 탭의
-            "상세 이미지" 섹션에서 따로 보여줘요 (대표 이미지 / 상세 이미지를 분리). */}
-        <div className="relative aspect-[4/5] max-h-[520px] bg-gray-100 rounded-md overflow-hidden mb-5">
-          {images.length > 0 ? (
-            <ImageWithFallback src={images[0].imageUrl} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
-              등록된 이미지가 없어요
-            </div>
-          )}
-          <HeartButton popupId={popup.id} className="absolute top-3 right-3 w-9 h-9" />
-        </div>
+      {/* [수정] 대표 이미지 - 여백 없이 화면 꽉 채우도록 padding 있는 컨테이너 밖으로
+          뺐어요. 높이는 450px 고정, 가운데 정렬(object-center)로 잘려요.
+          찜 버튼은 하단바에 이미 있어서 여기서는 뺐어요. */}
+      <div className="relative w-full h-[450px] bg-gray-100 overflow-hidden">
+        {images.length > 0 ? (
+          <ImageWithFallback src={images[0].imageUrl} className="w-full h-full object-contain" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
+            등록된 이미지가 없어요
+          </div>
+        )}
+      </div>
 
+      <div className="px-4 mobile:px-8 py-6">
         {/* [수정] 브랜드명을 브랜드 상세페이지로 연결 - 이전엔 텍스트만 있고 링크가 없었어요 */}
         <Link href={`/brand/${popup.businessId}`} className="text-xs text-gray-400 mb-2 inline-block">
           {popup.companyName} ›
@@ -534,7 +535,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
 
             <section>
               <h2 className="text-sm font-semibold mb-2">소개</h2>
-              <p className="text-sm text-gray-600 leading-relaxed">{popup.description}</p>
+              <SimpleMarkdown text={popup.description} />
             </section>
 
             <section>
@@ -547,20 +548,37 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
 
             <section>
               <h2 className="text-sm font-semibold mb-2">상세 이미지</h2>
-              {/* [수정] 여기 원래 "SNS / 홈페이지"라는 이름의 섹션이 있었는데, 실제로는
-                  아무 데이터도 연결 안 된 고정 문구("WELCOME 이미지 영역") placeholder였어요.
-                  이게 대표 이미지랑 헷갈리게 만든 원인이었어서, 실제 상세 이미지 데이터로
-                  교체했어요. 대표 이미지(첫 번째)를 제외한 나머지를 보여주고, 더보기 없이
-                  이미지마다 높이를 고정해서 짧게 보여줘요. */}
+              {/* [수정] 이미지를 16:9로 강제로 잘라내던 걸(object-cover) 없애고, 올린
+                  사이즈 그대로(원본 비율 그대로) 보여주도록 바꿨어요. 대신 이미지
+                  전체를 하나로 묶어서 봤을 때 처음 200px 정도까지만 보이게 하고,
+                  아래쪽에 그라데이션(위 투명 → 아래 흰색)과 "더보기" 버튼을 얹었어요.
+                  누르면 전체가 펼쳐져요. */}
               {images.length > 1 ? (
-                <div className="flex flex-col gap-2">
-                  {images.slice(1).map((img) => (
-                    <ImageWithFallback
-                      key={img.id}
-                      src={img.imageUrl}
-                      className="w-full aspect-[16/9] rounded-md bg-gray-100 object-cover"
-                    />
-                  ))}
+                <div className="relative">
+                  <div
+                    className="overflow-hidden transition-[max-height] duration-300 ease-in-out"
+                    style={{ maxHeight: detailImagesExpanded ? 999999 : 200 }}
+                  >
+                    <div className="flex flex-col">
+                      {images.slice(1).map((img) => (
+                        <ImageWithFallback key={img.id} src={img.imageUrl} className="w-full h-auto block" />
+                      ))}
+                    </div>
+                  </div>
+
+                  {!detailImagesExpanded && (
+                    <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-b from-transparent to-white pointer-events-none" />
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setDetailImagesExpanded((prev) => !prev)}
+                    className={`w-full text-center text-xs font-medium text-gray-600 py-2 ${
+                      detailImagesExpanded ? "" : "relative -mt-8"
+                    }`}
+                  >
+                    {detailImagesExpanded ? "접기" : "더보기"}
+                  </button>
                 </div>
               ) : (
                 <p className="text-sm text-gray-400">이미지가 없습니다.</p>
@@ -658,6 +676,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
               key={item.id}
               category={item.location ?? "팝업"}
               name={item.name}
+              imageUrl={item.imageUrl}
               href={`/popup/${item.id}`}
               internal
             />

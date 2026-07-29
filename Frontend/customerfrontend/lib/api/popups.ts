@@ -46,6 +46,10 @@ export interface PopupDetail {
   // 있어서, 이제 이 값을 그대로 써요.
   avgRating: number | null;
   reviewCount: number;
+  // [신규] 백엔드가 이제 팝업 응답 자체에 이미지 URL을 바로 실어줘요 - 목록 화면
+  // (검색/홈 등)에서 카드마다 이미지를 따로 조회할 필요 없이 바로 쓸 수 있어요.
+  thumbnailImages: string[];
+  detailImages: string[];
 }
 
 export interface SnsLink {
@@ -123,6 +127,8 @@ function buildMockPopupDetails(): PopupDetail[] {
       snsLinks: [],
       avgRating: null,
       reviewCount: 0,
+      thumbnailImages: [],
+      detailImages: [],
     };
   });
 }

@@ -9,6 +9,7 @@ export type PopupItem = {
   badge?: string;
   brandId?: string; // data/mockBrands.ts의 Brand.id와 연결
   status?: "예정" | "진행중" | "종료";
+  imageUrl?: string; // [신규] 팝업 대표 이미지 - 목록 카드에서 실제 썸네일을 보여줄 때 씀
 };
 
 export type ReviewItem = {
@@ -27,6 +28,7 @@ export type ReviewItem = {
   category?: string; // 팝업 카테고리 태그 (예: "뷰티")
   reviewCount?: number; // 이 팝업에 달린 전체 후기 개수
   likeCount?: number; // [신규] 추천순 정렬에 사용
+  likedByMe?: boolean; // [신규] 내가 이미 추천했는지 - 추천 버튼 상태 표시용
 };
 
 export const promoCards = [

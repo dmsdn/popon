@@ -176,7 +176,9 @@ function SignupPageInner() {
 
       <div className="flex flex-col gap-6">
         <label className="block">
-          <span className="block text-sm font-medium text-gray-700 mb-2">닉네임</span>
+          <span className="block text-sm font-medium text-gray-700 mb-2">
+            닉네임 <span className="text-gray-400">*</span>
+          </span>
           <input
             type="text"
             value={nickname}
@@ -317,6 +319,22 @@ function SignupPageInner() {
               </button>
             </div>
           </div>
+        )}
+
+        {/* [신규] 버튼이 안 눌러질 때 "약관은 다 체크했는데 왜 안 되지?" 하는 혼란이
+            있었어요 - 닉네임/전화번호도 같이 채워야 하는데 그게 눈에 잘 안 띄었던
+            것 같아서, 정확히 뭐가 빠졌는지 바로 알려주는 안내를 넣었어요. */}
+        {!canSubmit && !submitting && (
+          <p className="text-xs text-red-500 -mt-2">
+            {[
+              nickname.trim().length === 0 && "닉네임",
+              !isValidPhone(phone) && "전화번호",
+              !allRequiredAgreed && "필수 약관 동의",
+            ]
+              .filter(Boolean)
+              .join(", ")}
+            을(를) 확인해주세요
+          </p>
         )}
 
         <button

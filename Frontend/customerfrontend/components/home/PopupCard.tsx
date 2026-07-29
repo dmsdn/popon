@@ -2,6 +2,7 @@ import Link from "next/link";
 import { PopupItem } from "@/data/mockPopups";
 import { HeartButton } from "@/components/ui/HeartButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 
 export function PopupCard({
   id,
@@ -11,12 +12,17 @@ export function PopupCard({
   badge,
   status,
   rank,
+  imageUrl,
 }: PopupItem & { rank?: number }) {
   return (
     <Link href={`/popup/${id}`} className="flex-none w-[190px] flex flex-col gap-2">
       {/* 이미지: 카드 테두리 없이 이미지 자체에만 4~8px 라운드 */}
       <div className="relative h-[190px] rounded-md overflow-hidden bg-gray-100 flex items-center justify-center text-xs text-gray-400">
-        이미지
+        {imageUrl ? (
+          <ImageWithFallback src={imageUrl} className="w-full h-full object-cover" />
+        ) : (
+          "이미지"
+        )}
         {rank ? (
           <span className="absolute top-2 left-2 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900 text-xs font-bold text-white">
             {rank}
