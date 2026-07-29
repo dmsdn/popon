@@ -19,6 +19,12 @@ public class BusinessController {
         return ResponseEntity.status(201).body(BusinessInfoResponse.from(business));
     }
 
+    // 회원가입 2단계(사업자 확인)에서 "다음" 누르기 전에 미리 국세청 진위확인 - 최종 가입 시 검증과 동일한 기준
+    @GetMapping("/check-business-number")
+    public ResponseEntity<?> checkBusinessNumber(@RequestParam String businessNumber) {
+        return ResponseEntity.ok(businessService.checkBusinessNumber(businessNumber));
+    }
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody BusinessLoginRequest request) {
         return ResponseEntity.ok(businessService.login(request));
