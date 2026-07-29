@@ -31,6 +31,11 @@ public interface PopupRepository extends JpaRepository<Popup, Long> {
     List<Popup> findByAddressKeywordIdInAndStatusOrderByCreatedAtDesc(@Param("regionIds") List<Long> regionIds,
                                                                       @Param("status") PopupStatus status);
 
+    // 관리자용 - 특정 지역 하나에 속한 팝업 전체 (상태 무관, 심사대기/반려 포함)
+    @Query("SELECT p FROM Popup p JOIN FETCH p.business WHERE " +
+            "p.addressKeyword.id = :regionId ORDER BY p.createdAt DESC")
+    List<Popup> findByAddressKeywordIdOrderByCreatedAtDesc(@Param("regionId") Long regionId);
+
     // 혼잡 알림 스케줄러용 - 진행중인 팝업만 체크
     @Query("SELECT p FROM Popup p JOIN FETCH p.business WHERE p.status = :status")
     List<Popup> findByStatus(@Param("status") PopupStatus status);
