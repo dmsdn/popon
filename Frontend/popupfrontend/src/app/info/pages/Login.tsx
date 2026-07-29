@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { ArrowRight, ArrowLeft, Eye, EyeOff, CheckCircle, Building2, Check, X, Loader2 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import { signup as apiSignup, businessReconsent, getTerms, Terms } from "../../lib/api";
+import { signup as apiSignup, businessReconsent, getTerms, checkBusinessNumber, getKeywords, IdName, Terms } from "../../lib/api";
 
 type Tab = "login" | "signup";
 type SignupStep = 1 | 2 | 3;
 
-const CATEGORIES = ["패션·의류", "뷰티·코스메틱", "식음료", "라이프스타일", "아트·문화", "디지털·테크", "기타"];
+// 카테고리는 7/29부터 하드코딩 대신 keyword 테이블(GET /api/keywords) 실데이터 — 컴포넌트에서 로드.
+// 팝업등록 폼·소비자 관심 카테고리와 같은 마스터를 쓰므로 관리자가 마스터를 고치면 여기도 같이 바뀐다.
 
 const STEP_LABELS = ["계정 정보", "사업자 확인", "주최자 상세"];
 
@@ -22,6 +23,24 @@ export default function Login() {
 
   const [tab, setTab] = useState<Tab>(initialTab);
   const [step, setStep] = useState<SignupStep>(1);
+
+  // 상단바 「로그인」을 눌렀는데 이미 /login에 있으면 URL이 같아 리렌더만 되고 탭이 안 바뀌던 버그 (7/29).
+  // 헤더는 navigate("/login", { state: { tab } })로 의도를 실어 보내고, 여기서 state 변화를 감지해 탭을 맞춘다.
+  // location.key는 같은 경로로 navigate해도 매번 바뀌므로 재클릭도 잡힌다.
+  useEffect(() => {
+    const wanted = (location.state as { tab?: Tab })?.tab;
+    if (wanted) {
+      setTab(wanted);
+      setError("");
+      if (wanted === "login") setStep(1); // 회원가입 진행 중이었다면 단계도 처음으로
+    }
+  }, [location.key, location.state]);
+
+  // 카테고리 마스터 로드 — 실패해도 가입 자체는 막지 않는다 (빈 목록이면 셀렉트에 안내만 표시)
+  const [keywords, setKeywords] = useState<IdName[]>([]);
+  useEffect(() => {
+    getKeywords().then(setKeywords).catch(() => {});
+  }, []);
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [completed, setCompleted] = useState(false);
@@ -30,9 +49,11 @@ export default function Login() {
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [signupForm, setSignupForm] = useState({ name: "", email: "", password: "", passwordConfirm: "", agree: false });
 
-  // 2단계: 사업자등록번호 (형식 확인 — 국세청 진위확인은 가입 시 서버가 수행)
+  // 2단계: 사업자등록번호 — 형식 확인 후 국세청 진위확인까지 이 단계에서 바로 수행 (7/29, #37)
   const [bizNo, setBizNo] = useState("");
   const [bizVerified, setBizVerified] = useState(false);
+  const [bizChecking, setBizChecking] = useState(false);
+  const [bizMessage, setBizMessage] = useState(""); // 서버가 내려준 진위확인 결과 문구
 
   // 3단계: 주최자 상세 (기존 주최자 등록 신청서의 브랜드명 ~ 희망 팝업 시작일)
   const [detail, setDetail] = useState({
@@ -101,17 +122,30 @@ export default function Login() {
     setStep(2);
   };
 
-  // 2단계: 사업자등록번호 형식 확인.
-  // 국세청 진위확인(상태조회)은 가입 완료 시 백엔드가 수행한다 (BusinessService.signup → NtsBusinessCheckService).
-  // 미등록·폐업 번호는 가입이 거부되고 그 사유가 3단계에서 오류 메시지로 표시된다.
-  const verifyBizNo = () => {
+  // 2단계: 형식 확인 → 국세청 진위확인(상태조회)까지 즉시 수행 (7/29, #37).
+  // 예전에는 형식만 보고 통과시킨 뒤 최종 가입 때 서버가 검증했는데, 그러면 3단계를 다 채우고
+  // 제출한 뒤에야 반려돼 처음부터 다시 해야 했다. 최종 가입 시에도 서버가 같은 로직으로 재검증한다.
+  const verifyBizNo = async () => {
     setError("");
+    setBizMessage("");
     const digits = bizNo.replace(/[^0-9]/g, "");
     if (digits.length !== 10) {
       setError("사업자등록번호 10자리를 입력해 주세요. (예: 123-45-67890)");
       return;
     }
-    setBizVerified(true);
+    setBizChecking(true);
+    try {
+      const { valid, message } = await checkBusinessNumber(bizNo);
+      setBizMessage(message);
+      if (valid) setBizVerified(true);
+      else setError(message); // 미등록·폐업 — 다음 단계로 못 가게 막고 사유를 그대로 보여준다
+    } catch {
+      // 진위확인 API 자체가 죽었을 때는 가입을 막지 않는다 — 최종 가입 시 서버가 다시 검증하므로
+      setBizMessage("지금은 진위확인 서버에 연결할 수 없어 형식만 확인했습니다. 최종 가입 시 다시 확인됩니다.");
+      setBizVerified(true);
+    } finally {
+      setBizChecking(false);
+    }
   };
 
   // 3단계 → 가입 완료 (백엔드 회원가입 → 자동 로그인)
@@ -444,7 +478,7 @@ export default function Login() {
                   type="text"
                   inputMode="numeric"
                   value={bizNo}
-                  onChange={(e) => { setBizNo(formatBizNo(e.target.value)); setBizVerified(false); }}
+                  onChange={(e) => { setBizNo(formatBizNo(e.target.value)); setBizVerified(false); setBizMessage(""); }}
                   placeholder="123-45-67890"
                   className={inputCls + " flex-1"}
                   style={{ fontFamily: "'DM Mono', monospace" }}
@@ -452,9 +486,11 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={verifyBizNo}
-                  className="shrink-0 px-4 text-sm rounded-sm border border-foreground hover:bg-foreground hover:text-primary-foreground transition-colors"
+                  disabled={bizChecking}
+                  className="shrink-0 px-4 text-sm rounded-sm border border-foreground hover:bg-foreground hover:text-primary-foreground transition-colors disabled:opacity-50 flex items-center gap-1.5"
                 >
-                  형식 확인
+                  {bizChecking && <Loader2 size={13} className="animate-spin" />}
+                  {bizChecking ? "확인 중…" : "진위확인"}
                 </button>
               </div>
             </label>
@@ -462,11 +498,11 @@ export default function Login() {
             {bizVerified && (
               <div className="rounded-sm border border-green-200 bg-green-50 p-4 space-y-1.5">
                 <div className="flex items-center gap-1.5 text-sm font-semibold text-green-700">
-                  <CheckCircle size={14} /> 형식이 확인되었습니다
+                  <CheckCircle size={14} /> 사업자등록번호가 확인되었습니다
                 </div>
                 <p className="text-xs text-green-800/90 leading-relaxed">
-                  국세청 사업자등록 상태조회(진위확인)는 <span className="font-medium">가입 완료 시 자동으로 수행</span>됩니다.
-                  국세청에 등록되지 않았거나 폐업 처리된 번호는 가입이 거부됩니다.
+                  {/* 국세청 응답을 그대로 보여준다 — 진위확인 서버 장애로 형식만 통과한 경우 그 사실도 여기 표시된다 */}
+                  {bizMessage || "국세청 사업자등록 상태조회를 통과했습니다."} 최종 가입 시 한 번 더 검증됩니다.
                 </p>
               </div>
             )}
@@ -514,8 +550,8 @@ export default function Login() {
                   required
                   className="w-full px-3 py-2.5 text-sm rounded-sm border border-border bg-background focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent text-foreground"
                 >
-                  <option value="" disabled>카테고리 선택</option>
-                  {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                  <option value="" disabled>{keywords.length ? "카테고리 선택" : "카테고리 목록을 불러오는 중…"}</option>
+                  {keywords.map((k) => <option key={k.id} value={k.name}>{k.name}</option>)}
                 </select>
               </label>
             </div>
@@ -545,6 +581,8 @@ export default function Login() {
               </label>
             </div>
 
+            {/* 7/29 기능 정리 — 브랜드 웹사이트·희망 팝업 시작일 칸 제거 (일단 주석 보존).
+                웹사이트는 팝업등록의 SNS 링크로, 시작일은 팝업등록의 운영기간으로 대체됐다.
             <div className="grid grid-cols-2 gap-4">
               <label className="flex flex-col gap-1.5">
                 <span className="text-xs font-medium text-muted-foreground">브랜드 웹사이트</span>
@@ -566,6 +604,7 @@ export default function Login() {
                 />
               </label>
             </div>
+            */}
 
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               가입 즉시 주최자센터 계정이 활성화됩니다. 등록하는 팝업은 게시 전 플랫폼 관리자의 건별 심사를 거칩니다.

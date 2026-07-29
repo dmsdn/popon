@@ -84,7 +84,8 @@ export default function Root() {
             ) : (
               <>
                 <button
-                  onClick={() => navigate("/login")}
+                  /* state로 탭 의도를 실어 보낸다 — 이미 /login(회원가입 진행 중)에 있어도 로그인 탭으로 초기화됨 (7/29) */
+                  onClick={() => navigate("/login", { state: { tab: "login" } })}
                   className="text-sm px-4 py-2 rounded-sm border border-foreground hover:bg-foreground hover:text-primary-foreground transition-colors duration-200"
                 >
                   로그인
@@ -129,7 +130,7 @@ export default function Root() {
                 </>
               ) : (
                 <>
-                  <button onClick={() => { navigate("/login"); setMenuOpen(false); }} className="text-sm text-left">로그인</button>
+                  <button onClick={() => { navigate("/login", { state: { tab: "login" } }); setMenuOpen(false); }} className="text-sm text-left">로그인</button>
                   <button onClick={handleOrganizerBtn} className="text-sm text-left text-accent font-medium">주최자 회원가입 →</button>
                 </>
               )}
