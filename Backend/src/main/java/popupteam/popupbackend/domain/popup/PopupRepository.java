@@ -10,7 +10,7 @@ public interface PopupRepository extends JpaRepository<Popup, Long> {
 
     List<Popup> findByBusinessIdOrderByCreatedAtDesc(Long businessId);
 
-    @Query("SELECT p FROM Popup p JOIN FETCH p.business WHERE " +
+    @Query("SELECT p FROM Popup p JOIN FETCH p.business LEFT JOIN FETCH p.addressKeyword WHERE " +
             "(:location IS NULL OR p.location = :location) AND " +
             "(:status IS NULL OR p.status = :status) AND " +
             "(:keyword IS NULL OR p.title LIKE %:keyword% OR p.description LIKE %:keyword%) " +
@@ -37,7 +37,7 @@ public interface PopupRepository extends JpaRepository<Popup, Long> {
     List<Popup> findByAddressKeywordIdOrderByCreatedAtDesc(@Param("regionId") Long regionId);
 
     // 혼잡 알림 스케줄러용 - 진행중인 팝업만 체크
-    @Query("SELECT p FROM Popup p JOIN FETCH p.business WHERE p.status = :status")
+    @Query("SELECT p FROM Popup p JOIN FETCH p.business LEFT JOIN FETCH p.addressKeyword WHERE p.status = :status")
     List<Popup> findByStatus(@Param("status") PopupStatus status);
 
     // 오픈/종료 임박 알림 스케줄러용 - 특정 날짜에 시작/종료하는 팝업 조회
@@ -48,8 +48,12 @@ public interface PopupRepository extends JpaRepository<Popup, Long> {
     List<Popup> findByEndDateOnDate(@Param("date") LocalDate date);
 
     // 키워드 매칭 조회용 - N+1 방지
-    @Query("SELECT p FROM Popup p JOIN FETCH p.business WHERE p.id IN :ids")
+    @Query("SELECT p FROM Popup p JOIN FETCH p.business LEFT JOIN FETCH p.addressKeyword WHERE p.id IN :ids")
     List<Popup> findAllByIdWithBusiness(@Param("ids") List<Long> ids);
     // 비슷한 팝업 추천용 - 같은 지역의 다른 팝업 (자기 자신 제외, 특정 상태만)
     List<Popup> findByLocationAndStatusInAndIdNot(String location, List<PopupStatus> statuses, Long id);
+    // 주최자 "내 팝업 목록"용 - 지역명(regionName)까지 N+1 없이 한 번에 조회
+    @Query("SELECT p FROM Popup p JOIN FETCH p.business LEFT JOIN FETCH p.addressKeyword " +
+            "WHERE p.business.id = :businessId ORDER BY p.createdAt DESC")
+    List<Popup> findByBusinessIdWithRegion(@Param("businessId") Long businessId);
 }
