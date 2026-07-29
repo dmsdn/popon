@@ -173,6 +173,23 @@ public class WaitingQueueService {
         return WaitingResponse.from(w, 0L);
     }
 
+    // 소비자 본인 웨이팅 취소 (비회원 웨이팅은 customer가 null이라 이 경로로 취소 불가 - 현장에서 직원이 취소해줘야 함)
+    public WaitingResponse cancelByCustomer(Long waitingId, Long customerId) {
+        WaitingQueue w = waitingQueueRepository.findById(waitingId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 대기입니다."));
+
+        if (w.getCustomer() == null || !w.getCustomer().getId().equals(customerId)) {
+            throw new popupteam.popupbackend.common.exception.ForbiddenException("본인의 웨이팅만 취소할 수 있습니다.");
+        }
+
+        w.setStatus(WaitingStatus.CANCELLED);
+        waitingQueueRepository.save(w);
+
+        transactionEventLogService.log(w.getPopup().getId(), "WAITING", w.getId(), "CANCELLED", "customer:" + customerId, null);
+
+        return WaitingResponse.from(w, 0L);
+    }
+
     // 내 웨이팅 목록 (여러 팝업 통틀어, 현재 대기중/호출됨 상태만)
     public List<MyWaitingResponse> getMyActiveWaitings(Long customerId) {
         List<WaitingQueue> myWaitings = waitingQueueRepository

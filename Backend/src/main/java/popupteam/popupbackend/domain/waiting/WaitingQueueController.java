@@ -65,9 +65,14 @@ public class WaitingQueueController {
         return ResponseEntity.ok(waitingQueueService.enterByQr(qrToken));
     }
 
-    // 주최자/관리자: 수동 취소
+    // 주최자/관리자: 수동 취소 (customerId 넘기면 소비자 본인취소 경로로 대신 처리)
     @PatchMapping("/api/waiting/{id}/cancel")
-    public ResponseEntity<?> cancel(@PathVariable Long id, Authentication authentication) {
+    public ResponseEntity<?> cancel(@PathVariable Long id,
+                                    @RequestParam(required = false) Long customerId,
+                                    Authentication authentication) {
+        if (customerId != null) {
+            return ResponseEntity.ok(waitingQueueService.cancelByCustomer(id, customerId));
+        }
         requireStaff(authentication);
         return ResponseEntity.ok(waitingQueueService.cancel(id));
     }
