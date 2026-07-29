@@ -2,6 +2,8 @@ package popupteam.popupbackend.domain.reservation.dto;
 
 import lombok.Getter;
 import java.time.LocalDate;
+import java.time.LocalDate;
+import java.time.LocalTime;
 
 @Getter
 public class ReservationChangeRequest {
@@ -13,4 +15,7 @@ public class ReservationChangeRequest {
 
     // 인원수도 함께 바꾸고 싶으면 입력 (미입력 시 기존 인원 유지)
     private Integer partySize;
+
+    // FREE 모드에서 방문 시각 변경 시 (선택입력, 미입력 시 기존 시각 유지)
+    private LocalTime newReservationTime;
 }

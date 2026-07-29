@@ -46,6 +46,11 @@ public class ReservationService {
         reservation.setQrToken(java.util.UUID.randomUUID().toString());
         reservation.setEntryStatus(EntryStatus.PENDING);
 
+        reservation.setSlot(null);
+        reservation.setReservationDate(request.getReservationDate());
+        reservation.setReservationTime(request.getReservationTime());
+
+
         if (popup.getReservationMode() == ReservationMode.SLOT) {
             if (request.getSlotId() == null) {
                 throw new IllegalArgumentException("시간대 예약 팝업입니다. slotId를 입력해주세요.");
@@ -150,6 +155,9 @@ public class ReservationService {
             }
 
             reservation.setReservationDate(newDate);
+            if (request.getNewReservationTime() != null) {
+                reservation.setReservationTime(request.getNewReservationTime());
+            }
         }
 
         reservation.setPartySize(newPartySize);

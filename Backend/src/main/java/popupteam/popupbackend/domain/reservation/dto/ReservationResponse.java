@@ -4,6 +4,7 @@ import lombok.*;
 import popupteam.popupbackend.domain.reservation.Reservation;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Getter @Builder
 public class ReservationResponse {
@@ -11,6 +12,7 @@ public class ReservationResponse {
     private Long popupId;
     private Long slotId; // FREE 모드면 null
     private LocalDate reservationDate;
+    private LocalTime reservationTime; // FREE 모드에서 시각을 선택했을 때만 값 있음, 그 외엔 null
     private Long customerId;
     private Integer partySize;
     private String status;
@@ -24,6 +26,7 @@ public class ReservationResponse {
                 .popupId(r.getPopup().getId())
                 .slotId(r.getSlot() != null ? r.getSlot().getId() : null)
                 .reservationDate(r.getReservationDate())
+                .reservationTime(r.getReservationTime())
                 .customerId(r.getCustomer().getId())
                 .partySize(r.getPartySize())
                 .status(r.getStatus().name())

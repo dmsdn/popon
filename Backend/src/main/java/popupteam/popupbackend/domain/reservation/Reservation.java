@@ -7,6 +7,7 @@ import popupteam.popupbackend.domain.popup.Popup;
 import popupteam.popupbackend.domain.popup.PopupSlot;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Entity
 @Table(name = "popup_reservation")
@@ -67,5 +68,9 @@ public class Reservation {
 
     // 퇴장 처리 시각 (null이면 아직 체류 중)
     private LocalDateTime exitedAt;
+
+    // FREE 모드에서 소비자가 선택한 방문 예정 시각 (선택입력이라 null 가능, SLOT 모드면 slot의 시간을 쓰므로 항상 null)
+    @Column(name = "reservation_time")
+    private LocalTime reservationTime;
 
 }

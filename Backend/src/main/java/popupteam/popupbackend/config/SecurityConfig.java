@@ -30,10 +30,9 @@ public class SecurityConfig {
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/popups/*/slots").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/reservations/popup/**").authenticated()
-                        .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/reservations/*/cancel").authenticated()
+                        .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/reservations/*/cancel").permitAll()   // === 수정: 소비자 본인취소는 컨트롤러 안에서 customerId로 권한 체크함 ===
                         .requestMatchers("/api/reservations/**").permitAll()
                         .requestMatchers("/api/admin/auth/**").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/reservations/*/cancel").authenticated()
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/reservations/checkin/qr").authenticated()
                         .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/reservations/*/checkin").authenticated()
                         .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/reservations/*/no-show").authenticated()
@@ -46,6 +45,7 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/popups/*/waiting").permitAll()   // === 추가 ===
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/popups/*/waiting/board").permitAll()   // === 추가 ===
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/waiting/*").permitAll()   // === 추가 ===
+                        .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/waiting/*/cancel").permitAll()   // === 추가: 소비자 본인취소는 컨트롤러 안에서 customerId로 권한 체크함 ===
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/popups/*/queue/board").permitAll()   // === 추가 ===
                         .requestMatchers("/error").permitAll()   // === 추가 ===
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/popups/*/live-status").permitAll()   // === 추가 ===
