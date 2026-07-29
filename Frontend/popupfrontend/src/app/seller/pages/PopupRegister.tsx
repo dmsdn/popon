@@ -4,7 +4,7 @@ import {
   FileText, MapPin, Image as ImageIcon, AlignLeft, CalendarClock,
   Ticket, Upload, Plus, X, Info, CheckCircle2, Search, Loader2, AlertTriangle,
 } from "lucide-react";
-import { createPopup, updatePopup, getPopup, uploadPopupImage } from "../../lib/api";
+import { createPopup, updatePopup, getPopup, uploadPopupImage, getKeywords, getRegions, IdName, SnsLinkInput, SnsPlatformCode } from "../../lib/api";
 import { ensureSlots } from "../../lib/slotAutoGen";
 import { loadOpsMode, saveOpsMode, OpsMode } from "../../lib/walkinQueue";
 import {
@@ -27,8 +27,20 @@ const OPS_MODE_LABEL: Record<OpsMode, string> = {
   BOTH: "둘 다 운영",
 };
 
-const CATEGORIES = ["패션", "뷰티", "F&B", "캐릭터", "라이프스타일", "아트", "테크", "엔터테인먼트"];
+// 카테고리는 7/29부터 하드코딩 대신 keyword 테이블(GET /api/keywords) 실데이터 — 컴포넌트에서 로드
 const DAYS = ["월", "화", "수", "목", "금", "토", "일"];
+
+// SNS 플랫폼 선택지 (백엔드 SnsPlatform enum과 1:1)
+const SNS_PLATFORMS: { code: SnsPlatformCode; label: string }[] = [
+  { code: "INSTAGRAM", label: "인스타그램" },
+  { code: "YOUTUBE", label: "유튜브" },
+  { code: "X", label: "X(트위터)" },
+  { code: "FACEBOOK", label: "페이스북" },
+  { code: "TIKTOK", label: "틱톡" },
+  { code: "BLOG", label: "블로그" },
+  { code: "HOMEPAGE", label: "홈페이지" },
+  { code: "ETC", label: "기타" },
+];
 
 const SECTIONS = [
   { id: "basic", icon: FileText, label: "기본 정보" },
@@ -41,6 +53,12 @@ const SECTIONS = [
 
 // 이미지 업로드 제한: JPG만 · 장당 최대 10MB (7/24 회의 결정 — 형식 강제, 서버 리사이즈 파이프라인과 통일)
 const MAX_IMAGE_MB = 10;
+
+// 서버가 실제로 변환하는 규격 — 백엔드 PopupService.uploadImage의 resizeToJpeg 인자와 동일하게 유지할 것.
+// 프론트는 리사이즈하지 않고 원본을 그대로 올리므로, 이 값들은 "안내 문구 전용"이다.
+// 임의로 바꾸면 화면 안내와 실제 결과물이 어긋난다 (7/29 — 인스타 규격·가로780 같은 임의 표기를 실제 값으로 교체).
+const THUMB_SPEC = "800×800";   // THUMBNAIL — 목록·카드용 정사각
+const DETAIL_SPEC = "1080×1440"; // DETAIL — 상세 본문용 세로형(3:4)
 function filterJpegs(files: File[]): { ok: File[]; rejected: string[] } {
   const ok: File[] = [];
   const rejected: string[] = [];
@@ -74,15 +92,31 @@ export default function PopupRegister() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get("id"); // 있으면 수정 모드
-  const [cats, setCats] = useState<string[]>([]);
+  // 카테고리·지역 마스터 (7/29 — keyword·region 테이블 실데이터. 선택은 id로 관리해 서버에 그대로 전송)
+  const [keywords, setKeywords] = useState<IdName[]>([]);
+  const [regions, setRegions] = useState<IdName[]>([]);
+  const [cats, setCats] = useState<number[]>([]); // 선택된 keyword id (최대 3개)
+  const [regionId, setRegionId] = useState<number | "">(""); // 선택된 region id ("" = 미선택)
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   // 운영 방식(사전예약만/현장 웨이팅만/둘 다) — 대기열·인원 관제와 공유 (localStorage, 백엔드 구성 후 연동)
   const [opsMode, setOpsMode] = useState<OpsMode>("BOTH");
   const useReservation = opsMode !== "WALKIN"; // 사전예약 포함 여부 → 슬롯 자동 생성 대상
   const [images, setImages] = useState<File[]>([]);
-  // 상세 설명용 세로형 JPG 1장 (쿠팡 상품 상세 스타일)
-  const [detailImage, setDetailImage] = useState<File | null>(null);
+  // 상세 설명용 세로형 JPG — 7/29부터 여러 장 (쿠팡 상품 상세처럼 본문 아래 세로로 이어붙음)
+  const [detailImages, setDetailImages] = useState<File[]>([]);
+  // SNS 링크 (7/29 — 홍보영상 칸 대체, 백엔드 snsLinks 실저장)
+  const [snsLinks, setSnsLinks] = useState<SnsLinkInput[]>([]);
+  const [snsPlatform, setSnsPlatform] = useState<SnsPlatformCode>("INSTAGRAM");
+  const [snsUrl, setSnsUrl] = useState("");
+  const addSnsLink = () => {
+    const url = snsUrl.trim();
+    if (!url) return;
+    if (!/^https?:\/\//.test(url)) return alert("SNS URL은 http:// 또는 https://로 시작해야 합니다.");
+    if (snsLinks.length >= 8) return alert("SNS 링크는 최대 8개까지 등록할 수 있습니다.");
+    setSnsLinks((prev) => [...prev, { platform: snsPlatform, url }]);
+    setSnsUrl("");
+  };
   const detailInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -119,6 +153,20 @@ export default function PopupRegister() {
   const [fallbackList, setFallbackList] = useState<AddressCandidate[]>([]);
   const [fallbackBusy, setFallbackBusy] = useState(false);
 
+  // 카테고리·지역 마스터 로드 (1회) — 실패해도 폼의 나머지는 동작해야 하므로 조용히 빈 목록 유지
+  useEffect(() => {
+    getKeywords().then(setKeywords).catch(() => {});
+    getRegions().then(setRegions).catch(() => {});
+  }, []);
+
+  // 수정 모드에서 서버가 준 카테고리 "이름"을 마스터 로드 후 id로 되돌리기 위한 대기값
+  const [pendingCatNames, setPendingCatNames] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (!pendingCatNames || keywords.length === 0) return;
+    setCats(keywords.filter((k) => pendingCatNames.includes(k.name)).map((k) => k.id).slice(0, 3));
+    setPendingCatNames(null);
+  }, [pendingCatNames, keywords]);
+
   // 수정 모드: 기존 팝업 불러와서 폼 채우기
   useEffect(() => {
     if (!editId) return;
@@ -147,6 +195,8 @@ export default function PopupRegister() {
         if (p.location) setDirectAddress(p.location);
         if (p.capacity) setMaxCapacity(p.capacity);
         if (p.hashtags?.length) setTags(p.hashtags); // 7/27 서버 해시태그 복원
+        if (p.keywordNames?.length) setPendingCatNames(p.keywordNames); // 7/29 카테고리 복원 (이름→id는 마스터 로드 후)
+        if (p.snsLinks?.length) setSnsLinks(p.snsLinks.map((l) => ({ platform: l.platform as SnsPlatformCode, url: l.url }))); // 7/29 SNS 복원
         if (p.location) previewOnMap(p.location);    // 수정 모드도 지도에 기존 위치 표시
       })
       .catch((e) => setError(e instanceof Error ? e.message : "팝업 정보를 불러오지 못했습니다."));
@@ -265,6 +315,10 @@ export default function PopupRegister() {
       capacity: maxCapacity,
       // 7/27 jmy 해시태그 — 화면의 태그 입력을 서버에 실저장 (소비자 검색 노출)
       hashtags: tags,
+      // 7/29 — 표준 카테고리·지역을 서버에 실저장 (소비자 카테고리·관심지역 필터 매칭)
+      keywordIds: cats,
+      addressKeywordId: regionId === "" ? undefined : regionId,
+      snsLinks: snsLinks.map((l, i) => ({ ...l, sortOrder: i })),
       reservationMode: (useReservation ? "SLOT" : "FREE") as "SLOT" | "FREE",
       avgExperienceMinutes: slotUnit,
       // 7/24 jsw DTO 추가분 — 서버 필수 필드. 화면의 운영 방식(OpsMode)을 서버 enum으로 변환해 전송
@@ -279,12 +333,12 @@ export default function PopupRegister() {
     try {
       const popup = editId ? await updatePopup(editId, payload) : await createPopup(payload);
       saveOpsMode(popup.id, opsMode); // 대기열·인원 관제가 이 값을 읽어 표시
+      // 7/29 — 서버가 type별로 규격 리사이즈 (THUMB_SPEC / DETAIL_SPEC). 순서 보존 위해 순차 업로드
       for (const file of images) {
-        await uploadPopupImage(popup.id, file);
+        await uploadPopupImage(popup.id, file, "THUMBNAIL");
       }
-      // 상세 설명 이미지 — 백엔드에 썸네일/상세 구분이 없어 팝업 이미지로 함께 업로드
-      if (detailImage) {
-        await uploadPopupImage(popup.id, detailImage);
+      for (const file of detailImages) {
+        await uploadPopupImage(popup.id, file, "DETAIL");
       }
       // 사전예약제(SLOT)면 서버가 운영기간 × 운영시간 × 슬롯 단위로 예약 슬롯 일괄 생성 (멱등)
       if (useReservation) {
@@ -303,8 +357,8 @@ export default function PopupRegister() {
     }
   };
 
-  const toggleCat = (c: string) =>
-    setCats((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : prev.length < 3 ? [...prev, c] : prev));
+  const toggleCat = (id: number) =>
+    setCats((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : prev.length < 3 ? [...prev, id] : prev));
 
   const addTag = () => {
     const t = tagInput.trim().replace(/^#/, "");
@@ -374,21 +428,48 @@ export default function PopupRegister() {
               <input className={inputCls} placeholder="예: 무너프렌즈" />
             </div>
           </div>
-          <div>
-            <label className={labelCls}>카테고리 <Req /> <span className="font-normal text-muted-foreground">(최대 3개)</span></label>
-            <div className="flex flex-wrap gap-2">
-              {CATEGORIES.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => toggleCat(c)}
-                  className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                    cats.includes(c) ? "bg-accent text-white border-accent" : "border-border text-muted-foreground hover:border-accent"
-                  }`}
-                >
-                  {c}
-                </button>
-              ))}
+          <div className="grid sm:grid-cols-[1fr_auto] gap-4 items-start">
+            <div>
+              <label className={labelCls}>카테고리 <Req /> <span className="font-normal text-muted-foreground">(최대 3개)</span></label>
+              <div className="flex flex-wrap gap-2">
+                {keywords.length === 0 && (
+                  <span className="text-[11px] text-muted-foreground py-1.5">카테고리 목록을 불러오는 중…</span>
+                )}
+                {keywords.map((k) => {
+                  const selected = cats.includes(k.id);
+                  const full = !selected && cats.length >= 3;
+                  return (
+                    <button
+                      key={k.id}
+                      type="button"
+                      onClick={() => toggleCat(k.id)}
+                      disabled={full}
+                      className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                        selected
+                          ? "bg-accent text-white border-accent"
+                          : full
+                            ? "border-border text-muted-foreground/40 cursor-not-allowed"
+                            : "border-border text-muted-foreground hover:border-accent"
+                      }`}
+                    >
+                      {k.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="sm:w-44">
+              <label className={labelCls}>지역 <span className="font-normal text-muted-foreground">(소비자 지역 필터)</span></label>
+              <select
+                value={regionId}
+                onChange={(e) => setRegionId(e.target.value === "" ? "" : Number(e.target.value))}
+                className={inputCls}
+              >
+                <option value="">선택 안 함</option>
+                {regions.map((r) => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </select>
             </div>
           </div>
           <div>
@@ -582,9 +663,12 @@ export default function PopupRegister() {
         </Section>
 
         {/* 4. 이미지·미디어 */}
-        <Section id="media" title="이미지·미디어" desc={`대표 이미지 1200×900px 이상 · JPG만 가능 · 장당 최대 ${MAX_IMAGE_MB}MB · 추가 이미지 최대 20장`}>
+        <Section id="media" title="이미지·미디어" desc={`업로드하면 서버가 규격에 맞춰 변환합니다 (썸네일 ${THUMB_SPEC} · 상세 ${DETAIL_SPEC}) · JPG만 가능 · 장당 최대 ${MAX_IMAGE_MB}MB · 최대 20장`}>
           <div>
-            <label className={labelCls}>대표 이미지 (썸네일) <Req /></label>
+            <label className={labelCls}>
+              대표 이미지 (썸네일) <Req />
+              <span className="font-normal text-muted-foreground"> — {THUMB_SPEC} 정사각으로 변환</span>
+            </label>
             <input
               ref={fileInputRef}
               type="file"
@@ -617,8 +701,45 @@ export default function PopupRegister() {
             )}
           </div>
           <div>
-            <label className={labelCls}>홍보 영상 URL <span className="font-normal text-muted-foreground">(선택)</span></label>
-            <input className={inputCls} placeholder="https://youtube.com/…" />
+            {/* 7/29 — 홍보영상 칸을 SNS 링크 입력으로 대체 (백엔드 snsLinks 실저장, 소비자 상세에 노출) */}
+            <label className={labelCls}>SNS·홈페이지 링크 <span className="font-normal text-muted-foreground">(선택 · 최대 8개)</span></label>
+            <div className="flex gap-2">
+              <select
+                value={snsPlatform}
+                onChange={(e) => setSnsPlatform(e.target.value as SnsPlatformCode)}
+                className={inputCls + " w-36 shrink-0"}
+              >
+                {SNS_PLATFORMS.map((p) => (
+                  <option key={p.code} value={p.code}>{p.label}</option>
+                ))}
+              </select>
+              <input
+                className={inputCls}
+                value={snsUrl}
+                onChange={(e) => setSnsUrl(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addSnsLink())}
+                type="url"
+                placeholder="https://instagram.com/brand"
+              />
+              <button type="button" onClick={addSnsLink} className="shrink-0 px-3 border border-border rounded-sm text-muted-foreground hover:border-accent hover:text-accent">
+                <Plus size={14} />
+              </button>
+            </div>
+            {snsLinks.length > 0 && (
+              <div className="flex flex-col gap-1.5 mt-2">
+                {snsLinks.map((l, i) => (
+                  <div key={`${l.platform}-${l.url}-${i}`} className="flex items-center gap-2 text-xs bg-secondary px-3 py-2 rounded-sm">
+                    <span className="text-[11px] px-2 py-0.5 rounded-full border border-border bg-white shrink-0">
+                      {SNS_PLATFORMS.find((p) => p.code === l.platform)?.label ?? l.platform}
+                    </span>
+                    <span className="truncate">{l.url}</span>
+                    <button type="button" onClick={() => setSnsLinks(snsLinks.filter((_, j) => j !== i))} className="ml-auto text-muted-foreground hover:text-foreground shrink-0">
+                      <X size={13} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </Section>
 
@@ -645,13 +766,16 @@ export default function PopupRegister() {
             </p>
           </div>
           {/* 운영 방식과 무관하게 필수 — 현장 웨이팅(FREE)·라이브 혼잡도 계산이 popup.capacity를 사용 */}
-          <div className="sm:w-1/2 sm:pr-2">
-            <label className={labelCls}>최대 수용 정원 (동시 수용 인원) <Req /></label>
-            <input
-              type="number" min={1} value={maxCapacity}
-              onChange={(e) => setMaxCapacity(Number(e.target.value))}
-              className={inputCls}
-            />
+          {/* 7/29 정렬 정리: 아래 슬롯 설정과 같은 2열 그리드로 맞춰 행마다 좌우 끝이 일치하게 */}
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>최대 수용 정원 (동시 수용 인원) <Req /></label>
+              <input
+                type="number" min={1} value={maxCapacity}
+                onChange={(e) => setMaxCapacity(Number(e.target.value))}
+                className={inputCls}
+              />
+            </div>
           </div>
           {useReservation && (
             <div className="p-4 bg-secondary/60 rounded-sm">
@@ -693,38 +817,41 @@ export default function PopupRegister() {
               placeholder={"팝업의 콘셉트, 판매 상품, 포토존·이벤트 등을 소개해 주세요.\n\n## 이런 걸 만나요\n- 한정판 굿즈 20종\n- 브랜드 캐릭터 포토존"}
           />
           <div>
-            <label className={labelCls}>상세 설명 이미지 <span className="font-normal text-muted-foreground">(세로형 JPG 1장 — 상품 상세페이지처럼 본문 아래 노출)</span></label>
+            {/* 7/29 — 여러 장 허용. 업로드 순서 = 본문 아래 노출 순서(서버 sortOrder). 규격은 서버가 DETAIL_SPEC으로 리사이즈 */}
+            <label className={labelCls}>상세 설명 이미지 <span className="font-normal text-muted-foreground">(JPG 여러 장 · {DETAIL_SPEC} 세로형으로 변환 — 상품 상세페이지처럼 본문 아래 순서대로 이어붙습니다)</span></label>
             <input
               ref={detailInputRef}
               type="file"
               accept="image/jpeg"
+              multiple
               className="hidden"
               onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) {
-                  const { ok, rejected } = filterJpegs([f]);
-                  if (rejected.length) alert(`업로드할 수 없는 파일:\n${rejected.join("\n")}`);
-                  if (ok[0]) setDetailImage(ok[0]);
-                }
+                const { ok, rejected } = filterJpegs(Array.from(e.target.files ?? []));
+                if (rejected.length) alert(`업로드할 수 없는 파일:\n${rejected.join("\n")}`);
+                if (ok.length) setDetailImages((prev) => [...prev, ...ok].slice(0, 20));
                 e.target.value = "";
               }}
             />
-            {detailImage ? (
-              <div className="flex items-center gap-2 text-xs bg-secondary px-3 py-2.5 rounded-sm">
-                <ImageIcon size={13} /> {detailImage.name}
-                <span className="text-muted-foreground">({(detailImage.size / 1024 / 1024).toFixed(1)}MB)</span>
-                <button type="button" onClick={() => setDetailImage(null)} className="ml-auto text-muted-foreground hover:text-foreground">
-                  <X size={13} />
-                </button>
+            <button
+              type="button"
+              onClick={() => detailInputRef.current?.click()}
+              className="w-full h-20 border-2 border-dashed border-border rounded-sm flex items-center justify-center gap-2 text-xs text-muted-foreground hover:border-accent hover:text-accent transition-colors"
+            >
+              <Upload size={15} /> 상세 이미지 JPG 업로드 (여러 장 가능)
+            </button>
+            {detailImages.length > 0 && (
+              <div className="flex flex-col gap-1.5 mt-2">
+                {detailImages.map((f, i) => (
+                  <div key={`${f.name}-${i}`} className="flex items-center gap-2 text-xs bg-secondary px-3 py-2 rounded-sm">
+                    <span className="w-5 h-5 rounded-sm bg-white border border-border flex items-center justify-center text-[10px] font-semibold shrink-0" style={{ fontFamily: "'DM Mono', monospace" }}>{i + 1}</span>
+                    <ImageIcon size={13} /> <span className="truncate">{f.name}</span>
+                    <span className="text-muted-foreground shrink-0">({(f.size / 1024 / 1024).toFixed(1)}MB)</span>
+                    <button type="button" onClick={() => setDetailImages(detailImages.filter((_, j) => j !== i))} className="ml-auto text-muted-foreground hover:text-foreground shrink-0">
+                      <X size={13} />
+                    </button>
+                  </div>
+                ))}
               </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => detailInputRef.current?.click()}
-                className="w-full h-20 border-2 border-dashed border-border rounded-sm flex items-center justify-center gap-2 text-xs text-muted-foreground hover:border-accent hover:text-accent transition-colors"
-              >
-                <Upload size={15} /> 상세 이미지 JPG 업로드 (1장)
-              </button>
             )}
           </div>
         </Section>

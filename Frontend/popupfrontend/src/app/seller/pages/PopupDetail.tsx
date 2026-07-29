@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import {
   ArrowLeft, Pencil, Trash2, Loader2, MapPin, CalendarClock, Users,
-  Ticket, ShieldAlert, MessageSquare, Info,
+  Ticket, ShieldAlert, MessageSquare, Info, Image as ImageIcon, X,
 } from "lucide-react";
 import { getPopup, deletePopup, Popup, PopupStatusCode } from "../../lib/api";
 import { getMeta, isSuspended } from "../../lib/adminPopupMeta";
@@ -44,6 +44,7 @@ export default function PopupDetail() {
   const [popup, setPopup] = useState<Popup | null>(null);
   const [loadError, setLoadError] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [viewerUrl, setViewerUrl] = useState<string | null>(null); // 이미지 확대 보기 (7/29)
 
   useEffect(() => {
     if (!id) return;
@@ -185,11 +186,46 @@ export default function PopupDetail() {
         </div>
       </div>
 
+      {/* 썸네일 이미지 — 7/29 GET 이미지 연동 (findById 응답의 thumbnailImages, 클릭 시 확대) */}
+      {(popup.thumbnailImages?.length ?? 0) > 0 && (
+        <div className="bg-white border border-border rounded-sm">
+          <div className="px-5 py-3 border-b border-border text-sm font-semibold flex items-center gap-2">
+            <ImageIcon size={14} className="text-muted-foreground" /> 썸네일 이미지
+            <span className="text-xs font-normal text-muted-foreground">{popup.thumbnailImages!.length}장 · 클릭하면 크게 볼 수 있습니다</span>
+          </div>
+          <div className="p-4 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2">
+            {popup.thumbnailImages!.map((url, i) => (
+              <button key={url} type="button" onClick={() => setViewerUrl(url)} className="group relative aspect-square overflow-hidden rounded-sm border border-border">
+                <img src={url} alt={`썸네일 ${i + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 상세 설명 */}
       <div className="bg-white border border-border rounded-sm">
         <div className="px-5 py-3 border-b border-border text-sm font-semibold">상세 설명</div>
         <p className="p-5 text-[13px] leading-relaxed whitespace-pre-wrap">{popup.description}</p>
+        {/* 상세 설명 이미지 — 본문 아래 세로로 이어붙임 (쿠팡 상세 스타일, sortOrder 순) */}
+        {(popup.detailImages?.length ?? 0) > 0 && (
+          <div className="border-t border-border p-5 flex flex-col items-center gap-3">
+            {popup.detailImages!.map((url, i) => (
+              <img key={url} src={url} alt={`상세 이미지 ${i + 1}`} className="w-full max-w-xl rounded-sm border border-border cursor-zoom-in" onClick={() => setViewerUrl(url)} />
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* 이미지 확대 보기 모달 */}
+      {viewerUrl && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6" onClick={() => setViewerUrl(null)}>
+          <button className="absolute top-4 right-4 text-white/80 hover:text-white" title="닫기">
+            <X size={22} />
+          </button>
+          <img src={viewerUrl} alt="확대 보기" className="max-w-full max-h-full rounded-sm" onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
 
       {/* 바로가기 */}
       <div className="flex flex-wrap items-center gap-2">
@@ -201,7 +237,7 @@ export default function PopupDetail() {
         </Link>
         {popup.reservationMode === "SLOT" && (
           <Link
-            to="/seller/reservations"
+            to={`/seller/reservations?popup=${popup.id}`} // 7/29 — 이동하면 이 팝업이 셀렉트에 바로 선택됨
             className="inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-sm border border-border text-muted-foreground hover:border-accent hover:text-accent transition-colors"
           >
             <CalendarClock size={12} /> 예약 슬롯·명단 보기

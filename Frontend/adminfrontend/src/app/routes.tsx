@@ -16,6 +16,7 @@ import Masters from "./admin/pages/Masters";
 import PlatformStats from "./admin/pages/PlatformStats";
 import ContentManage from "./admin/pages/ContentManage";
 import CS from "./admin/pages/CS";
+import AdminNotices from "./admin/pages/AdminNotices";
 
 export const router = createBrowserRouter([
   // 루트 접속 시 관리자 대시보드로 — 이 앱에는 관리자 화면만 존재
@@ -39,6 +40,7 @@ export const router = createBrowserRouter([
       { path: "stats", Component: PlatformStats },
       { path: "content", Component: ContentManage },
       { path: "cs", Component: CS },
+      { path: "notices", Component: AdminNotices }, // 7/29 신설 — 주최자 공지 발송
     ],
   },
 ]);

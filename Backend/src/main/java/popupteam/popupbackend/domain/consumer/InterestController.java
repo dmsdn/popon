@@ -32,9 +32,9 @@ public class InterestController {
         this.jwtUtil = jwtUtil;
     }
 
-    // 내가 고른 관심 키워드 목록 조회 (id + name 같이 내려줌)
+    // 내가 고른 관심 키워드 목록 조회 (id 배열로 반환 - 프론트가 { keywordIds: [...] } 형태를 기대함)
     @GetMapping("/interests")
-    public List<Map<String, Object>> getMyInterests(@RequestHeader("Authorization") String authHeader) {
+    public Map<String, Object> getMyInterests(@RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         Long customerId = jwtUtil.getCustomerIdFromToken(token);
 
@@ -42,13 +42,7 @@ public class InterestController {
                 .map(CustomerKeyword::getKeywordId)
                 .toList();
 
-        if (keywordIds.isEmpty()) {
-            return List.of();
-        }
-
-        return keywordRepository.findAllById(keywordIds).stream()
-                .map(k -> Map.<String, Object>of("id", k.getId(), "name", k.getName()))
-                .toList();
+        return Map.of("keywordIds", keywordIds);
     }
 
     @Transactional

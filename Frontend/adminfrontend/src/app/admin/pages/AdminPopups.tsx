@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Search, Loader2, Info, CheckCircle2, XCircle, ShieldCheck, PauseCircle, Pencil, ChevronUp } from "lucide-react";
+import { Search, Loader2, Info, CheckCircle2, XCircle, ShieldCheck, PauseCircle, Pencil, ChevronUp, ChevronDown, SlidersHorizontal, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import { getPopups, approvePopup, rejectPopup, Popup, PopupStatusCode, ApiError } from "../../lib/api";
+import { getPopups, approvePopup, rejectPopup, getKeywords, Popup, PopupStatusCode, ApiError, Region } from "../../lib/api";
 import { SUSPEND_MARKER, isSuspended } from "../../lib/adminPopupMeta";
 
 // 플랫폼 전체 팝업 관리 (심사·게시중지·수정 통합)
@@ -36,6 +36,13 @@ export default function AdminPopups() {
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("전체");
   const [q, setQ] = useState("");
+  // 7/29 — 카테고리(keyword) 필터 펼침 + 헤더 정렬 (null = 기본: 심사 대기 우선·최신순)
+  const [catOpen, setCatOpen] = useState(false);
+  const [catFilter, setCatFilter] = useState<string | null>(null);
+  const [keywordMaster, setKeywordMaster] = useState<Region[]>([]);
+  // 정렬 대상 컬럼 — 7/29 ID 추가
+  type SortKey = "id" | "title" | "createdAt";
+  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 } | null>(null);
   const [openReviewId, setOpenReviewId] = useState<number | null>(null); // 심사 확장 행
   const [reason, setReason] = useState("");
   const [actingId, setActingId] = useState<number | null>(null);
@@ -107,11 +114,32 @@ export default function AdminPopups() {
     }
   };
 
-  const rows = popups.filter(
-    (p) =>
-      (filter === "전체" || p.status === filter) &&
-      (q === "" || p.title.includes(q) || p.companyName.includes(q) || (p.location ?? "").includes(q)),
-  );
+  useEffect(() => {
+    getKeywords().then(setKeywordMaster).catch(() => {});
+  }, []);
+
+  // 첫 클릭 방향은 컬럼 성격에 맞춘다 — 이름은 가나다순(1), ID·등록일은 최신·큰 값 우선(-1)
+  const toggleSort = (key: SortKey) =>
+    setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === 1 ? -1 : 1 } : { key, dir: key === "title" ? 1 : -1 }));
+
+  const SortIcon = ({ col }: { col: SortKey }) =>
+    sort?.key !== col ? <ArrowUpDown size={11} className="opacity-40" /> : sort.dir === 1 ? <ArrowUp size={11} /> : <ArrowDown size={11} />;
+
+  const rows = useMemo(() => {
+    const filtered = popups.filter(
+      (p) =>
+        (filter === "전체" || p.status === filter) &&
+        (catFilter === null || (p.keywordNames ?? []).includes(catFilter)) &&
+        (q === "" || p.title.includes(q) || p.companyName.includes(q) || (p.location ?? "").includes(q)),
+    );
+    if (!sort) return filtered; // 기본 정렬(심사 대기 우선·최신순)은 로드 시점에 이미 적용됨
+    return [...filtered].sort((a, b) => {
+      // ID는 숫자라 localeCompare로 비교하면 "10"이 "9"보다 앞서므로 산술 비교해야 한다
+      if (sort.key === "id") return (a.id - b.id) * sort.dir;
+      if (sort.key === "title") return a.title.localeCompare(b.title, "ko") * sort.dir;
+      return (a.createdAt ?? "").localeCompare(b.createdAt ?? "") * sort.dir;
+    });
+  }, [popups, filter, catFilter, q, sort]);
 
   const pendingCount = popups.filter((p) => p.status === "PENDING").length;
 
@@ -148,36 +176,84 @@ export default function AdminPopups() {
             </button>
           );
         })}
+        {/* 카테고리 필터 펼치기 (7/29) */}
+        <button
+          onClick={() => setCatOpen((v) => !v)}
+          className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border transition-colors ${
+            catFilter ? "bg-accent text-white border-accent" : "border-border text-muted-foreground hover:border-foreground"
+          }`}
+        >
+          <SlidersHorizontal size={11} /> 카테고리{catFilter ? `: ${catFilter}` : ""}
+          {catOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+        </button>
         <div className="ml-auto relative">
           <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="팝업명·브랜드·공간 검색"
+            placeholder="팝업명·브랜드·주소 검색"
             className="pl-8 pr-3 py-1.5 text-xs border border-border rounded-sm w-56 bg-white focus:outline-none focus:border-accent"
           />
         </div>
+
+        {/* 카테고리(keyword 테이블) 필터 — 상태 필터 아래로 펼침 (7/29) */}
+        {catOpen && (
+          <div className="w-full pt-2 mt-1 border-t border-border flex flex-wrap items-center gap-1.5">
+            <button
+              onClick={() => setCatFilter(null)}
+              className={`text-[11px] px-2.5 py-1 rounded-full border ${
+                catFilter === null ? "bg-foreground text-white border-foreground" : "border-border text-muted-foreground hover:border-foreground"
+              }`}
+            >
+              전체
+            </button>
+            {keywordMaster.map((k) => (
+              <button
+                key={k.id}
+                onClick={() => setCatFilter(catFilter === k.name ? null : k.name)}
+                className={`text-[11px] px-2.5 py-1 rounded-full border ${
+                  catFilter === k.name ? "bg-accent text-white border-accent" : "border-border text-muted-foreground hover:border-accent"
+                }`}
+              >
+                {k.name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 rounded-sm px-4 py-3 text-xs text-red-600">{error}</div>}
 
       {/* 목록 테이블 */}
       <div className="bg-white border border-border rounded-sm overflow-x-auto">
-        <table className="w-full text-[13px] min-w-[880px]">
+        <table className="w-full text-[13px] min-w-[960px]">
           <thead>
             <tr className="border-b border-border bg-secondary/60 text-xs text-muted-foreground">
-              <th className="text-left font-medium px-4 py-2.5">ID</th>
-              <th className="text-left font-medium px-4 py-2.5">팝업명 / 브랜드</th>
+              <th className="text-left font-medium px-4 py-2.5">
+                <button onClick={() => toggleSort("id")} className="inline-flex items-center gap-1 text-xs hover:text-foreground">
+                  ID <SortIcon col="id" />
+                </button>
+              </th>
+              <th className="text-left font-medium px-4 py-2.5">
+                <button onClick={() => toggleSort("title")} className="inline-flex items-center gap-1 text-xs hover:text-foreground">
+                  팝업명 / 브랜드 <SortIcon col="title" />
+                </button>
+              </th>
               <th className="text-left font-medium px-4 py-2.5">운영 기간</th>
-              <th className="text-left font-medium px-4 py-2.5">공간</th>
+              <th className="text-left font-medium px-4 py-2.5">주소</th>
+              <th className="text-left font-medium px-4 py-2.5">지역</th>
               <th className="text-left font-medium px-4 py-2.5">상태</th>
-              <th className="text-left font-medium px-4 py-2.5">등록일</th>
+              <th className="text-left font-medium px-4 py-2.5">
+                <button onClick={() => toggleSort("createdAt")} className="inline-flex items-center gap-1 text-xs hover:text-foreground">
+                  등록일 <SortIcon col="createdAt" />
+                </button>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {loading && (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-xs text-muted-foreground">
+                <td colSpan={8} className="px-4 py-10 text-center text-xs text-muted-foreground">
                   <Loader2 size={14} className="inline animate-spin mr-1.5" /> 불러오는 중…
                 </td>
               </tr>
@@ -200,6 +276,7 @@ export default function AdminPopups() {
                     </td>
                     <td className="px-4 py-3 text-xs">{fmtDate(p.startDate)} ~ {fmtDate(p.endDate)}</td>
                     <td className="px-4 py-3 text-xs">{p.location ?? "-"}</td>
+                    <td className="px-4 py-3 text-xs">{p.regionName ?? "-"}</td>
                     <td className="px-4 py-3">
                       {suspended ? (
                         <span className="text-[11px] px-2 py-0.5 rounded-full border bg-slate-800 text-white border-slate-800">게시중지</span>
@@ -259,7 +336,7 @@ export default function AdminPopups() {
                   {/* 심사 확장 행 */}
                   {reviewOpen && (
                     <tr key={`review-${p.id}`} className="bg-secondary/30">
-                      <td colSpan={7} className="px-6 py-4">
+                      <td colSpan={8} className="px-6 py-4">
                         <div className="flex flex-col gap-3 max-w-3xl">
                           <div className="bg-white border border-border rounded-sm p-3">
                             <div className="text-[11px] text-muted-foreground mb-1">소개글</div>
@@ -305,7 +382,7 @@ export default function AdminPopups() {
               );
             })}
             {!loading && rows.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-10 text-center text-xs text-muted-foreground">조건에 맞는 팝업이 없습니다.</td></tr>
+              <tr><td colSpan={8} className="px-4 py-10 text-center text-xs text-muted-foreground">조건에 맞는 팝업이 없습니다.</td></tr>
             )}
           </tbody>
         </table>

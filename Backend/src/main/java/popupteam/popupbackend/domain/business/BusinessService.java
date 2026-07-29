@@ -27,13 +27,7 @@ public class BusinessService {
             throw new IllegalArgumentException("이미 등록된 사업자번호입니다.");
         }
 
-        var checkResult = ntsBusinessCheckService.checkStatus(request.getBusinessNumber());
-        if (checkResult == popupteam.popupbackend.common.nts.NtsBusinessCheckService.CheckResult.NOT_FOUND) {
-            throw new IllegalArgumentException("국세청에 등록되지 않은 사업자등록번호입니다.");
-        }
-        if (checkResult == popupteam.popupbackend.common.nts.NtsBusinessCheckService.CheckResult.CLOSED) {
-            throw new IllegalArgumentException("폐업 처리된 사업자등록번호입니다.");
-        }
+        validateBusinessNumberOrThrow(request.getBusinessNumber());
 
         Business business = new Business();
         business.setEmail(request.getEmail());
@@ -123,5 +117,33 @@ public class BusinessService {
         business.setProfileImage(imageUrl);
         business.setUpdatedAt(LocalDateTime.now());
         return businessRepository.save(business);
+    }
+
+    // signup()과 미리보기용 checkBusinessNumber() 둘 다 이 로직 하나로 판단 - 기준이 어긋나지 않게
+    private void validateBusinessNumberOrThrow(String businessNumber) {
+        var checkResult = ntsBusinessCheckService.checkStatus(businessNumber);
+        if (checkResult == popupteam.popupbackend.common.nts.NtsBusinessCheckService.CheckResult.NOT_FOUND) {
+            throw new IllegalArgumentException("국세청에 등록되지 않은 사업자등록번호입니다.");
+        }
+        if (checkResult == popupteam.popupbackend.common.nts.NtsBusinessCheckService.CheckResult.CLOSED) {
+            throw new IllegalArgumentException("폐업 처리된 사업자등록번호입니다.");
+        }
+    }
+
+    // 회원가입 2단계 미리보기용 - 예외를 던지지 않고 결과를 그대로 반환 (프론트가 다음 단계 진행 여부를 결정)
+    public java.util.Map<String, Object> checkBusinessNumber(String businessNumber) {
+        var checkResult = ntsBusinessCheckService.checkStatus(businessNumber);
+
+        boolean valid = (checkResult != popupteam.popupbackend.common.nts.NtsBusinessCheckService.CheckResult.NOT_FOUND
+                && checkResult != popupteam.popupbackend.common.nts.NtsBusinessCheckService.CheckResult.CLOSED);
+
+        String message = switch (checkResult) {
+            case NOT_FOUND -> "국세청에 등록되지 않은 사업자등록번호입니다.";
+            case CLOSED -> "폐업 처리된 사업자등록번호입니다.";
+            case VALID -> "정상적으로 확인된 사업자등록번호입니다.";
+            case SKIPPED_NO_KEY, ERROR -> "지금은 진위확인을 할 수 없어 형식만 확인했습니다. 최종 가입 시 다시 확인됩니다.";
+        };
+
+        return java.util.Map.of("valid", valid, "message", message);
     }
 }
