@@ -150,6 +150,13 @@ public class NoticeService {
         return NoticeResponse.from(notice);
     }
 
+    // 관리자용 - 지금까지 주최자들에게 보낸 공지 전체 이력 (누구한테 보냈는지, 읽었는지 포함)
+    public List<AdminNoticeHistoryResponse> getAdminSentToBusinessHistory() {
+        return noticeRecipientRepository.findAllByRecipientType(NoticeRecipientType.BUSINESS).stream()
+                .map(AdminNoticeHistoryResponse::from)
+                .toList();
+    }
+
     // === 소비자 알림함 ===
     public List<NoticeInboxResponse> getCustomerInbox(Long customerId, String category) {
         List<NoticeRecipient> list = (category != null)
