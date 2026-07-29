@@ -7,8 +7,9 @@ import { Header } from "@/components/layout/Header";
 import { MobileHeader } from "@/components/layout/MobileHeader";
 import { Footer } from "@/components/layout/Footer";
 import { BottomTabBar } from "@/components/layout/BottomTabBar";
-import { getNotifications, type AppNotification, type NotificationType } from "@/lib/api/notifications";
+import { getNotifications, markNotificationRead, type AppNotification, type NotificationType } from "@/lib/api/notifications";
 import { LoadingState, EmptyState } from "@/components/ui/EmptyState";
+import { useAuth } from "@/lib/auth/AuthContext";
 
 const TABS: ("전체" | NotificationType)[] = ["전체", "공지", "예약/웨이팅", "찜"];
 
@@ -30,12 +31,29 @@ const TYPE_ICON: Record<NotificationType, string> = {
 
 export default function NotificationsPage() {
   const router = useRouter();
+  const { customer } = useAuth();
   const [tab, setTab] = useState<(typeof TABS)[number]>("전체");
   const [notifications, setNotifications] = useState<AppNotification[] | null>(null);
 
   useEffect(() => {
-    getNotifications().then(setNotifications);
-  }, []);
+    if (!customer) {
+      setNotifications([]);
+      return;
+    }
+    getNotifications(customer.id)
+      .then(setNotifications)
+      .catch((err) => {
+        console.error("알림 조회 실패", err);
+        setNotifications([]);
+      });
+  }, [customer]);
+
+  // [신규] 알림을 누르면 읽음 처리 - 화면은 먼저 바꾸고(낙관적 업데이트), 실패해도
+  // 사용자 경험엔 큰 영향 없어서 조용히 무시해요.
+  const handleReadNotification = (id: string) => {
+    setNotifications((prev) => prev?.map((n) => (n.id === id ? { ...n, read: true } : n)) ?? prev);
+    markNotificationRead(id).catch((err) => console.error("알림 읽음 처리 실패", err));
+  };
 
   const filtered = (notifications ?? []).filter((n) => tab === "전체" || n.type === tab);
 
@@ -76,13 +94,15 @@ export default function NotificationsPage() {
       {notifications === null ? (
         <LoadingState />
       ) : filtered.length === 0 ? (
-        <EmptyState message="알림이 없어요." />
+        <EmptyState message="알림이 없어요." icon={null} />
       ) : (
         <div className="flex flex-col px-4 mobile:px-8">
           {filtered.map((item) => (
-            <div
+            <button
               key={item.id}
-              className={`flex items-start gap-3 py-4 border-b border-gray-50 ${
+              type="button"
+              onClick={() => !item.read && handleReadNotification(item.id)}
+              className={`flex items-start gap-3 py-4 border-b border-gray-50 text-left w-full ${
                 item.read ? "" : "bg-gray-50/60"
               }`}
             >
@@ -98,7 +118,7 @@ export default function NotificationsPage() {
                 <p className="text-xs text-gray-500 leading-relaxed">{item.message}</p>
               </div>
               <span className="text-xs text-gray-400 flex-none">{timeAgo(item.createdAt)}</span>
-            </div>
+            </button>
           ))}
         </div>
       )}

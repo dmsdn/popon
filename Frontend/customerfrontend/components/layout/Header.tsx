@@ -35,7 +35,7 @@ export function Header({ initialQuery = "" }: { initialQuery?: string }) {
       </div>
 
       <Link href="/mypage?menu=예약 / 웨이팅" aria-label="예약/웨이팅">
-        <Image src="/icon/Bar_Cart.svg" alt="예약/웨이팅" width={24} height={24} />
+        <Image src="/icon/Bar_Calender.svg" alt="예약/웨이팅" width={24} height={24} />
       </Link>
       <Link href="/notifications" aria-label="알림">
         <Image src="/icon/notification_on.svg" alt="알림" width={24} height={24} />

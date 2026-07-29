@@ -11,13 +11,15 @@ export function EmptyState({
   className = "",
 }: {
   message: string;
-  icon?: string;
+  icon?: string | null; // null을 넘기면 아이콘 없이 텍스트만 보여요
   className?: string;
 }) {
   return (
     <div className={`flex flex-col items-center justify-center py-16 text-center ${className}`}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={icon} alt="" width={32} height={32} className="opacity-40 mb-3" />
+      {icon && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={icon} alt="" width={32} height={32} className="opacity-40 mb-3" />
+      )}
       <p className="text-sm text-gray-400">{message}</p>
     </div>
   );

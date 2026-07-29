@@ -12,43 +12,39 @@ export interface AppNotification {
   read: boolean;
 }
 
-// ⚠️ 백엔드에 "알림 목록"을 내려주는 API가 아직 없어요 (SmsNotificationService/EmailNotificationService는
-// 발송만 하지, 발송 이력을 고객이 조회할 수 있게 저장/노출하는 기능이 없어요).
-// 그래서 지금은 항상 이 mock 목록을 보여줘요 - 실제로 내 계정에 온 알림이 아니에요.
-// 백엔드에 알림 조회 API(예: GET /api/customer/notifications)가 생기면 이 함수 안쪽만
-// apiFetch 호출로 바꾸면 나머지 화면은 그대로 동작해요.
-const MOCK_NOTIFICATIONS: AppNotification[] = [
-  {
-    id: "1",
-    type: "예약/웨이팅",
-    title: "웨이팅 순서가 다가오고 있어요",
-    message: "곧 입장 순서예요. 5분 내로 도착해주세요.",
-    createdAt: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
-    read: false,
-  },
-  {
-    id: "2",
-    type: "찜",
-    title: "찜한 팝업이 곧 종료돼요",
-    message: "찜해두신 팝업의 운영이 이번 주에 종료될 예정이에요.",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
-    read: false,
-  },
-  {
-    id: "3",
-    type: "공지",
-    title: "서비스 점검 안내",
-    message: "더 나은 서비스를 위해 점검을 진행했어요.",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    read: true,
-  },
-];
+// [수정] 백엔드에 실제 알림 API가 생겨서 mock 대신 연결해요. (팀원분이 주신 코드 그대로)
+export async function getNotifications(customerId: number): Promise<AppNotification[]> {
+  const raw = await apiFetch<
+    {
+      noticeId: number;
+      recipientId: number;
+      category: string;
+      title: string;
+      content: string;
+      sentAt: string;
+      read: boolean;
+    }[]
+  >(`/api/notices/my?customerId=${customerId}`);
+  const typeMap: Record<string, NotificationType> = {
+    NOTICE: "공지",
+    WISHLIST: "찜",
+    RESERVATION: "예약/웨이팅",
+    WAITING: "예약/웨이팅",
+  };
+  return raw.map((n) => ({
+    id: String(n.recipientId), // 읽음처리 API가 recipientId 기준이라 이걸 id로 써야 함
+    type: typeMap[n.category] ?? "공지",
+    title: n.title,
+    message: n.content,
+    createdAt: n.sentAt,
+    read: n.read,
+  }));
+}
 
-export async function getNotifications(): Promise<AppNotification[]> {
-  try {
-    return await apiFetch<AppNotification[]>("/api/customer/notifications");
-  } catch (error) {
-    console.warn("[notifications] 실 API 없음 → mock 데이터로 대체합니다.", error);
-    return MOCK_NOTIFICATIONS;
-  }
+// [신규] 예전에 정리해뒀던 알림 API 목록에 읽음 처리(PATCH /api/notices/my/{recipientId}/read)도
+// 있었어요 - getNotifications가 돌려주는 id가 정확히 이 recipientId예요.
+export function markNotificationRead(recipientId: string | number) {
+  return apiFetch<void>(`/api/notices/my/${recipientId}/read`, {
+    method: "PATCH",
+  });
 }
