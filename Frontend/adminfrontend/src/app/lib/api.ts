@@ -152,7 +152,26 @@ export function businessReconsent() {
 }
 
 // 약관 본문 조회 (permitAll)
+// 팝업 이벤트 로그 (7/29 연동) — 예약·웨이팅의 상태 변화가 자동 기록된다
+// (예: RESERVATION/ENTERED, WAITING/CALLED, 자동취소·자동퇴장 스케줄러 기록 포함)
+export type EventLogItem = {
+  id: number;
+  entityType: string; // "RESERVATION" | "WAITING"
+  entityId: number;
+  eventType: string;  // "ENTERED" | "CALLED" | "CANCELLED" ...
+  actor: string;      // "system" 또는 처리 주체
+  memo: string | null;
+  createdAt: string;
+};
+export function getPopupEventLog(popupId: number | string) {
+  return request<EventLogItem[]>(`/api/admin/popups/${popupId}/event-log`);
+}
+
 export type Terms = { id: number; title: string; content: string; updatedAt: string };
+// 약관 수정 (7/29 연동) — 소비자·주최자 회원가입의 "약관 보기"가 여기서 고친 본문을 그대로 보여준다
+export function updateTerms(title: string, content: string) {
+  return request<Terms>("/api/admin/terms", { method: "PUT", body: JSON.stringify({ title, content }) });
+}
 export function getTerms() {
   return request<Terms>("/api/terms");
 }
