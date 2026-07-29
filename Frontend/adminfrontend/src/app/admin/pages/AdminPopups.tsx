@@ -6,7 +6,8 @@ import { getPopups, approvePopup, rejectPopup, getKeywords, Popup, PopupStatusCo
 import { SUSPEND_MARKER, isSuspended } from "../../lib/adminPopupMeta";
 
 // 플랫폼 전체 팝업 관리 (심사·게시중지·수정 통합)
-// 심사·게시중지: 관리자 승인/반려 API 실연동 / 내용 수정: /admin/popups/edit (실반영은 관리자 수정 API 백엔드 구성 후)
+// 심사·게시중지: 관리자 승인/반려/게시중지 API 실연동.
+// 내용 수정은 7/29 기능 탈락 — 관리자는 게시중지만 하고, 수정은 주최자가 자기 수정페이지에서 재등록(심사 대기 복귀)한다.
 
 const STATUS_LABEL: Record<PopupStatusCode, string> = {
   PENDING: "심사 대기",
@@ -14,6 +15,7 @@ const STATUS_LABEL: Record<PopupStatusCode, string> = {
   BEFOR: "오픈예정",
   OPEN: "진행중",
   CLOSED: "종료",
+  SUSPENDED: "게시중지",
 };
 
 const STATUS_BADGE: Record<PopupStatusCode, string> = {
@@ -22,9 +24,10 @@ const STATUS_BADGE: Record<PopupStatusCode, string> = {
   BEFOR: "bg-amber-50 text-amber-600 border-amber-200",
   OPEN: "bg-emerald-50 text-emerald-600 border-emerald-200",
   CLOSED: "bg-slate-100 text-slate-400 border-slate-200",
+  SUSPENDED: "bg-orange-50 text-orange-500 border-orange-200",
 };
 
-const FILTERS: ("전체" | PopupStatusCode)[] = ["전체", "PENDING", "REJECTED", "BEFOR", "OPEN", "CLOSED"];
+const FILTERS: ("전체" | PopupStatusCode)[] = ["전체", "PENDING", "REJECTED", "BEFOR", "OPEN", "CLOSED", "SUSPENDED"];
 
 const fmtDate = (iso: string | null) => (iso ? iso.slice(0, 10) : "-");
 

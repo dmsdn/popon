@@ -12,6 +12,7 @@ const STATUS_LABEL: Record<PopupStatusCode, string> = {
   BEFOR: "오픈예정",
   OPEN: "진행중",
   CLOSED: "종료",
+  SUSPENDED: "게시중지",
 };
 
 const STATUS_BADGE: Record<PopupStatusCode, string> = {
@@ -20,9 +21,10 @@ const STATUS_BADGE: Record<PopupStatusCode, string> = {
   OPEN: "bg-emerald-50 text-emerald-600 border-emerald-200",
   BEFOR: "bg-amber-50 text-amber-600 border-amber-200",
   CLOSED: "bg-slate-100 text-slate-400 border-slate-200",
+  SUSPENDED: "bg-orange-50 text-orange-500 border-orange-200",
 };
 
-const FILTERS: ("전체" | PopupStatusCode)[] = ["전체", "PENDING", "REJECTED", "BEFOR", "OPEN", "CLOSED"];
+const FILTERS: ("전체" | PopupStatusCode)[] = ["전체", "PENDING", "REJECTED", "BEFOR", "OPEN", "CLOSED", "SUSPENDED"];
 
 const fmtDate = (iso: string | null) => (iso ? iso.slice(0, 10) : "-");
 

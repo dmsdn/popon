@@ -7,7 +7,8 @@ import AdminDashboard from "./admin/pages/AdminDashboard";
 import AdminLogin from "./admin/pages/AdminLogin";
 import AdminPopups from "./admin/pages/AdminPopups";
 import AdminPopupDetail from "./admin/pages/AdminPopupDetail";
-import AdminPopupEdit from "./admin/pages/AdminPopupEdit";
+// 관리자 직접 수정(AdminPopupEdit)은 7/29 기능 탈락 — 관리자는 게시중지만 하고 수정은 주최자가 재등록으로 처리
+// import AdminPopupEdit from "./admin/pages/AdminPopupEdit";
 import AdminContracts from "./admin/pages/AdminContracts";
 import Accounts from "./admin/pages/Accounts";
 import Businesses from "./admin/pages/Businesses";
@@ -29,7 +30,7 @@ export const router = createBrowserRouter([
       { index: true, Component: AdminDashboard },
       { path: "login", Component: AdminLogin },
       { path: "popups", Component: AdminPopups },
-      { path: "popups/edit", Component: AdminPopupEdit },
+      // { path: "popups/edit", Component: AdminPopupEdit }, // 7/29 기능 탈락 (게시중지 → 주최자 재등록 흐름으로 대체)
       // 상세페이지 — 목록에서 팝업명 클릭 시 진입, 심사·게시중지·수정 동작 (7/24 회의)
       { path: "popups/:id", Component: AdminPopupDetail },
       { path: "contracts", Component: AdminContracts },

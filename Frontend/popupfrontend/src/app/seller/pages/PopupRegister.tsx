@@ -141,11 +141,13 @@ export default function PopupRegister() {
   // images/detailImages는 File[]이라 "새로 고른 파일"만 담을 수 있어서 서버 이미지는 따로 들고 있어야 한다.
   // 이게 없던 동안은 수정 화면에 기존 이미지가 아예 안 보였고, 새로 올리면 교체가 아니라 위에 쌓였다.
   // 수정 대상 팝업의 현재 심사 상태 (7/29).
-  // 반려(REJECTED)된 팝업은 "수정 저장"이 아니라 "재등록"으로 동작해야 한다 —
-  // 내용만 고치고 상태를 그대로 두면 관리자 심사 목록에 다시 올라오지 않아 영영 반려로 남는다.
+  // 반려(REJECTED)·게시중지(SUSPENDED)된 팝업은 "수정 저장"이 아니라 "재등록"으로 동작해야 한다 —
+  // 내용만 고치고 상태를 그대로 두면 관리자 심사 목록에 다시 올라오지 않아 영영 그 상태로 남는다.
+  // (7/29 결정: 관리자 직접 수정 기능은 탈락 — 관리자는 게시중지만 하고, 고치는 건 주최자가 여기서 한다)
   const [editStatus, setEditStatus] = useState<PopupStatusCode | null>(null);
   const [rejectReason, setRejectReason] = useState<string | null>(null);
-  const isRejected = editStatus === "REJECTED";
+  const isSuspendedEdit = editStatus === "SUSPENDED";
+  const isRejected = editStatus === "REJECTED" || isSuspendedEdit; // 재등록 흐름 공용 플래그
   const [serverImages, setServerImages] = useState<PopupImageItem[]>([]);
   const [removedImageIds, setRemovedImageIds] = useState<number[]>([]);
   const markImageRemoved = (id: number) => setRemovedImageIds((prev) => [...prev, id]);
@@ -271,8 +273,9 @@ export default function PopupRegister() {
     getPopup(editId)
       .then((p) => {
         setEditStatus(p.status);
-        // 반려 사유는 rejectReason에 담기지만, 게시중지도 같은 칸을 쓰므로 반려일 때만 읽는다
+        // 사유 위치가 다르다: 반려는 rejectReason, 게시중지는 adminEditNote (백엔드 reject/suspend 참고)
         if (p.status === "REJECTED") setRejectReason(p.rejectReason ?? p.adminEditNote ?? null);
+        if (p.status === "SUSPENDED") setRejectReason(p.adminEditNote ?? p.rejectReason ?? null);
         setTitle(p.title);
         setDescription(p.description);
         if (p.startDate) {
@@ -518,20 +521,22 @@ export default function PopupRegister() {
       {/* 본문 폼 */}
       <div className="flex-1 min-w-0 flex flex-col gap-4 max-w-4xl">
         <div>
-          <h1 className="text-lg font-semibold">{isRejected ? "반려 팝업 재등록" : editId ? "팝업 수정" : "팝업 등록"}</h1>
+          <h1 className="text-lg font-semibold">
+            {isSuspendedEdit ? "게시중지 팝업 재등록" : isRejected ? "반려 팝업 재등록" : editId ? "팝업 수정" : "팝업 등록"}
+          </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             {isRejected
-              ? "반려 사유를 반영해 수정한 뒤 재등록하면 심사 대기 상태로 다시 접수됩니다."
+              ? `${isSuspendedEdit ? "게시중지" : "반려"} 사유를 반영해 수정한 뒤 재등록하면 심사 대기 상태로 다시 접수됩니다.`
               : <>모든 항목을 입력한 뒤 승인 요청하면 운영팀 검수 후 게시됩니다. <Req /> 표시는 필수 항목입니다.</>}
           </p>
         </div>
 
-        {/* 반려 사유 — 무엇을 고쳐야 하는지 폼 맨 위에서 바로 보이게 (7/29) */}
+        {/* 반려·게시중지 사유 — 무엇을 고쳐야 하는지 폼 맨 위에서 바로 보이게 (7/29) */}
         {isRejected && (
           <div className="bg-red-50 border border-red-200 rounded-sm px-4 py-3 flex items-start gap-2">
             <AlertTriangle size={14} className="text-red-500 shrink-0 mt-0.5" />
             <div className="text-xs text-red-700 leading-relaxed">
-              <strong>관리자 반려 사유</strong>
+              <strong>{isSuspendedEdit ? "관리자 게시중지 사유" : "관리자 반려 사유"}</strong>
               <p className="mt-1 text-red-600">{rejectReason ?? "사유가 기록되지 않았습니다. 운영팀에 문의해 주세요."}</p>
             </div>
           </div>

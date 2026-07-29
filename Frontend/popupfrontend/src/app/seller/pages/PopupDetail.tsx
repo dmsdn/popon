@@ -17,6 +17,7 @@ const STATUS_LABEL: Record<PopupStatusCode, string> = {
   BEFOR: "오픈예정",
   OPEN: "진행중",
   CLOSED: "종료",
+  SUSPENDED: "게시중지",
 };
 const STATUS_BADGE: Record<PopupStatusCode, string> = {
   PENDING: "bg-blue-50 text-blue-600 border-blue-200",
@@ -24,6 +25,7 @@ const STATUS_BADGE: Record<PopupStatusCode, string> = {
   OPEN: "bg-emerald-50 text-emerald-600 border-emerald-200",
   BEFOR: "bg-amber-50 text-amber-600 border-amber-200",
   CLOSED: "bg-slate-100 text-slate-400 border-slate-200",
+  SUSPENDED: "bg-orange-50 text-orange-500 border-orange-200",
 };
 
 // 운영 방식 표기 — 서버 queueMode 우선, 없으면 로컬 저장값(구버전 등록분) 폴백
