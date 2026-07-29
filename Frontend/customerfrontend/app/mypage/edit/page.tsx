@@ -54,7 +54,7 @@ export default function EditProfilePage() {
       .then(setKeywords)
       .catch((err) => console.error("키워드 목록 조회 실패", err));
     getMyInterests()
-      .then(({ keywordIds }) => setSelectedKeywordIds(keywordIds))
+      .then((res) => setSelectedKeywordIds(res?.keywordIds ?? []))
       .catch((err) => console.error("내 관심 키워드 조회 실패", err));
   }, []);
 
@@ -66,7 +66,7 @@ export default function EditProfilePage() {
       .then(setRegions)
       .catch((err) => console.error("지역 목록 조회 실패", err));
     getMyRegions()
-      .then(({ regionIds }) => setSelectedRegionIds(regionIds))
+      .then((res) => setSelectedRegionIds(res?.regionIds ?? []))
       .catch((err) => console.error("내 관심 지역 조회 실패", err));
   }, []);
 
