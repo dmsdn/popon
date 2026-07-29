@@ -7,7 +7,6 @@ import lombok.Setter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import com.nimbusds.openid.connect.sdk.claims.Gender;
 
 @Entity(name = "CustomerAccount")  // [통합 수정] popupbackend의 참조용 Customer 엔티티와 JPA 엔티티명 충돌 회피
 @Table(name = "customer")
