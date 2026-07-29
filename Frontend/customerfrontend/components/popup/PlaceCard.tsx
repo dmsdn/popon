@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getCategoryIcon } from "@/lib/utils/categoryIcon";
 
 /**
@@ -5,7 +6,8 @@ import { getCategoryIcon } from "@/lib/utils/categoryIcon";
  * [수정] 1:1에 가깝던 이미지를 4:3 가로형으로 바꾸고 전체 크기도 키웠어요.
  * 카테고리 텍스트 앞에는 회색 라인 아이콘을 붙여줘요.
  * imageUrl이 있으면 실제 이미지를, 없으면 기존처럼 "이미지" placeholder를 보여줘요.
- * href가 있으면 카드 전체가 새 탭 링크(예: 네이버 지도)로 동작해요.
+ * href가 있으면 카드 전체가 링크로 동작해요 - internal=true면 같은 탭에서 이동하는
+ * 앱 내부 페이지(Next.js Link)로, 아니면(기본값) 네이버 지도 같은 외부 링크로 새 탭에 열려요.
  */
 export function PlaceCard({
   category,
@@ -13,12 +15,14 @@ export function PlaceCard({
   distance,
   imageUrl,
   href,
+  internal = false,
 }: {
   category: string;
   name: string;
   distance?: string | null;
   imageUrl?: string | null;
   href?: string | null;
+  internal?: boolean;
 }) {
   const iconSrc = getCategoryIcon(category);
 
@@ -43,6 +47,14 @@ export function PlaceCard({
       </div>
     </>
   );
+
+  if (href && internal) {
+    return (
+      <Link href={href} className="flex-none w-[200px]">
+        {content}
+      </Link>
+    );
+  }
 
   if (href) {
     return (

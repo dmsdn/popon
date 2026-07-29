@@ -2,19 +2,17 @@ import Image from "next/image";
 import type { SnsLink } from "@/lib/api/popups";
 
 // [신규] popup_sns_link 데이터를 아이콘 + 링크로 보여줘요.
-// ⚠️ 지금 public/Icon/에 인스타그램 아이콘만 있고 유튜브/X/페이스북/틱톡/블로그
-// 전용 아이콘은 없어요. 그래서 인스타그램만 전용 아이콘을 쓰고, 나머지는 전부
-// 모니터(웹사이트) 아이콘으로 통일했어요 - 나중에 플랫폼별 아이콘 파일 주시면
-// 하나씩 바꿔드릴 수 있어요.
+// [수정] 팀에서 플랫폼별 실제 아이콘 파일을 만들어주셔서 교체했어요. Facebook/TikTok은
+// 전용 아이콘이 없어서 "기타(Ect)" 아이콘으로 대체했어요 - 파일 생기면 바로 바꿀 수 있어요.
 const PLATFORM_ICON: Record<SnsLink["platform"], string> = {
-  INSTAGRAM: "/Icon/Name=instagram.svg",
-  YOUTUBE: "/Icon/Name=monitor.svg",
-  X: "/Icon/Name=monitor.svg",
-  FACEBOOK: "/Icon/Name=monitor.svg",
-  TIKTOK: "/Icon/Name=monitor.svg",
-  BLOG: "/Icon/Name=monitor.svg",
-  HOMEPAGE: "/Icon/Name=monitor.svg",
-  ETC: "/Icon/Name=monitor.svg",
+  INSTAGRAM: "/Icon/Instagram.svg",
+  YOUTUBE: "/Icon/YouTube.svg",
+  X: "/Icon/X.svg",
+  FACEBOOK: "/Icon/Ect.svg",
+  TIKTOK: "/Icon/Ect.svg",
+  BLOG: "/Icon/Naver_Blog.svg",
+  HOMEPAGE: "/Icon/Homepage.svg",
+  ETC: "/Icon/Ect.svg",
 };
 
 const PLATFORM_LABEL: Record<SnsLink["platform"], string> = {

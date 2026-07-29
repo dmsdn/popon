@@ -48,10 +48,10 @@ export default function MorePage() {
   useEffect(() => {
     if (!customer) return;
     getMyInterests()
-      .then(({ keywordIds }) => setMyKeywordIds(keywordIds))
+      .then((res) => setMyKeywordIds(res?.keywordIds ?? []))
       .catch((err) => console.error("내 관심 키워드 조회 실패", err));
     getMyRegions()
-      .then(({ regionIds }) => setMyRegionIds(regionIds))
+      .then((res) => setMyRegionIds(res?.regionIds ?? []))
       .catch((err) => console.error("내 관심 지역 조회 실패", err));
   }, [customer]);
 
