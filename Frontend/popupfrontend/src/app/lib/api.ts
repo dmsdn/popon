@@ -160,6 +160,15 @@ export function getMyInfo() {
   return request<BusinessInfo>("/api/business/auth/me");
 }
 
+// 회원가입 2단계용 사업자번호 국세청 진위확인 미리보기 (7/29 연동 — jsw가 만든 check-business-number)
+// 최종 가입 시 서버가 같은 로직으로 다시 검증하므로 이건 UX용 사전 확인이다.
+// valid=false여도 400이 아니라 200으로 내려온다 — 프론트가 다음 단계 진행 여부를 결정.
+export function checkBusinessNumber(businessNumber: string) {
+  return request<{ valid: boolean; message: string }>(
+    `/api/business/auth/check-business-number?businessNumber=${encodeURIComponent(businessNumber)}`,
+  );
+}
+
 // 대표 브랜드 사진 등록·교체 (7/29 연동 — API는 jsw가 만들어뒀는데 프론트 래퍼가 없었다)
 // 서버가 500×500 JPEG으로 리사이즈하므로 원본을 그대로 올린다. 응답은 갱신된 내 정보.
 export function uploadBusinessProfileImage(file: File) {
