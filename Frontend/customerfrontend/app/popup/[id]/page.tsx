@@ -8,6 +8,7 @@ import { StickyActionBar } from "@/components/popup/StickyActionBar";
 import { ReviewCard } from "@/components/popup/ReviewCard";
 import { PlaceCard } from "@/components/popup/PlaceCard";
 import { PopupSnsLinks } from "@/components/popup/PopupSnsLinks";
+import { ReviewImageModal } from "@/components/popup/ReviewImageModal";
 import { HorizontalCarousel } from "@/components/ui/HorizontalCarousel";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { ReservationModal } from "@/components/popup/ReservationModal";
@@ -38,6 +39,7 @@ import { recordPopupView } from "@/lib/recentlyViewed";
 import { saveRedirectTarget } from "@/lib/postLoginRedirect";
 import { toLocalDateString } from "@/lib/utils/formatLocalDate";
 import { StarRatingDisplay } from "@/components/ui/StarRatingDisplay";
+import { StarRatingInput } from "@/components/popup/StarRatingInput";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 import { type PopupItem, type ReviewItem } from "@/data/mockPopups";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -65,6 +67,9 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   );
   const [myReviewsForPopup, setMyReviewsForPopup] = useState<Review[]>([]);
   const [popupReviews, setPopupReviews] = useState<Review[]>([]);
+  const [reviewSort, setReviewSort] = useState<"latest" | "recommended">("latest");
+  const [photoOnly, setPhotoOnly] = useState(false);
+  const [imageModal, setImageModal] = useState<{ reviewIndex: number; photoIndex: number } | null>(null);
   const [hotPlaces, setHotPlaces] = useState<HotPlace[]>([]);
   const [liveStatus, setLiveStatus] = useState<PopupLiveStatus | null>(null);
   const [waitTime, setWaitTime] = useState<PopupWaitTime | null>(null);
@@ -262,6 +267,8 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     date: toDisplayDate(r.createdAt),
     rating: r.rating,
     photos: r.imageUrls.length > 0 ? r.imageUrls : undefined,
+    likeCount: r.likeCount,
+    likedByMe: r.likedByMe,
   }));
   const myReviewIds = new Set(myReviewsForPopup.map((r) => r.id));
   // ⚠️ 백엔드 ReviewResponse에 작성자 닉네임이 없어서 "방문자"로만 표시해요. (백엔드 요청사항 참고)
@@ -277,8 +284,18 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
       date: toDisplayDate(r.createdAt),
       rating: r.rating,
       photos: r.imageUrls.length > 0 ? r.imageUrls : undefined,
+      likeCount: r.likeCount,
+    likedByMe: r.likedByMe,
     }));
   const relatedReviews = [...myReviewsAsItems, ...otherReviewsAsItems];
+  // [신규] 정렬(최신순/추천순) + 사진 리뷰만 보기 필터
+  const visibleReviews = [...relatedReviews]
+    .filter((r) => !photoOnly || (r.photos && r.photos.length > 0))
+    .sort((a, b) =>
+      reviewSort === "recommended"
+        ? (b.likeCount ?? 0) - (a.likeCount ?? 0)
+        : b.date.localeCompare(a.date)
+    );
   // [수정] 로드된 후기 목록(페이지네이션으로 최대 20개까지만)으로 평균을 내던 걸,
   // 백엔드가 DB 전체 후기 기준으로 미리 계산해서 내려주는 popup.avgRating으로 교체.
   const averageRating = popup.avgRating;
@@ -469,6 +486,15 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
           />
         )}
 
+        {imageModal && (
+          <ReviewImageModal
+            reviews={visibleReviews}
+            initialReviewIndex={imageModal.reviewIndex}
+            initialPhotoIndex={imageModal.photoIndex}
+            onClose={() => setImageModal(null)}
+          />
+        )}
+
         {/* 탭 */}
         <div className="flex border-b border-gray-100 mb-6">
           {TABS.map((tab) => (
@@ -546,17 +572,59 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         {activeTab === "후기" && (
           <section>
             {isLoggedIn && (
-              <Link
-                href={`/popup/${id}/review`}
-                className="block w-full text-center rounded-full py-3 text-sm font-medium bg-gray-900 text-white mb-4"
-              >
-                후기 작성하기
-              </Link>
+              <div className="flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-3 mb-5">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/icon/Name=camera.svg" alt="" width={28} height={28} className="flex-none opacity-70" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium">다녀오셨나요?</p>
+                  <p className="text-xs text-gray-400">별점을 눌러 바로 후기를 남겨보세요</p>
+                </div>
+                {/* [수정] "후기 작성" 텍스트 버튼 대신 별점을 여기서 바로 누를 수 있게
+                    했어요 - 누른 별점이 그대로 반영된 채로 작성 화면으로 넘어가요. */}
+                <StarRatingInput value={0} onChange={(v) => router.push(`/popup/${id}/review?rating=${v}`)} size={20} />
+              </div>
             )}
+
+            {relatedReviews.length > 0 && (
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-1">
+                  {(["latest", "recommended"] as const).map((sort) => (
+                    <button
+                      key={sort}
+                      type="button"
+                      onClick={() => setReviewSort(sort)}
+                      className={`text-xs px-3 py-1.5 rounded-full ${
+                        reviewSort === sort ? "bg-gray-900 text-white" : "text-gray-500"
+                      }`}
+                    >
+                      {sort === "latest" ? "최신순" : "추천순"}
+                    </button>
+                  ))}
+                </div>
+                <label className="flex items-center gap-1.5 text-xs text-gray-500">
+                  <input
+                    type="checkbox"
+                    checked={photoOnly}
+                    onChange={(e) => setPhotoOnly(e.target.checked)}
+                    className="w-3.5 h-3.5"
+                  />
+                  사진 리뷰만
+                </label>
+              </div>
+            )}
+
             {relatedReviews.length === 0 ? (
               <EmptyState message="아직 후기가 없어요." />
+            ) : visibleReviews.length === 0 ? (
+              <EmptyState message="사진이 있는 후기가 없어요." />
             ) : (
-              relatedReviews.map((review) => <ReviewCard key={review.id} review={review} />)
+              visibleReviews.map((review, i) => (
+                <ReviewCard
+                  key={review.id}
+                  review={review}
+                  onImageClick={(photoIndex) => setImageModal({ reviewIndex: i, photoIndex })}
+                />
+              ))
             )}
           </section>
         )}
@@ -586,7 +654,13 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         <h2 className="text-base font-semibold mb-3">비슷한 팝업</h2>
         <HorizontalCarousel>
           {similar.map((item) => (
-            <PlaceCard key={item.id} category={item.location ?? "팝업"} name={item.name} />
+            <PlaceCard
+              key={item.id}
+              category={item.location ?? "팝업"}
+              name={item.name}
+              href={`/popup/${item.id}`}
+              internal
+            />
           ))}
         </HorizontalCarousel>
       </section>

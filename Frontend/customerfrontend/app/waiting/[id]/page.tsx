@@ -55,10 +55,10 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
   }, [id, customer, authLoading, router]);
 
   const handleCancel = async () => {
-    if (!waiting) return;
+    if (!waiting || !customer) return;
     if (!confirm("웨이팅을 취소할까요?")) return;
     try {
-      const updated = await cancelWaiting(waiting.id);
+      const updated = await cancelWaiting(waiting.id, customer.id);
       setWaiting(updated);
       removeMyWaitingId(waiting.id);
       alert("웨이팅이 취소됐어요.");
