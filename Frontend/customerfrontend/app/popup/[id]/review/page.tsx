@@ -1,27 +1,33 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createReview } from "@/lib/api/reviews";
 import { uploadFile } from "@/lib/api/upload";
-import { getPopup, type PopupDetail } from "@/lib/api/popups";
+import { getPopup, getPopupImages, type PopupDetail } from "@/lib/api/popups";
 import { getMyReservations } from "@/lib/api/reservations";
 import { getMyWaitingIds, getMyWaitingStatus } from "@/lib/api/waiting";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { StarRatingInput } from "@/components/popup/StarRatingInput";
 import { ImageCropModal } from "@/components/popup/ImageCropModal";
+import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 
 const MAX_IMAGE_COUNT = 5;
 
 export default function WriteReviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { customer } = useAuth();
 
   const [popup, setPopup] = useState<PopupDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mainImageUrl, setMainImageUrl] = useState<string | null>(null);
 
-  const [rating, setRating] = useState(0);
+  // [신규] 홈/상세페이지의 "다녀오셨나요?" 카드에서 별을 눌러서 넘어온 경우,
+  // ?rating=4 같은 쿼리로 별점을 미리 채운 채로 시작해요.
+  const initialRating = Number(searchParams.get("rating")) || 0;
+  const [rating, setRating] = useState(initialRating);
   const [content, setContent] = useState("");
   // [수정] "다녀간 날짜"를 직접 고르게 하던 걸 없앴어요. 이 팝업에 대해 내가 실제로
   // 체크인 완료했거나(예약 - entryStatus === "CHECKED_IN" / 예약일이 이미 지남) 입장
@@ -45,6 +51,12 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+    // [신규] 상단에 대표 이미지를 보여주기 위한 조회
+    getPopupImages(id)
+      .then((images) => {
+        if (!cancelled) setMainImageUrl(images[0]?.imageUrl ?? null);
+      })
+      .catch((err) => console.error("팝업 이미지 조회 실패", err));
     return () => {
       cancelled = true;
     };
@@ -191,7 +203,27 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <div className="px-4 mobile:px-8 py-6 flex flex-col gap-6">
-        <p className="text-sm text-gray-500">{popup.title}</p>
+        {/* [수정] 팝업 제목 한 줄만 있던 걸, 대표 이미지 + 기간/장소까지 보이는
+            카드로 바꿨어요 - 지금 어떤 팝업에 대한 후기를 쓰는지 더 명확하게 보여요. */}
+        <div className="flex items-center gap-3 border border-gray-200 rounded-xl p-3">
+          <div className="w-14 h-14 rounded-lg bg-gray-100 flex-none overflow-hidden">
+            {mainImageUrl ? (
+              <ImageWithFallback src={mainImageUrl} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400">
+                이미지
+              </div>
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold truncate">{popup.title}</p>
+            <p className="text-xs text-gray-400 truncate">
+              {new Date(popup.startDate).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })} -{" "}
+              {new Date(popup.endDate).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}
+              {popup.location ? ` · ${popup.location}` : ""}
+            </p>
+          </div>
+        </div>
 
         <div>
           <span className="block text-sm font-medium text-gray-700 mb-2">별점</span>

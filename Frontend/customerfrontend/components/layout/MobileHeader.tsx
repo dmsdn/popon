@@ -21,7 +21,7 @@ export function MobileHeader({
 
   if (searchMode) {
     return (
-      <header className="flex items-center gap-3 px-4 py-3 border-b">
+      <header className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
         <button type="button" onClick={() => router.back()} aria-label="뒤로가기" className="text-gray-500">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M15 18l-6-6 6-6" />
@@ -33,8 +33,10 @@ export function MobileHeader({
   }
 
   return (
-    <header className="flex items-center justify-between px-4 py-3 border-b">
-      <span className="text-lg font-semibold tracking-tight">POPUP</span>
+    <header className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+      <Link href="/" className="text-lg font-bold tracking-tight">
+        팝업
+      </Link>
       <div className="flex items-center gap-4">
         <Link href="/search" aria-label="검색">
           <Image src="/icon/Bar_Search.svg" alt="검색" width={20} height={20} />

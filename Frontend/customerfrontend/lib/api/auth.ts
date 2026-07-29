@@ -32,7 +32,10 @@ export interface SignupInfoPayload {
 // 실제로 phone/email/약관동의를 받아서 signupCompleted=true까지 처리하는 엔드포인트는
 // POST /api/customer/signup-info (SignupInfoController) 이므로 그쪽으로 변경했습니다.
 export function submitSignupInfo(payload: SignupInfoPayload) {
-  return apiFetch<{ success: boolean; customerId: number }>("/api/customer/signup-info", {
+  // [수정] 가입대기 토큰(pendingToken)으로 제출하면 백엔드가 이 시점에 처음으로
+  // Customer row를 만들고, 그때부터 쓸 수 있는 "진짜" 토큰을 응답에 같이 실어줘요.
+  // 이전엔 이 token 필드를 타입에도 안 넣고 그냥 버리고 있었어요.
+  return apiFetch<{ success: boolean; customerId: number; token?: string }>("/api/customer/signup-info", {
     method: "POST",
     body: JSON.stringify(payload),
   });
