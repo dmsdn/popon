@@ -72,11 +72,11 @@ export function getMyActiveWaitings(customerId: number) {
 // 웨이팅 취소
 // ⚠️ 백엔드 참고: 이 엔드포인트는 원래 "주최자/관리자 수동 취소"용으로 만들어져 있어서
 // (PATCH /api/waiting/{id}/cancel), 소비자가 본인 웨이팅을 취소할 수 있는 전용 API가 아니에요.
-// 현재는 로그인만 되어 있으면(스태프 여부/본인 소유 여부 확인 없이) 호출이 성공하길래
-// 일단 이걸로 연결해뒀지만, 다른 사람의 웨이팅 id를 넣어도 취소가 되는 상태라 백엔드에서
-// 소유권 확인(또는 소비자 전용 취소 API 분리)이 꼭 필요해요.
-export function cancelWaiting(waitingId: number) {
-  return apiFetch<Waiting>(`/api/waiting/${waitingId}/cancel`, {
+// [수정] 백엔드가 예약 취소(cancelReservation)와 같은 패턴으로 고쳐졌어요 - customerId를
+// 쿼리파라미터로 넘기면 본인 웨이팅이 맞는지 백엔드가 검증하고 취소해줘요. customerId
+// 없이 부르면 주최자/관리자 전용 경로로 빠져서 실패해요(의도된 동작).
+export function cancelWaiting(waitingId: number, customerId: number) {
+  return apiFetch<Waiting>(`/api/waiting/${waitingId}/cancel?customerId=${customerId}`, {
     method: "PATCH",
   });
 }
