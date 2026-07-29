@@ -40,7 +40,9 @@ export default function AdminPopups() {
   const [catOpen, setCatOpen] = useState(false);
   const [catFilter, setCatFilter] = useState<string | null>(null);
   const [keywordMaster, setKeywordMaster] = useState<Region[]>([]);
-  const [sort, setSort] = useState<{ key: "title" | "createdAt"; dir: 1 | -1 } | null>(null);
+  // 정렬 대상 컬럼 — 7/29 ID 추가
+  type SortKey = "id" | "title" | "createdAt";
+  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 } | null>(null);
   const [openReviewId, setOpenReviewId] = useState<number | null>(null); // 심사 확장 행
   const [reason, setReason] = useState("");
   const [actingId, setActingId] = useState<number | null>(null);
@@ -116,10 +118,11 @@ export default function AdminPopups() {
     getKeywords().then(setKeywordMaster).catch(() => {});
   }, []);
 
-  const toggleSort = (key: "title" | "createdAt") =>
+  // 첫 클릭 방향은 컬럼 성격에 맞춘다 — 이름은 가나다순(1), ID·등록일은 최신·큰 값 우선(-1)
+  const toggleSort = (key: SortKey) =>
     setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === 1 ? -1 : 1 } : { key, dir: key === "title" ? 1 : -1 }));
 
-  const SortIcon = ({ col }: { col: "title" | "createdAt" }) =>
+  const SortIcon = ({ col }: { col: SortKey }) =>
     sort?.key !== col ? <ArrowUpDown size={11} className="opacity-40" /> : sort.dir === 1 ? <ArrowUp size={11} /> : <ArrowDown size={11} />;
 
   const rows = useMemo(() => {
@@ -130,11 +133,12 @@ export default function AdminPopups() {
         (q === "" || p.title.includes(q) || p.companyName.includes(q) || (p.location ?? "").includes(q)),
     );
     if (!sort) return filtered; // 기본 정렬(심사 대기 우선·최신순)은 로드 시점에 이미 적용됨
-    return [...filtered].sort((a, b) =>
-      sort.key === "title"
-        ? a.title.localeCompare(b.title, "ko") * sort.dir
-        : (a.createdAt ?? "").localeCompare(b.createdAt ?? "") * sort.dir,
-    );
+    return [...filtered].sort((a, b) => {
+      // ID는 숫자라 localeCompare로 비교하면 "10"이 "9"보다 앞서므로 산술 비교해야 한다
+      if (sort.key === "id") return (a.id - b.id) * sort.dir;
+      if (sort.key === "title") return a.title.localeCompare(b.title, "ko") * sort.dir;
+      return (a.createdAt ?? "").localeCompare(b.createdAt ?? "") * sort.dir;
+    });
   }, [popups, filter, catFilter, q, sort]);
 
   const pendingCount = popups.filter((p) => p.status === "PENDING").length;
@@ -225,9 +229,13 @@ export default function AdminPopups() {
         <table className="w-full text-[13px] min-w-[960px]">
           <thead>
             <tr className="border-b border-border bg-secondary/60 text-xs text-muted-foreground">
-              <th className="text-left font-medium px-4 py-2.5">ID</th>
               <th className="text-left font-medium px-4 py-2.5">
-                <button onClick={() => toggleSort("title")} className="inline-flex items-center gap-1 hover:text-foreground">
+                <button onClick={() => toggleSort("id")} className="inline-flex items-center gap-1 text-xs hover:text-foreground">
+                  ID <SortIcon col="id" />
+                </button>
+              </th>
+              <th className="text-left font-medium px-4 py-2.5">
+                <button onClick={() => toggleSort("title")} className="inline-flex items-center gap-1 text-xs hover:text-foreground">
                   팝업명 / 브랜드 <SortIcon col="title" />
                 </button>
               </th>
@@ -236,7 +244,7 @@ export default function AdminPopups() {
               <th className="text-left font-medium px-4 py-2.5">지역</th>
               <th className="text-left font-medium px-4 py-2.5">상태</th>
               <th className="text-left font-medium px-4 py-2.5">
-                <button onClick={() => toggleSort("createdAt")} className="inline-flex items-center gap-1 hover:text-foreground">
+                <button onClick={() => toggleSort("createdAt")} className="inline-flex items-center gap-1 text-xs hover:text-foreground">
                   등록일 <SortIcon col="createdAt" />
                 </button>
               </th>

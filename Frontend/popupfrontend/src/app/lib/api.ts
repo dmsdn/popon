@@ -287,7 +287,7 @@ export function deletePopup(id: number | string) {
   return request<void>(`/api/popups/${id}`, { method: "DELETE" });
 }
 
-// 팝업 이미지 업로드 — 7/29부터 type 구분 (THUMBNAIL=목록·카드용 800×800 정사각, DETAIL=상세 본문용 세로형)
+// 팝업 이미지 업로드 — 7/29부터 type 구분 (THUMBNAIL=목록·카드용 800×800 정사각, DETAIL=상세 본문용 1080×1440 세로형)
 // 서버(ImageProcessingService)가 규격에 맞춰 리사이즈·크롭하므로 프론트는 원본을 그대로 보낸다.
 export type PopupImageTypeCode = "THUMBNAIL" | "DETAIL";
 

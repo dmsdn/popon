@@ -98,7 +98,7 @@ export default function Businesses() {
             <tr className="border-b border-border bg-secondary/60 text-xs text-muted-foreground">
               <th className="text-left font-medium px-4 py-2.5">ID</th>
               <th className="text-left font-medium px-4 py-2.5">
-                <button onClick={() => toggleSort("companyName")} className="inline-flex items-center gap-1 hover:text-foreground">
+                <button onClick={() => toggleSort("companyName")} className="inline-flex items-center gap-1 text-xs hover:text-foreground">
                   회사명 <SortIcon col="companyName" />
                 </button>
               </th>
@@ -107,7 +107,7 @@ export default function Businesses() {
               <th className="text-left font-medium px-4 py-2.5">연락처</th>
               <th className="text-right font-medium px-4 py-2.5">팝업 (게시/심사/반려)</th>
               <th className="text-left font-medium px-4 py-2.5">
-                <button onClick={() => toggleSort("createdAt")} className="inline-flex items-center gap-1 hover:text-foreground">
+                <button onClick={() => toggleSort("createdAt")} className="inline-flex items-center gap-1 text-xs hover:text-foreground">
                   가입일 <SortIcon col="createdAt" />
                 </button>
               </th>

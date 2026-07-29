@@ -53,6 +53,12 @@ const SECTIONS = [
 
 // 이미지 업로드 제한: JPG만 · 장당 최대 10MB (7/24 회의 결정 — 형식 강제, 서버 리사이즈 파이프라인과 통일)
 const MAX_IMAGE_MB = 10;
+
+// 서버가 실제로 변환하는 규격 — 백엔드 PopupService.uploadImage의 resizeToJpeg 인자와 동일하게 유지할 것.
+// 프론트는 리사이즈하지 않고 원본을 그대로 올리므로, 이 값들은 "안내 문구 전용"이다.
+// 임의로 바꾸면 화면 안내와 실제 결과물이 어긋난다 (7/29 — 인스타 규격·가로780 같은 임의 표기를 실제 값으로 교체).
+const THUMB_SPEC = "800×800";   // THUMBNAIL — 목록·카드용 정사각
+const DETAIL_SPEC = "1080×1440"; // DETAIL — 상세 본문용 세로형(3:4)
 function filterJpegs(files: File[]): { ok: File[]; rejected: string[] } {
   const ok: File[] = [];
   const rejected: string[] = [];
@@ -327,7 +333,7 @@ export default function PopupRegister() {
     try {
       const popup = editId ? await updatePopup(editId, payload) : await createPopup(payload);
       saveOpsMode(popup.id, opsMode); // 대기열·인원 관제가 이 값을 읽어 표시
-      // 7/29 — 서버가 type별로 규격 리사이즈 (썸네일 800×800 정사각, 상세 세로형). 순서 보존 위해 순차 업로드
+      // 7/29 — 서버가 type별로 규격 리사이즈 (THUMB_SPEC / DETAIL_SPEC). 순서 보존 위해 순차 업로드
       for (const file of images) {
         await uploadPopupImage(popup.id, file, "THUMBNAIL");
       }
@@ -657,9 +663,12 @@ export default function PopupRegister() {
         </Section>
 
         {/* 4. 이미지·미디어 */}
-        <Section id="media" title="이미지·미디어" desc={`썸네일은 정사각(인스타 규격)으로 자동 변환됩니다 · JPG만 가능 · 장당 최대 ${MAX_IMAGE_MB}MB · 최대 20장`}>
+        <Section id="media" title="이미지·미디어" desc={`업로드하면 서버가 규격에 맞춰 변환합니다 (썸네일 ${THUMB_SPEC} · 상세 ${DETAIL_SPEC}) · JPG만 가능 · 장당 최대 ${MAX_IMAGE_MB}MB · 최대 20장`}>
           <div>
-            <label className={labelCls}>대표 이미지 (썸네일) <Req /></label>
+            <label className={labelCls}>
+              대표 이미지 (썸네일) <Req />
+              <span className="font-normal text-muted-foreground"> — {THUMB_SPEC} 정사각으로 변환</span>
+            </label>
             <input
               ref={fileInputRef}
               type="file"
@@ -808,8 +817,8 @@ export default function PopupRegister() {
               placeholder={"팝업의 콘셉트, 판매 상품, 포토존·이벤트 등을 소개해 주세요.\n\n## 이런 걸 만나요\n- 한정판 굿즈 20종\n- 브랜드 캐릭터 포토존"}
           />
           <div>
-            {/* 7/29 — 여러 장 허용. 업로드 순서 = 본문 아래 노출 순서(서버 sortOrder). 규격은 서버가 세로형으로 리사이즈 */}
-            <label className={labelCls}>상세 설명 이미지 <span className="font-normal text-muted-foreground">(세로형 JPG 여러 장 — 상품 상세페이지처럼 본문 아래 순서대로 이어붙습니다)</span></label>
+            {/* 7/29 — 여러 장 허용. 업로드 순서 = 본문 아래 노출 순서(서버 sortOrder). 규격은 서버가 DETAIL_SPEC으로 리사이즈 */}
+            <label className={labelCls}>상세 설명 이미지 <span className="font-normal text-muted-foreground">(JPG 여러 장 · {DETAIL_SPEC} 세로형으로 변환 — 상품 상세페이지처럼 본문 아래 순서대로 이어붙습니다)</span></label>
             <input
               ref={detailInputRef}
               type="file"
