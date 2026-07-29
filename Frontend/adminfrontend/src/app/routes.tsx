@@ -18,6 +18,7 @@ import PlatformStats from "./admin/pages/PlatformStats";
 import ContentManage from "./admin/pages/ContentManage";
 import CS from "./admin/pages/CS";
 import AdminNotices from "./admin/pages/AdminNotices";
+import AdminTerms from "./admin/pages/AdminTerms";
 
 export const router = createBrowserRouter([
   // 루트 접속 시 관리자 대시보드로 — 이 앱에는 관리자 화면만 존재
@@ -42,6 +43,7 @@ export const router = createBrowserRouter([
       { path: "content", Component: ContentManage },
       { path: "cs", Component: CS },
       { path: "notices", Component: AdminNotices }, // 7/29 신설 — 주최자 공지 발송
+      { path: "terms", Component: AdminTerms },     // 7/29 신설 — 약관 관리
     ],
   },
 ]);

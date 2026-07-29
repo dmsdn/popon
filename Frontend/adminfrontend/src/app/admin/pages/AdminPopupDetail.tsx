@@ -5,7 +5,7 @@ import {
   CheckCircle2, XCircle, PauseCircle, ShieldCheck, Building2,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import { getPopup, approvePopup, rejectPopup, Popup, PopupStatusCode, ApiError } from "../../lib/api";
+import { getPopup, approvePopup, rejectPopup, getPopupEventLog, EventLogItem, Popup, PopupStatusCode, ApiError } from "../../lib/api";
 import { SUSPEND_MARKER, isSuspended } from "../../lib/adminPopupMeta";
 
 // 관리자 팝업 상세페이지 — 7/24 회의: 팝업 관리 목록에서 팝업명 클릭 시 진입,
@@ -47,6 +47,9 @@ export default function AdminPopupDetail() {
   const [reason, setReason] = useState("");
   const [acting, setActing] = useState(false);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null); // 이미지 확대 보기 (7/29)
+  // 예약·웨이팅 이벤트 로그 (7/29 연동 — API는 있었는데 화면이 없었다). 접힌 채로 시작.
+  const [eventLog, setEventLog] = useState<EventLogItem[]>([]);
+  const [logOpen, setLogOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -54,6 +57,8 @@ export default function AdminPopupDetail() {
     getPopup(id)
       .then((p) => alive && setPopup(p))
       .catch((e) => alive && setLoadError(e instanceof Error ? e.message : "팝업을 불러오지 못했습니다."));
+    // 로그는 부가 정보 — 실패해도 상세 화면은 떠야 하므로 조용히 넘어간다
+    getPopupEventLog(id).then((l) => alive && setEventLog(l)).catch(() => {});
     return () => {
       alive = false;
     };
@@ -291,6 +296,49 @@ export default function AdminPopupDetail() {
       <div className="bg-white border border-border rounded-sm">
         <div className="px-5 py-3 border-b border-border text-sm font-semibold">소개글</div>
         <p className="p-5 text-[13px] leading-relaxed whitespace-pre-wrap">{popup.description || "(소개글 없음)"}</p>
+      </div>
+
+      {/* 예약·웨이팅 이벤트 로그 (7/29) — 자동 기록이라 수는 많고 볼 일은 드물어 접힌 채로 시작 */}
+      <div className="bg-white border border-border rounded-sm">
+        <button
+          onClick={() => setLogOpen((v) => !v)}
+          className="w-full px-5 py-3 flex items-center justify-between text-sm font-semibold hover:bg-secondary/40"
+        >
+          <span>예약·웨이팅 이벤트 로그 <span className="text-xs font-normal text-muted-foreground">{eventLog.length}건</span></span>
+          <span className="text-xs text-muted-foreground">{logOpen ? "접기 ▲" : "펼치기 ▼"}</span>
+        </button>
+        {logOpen && (
+          <div className="border-t border-border max-h-80 overflow-y-auto">
+            {eventLog.length === 0 ? (
+              <p className="px-5 py-6 text-center text-xs text-muted-foreground">기록된 이벤트가 없습니다.</p>
+            ) : (
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-border bg-secondary/60 text-muted-foreground">
+                    <th className="text-left font-medium px-4 py-2">시각</th>
+                    <th className="text-left font-medium px-4 py-2">대상</th>
+                    <th className="text-left font-medium px-4 py-2">이벤트</th>
+                    <th className="text-left font-medium px-4 py-2">처리 주체</th>
+                    <th className="text-left font-medium px-4 py-2">메모</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {eventLog.map((e) => (
+                    <tr key={e.id}>
+                      <td className="px-4 py-2 whitespace-nowrap" style={{ fontFamily: "'DM Mono', monospace" }}>
+                        {e.createdAt.slice(5, 16).replace("T", " ")}
+                      </td>
+                      <td className="px-4 py-2">{e.entityType === "RESERVATION" ? "예약" : "웨이팅"} #{e.entityId}</td>
+                      <td className="px-4 py-2 font-medium">{e.eventType}</td>
+                      <td className="px-4 py-2 text-muted-foreground">{e.actor}</td>
+                      <td className="px-4 py-2 text-muted-foreground">{e.memo ?? "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 이미지 확대 보기 모달 */}
