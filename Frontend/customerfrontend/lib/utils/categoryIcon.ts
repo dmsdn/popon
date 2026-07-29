@@ -13,7 +13,7 @@ const ICON_RULES: [string[], string][] = [
   [["전시"], "/icons/art.svg"],
   [["공원"], "/icons/park.svg"],
   [["아쿠아리움"], "/icons/aquarium.svg"],
-  [["쇼핑, 컨벤션"], "/icons/shopping.svg"],
+  [["쇼핑", "컨벤션"], "/icons/shopping.svg"],
   [["야구장"], "/icons/sports.svg"],
   [["도서관"], "/icons/book.svg"],
   [["야경"], "/icons/moon.svg"],
