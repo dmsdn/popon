@@ -199,7 +199,20 @@ export default function MyPage() {
             </div>
             <div>
               <label className={labelCls}>새 비밀번호 확인</label>
-              <input type="password" required value={pw.confirm} onChange={(e) => setPw((p) => ({ ...p, confirm: e.target.value }))} className={inputCls} />
+              <input
+                type="password" required value={pw.confirm}
+                onChange={(e) => setPw((p) => ({ ...p, confirm: e.target.value }))}
+                className={
+                  inputCls +
+                  (pw.confirm ? (pw.next === pw.confirm ? " border-green-400" : " border-red-300") : "")
+                }
+              />
+              {/* 일치 여부 실시간 표시 (7/29) — 확인란에 입력이 있을 때만 */}
+              {pw.confirm && (
+                <p className={`mt-1 text-[11px] ${pw.next === pw.confirm ? "text-green-600" : "text-red-500"}`}>
+                  {pw.next === pw.confirm ? "✓ 비밀번호가 일치합니다" : "비밀번호가 일치하지 않습니다"}
+                </p>
+              )}
             </div>
           </div>
           <div className="flex items-center justify-end gap-3">

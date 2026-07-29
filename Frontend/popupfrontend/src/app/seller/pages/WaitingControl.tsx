@@ -17,7 +17,12 @@ import {
 // 실연동: 통합 대기열 보드(서버가 사전예약 자동 편입·정렬), 웨이팅 등록/입장/취소, 통합 QR 체크인, 예약 체크인/노쇼
 // 로컬(백엔드 구성 후 연동): 운영 모드 저장(Popup.queueMode가 DTO에 미노출), 퇴장 처리, 입장 완료 웨이팅 목록
 
-const CONSUMER_URL = "http://localhost:5173"; // 소비자 플랫폼 (회원가입·소셜로그인 → 상세페이지 웨이팅)
+const CONSUMER_URL = "http://localhost:5173"; // 소비자 플랫폼
+// 7/29 — 회원 웨이팅 QR은 소비자 회원가입으로 직행
+const CONSUMER_SIGNUP_URL = `${CONSUMER_URL}/signup`;
+// 7/29 — 비회원 웨이팅 QR은 구글폼으로 연결 (이름·연락처·이메일·인원 → 응답이 현장 대기열에 자동 추가)
+// ⚠ 팀 구글폼 주소 확정 후 여기에 붙여넣을 것. 비워 두면 기존 자체 접수 폼(/walkin)으로 연결된다.
+const NONMEMBER_WAITING_FORM_URL = "";
 const NOSHOW_GRACE_MS = 5 * 60 * 1000; // 슬롯 종료 +5분 안에 미입장 → 노쇼 처리 대상
 
 const fmtTime = (t: string | null) => (t ? t.slice(0, 5) : "");
@@ -702,15 +707,15 @@ export default function WaitingControl() {
             <div className="grid md:grid-cols-2 gap-3">
               <div className="bg-white border border-border rounded-sm p-5 flex gap-4">
                 <div className="border border-border rounded-sm p-2 bg-white shrink-0">
-                  <QRCodeSVG value={CONSUMER_URL} size={110} />
+                  <QRCodeSVG value={CONSUMER_SIGNUP_URL} size={110} />
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5 text-sm font-semibold mb-1">
                     <QrCode size={14} className="text-violet-500" /> 회원 웨이팅 QR
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    소비자 플랫폼으로 연결됩니다. 소셜 로그인(회원가입) 후 팝업 상세페이지에서
-                    현장 웨이팅을 등록하면 이 대기열에 순서대로 추가되고, 웹에서 바로 입장 QR을 받습니다.
+                    소비자 플랫폼 <span className="font-medium text-foreground">회원가입 페이지</span>로 연결됩니다.
+                    가입(소셜 로그인) 후 팝업 상세페이지에서 현장 웨이팅을 등록하면 이 대기열에 순서대로 추가됩니다.
                   </p>
                   <p className="text-[11px] text-amber-600 mt-1.5">
                     등록 API는 준비됨(customerId 파라미터) — 상세페이지 웨이팅 버튼은 소비자 프론트(pew) 구현 후 동작
@@ -719,15 +724,16 @@ export default function WaitingControl() {
               </div>
               <div className="bg-white border border-border rounded-sm p-5 flex gap-4">
                 <div className="border border-border rounded-sm p-2 bg-white shrink-0">
-                  <QRCodeSVG value={`${window.location.origin}/walkin?popup=${selected.id}`} size={110} />
+                  <QRCodeSVG value={NONMEMBER_WAITING_FORM_URL || `${window.location.origin}/walkin?popup=${selected.id}`} size={110} />
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5 text-sm font-semibold mb-1">
                     <QrCode size={14} className="text-amber-500" /> 비회원 웨이팅 QR
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    이름·전화번호·이메일 입력 폼으로 연결됩니다. 제출하면 이 대기열에 자동 추가되고,
-                    당일 대기번호와 입장 QR이 발급됩니다(이메일·문자 발송 포함).
+                    {NONMEMBER_WAITING_FORM_URL
+                      ? "구글폼으로 연결됩니다. 이름·연락처·이메일·인원 수를 제출하면 이 대기열에 자동 추가됩니다."
+                      : "이름·전화번호·이메일 입력 폼으로 연결됩니다. 제출하면 이 대기열에 자동 추가되고, 당일 대기번호와 입장 QR이 발급됩니다."}
                   </p>
                   <p className="text-[11px] text-emerald-600 mt-1.5">
                     백엔드 실연동 완료 — 메일·문자 발송은 발신 계정 설정 시 동작

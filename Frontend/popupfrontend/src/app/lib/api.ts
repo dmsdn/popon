@@ -206,7 +206,29 @@ export type Popup = {
   statusChangedAt: string | null; // 관리자가 상태를 마지막으로 확정한 일시 (승인/반려/게시중지)
   adminEditNote: string | null;   // 반려·게시중지 사유 (승인 시 서버가 null로 초기화)
   hashtags: string[] | null;      // 7/27 jmy — 등록/수정 시 전송, 응답에 포함 (구 데이터는 null/[])
+  keywordNames: string[] | null;  // 7/28 jmy — 표준 카테고리(keyword 테이블) 이름 목록. 상세 조회에서 채워짐
+  regionName?: string | null;     // 7/29 — 지역(region) 이름. ⚠ 백엔드 PopupResponse 노출 대기 — 채워지면 목록 지역 컬럼에 표시
+  snsLinks?: { id: number; platform: string; url: string; displayName?: string | null; sortOrder?: number | null }[] | null; // 7/28 jmy
+  thumbnailImages: string[] | null; // 7/28 jsw — 썸네일 이미지 URL 목록 (상세 조회에서만 채워짐)
+  detailImages: string[] | null;    // 7/28 jsw — 상세 설명 이미지 URL 목록 (상세 조회에서만 채워짐)
 };
+
+// ── SNS 링크 (7/28 jmy — 팝업과 함께 등록, 응답 snsLinks로 반환) ──
+
+export type SnsPlatformCode = "INSTAGRAM" | "YOUTUBE" | "X" | "FACEBOOK" | "TIKTOK" | "BLOG" | "HOMEPAGE" | "ETC";
+export type SnsLinkInput = { platform: SnsPlatformCode; url: string; displayName?: string; sortOrder?: number };
+
+// ── 카테고리(keyword)·지역(region) 마스터 — 등록 폼 선택지용 (permitAll) ──
+
+export type IdName = { id: number; name: string };
+
+export function getKeywords() {
+  return request<IdName[]>("/api/keywords");
+}
+
+export function getRegions() {
+  return request<IdName[]>("/api/regions");
+}
 
 export function getPopups(params?: { location?: string; status?: string; keyword?: string }) {
   const qs = new URLSearchParams();
@@ -229,6 +251,9 @@ export function createPopup(data: {
   endDate?: string;
   capacity?: number; // 사실상 필수 — areaSqm도 안 보내면 서버가 400 (PopupService.create)
   hashtags?: string[]; // 7/27 jmy — 검색 노출용 해시태그
+  keywordIds?: number[]; // 7/29 — 표준 카테고리(keyword 테이블) ID 목록
+  addressKeywordId?: number; // 7/29 — 지역(region 테이블) ID. 소비자 관심지역 필터 매칭용
+  snsLinks?: SnsLinkInput[]; // 7/29 — SNS/홈페이지 링크 (홍보영상 칸 대체)
   reservationMode: "SLOT" | "FREE"; // 백엔드 필수
   avgExperienceMinutes: number; // 백엔드 필수 (슬롯 단위·분)
   queueMode: "PRERESERVATION_ONLY" | "ONSITE_WAITING_ONLY" | "BOTH"; // 백엔드 필수 (7/24 jsw DTO 추가 — 미전송 시 400)
@@ -247,6 +272,9 @@ export function updatePopup(
     status?: PopupStatusCode;
     capacity?: number;
     hashtags?: string[];
+    keywordIds?: number[]; // 7/29 — 표준 카테고리 ID 목록 (미전송 시 기존 유지)
+    addressKeywordId?: number; // 7/29 — 지역(region) ID
+    snsLinks?: SnsLinkInput[]; // 7/29 — 미전송 시 기존 유지
     reservationMode?: "SLOT" | "FREE";
     avgExperienceMinutes?: number;
     queueMode?: "PRERESERVATION_ONLY" | "ONSITE_WAITING_ONLY" | "BOTH"; // 수정 시 선택 (7/24 jsw DTO 추가)
@@ -259,10 +287,24 @@ export function deletePopup(id: number | string) {
   return request<void>(`/api/popups/${id}`, { method: "DELETE" });
 }
 
-export function uploadPopupImage(id: number | string, file: File) {
+// 팝업 이미지 업로드 — 7/29부터 type 구분 (THUMBNAIL=목록·카드용 800×800 정사각, DETAIL=상세 본문용 1080×1440 세로형)
+// 서버(ImageProcessingService)가 규격에 맞춰 리사이즈·크롭하므로 프론트는 원본을 그대로 보낸다.
+export type PopupImageTypeCode = "THUMBNAIL" | "DETAIL";
+
+export function uploadPopupImage(id: number | string, file: File, type: PopupImageTypeCode = "THUMBNAIL") {
   const form = new FormData();
   form.append("file", file);
-  return request<{ imageUrl: string }>(`/api/popups/${id}/images`, { method: "POST", body: form });
+  return request<{ id: number; imageUrl: string; type: string; sortOrder: number }>(
+    `/api/popups/${id}/images?type=${type}`,
+    { method: "POST", body: form },
+  );
+}
+
+// 팝업 이미지 조회 — 인증 불필요 (type 생략 시 전체)
+export type PopupImageItem = { id: number; imageUrl: string; type: PopupImageTypeCode; sortOrder: number };
+
+export function getPopupImages(id: number | string, type?: PopupImageTypeCode) {
+  return request<PopupImageItem[]>(`/api/popups/${id}/images${type ? `?type=${type}` : ""}`);
 }
 
 // 내(로그인한 사업자) 팝업 목록 — 심사 상태(PENDING/REJECTED) 포함

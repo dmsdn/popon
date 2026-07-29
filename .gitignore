@@ -8,6 +8,18 @@ node_modules/
 *.local
 application.yml
 
+# 프로젝트 폴더를 통째로 압축해 올리지 말 것.
+# zip은 git이 안을 못 보는 바이너리 한 덩어리라, 위의 application.yml·.env 규칙이 전부 무력화된다.
+# 실제로 7/23·7/28 세 차례에 걸쳐 application-local.yml(DB·메일·소셜로그인 시크릿 포함)이
+# zip 안에 담겨 커밋됐다. 코드 공유는 브랜치로, 산출물 공유는 릴리스로.
+*.zip
+
+# EC2 SSH 키. 이 파일 하나면 서버에 곧바로 로그인되므로 비밀번호보다 위험하다.
+# 팀원 배포는 깃이 아니라 파일 공유로 하고, 받은 키는 리포 바깥에 둘 것.
+*.pem
+*.ppk
+*.key
+
 # ── 빌드 산출물 ──
 build/
 target/

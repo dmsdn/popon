@@ -15,7 +15,6 @@ import PopupDetail from "./seller/pages/PopupDetail";
 import PopupRegister from "./seller/pages/PopupRegister";
 import Reservations from "./seller/pages/Reservations";
 import WaitingControl from "./seller/pages/WaitingControl";
-import Products from "./seller/pages/Products";
 import Performance from "./seller/pages/Performance";
 import Notices from "./seller/pages/Notices";
 import MyPage from "./seller/pages/MyPage";
@@ -53,8 +52,8 @@ export const router = createBrowserRouter([
       { path: "popups/:id", Component: PopupDetail },
       { path: "reservations", Component: Reservations },
       { path: "waiting", Component: WaitingControl },
-      { path: "products", Component: Products },
       // 파트너공간(venues)·견적진행단계(quotes) 메뉴는 7/24 멘토 피드백으로 삭제됨
+      // 상품/재고 관리(products)는 7/29 기능 탈락 확정으로 삭제됨
       { path: "performance", Component: Performance },
       { path: "notices", Component: Notices },
       // 마이페이지 — 상단바 계정 영역에서 진입 (7/25 피드백)

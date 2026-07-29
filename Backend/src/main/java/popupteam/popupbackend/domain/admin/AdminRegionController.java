@@ -24,6 +24,7 @@ public class AdminRegionController {
 
     private final RegionRepository regionRepository;
     private final CustomerRegionRepository customerRegionRepository;
+    private final popupteam.popupbackend.domain.popup.PopupRepository popupRepository;
 
     private void requireAdmin(Authentication authentication) {
         String name = authentication.getName();
@@ -71,5 +72,19 @@ public class AdminRegionController {
         customerRegionRepository.deleteByRegionId(id);
         regionRepository.deleteById(id);
         return Map.of("success", true);
+    }
+
+    // 이 지역에 속한 팝업 전체 조회 (상태 무관 - 심사대기/반려 포함, 관리자 화면 "지역 카드 클릭"용)
+    @GetMapping("/{id}/popups")
+    public ResponseEntity<?> getPopupsByRegion(Authentication authentication, @PathVariable Long id) {
+        requireAdmin(authentication);
+        if (!regionRepository.existsById(id)) {
+            throw new IllegalArgumentException("존재하지 않는 지역이에요.");
+        }
+        List<popupteam.popupbackend.domain.popup.dto.PopupResponse> popups = popupRepository
+                .findByAddressKeywordIdOrderByCreatedAtDesc(id).stream()
+                .map(popupteam.popupbackend.domain.popup.dto.PopupResponse::from)
+                .toList();
+        return ResponseEntity.ok(popups);
     }
 }

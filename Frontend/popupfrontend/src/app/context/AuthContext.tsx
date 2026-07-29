@@ -17,9 +17,29 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 const USER_KEY = "authUser";
+const LOGIN_AT_KEY = "authLoginAt";
+// 로컬 세션 유지 시간 — 로그인 후 3시간이 지나면 웹을 닫았다 다시 열어도 재로그인 요구 (7/29)
+const MAX_SESSION_MS = 3 * 60 * 60 * 1000;
+
+// 로그인한 지 3시간이 지났는가 (기록이 없으면 만료로 취급 — 구버전 세션도 한 번은 재로그인)
+export function isLocalSessionExpired(): boolean {
+  const at = Number(localStorage.getItem(LOGIN_AT_KEY));
+  return !at || Date.now() - at > MAX_SESSION_MS;
+}
+
+function clearSession() {
+  api.clearToken();
+  localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(LOGIN_AT_KEY);
+}
 
 function loadUser(): User | null {
   if (!api.getToken()) return null;
+  // 재접속 시점 검사: JWT 만료(24h)와 별개로 로컬 세션은 3시간까지만 복원한다
+  if (isLocalSessionExpired()) {
+    clearSession();
+    return null;
+  }
   try {
     const raw = localStorage.getItem(USER_KEY);
     if (!raw) return null;
@@ -40,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     api.setToken(res.accessToken);
     const u: User = { role: "business", name: res.companyName, email, businessId: res.businessId };
     localStorage.setItem(USER_KEY, JSON.stringify(u));
+    localStorage.setItem(LOGIN_AT_KEY, String(Date.now())); // 3시간 로컬 세션 기준점
     setUser(u);
     return { needsReconsent: res.needsReconsent === true };
   };
@@ -54,8 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // };
 
   const logout = () => {
-    api.clearToken();
-    localStorage.removeItem(USER_KEY);
+    clearSession();
     setUser(null);
   };
 

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Outlet, NavLink, Link, Navigate, useLocation, ScrollRestoration } from "react-router";
 import {
-  LayoutDashboard, KeyRound, Database,
-  LineChart, Newspaper, Headphones, Bell, ExternalLink, Users, LogIn, Store, Building2, X, Clock3, FileSignature,
+  LayoutDashboard, KeyRound, Database, Megaphone,
+  LineChart, Newspaper, Headphones, Bell, ExternalLink, Users, LogIn, LogOut, Store, Building2, X, Clock3, FileSignature,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { getToken, getPopups, getAdminCsList, getAdminInquiries, getAdminReports, Popup } from "../lib/api";
@@ -16,6 +16,7 @@ const MENU = [
   { group: "운영 관리", items: [
     { to: "/admin/popups", icon: Store, label: "팝업 관리" },
     { to: "/admin/cs", icon: Headphones, label: "문의 및 신고관리" },
+    { to: "/admin/notices", icon: Megaphone, label: "주최자 공지 발송" }, // 7/29 신설
     { to: "/admin/masters", icon: Database, label: "카테고리·지역 마스터" },
     { to: "/admin/content", icon: Newspaper, label: "배너·콘텐츠 관리" },
   ]},
@@ -283,13 +284,23 @@ export default function AdminRoot() {
               )}
             </button>
             {admin ? (
-              <div className="flex items-center gap-2 text-xs border-l border-border pl-4">
-                <div className="w-6 h-6 rounded-full bg-[#191d24] text-white flex items-center justify-center font-semibold text-[10px] uppercase">
-                  {accountName!.slice(0, 1)}
+              /* 7/29 — 주최자센터 헤더와 동일한 형태로 통일:
+                 계정 표시는 세로 구분선으로 묶고, 로그아웃은 그 바깥의 독립 버튼(LogOut 아이콘 + 밑줄 없음)으로 분리.
+                 기존에는 로그아웃이 계정명 옆에 밑줄 링크로 붙어 있어 계정 정보의 일부처럼 보였다. */
+              <>
+                <div className="flex items-center gap-2 text-xs border-l border-border pl-4">
+                  <div className="w-6 h-6 rounded-full bg-[#191d24] text-white flex items-center justify-center font-semibold text-[10px] uppercase">
+                    {accountName!.slice(0, 1)}
+                  </div>
+                  <span className="hidden sm:inline">{accountName} · 슈퍼관리자</span>
                 </div>
-                <span className="hidden sm:inline">{accountName} · 슈퍼관리자</span>
-                <button onClick={logout} className="text-muted-foreground underline underline-offset-2 hover:text-foreground">로그아웃</button>
-              </div>
+                <button
+                  onClick={logout}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <LogOut size={13} /> 로그아웃
+                </button>
+              </>
             ) : (
               <Link
                 to="/admin/login"
