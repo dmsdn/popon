@@ -119,7 +119,10 @@ export type LoginResponse = {
   companyName: string;
   needsReconsent: boolean; // 개인정보 동의 보관기간 만료 → 재동의 필요
 };
-export type BusinessInfo = { id: number; email: string; companyName: string; businessNumber: string; phone: string };
+export type BusinessInfo = {
+  id: number; email: string; companyName: string; businessNumber: string; phone: string;
+  profileImage: string | null; // 대표 브랜드 사진 URL (서버가 500×500 JPEG으로 변환해 저장)
+};
 
 export function login(email: string, password: string) {
   return request<LoginResponse>("/api/business/auth/login", {
@@ -155,6 +158,14 @@ export function changeMyPassword(currentPassword: string, newPassword: string) {
 
 export function getMyInfo() {
   return request<BusinessInfo>("/api/business/auth/me");
+}
+
+// 대표 브랜드 사진 등록·교체 (7/29 연동 — API는 jsw가 만들어뒀는데 프론트 래퍼가 없었다)
+// 서버가 500×500 JPEG으로 리사이즈하므로 원본을 그대로 올린다. 응답은 갱신된 내 정보.
+export function uploadBusinessProfileImage(file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  return request<BusinessInfo>("/api/business/auth/me/profile-image", { method: "POST", body: form });
 }
 
 // 개인정보 재동의 (로그인 응답 needsReconsent=true일 때 호출)
