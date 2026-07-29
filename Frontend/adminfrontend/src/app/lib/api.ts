@@ -547,6 +547,33 @@ export function getKeywords() {
   return request<Region[]>("/api/keywords"); // 응답 형태 동일 {id, name}
 }
 
+// ── 마스터 관리 (관리자 전용) ──
+// 7/27 jmy가 AdminKeywordController·AdminRegionController를 만들어뒀는데 프론트 연결이 없어
+// 마스터 화면이 목업으로 남아 있었다. 7/29 연동.
+// ⚠ 수정(PUT)은 백엔드에 없다 — 이름을 바꾸려면 삭제 후 재등록해야 하고, 그러면 그 항목을
+//   고른 소비자의 관심 설정이 함께 지워진다. 화면에서 이 점을 안내한다.
+export type MasterItem = { id: number; name: string; customerCount: number };
+
+export function getAdminKeywords() {
+  return request<MasterItem[]>("/api/admin/keywords");
+}
+export function createAdminKeyword(name: string) {
+  return request<Region>("/api/admin/keywords", { method: "POST", body: JSON.stringify({ name }) });
+}
+export function deleteAdminKeyword(id: number) {
+  return request<{ success: boolean }>(`/api/admin/keywords/${id}`, { method: "DELETE" });
+}
+
+export function getAdminRegions() {
+  return request<MasterItem[]>("/api/admin/regions");
+}
+export function createAdminRegion(name: string) {
+  return request<Region>("/api/admin/regions", { method: "POST", body: JSON.stringify({ name }) });
+}
+export function deleteAdminRegion(id: number) {
+  return request<{ success: boolean }>(`/api/admin/regions/${id}`, { method: "DELETE" });
+}
+
 // ── 계정 관리 (7/29 jmy AdminAccountController — 관리자/주최자/소비자 목록 + 소비자 정지) ──
 
 export type AdminAccount = { id: number; email: string; name: string; createdAt: string };
