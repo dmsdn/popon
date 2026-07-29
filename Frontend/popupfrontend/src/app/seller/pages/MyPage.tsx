@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, User, KeyRound, Save, Image as ImageIcon, Info } from "lucide-react";
-import { getMyInfo, updateMyInfo, changeMyPassword, BusinessInfo } from "../../lib/api";
+import { getMyInfo, updateMyInfo, changeMyPassword, uploadBusinessProfileImage, BusinessInfo } from "../../lib/api";
 
 // 주최자 마이페이지 — 7/25 피드백으로 신설. 상단바 계정 영역(ChevronDown)에서 진입.
 // 실연동: 내 정보 조회(GET /me)·수정(PUT /me — 브랜드명·연락처)·비밀번호 변경(PUT /me/password)
-// 브랜드 사진 업로드는 백엔드 API 구성 후 연동 (자리만 마련)
+// 브랜드 사진: POST /me/profile-image (multipart) — 서버가 500×500 JPEG으로 변환해 저장 (7/29 연동)
 
 const inputCls =
   "w-full px-3 py-2.5 text-[13px] border border-border rounded-sm bg-white focus:outline-none focus:border-accent";
@@ -32,6 +32,25 @@ export default function MyPage() {
   const [pw, setPw] = useState({ current: "", next: "", confirm: "" });
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // 브랜드 사진 업로드
+  const photoRef = useRef<HTMLInputElement>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+
+  const pickPhoto = async (file: File | undefined) => {
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) return alert("이미지는 10MB 이하만 등록할 수 있습니다.");
+    setPhotoUploading(true);
+    try {
+      // 응답이 갱신된 내 정보라 그대로 갈아끼우면 화면의 사진이 즉시 바뀐다
+      setInfo(await uploadBusinessProfileImage(file));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "브랜드 사진 등록에 실패했습니다.");
+    } finally {
+      setPhotoUploading(false);
+      if (photoRef.current) photoRef.current.value = ""; // 같은 파일을 다시 고를 수 있게
+    }
+  };
 
   useEffect(() => {
     let alive = true;
@@ -120,8 +139,12 @@ export default function MyPage() {
 
       {/* 브랜드 프로필 */}
       <div className="bg-white border border-border rounded-sm p-5 flex items-center gap-4">
-        <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center shrink-0">
-          <span className="text-xl font-semibold">{info.companyName.slice(0, 1)}</span>
+        <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center shrink-0 overflow-hidden">
+          {info.profileImage ? (
+            <img src={info.profileImage} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-xl font-semibold">{info.companyName.slice(0, 1)}</span>
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-sm font-semibold truncate">{info.companyName}</div>
@@ -130,12 +153,22 @@ export default function MyPage() {
             사업자등록번호 {info.businessNumber}
           </div>
         </div>
+        <input
+          ref={photoRef}
+          type="file"
+          accept="image/jpeg,image/png"
+          className="hidden"
+          onChange={(e) => pickPhoto(e.target.files?.[0])}
+        />
         <button
-          disabled
-          title="브랜드 사진 업로드 API 백엔드 구성 후 연동 필요"
-          className="shrink-0 flex items-center gap-1.5 text-[11px] px-3 py-2 rounded-sm border border-border text-muted-foreground opacity-40 cursor-not-allowed"
+          type="button"
+          onClick={() => photoRef.current?.click()}
+          disabled={photoUploading}
+          title="JPG·PNG · 서버가 500×500으로 변환합니다"
+          className="shrink-0 flex items-center gap-1.5 text-[11px] px-3 py-2 rounded-sm border border-border text-muted-foreground hover:border-accent hover:text-accent disabled:opacity-40"
         >
-          <ImageIcon size={12} /> 브랜드 사진
+          {photoUploading ? <Loader2 size={12} className="animate-spin" /> : <ImageIcon size={12} />}
+          {info.profileImage ? "브랜드 사진 변경" : "브랜드 사진 등록"}
         </button>
       </div>
 
