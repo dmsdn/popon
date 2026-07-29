@@ -188,7 +188,7 @@ export default function PopupList() {
             <tr className="border-b border-border bg-secondary/60 text-xs text-muted-foreground">
               {/* 7/29 — 팝업명·등록일 헤더 클릭으로 정렬 (가나다·최신순) */}
               <th className="text-left font-medium px-4 py-2.5">
-                <button onClick={() => toggleSort("title")} className="inline-flex items-center gap-1 hover:text-foreground">
+                <button onClick={() => toggleSort("title")} className="inline-flex items-center gap-1 text-xs hover:text-foreground">
                   팝업명 <SortIcon col="title" />
                 </button>
               </th>
@@ -199,7 +199,7 @@ export default function PopupList() {
               <th className="text-left font-medium px-4 py-2.5">상태</th>
               <th className="text-left font-medium px-4 py-2.5">상태 확정일</th>
               <th className="text-left font-medium px-4 py-2.5">
-                <button onClick={() => toggleSort("createdAt")} className="inline-flex items-center gap-1 hover:text-foreground">
+                <button onClick={() => toggleSort("createdAt")} className="inline-flex items-center gap-1 text-xs hover:text-foreground">
                   등록일 <SortIcon col="createdAt" />
                 </button>
               </th>

@@ -89,7 +89,7 @@ export default function Members() {
             <tr className="border-b border-border bg-secondary/60 text-xs text-muted-foreground">
               <th className="text-left font-medium px-4 py-2.5">ID</th>
               <th className="text-left font-medium px-4 py-2.5">
-                <button onClick={() => toggleSort("nickname")} className="inline-flex items-center gap-1 hover:text-foreground">
+                <button onClick={() => toggleSort("nickname")} className="inline-flex items-center gap-1 text-xs hover:text-foreground">
                   닉네임 <SortIcon col="nickname" />
                 </button>
               </th>
@@ -97,7 +97,7 @@ export default function Members() {
               <th className="text-left font-medium px-4 py-2.5">가입경로</th>
               <th className="text-left font-medium px-4 py-2.5">상태</th>
               <th className="text-left font-medium px-4 py-2.5">
-                <button onClick={() => toggleSort("createdAt")} className="inline-flex items-center gap-1 hover:text-foreground">
+                <button onClick={() => toggleSort("createdAt")} className="inline-flex items-center gap-1 text-xs hover:text-foreground">
                   가입일 <SortIcon col="createdAt" />
                 </button>
               </th>
