@@ -171,7 +171,7 @@ export function adminLogin(email: string, password: string) {
 // ── 팝업 ──
 
 // PENDING(심사 대기) → BEFOR(승인·오픈예정) / REJECTED(반려) → OPEN → CLOSED
-export type PopupStatusCode = "PENDING" | "REJECTED" | "BEFOR" | "OPEN" | "CLOSED";
+export type PopupStatusCode = "PENDING" | "REJECTED" | "BEFOR" | "OPEN" | "CLOSED" | "SUSPENDED"; // SUSPENDED=게시중지 (7/27 백엔드 추가, 7/29 프론트 반영)
 
 export type Popup = {
   id: number;

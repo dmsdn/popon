@@ -35,7 +35,10 @@ export function today(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// 게시중지는 관리자 반려 API를 재사용하되, 사유 앞에 마커를 붙여 일반 반려와 구분한다
+// 게시중지 판별.
+// 7/27부터 백엔드에 전용 상태(SUSPENDED)가 생겨 그걸 우선 본다.
+// 그 전 데이터는 반려 API 재사용 + 사유 앞 마커 방식이라(REJECTED + "[게시중지]") 폴백으로 남겨둔다.
 export const SUSPEND_MARKER = "[게시중지]";
 export const isSuspended = (status: string, rejectReason: string | null) =>
-  status === "REJECTED" && (rejectReason ?? "").startsWith(SUSPEND_MARKER);
+  status === "SUSPENDED" ||
+  (status === "REJECTED" && (rejectReason ?? "").startsWith(SUSPEND_MARKER));
