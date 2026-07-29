@@ -15,7 +15,7 @@ export function BottomTabBar() {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 flex justify-around border-t bg-white py-2">
+    <nav className="fixed bottom-0 left-0 right-0 flex justify-around border-t border-gray-100 bg-white py-2">
       {tabs.map(({ icon, label, href }) => (
         <Link key={label} href={href} aria-label={label} className="flex flex-col items-center gap-1 p-2">
           <Image src={icon} alt={label} width={24} height={24} />

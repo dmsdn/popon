@@ -101,7 +101,8 @@ export default function BrandDetailPage({
           </div>
           {mockBrand && (
             <div className="flex flex-col items-center flex-none pt-1">
-              <span className="text-xl leading-none">♡</span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/Icon/heart_N.svg" alt="" width={20} height={20} />
               <span className="text-sm text-gray-500 mt-1">{mockBrand.likeCount}</span>
             </div>
           )}

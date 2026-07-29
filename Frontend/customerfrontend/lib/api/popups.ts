@@ -212,32 +212,6 @@ export function getPopupSlots(popupId: string | number) {
   );
 }
 
-// -------------------- 팝업 주변 핫플 (popup_hot_place 테이블) --------------------
-//
-// ⚠️ 백엔드에 popup_hot_place 테이블은 생겼지만, 이걸 조회하는 API는 아직 없어요
-// (컨트롤러 코드 확인 필요 — 백엔드 담당자에게 GET /api/popups/{popupId}/hot-places
-// 엔드포인트 추가를 요청해야 해요). 그래서 지금은 실 API를 시도하고, 없으면(404 등)
-// 빈 배열로 조용히 대체돼요 — 화면에서는 "팝업 주변 핫플" 섹션이 그냥 비어보입니다.
-// 백엔드에 엔드포인트가 생기면 이 함수는 손댈 필요 없이 자동으로 실 데이터를 씁니다.
-
-export interface PopupHotPlace {
-  id: number;
-  popupId: number;
-  category: string; // 예: "카페", "음식점", "패션잡화"
-  name: string;
-  distance: string | null; // 예: "114m"
-  linkUrl: string | null;
-  imageUrl: string | null;
-  sortOrder: number;
-}
-
-export function getPopupHotPlaces(popupId: string | number) {
-  return withMockFallback(
-    () => apiFetch<PopupHotPlace[]>(`/api/popups/${popupId}/hot-places`),
-    () => [] as PopupHotPlace[]
-  );
-}
-
 // -------------------- 팝업 이미지 (popup_image 테이블) --------------------
 //
 // [신규 연결] popup_image 엔티티/리포지토리는 있었지만 조회 API가 없어서 상세페이지가
