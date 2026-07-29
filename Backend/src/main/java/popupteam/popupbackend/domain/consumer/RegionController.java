@@ -2,6 +2,7 @@ package popupteam.popupbackend.domain.consumer;
 
 import lombok.RequiredArgsConstructor;
 import popupteam.popupbackend.domain.consumer.auth.JwtUtil;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,9 +26,10 @@ public class RegionController {
     }
 
     // 소비자 본인의 관심 지역 저장 (덮어쓰기 방식 - InterestController.saveInterests와 동일 패턴)
+    @Transactional
     @PostMapping("/api/customer/regions")
     public Map<String, Object> saveRegions(@RequestHeader("Authorization") String authHeader,
-                                            @RequestBody Map<String, List<Long>> body) {
+                                           @RequestBody Map<String, List<Long>> body) {
         String token = authHeader.replace("Bearer ", "");
         Long customerId = jwtUtil.getCustomerIdFromToken(token);
         List<Long> regionIds = body.get("regionIds");
@@ -74,7 +76,7 @@ public class RegionController {
                 .toList();
 
         if (regionIds.isEmpty()) {
-            return List.of(); // 관심 지역을 아직 안 골랐으면 빈 목록
+            return List.of();
         }
 
         return popupRepository.findByAddressKeywordIdInAndStatusOrderByCreatedAtDesc(
