@@ -4,9 +4,8 @@ public enum SnsPlatform {
     INSTAGRAM,
     YOUTUBE,
     X,
-    FACEBOOK,
-    TIKTOK,
     BLOG,
     HOMEPAGE,
+    NAVERMAP,
     ETC
 }
