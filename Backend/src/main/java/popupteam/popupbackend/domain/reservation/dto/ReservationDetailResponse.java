@@ -24,6 +24,7 @@ public class ReservationDetailResponse {
     private String entryStatus;
     private LocalDateTime checkedInAt;
     private String checkedInBy;
+    private LocalTime reservationTime;
 
     public static ReservationDetailResponse from(Reservation r) {
         boolean hasSlot = r.getSlot() != null;
@@ -44,6 +45,7 @@ public class ReservationDetailResponse {
                 .entryStatus(r.getEntryStatus().name())
                 .checkedInAt(r.getCheckedInAt())
                 .checkedInBy(r.getCheckedInBy())
+                .reservationTime(r.getReservationTime())
                 .build();
     }
 }
