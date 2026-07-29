@@ -45,6 +45,7 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/popups/*/waiting").permitAll()   // === 추가 ===
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/popups/*/waiting/board").permitAll()   // === 추가 ===
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/waiting/*").permitAll()   // === 추가 ===
+                        .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/waiting/*/cancel").permitAll()   // === 추가: 소비자 본인취소는 컨트롤러 안에서 customerId로 권한 체크함 ===
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/popups/*/queue/board").permitAll()   // === 추가 ===
                         .requestMatchers("/error").permitAll()   // === 추가 ===
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/popups/*/live-status").permitAll()   // === 추가 ===
