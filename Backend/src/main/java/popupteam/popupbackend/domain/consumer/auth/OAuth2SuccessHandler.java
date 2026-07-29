@@ -73,17 +73,13 @@ public class OAuth2SuccessHandler
             socialId =
                     String.valueOf(attributes.get("id"));
 
+            // 카카오는 개발자 콘솔에서 이메일 제공 동의항목을 켤 수 없어서
+            // kakao_account.email을 아예 읽지 않음 (요청해도 어차피 안 옴).
+            // 이메일은 회원정보 입력 화면(SignupInfoController)에서 사용자가 직접 입력(선택)함.
             Object kakaoAccountObj =
                     attributes.get("kakao_account");
 
             if (kakaoAccountObj instanceof Map<?, ?> kakaoAccount) {
-
-                Object emailObj =
-                        kakaoAccount.get("email");
-
-                if (emailObj instanceof String kakaoEmail) {
-                    email = kakaoEmail;
-                }
 
                 Object profileObj =
                         kakaoAccount.get("profile");
