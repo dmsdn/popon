@@ -26,6 +26,7 @@ export type ReviewItem = {
   region?: string; // 팝업 지역 태그 (예: "성수")
   category?: string; // 팝업 카테고리 태그 (예: "뷰티")
   reviewCount?: number; // 이 팝업에 달린 전체 후기 개수
+  likeCount?: number; // [신규] 추천순 정렬에 사용
 };
 
 export const promoCards = [
