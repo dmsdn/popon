@@ -125,7 +125,7 @@ export default function Home() {
       .then(setAllKeywords)
       .catch((err) => console.error("키워드 목록 조회 실패", err));
     getMyInterests()
-      .then(({ keywordIds }) => setMyKeywordIds(keywordIds))
+      .then((res) => setMyKeywordIds(res?.keywordIds ?? []))
       .catch((err) => console.error("내 관심 키워드 조회 실패", err));
   }, [customer]);
 
@@ -138,7 +138,7 @@ export default function Home() {
       .then(setAllRegions)
       .catch((err) => console.error("지역 목록 조회 실패", err));
     getMyRegions()
-      .then(({ regionIds }) => setMyRegionIds(regionIds))
+      .then((res) => setMyRegionIds(res?.regionIds ?? []))
       .catch((err) => console.error("내 관심 지역 조회 실패", err));
   }, [customer]);
 

@@ -1,5 +1,5 @@
 // lib/api/wishlist.ts
-import { apiFetch } from "./client";
+import { apiFetch, ApiError } from "./client";
 
 const MOCK_STORAGE_KEY = "mock_wishlist";
 
@@ -27,7 +27,8 @@ async function withMockFallback<T>(realCall: () => Promise<T>, mockCall: () => T
   try {
     return await realCall();
   } catch (error) {
-    if (process.env.NODE_ENV === "development") {
+    const isConnectivityIssue = error instanceof ApiError && (error.isNetworkError || (error.status ?? 0) >= 500);
+    if (process.env.NODE_ENV === "development" && isConnectivityIssue) {
       console.warn("[wishlist] 실 API 호출 실패 → mock 데이터로 대체합니다.", error);
       return mockCall();
     }
