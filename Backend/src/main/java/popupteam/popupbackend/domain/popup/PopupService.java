@@ -5,10 +5,12 @@ import popupteam.popupbackend.domain.business.BusinessRepository;
 import popupteam.popupbackend.domain.popup.dto.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 @RequiredArgsConstructor
 public class PopupService {
 
