@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import {
   FileText, MapPin, Image as ImageIcon, AlignLeft, CalendarClock,
   Ticket, Upload, Plus, X, Info, CheckCircle2, Search, Loader2, AlertTriangle, RotateCcw,
 } from "lucide-react";
 import {
   createPopup, updatePopup, getPopup, uploadPopupImage, getPopupImages, deletePopupImage,
-  getKeywords, getRegions, IdName, SnsLinkInput, SnsPlatformCode, PopupImageItem, PopupStatusCode,
+  getKeywords, getRegions, getMyInfo, getSlots,
+  IdName, SnsLinkInput, SnsPlatformCode, PopupImageItem, PopupStatusCode,
 } from "../../lib/api";
 import { ensureSlots } from "../../lib/slotAutoGen";
 import { loadOpsMode, saveOpsMode, OpsMode } from "../../lib/walkinQueue";
@@ -165,6 +166,41 @@ export default function PopupRegister() {
   };
   const detailInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── 드래그 앤 드롭 업로드 (7/29) ──────────────────────────
+  // 파일 선택 창을 여는 것과 결과가 완전히 같아야 하므로, 검증(filterJpegs)·최대 장수 제한을
+  // input onChange와 한 함수로 묶는다. 한쪽만 고쳐서 규칙이 갈리는 걸 막기 위함.
+  const [dragOver, setDragOver] = useState<"thumb" | "detail" | null>(null);
+
+  const acceptFiles = (files: File[], target: "thumb" | "detail") => {
+    const { ok, rejected } = filterJpegs(files);
+    if (rejected.length) alert(`업로드할 수 없는 파일:\n${rejected.join("\n")}`);
+    if (!ok.length) return;
+    const setter = target === "thumb" ? setImages : setDetailImages;
+    setter((prev) => [...prev, ...ok].slice(0, 20));
+  };
+
+  const onDrop = (e: React.DragEvent, target: "thumb" | "detail") => {
+    e.preventDefault();          // 이게 없으면 브라우저가 파일을 새 탭으로 열어버린다
+    setDragOver(null);
+    acceptFiles(Array.from(e.dataTransfer.files), target);
+  };
+
+  // dragOver에서도 preventDefault가 필요하다 — 안 하면 drop 이벤트 자체가 발생하지 않는다.
+  const onDragOver = (e: React.DragEvent, target: "thumb" | "detail") => {
+    e.preventDefault();
+    if (dragOver !== target) setDragOver(target);
+  };
+
+  // 자식 요소를 지날 때마다 leave가 튀어서 테두리가 깜빡이므로, 영역 밖으로 나갔을 때만 끈다
+  const onDragLeave = (e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(null);
+  };
+
+  const dropZoneCls = (target: "thumb" | "detail") =>
+    dragOver === target
+      ? "border-accent bg-accent/5 text-accent"
+      : "border-border text-muted-foreground hover:border-accent hover:text-accent";
   const [submitted, setSubmitted] = useState(false);
   const [sameHours, setSameHours] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -180,6 +216,9 @@ export default function PopupRegister() {
   // 예약 정책 (백엔드 필수: reservationMode·avgExperienceMinutes) — 슬롯은 이 값 기준 자동 생성
   const [slotUnit, setSlotUnit] = useState(30); // 슬롯 단위(분) = 체험 소요시간
   const [slotCapacity, setSlotCapacity] = useState(10); // 슬롯당 예약 정원 (자동 생성 시 사용)
+  // 브랜드명은 팝업이 아니라 계정(business.companyName)에 딸린 값이라 폼에서 편집하지 않는다.
+  // 표시만 하고 변경은 마이페이지에서 하도록 안내한다 (7/29 — 그 전에는 value조차 없는 빈 칸이었다).
+  const [companyName, setCompanyName] = useState("");
   // 서버는 capacity·areaSqm 둘 다 없으면 400이므로 (PopupService.create) 최대 정원은 필수 입력·전송
   const [maxCapacity, setMaxCapacity] = useState(120); // 동시 수용 정원
   const [slotProgress, setSlotProgress] = useState(""); // 자동 생성 진행 안내
@@ -203,6 +242,9 @@ export default function PopupRegister() {
   useEffect(() => {
     getKeywords().then(setKeywords).catch(() => {});
     getRegions().then(setRegions).catch(() => {});
+    // 신규 등록에서는 로그인한 사업자의 상호를 브랜드명 칸에 채운다.
+    // (수정 모드는 팝업 응답의 companyName으로 덮어쓴다 — 아래 로더 참고)
+    getMyInfo().then((i) => setCompanyName(i.companyName)).catch(() => {});
   }, []);
 
   // 수정 모드에서 서버가 준 카테고리 "이름"을 마스터 로드 후 id로 되돌리기 위한 대기값
@@ -212,6 +254,16 @@ export default function PopupRegister() {
     setCats(keywords.filter((k) => pendingCatNames.includes(k.name)).map((k) => k.id).slice(0, 3));
     setPendingCatNames(null);
   }, [pendingCatNames, keywords]);
+
+  // 지역도 같은 문제 (7/29) — PopupResponse는 regionName(이름)만 주고 regionId를 안 준다.
+  // 셀렉트는 id로 동작하므로 마스터가 로드된 뒤 이름으로 역매핑해야 한다.
+  const [pendingRegionName, setPendingRegionName] = useState<string | null>(null);
+  useEffect(() => {
+    if (!pendingRegionName || regions.length === 0) return;
+    const hit = regions.find((r) => r.name === pendingRegionName);
+    if (hit) setRegionId(hit.id);
+    setPendingRegionName(null);
+  }, [pendingRegionName, regions]);
 
   // 수정 모드: 기존 팝업 불러와서 폼 채우기
   useEffect(() => {
@@ -245,12 +297,19 @@ export default function PopupRegister() {
         if (p.capacity) setMaxCapacity(p.capacity);
         if (p.hashtags?.length) setTags(p.hashtags); // 7/27 서버 해시태그 복원
         if (p.keywordNames?.length) setPendingCatNames(p.keywordNames); // 7/29 카테고리 복원 (이름→id는 마스터 로드 후)
+        if (p.regionName) setPendingRegionName(p.regionName);           // 7/29 지역 복원 (동일하게 이름→id)
+        if (p.companyName) setCompanyName(p.companyName);               // 7/29 브랜드명 표시용
         if (p.snsLinks?.length) setSnsLinks(p.snsLinks.map((l) => ({ platform: l.platform as SnsPlatformCode, url: l.url }))); // 7/29 SNS 복원
         if (p.location) previewOnMap(p.location);    // 수정 모드도 지도에 기존 위치 표시
       })
       .catch((e) => setError(e instanceof Error ? e.message : "팝업 정보를 불러오지 못했습니다."));
     // 기존 이미지 — 본문 로드와 독립이라 따로 받는다. 실패해도 폼은 쓸 수 있어야 하므로 조용히 넘어간다.
     getPopupImages(editId).then(setServerImages).catch(() => {});
+    // 슬롯당 예약 정원은 popup이 아니라 popup_slot에 있는 값이라 팝업 응답만으로는 알 수 없다 (7/29).
+    // 이미 생성된 슬롯 중 첫 장의 capacity를 그대로 되살린다 — 슬롯은 전부 같은 정원으로 만들어지므로 대표값이 된다.
+    getSlots(editId)
+      .then((slots) => { if (slots.length) setSlotCapacity(slots[0].capacity); })
+      .catch(() => {});
   }, [editId]);
 
   // 주소가 정해지면 좌표를 구해 지도에 핀을 찍는다.
@@ -497,8 +556,16 @@ export default function PopupRegister() {
               <p className="text-[11px] text-muted-foreground mt-1">브랜드명 + 콘셉트 키워드 조합 권장 · 최대 40자</p>
             </div>
             <div>
-              <label className={labelCls}>브랜드명 <Req /></label>
-              <input className={inputCls} placeholder="예: 무너프렌즈" />
+              <label className={labelCls}>브랜드명</label>
+              <input
+                value={companyName}
+                readOnly
+                placeholder="계정 정보를 불러오는 중…"
+                className={inputCls + " bg-secondary/40 text-muted-foreground cursor-not-allowed"}
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                가입한 사업자 정보에서 자동으로 들어갑니다 · 변경은 <Link to="/seller/mypage" className="underline underline-offset-2 hover:text-accent">마이페이지</Link>에서
+              </p>
             </div>
           </div>
           <div className="grid sm:grid-cols-[1fr_auto] gap-4 items-start">
@@ -749,18 +816,20 @@ export default function PopupRegister() {
               multiple
               className="hidden"
               onChange={(e) => {
-                const { ok, rejected } = filterJpegs(Array.from(e.target.files ?? []));
-                if (rejected.length) alert(`업로드할 수 없는 파일:\n${rejected.join("\n")}`);
-                if (ok.length) setImages((prev) => [...prev, ...ok].slice(0, 20));
-                e.target.value = "";
+                acceptFiles(Array.from(e.target.files ?? []), "thumb"); // 드롭과 같은 규칙을 타게 한다
+                e.target.value = ""; // 같은 파일을 다시 고를 수 있게 비운다
               }}
             />
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="w-full h-32 border-2 border-dashed border-border rounded-sm flex flex-col items-center justify-center gap-2 text-xs text-muted-foreground hover:border-accent hover:text-accent transition-colors"
+              onDragOver={(e) => onDragOver(e, "thumb")}
+              onDragLeave={onDragLeave}
+              onDrop={(e) => onDrop(e, "thumb")}
+              className={`w-full h-32 border-2 border-dashed rounded-sm flex flex-col items-center justify-center gap-2 text-xs transition-colors ${dropZoneCls("thumb")}`}
             >
-              <Upload size={18} /> 클릭하여 업로드 (등록 완료 시 서버로 전송됩니다)
+              <Upload size={18} />
+              {dragOver === "thumb" ? "여기에 놓으면 추가됩니다" : "클릭하거나 파일을 끌어다 놓으세요 (등록 완료 시 서버로 전송됩니다)"}
             </button>
             {/* 이미 서버에 올라가 있는 썸네일 (수정 모드) */}
             {serverThumbs.length > 0 && (
@@ -914,18 +983,20 @@ export default function PopupRegister() {
               multiple
               className="hidden"
               onChange={(e) => {
-                const { ok, rejected } = filterJpegs(Array.from(e.target.files ?? []));
-                if (rejected.length) alert(`업로드할 수 없는 파일:\n${rejected.join("\n")}`);
-                if (ok.length) setDetailImages((prev) => [...prev, ...ok].slice(0, 20));
+                acceptFiles(Array.from(e.target.files ?? []), "detail");
                 e.target.value = "";
               }}
             />
             <button
               type="button"
               onClick={() => detailInputRef.current?.click()}
-              className="w-full h-20 border-2 border-dashed border-border rounded-sm flex items-center justify-center gap-2 text-xs text-muted-foreground hover:border-accent hover:text-accent transition-colors"
+              onDragOver={(e) => onDragOver(e, "detail")}
+              onDragLeave={onDragLeave}
+              onDrop={(e) => onDrop(e, "detail")}
+              className={`w-full h-20 border-2 border-dashed rounded-sm flex items-center justify-center gap-2 text-xs transition-colors ${dropZoneCls("detail")}`}
             >
-              <Upload size={15} /> 상세 이미지 JPG 업로드 (여러 장 가능)
+              <Upload size={15} />
+              {dragOver === "detail" ? "여기에 놓으면 추가됩니다" : "클릭하거나 파일을 끌어다 놓으세요 (여러 장 가능)"}
             </button>
             {/* 이미 서버에 올라가 있는 상세 이미지 (수정 모드) */}
             {serverDetails.length > 0 && (
