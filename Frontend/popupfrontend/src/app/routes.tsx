@@ -19,7 +19,7 @@ import Performance from "./seller/pages/Performance";
 import Notices from "./seller/pages/Notices";
 import MyPage from "./seller/pages/MyPage";
 import Inquiries from "./seller/pages/Inquiries";
-import CustomerInquiries from "./seller/pages/CustomerInquiries";
+// 소비자→주최자 문의(CustomerInquiries)는 7/29 기능 탈락 확정으로 삭제됨
 
 // ── 현장 웨이팅 비회원 접수 (QR 진입 공개 페이지) ──
 import WalkinPage from "./walkin/WalkinPage";
@@ -59,7 +59,7 @@ export const router = createBrowserRouter([
       // 마이페이지 — 상단바 계정 영역에서 진입 (7/25 피드백)
       { path: "mypage", Component: MyPage },
       { path: "inquiries", Component: Inquiries },
-      { path: "customer-inquiries", Component: CustomerInquiries },
+      // customer-inquiries(소비자 문의)는 7/29 기능 탈락 확정으로 삭제됨
     ],
   },
 

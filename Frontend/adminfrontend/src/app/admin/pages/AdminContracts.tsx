@@ -97,7 +97,7 @@ export default function AdminContracts() {
         <Info size={14} className="text-blue-500 shrink-0 mt-0.5" />
         <div className="text-xs text-blue-800 leading-relaxed">
           계약금 등록·단계 전환(계약체결/제작·시공/철거·정산)은 <strong>백엔드 실연동</strong>.
-          「운영 중」 단계만 백엔드에 없어 로컬 기록으로 표시됩니다(ContractStage에 OPERATING 추가 요청 예정).
+          계약완료 → 시공중 → 운영중 → 정산완료 4단계 모두 서버(ContractStage)에 저장됩니다.
           견적·디자인 확정 후 대관 계약이 체결된 팝업부터 등록하세요.
         </div>
       </div>

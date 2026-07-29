@@ -359,7 +359,7 @@ export default function AdminRoot() {
               </ul>
             </div>
             <div className="px-4 py-3 border-t border-border text-[11px] text-muted-foreground shrink-0">
-              1분마다 자동 갱신 · 현재는 팝업 등록 알림만 지원 (문의·신고 알림은 백엔드 구성 후 연동)
+              1분마다 자동 갱신 · 팝업 등록 + 문의(소비자 CS·주최자)·후기 신고의 처리 대기 건을 집계합니다
             </div>
           </aside>
         </>

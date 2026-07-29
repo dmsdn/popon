@@ -15,14 +15,14 @@ import {
 
 // 대기열·인원 관제 — 예약·웨이팅 통합관리 (jsw waiting·unified queue 백엔드 실연동)
 // 실연동: 통합 대기열 보드(서버가 사전예약 자동 편입·정렬), 웨이팅 등록/입장/취소, 통합 QR 체크인, 예약 체크인/노쇼
-// 로컬(백엔드 구성 후 연동): 운영 모드 저장(Popup.queueMode가 DTO에 미노출), 퇴장 처리, 입장 완료 웨이팅 목록
+// 로컬로 남은 것: 운영 모드 저장 폴백(구 팝업 한정 — 신규는 서버 queueMode 사용), 입장 완료 웨이팅 목록
+// ※ 퇴장 처리는 POST /api/queue/exit/qr로 실연동돼 있다 (7/29 주석 정정 — 예전 문구가 낡아 있었음)
 
 const CONSUMER_URL = "http://localhost:5173"; // 소비자 플랫폼
 // 7/29 — 회원 웨이팅 QR은 소비자 회원가입으로 직행
 const CONSUMER_SIGNUP_URL = `${CONSUMER_URL}/signup`;
-// 7/29 — 비회원 웨이팅 QR은 구글폼으로 연결 (이름·연락처·이메일·인원 → 응답이 현장 대기열에 자동 추가)
-// ⚠ 팀 구글폼 주소 확정 후 여기에 붙여넣을 것. 비워 두면 기존 자체 접수 폼(/walkin)으로 연결된다.
-const NONMEMBER_WAITING_FORM_URL = "";
+// 비회원 웨이팅 QR은 자체 접수 폼(/walkin)으로 고정 (7/29 결정 — 구글폼 안 씀).
+// 자체 폼은 제출 즉시 대기열 등록 + 대기번호·입장 QR 발급까지 백엔드 실연동이 끝나 있어 구글폼보다 완결적이다.
 const NOSHOW_GRACE_MS = 5 * 60 * 1000; // 슬롯 종료 +5분 안에 미입장 → 노쇼 처리 대상
 
 const fmtTime = (t: string | null) => (t ? t.slice(0, 5) : "");
@@ -724,16 +724,14 @@ export default function WaitingControl() {
               </div>
               <div className="bg-white border border-border rounded-sm p-5 flex gap-4">
                 <div className="border border-border rounded-sm p-2 bg-white shrink-0">
-                  <QRCodeSVG value={NONMEMBER_WAITING_FORM_URL || `${window.location.origin}/walkin?popup=${selected.id}`} size={110} />
+                  <QRCodeSVG value={`${window.location.origin}/walkin?popup=${selected.id}`} size={110} />
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5 text-sm font-semibold mb-1">
                     <QrCode size={14} className="text-amber-500" /> 비회원 웨이팅 QR
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    {NONMEMBER_WAITING_FORM_URL
-                      ? "구글폼으로 연결됩니다. 이름·연락처·이메일·인원 수를 제출하면 이 대기열에 자동 추가됩니다."
-                      : "이름·전화번호·이메일 입력 폼으로 연결됩니다. 제출하면 이 대기열에 자동 추가되고, 당일 대기번호와 입장 QR이 발급됩니다."}
+                    이름·전화번호·이메일 입력 폼으로 연결됩니다. 제출하면 이 대기열에 자동 추가되고, 당일 대기번호와 입장 QR이 발급됩니다.
                   </p>
                   <p className="text-[11px] text-emerald-600 mt-1.5">
                     백엔드 실연동 완료 — 메일·문자 발송은 발신 계정 설정 시 동작
