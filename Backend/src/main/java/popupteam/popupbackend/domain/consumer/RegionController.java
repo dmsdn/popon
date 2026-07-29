@@ -34,6 +34,10 @@ public class RegionController {
         Long customerId = jwtUtil.getCustomerIdFromToken(token);
         List<Long> regionIds = body.get("regionIds");
 
+        if (regionIds == null) {
+            throw new IllegalArgumentException("regionIds는 필수예요. (빈 배열 []을 보내면 전체 관심지역 삭제)");
+        }
+
         customerRegionRepository.deleteByCustomerId(customerId);
 
         for (Long regionId : regionIds) {
