@@ -1,9 +1,11 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import {
   CheckCircle, ArrowRight, MapPin, Calendar, Users, TrendingUp, Shield, Headphones,
   Store, CalendarClock,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { getPopups, Popup } from "../../lib/api";
 
 // 2번째 섹션: 핵심 기능 2종 요약 카드 (좌: 팝업콘텐츠 등록 / 우: 예약·웨이팅 통합관리)
 const CORE_FEATURES = [
@@ -132,6 +134,26 @@ const PLANS = [
 export default function Home() {
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  // 실제 진행중·오픈예정 팝업 (7/29 — 목업 성공사례를 실데이터 쇼케이스로 교체).
+  // 공개 API라 로그인 불필요. 실패하거나 비어 있으면 기존 목업(CASES)으로 폴백해 랜딩이 깨져 보이지 않게 한다.
+  const [livePopups, setLivePopups] = useState<Popup[]>([]);
+  useEffect(() => {
+    getPopups()
+      .then((all) => {
+        const visible = all.filter((p) => p.status === "OPEN" || p.status === "BEFOR");
+        // 진행중 먼저, 그 안에서는 최신 등록순
+        visible.sort((a, b) =>
+          a.status === b.status
+            ? (b.createdAt ?? "").localeCompare(a.createdAt ?? "")
+            : a.status === "OPEN" ? -1 : 1,
+        );
+        setLivePopups(visible.slice(0, 6));
+      })
+      .catch(() => {});
+  }, []);
+  const period = (p: Popup) =>
+    p.startDate && p.endDate ? `${p.startDate.slice(5, 10).replace("-", ".")} ~ ${p.endDate.slice(5, 10).replace("-", ".")}` : "";
 
   // 주최자 등록은 회원가입 3단계 플로우에 통합됨
   const handleOrganizerBtn = () => {
@@ -282,15 +304,53 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── CASES ────────────────────────────────────────────── */}
+      {/* ── CASES / LIVE ─────────────────────────────────────── */}
+      {/* 7/29 — 실제 팝업 DB가 있으면 그걸 쇼케이스로, 없으면(백엔드 다운 등) 기존 목업 폴백 */}
       <section className="py-24 lg:py-32 bg-secondary">
         <div className="max-w-7xl mx-auto px-6 lg:px-10">
           <div className="mb-16">
-            <div className="text-xs font-medium tracking-widest uppercase text-muted-foreground mb-4" style={{ fontFamily: "'DM Mono', monospace" }}>Success Stories</div>
+            <div className="text-xs font-medium tracking-widest uppercase text-muted-foreground mb-4" style={{ fontFamily: "'DM Mono', monospace" }}>
+              {livePopups.length ? "Now on PopupOn" : "Success Stories"}
+            </div>
             <h2 className="text-3xl lg:text-5xl font-semibold leading-tight" style={{ fontFamily: "'Noto Serif KR', serif" }}>
-              팝업온과 함께한<br />브랜드 이야기
+              {livePopups.length ? <>지금 팝업온에서<br />열리고 있는 팝업</> : <>팝업온과 함께한<br />브랜드 이야기</>}
             </h2>
           </div>
+          {livePopups.length > 0 && (
+            <div className="grid md:grid-cols-3 gap-6">
+              {livePopups.map((p) => (
+                <div key={p.id} className="group overflow-hidden rounded-sm border border-border bg-card hover:border-accent/40 transition-colors duration-300">
+                  <div className="aspect-[16/10] overflow-hidden bg-muted flex items-center justify-center">
+                    {p.thumbnailImages?.[0] ? (
+                      <img src={p.thumbnailImages[0]} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    ) : (
+                      <Store size={28} className="text-muted-foreground/40" />
+                    )}
+                  </div>
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-accent font-medium" style={{ fontFamily: "'DM Mono', monospace" }}>
+                        {p.keywordNames?.[0] ?? p.companyName}
+                      </span>
+                      <span className={`text-[11px] px-2 py-0.5 rounded-full border ${p.status === "OPEN" ? "bg-emerald-50 text-emerald-600 border-emerald-200" : "bg-amber-50 text-amber-600 border-amber-200"}`}>
+                        {p.status === "OPEN" ? "진행중" : "오픈예정"}
+                      </span>
+                    </div>
+                    <h3 className="font-semibold text-base mb-1 truncate">{p.title}</h3>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
+                      <MapPin size={11} />
+                      <span className="truncate">{p.regionName ?? p.location ?? "장소 미정"}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Calendar size={11} />
+                      <span style={{ fontFamily: "'DM Mono', monospace" }}>{period(p)}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {livePopups.length === 0 && (
           <div className="grid md:grid-cols-3 gap-6">
             {CASES.map(({ brand, category, location, duration, visitors, img, quote }) => (
               <div key={brand} className="group overflow-hidden rounded-sm border border-border bg-card hover:border-accent/40 transition-colors duration-300">
@@ -319,6 +379,7 @@ export default function Home() {
               </div>
             ))}
           </div>
+          )}
         </div>
       </section>
 
