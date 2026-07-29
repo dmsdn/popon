@@ -14,7 +14,7 @@ import { getTerms, type Terms } from "@/lib/api/terms";
 import { StarRatingDisplay } from "@/components/ui/StarRatingDisplay";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 import { reservationStatusLabel, waitingStatusLabel } from "@/lib/utils/statusLabels";
-import { getNotifSettings, setNotifSettingsStorage } from "@/lib/preferences";
+import { getNotificationSettings, updateNotificationSettings, type NotificationSettings } from "@/lib/api/notificationSettings";
 import { getRegions, getMyRegions } from "@/lib/api/regions";
 import { getKeywords, getMyInterests } from "@/lib/api/customer";
 import {
@@ -88,13 +88,25 @@ function MyPageContent() {
     { id: "reservation", label: "예약 · 웨이팅 알림", enabled: true },
     { id: "marketing", label: "마케팅 정보 수신", enabled: false },
   ];
-  // [수정] 이전엔 순수 React state라 새로고침하면 항상 이 기본값으로 리셋됐어요.
-  // 서버 렌더링과 안 맞을 수 있어 초기값은 기본값 그대로 두고, 마운트 후에
-  // localStorage에 저장된 값이 있으면 그걸로 덮어써요.
+  // id(화면용) <-> 백엔드 필드명 매핑
+  const NOTIF_FIELD_BY_ID: Record<string, keyof NotificationSettings> = {
+    popup: "popupNewsAgreed",
+    reservation: "reservationWaitingAgreed",
+    marketing: "marketingAgreed",
+  };
+  // [수정] localStorage 대신 실제 계정에 저장된 값을 서버에서 가져와요 - 로그인
+  // 안 한 상태에선 호출 안 함(401 방지), 기본값 유지.
   const [notifSettings, setNotifSettings] = useState(DEFAULT_NOTIF_SETTINGS);
   useEffect(() => {
-    setNotifSettings(getNotifSettings(DEFAULT_NOTIF_SETTINGS));
-  }, []);
+    if (!customer) return;
+    getNotificationSettings()
+      .then((res) => {
+        setNotifSettings((prev) =>
+          prev.map((item) => ({ ...item, enabled: res[NOTIF_FIELD_BY_ID[item.id]] ?? item.enabled }))
+        );
+      })
+      .catch((err) => console.error("알림 설정 조회 실패", err));
+  }, [customer]);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   // 다녀간 팝업 (= 내가 쓴 후기)
@@ -316,14 +328,16 @@ function MyPageContent() {
     Promise.all([getRegions(), getMyRegions()])
       .then(([all, mine]) => {
         const nameById = new Map(all.map((r) => [r.id, r.name]));
-        setPreferredRegionsState(mine.regionIds.map((id) => nameById.get(id)).filter((n): n is string => !!n));
+        setPreferredRegionsState(
+          (mine?.regionIds ?? []).map((id) => nameById.get(id)).filter((n): n is string => !!n)
+        );
       })
       .catch((err) => console.error("관심 지역 조회 실패", err));
     Promise.all([getKeywords(), getMyInterests()])
       .then(([all, mine]) => {
         const nameById = new Map(all.map((k) => [k.id, k.name]));
         setPreferredCategoriesState(
-          mine.keywordIds.map((id) => nameById.get(id)).filter((n): n is string => !!n)
+          (mine?.keywordIds ?? []).map((id) => nameById.get(id)).filter((n): n is string => !!n)
         );
       })
       .catch((err) => console.error("관심 카테고리 조회 실패", err));
@@ -380,7 +394,11 @@ if (queryMenu !== syncedQueryMenu) {
   const toggleNotif = (id: string) => {
     setNotifSettings((prev) => {
       const next = prev.map((item) => (item.id === id ? { ...item, enabled: !item.enabled } : item));
-      setNotifSettingsStorage(next);
+      const changed = next.find((item) => item.id === id)!;
+      updateNotificationSettings({ [NOTIF_FIELD_BY_ID[id]]: changed.enabled }).catch((err) => {
+        console.error("알림 설정 저장 실패", err);
+        // 저장 실패해도 일단 화면엔 반영된 채로 둬요 - 다음 방문 때 서버값으로 다시 맞춰짐
+      });
       return next;
     });
   };

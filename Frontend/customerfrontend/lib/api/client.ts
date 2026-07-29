@@ -17,6 +17,20 @@ export function clearToken() {
   localStorage.removeItem("accessToken");
 }
 
+// [수정] 지금까지 에러를 그냥 Error(message)로만 던져서, mock 대체 로직(withMockFallback)이
+// "백엔드가 아예 안 떠있음"과 "백엔드는 정상인데 이 데이터가 없음(404 등)"을 구분할
+// 방법이 없었어요. 그래서 존재하지 않는 팝업 같은 정상적인 404까지도 mock 데이터로
+// 조용히 덮어버리는 문제가 있었어요. status/isNetworkError를 실어서 구분 가능하게 했습니다.
+export class ApiError extends Error {
+  status?: number;
+  isNetworkError: boolean;
+  constructor(message: string, status?: number, isNetworkError = false) {
+    super(message);
+    this.status = status;
+    this.isNetworkError = isNetworkError;
+  }
+}
+
 export async function apiFetch<T>(
   path: string,
   options: RequestInit = {}
@@ -36,7 +50,11 @@ export async function apiFetch<T>(
   } catch (networkError) {
     // fetch 자체가 실패 = 백엔드에 연결조차 안 됐다는 뜻 (서버 꺼짐, 프록시 연결 끊김 등)
     markBackendDown();
-    throw networkError;
+    throw new ApiError(
+      networkError instanceof Error ? networkError.message : "네트워크 오류",
+      undefined,
+      true
+    );
   }
 
   if (!res.ok) {
@@ -51,7 +69,7 @@ export async function apiFetch<T>(
     if (res.status >= 500) {
       markBackendDown();
     }
-    throw new Error(message || `요청에 실패했어요. (${res.status})`);
+    throw new ApiError(message || `요청에 실패했어요. (${res.status})`, res.status);
   }
 
   markBackendUp();

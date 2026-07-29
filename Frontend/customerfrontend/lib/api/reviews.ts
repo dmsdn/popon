@@ -11,7 +11,7 @@
 //
 // lib/auth/AuthContext.tsx의 loginAsTestUser / getMyInfo 실패 시 mock 대체 패턴과 동일합니다.
 
-import { apiFetch } from "./client";
+import { apiFetch, ApiError } from "./client";
 
 export interface Review {
   id: number;
@@ -213,7 +213,8 @@ async function withMockFallback<T>(realCall: () => Promise<T>, mockCall: () => T
   try {
     return await realCall();
   } catch (error) {
-    if (process.env.NODE_ENV === "development") {
+    const isConnectivityIssue = error instanceof ApiError && (error.isNetworkError || (error.status ?? 0) >= 500);
+    if (process.env.NODE_ENV === "development" && isConnectivityIssue) {
       console.warn("[reviews] 실 API 호출 실패 → mock 데이터로 대체합니다.", error);
       return mockCall();
     }
@@ -245,6 +246,15 @@ export function getMyReviews() {
 // (로그인 없이도 조회 가능, 이 팝업에 달린 "모든" 사용자의 후기).
 // ⚠️ 백엔드 참고: 응답(ReviewResponse)에 작성자 식별 정보(닉네임/customerId)가 전혀 없어서
 // 화면에 "누가" 썼는지 표시할 수 없어요. 지금은 임시로 "방문자"라고만 표시합니다.
+// [신규 연결] 홈 화면 "실시간 후기 모음"이 100% 목업 데이터였어요(API 시도조차 안 함).
+// 최근 작성된 후기를 전체 팝업 기준으로 가져오는 공개 API로 교체합니다.
+export function getRecentReviews(limit = 10) {
+  return withMockFallback(
+    () => apiFetch<Review[]>(`/api/customer/reviews/recent?limit=${limit}`),
+    () => []
+  );
+}
+
 // getMyReviews()로 가져온 내 리뷰 id와 겹치는 항목만 "나의 후기"로 구분해서 보여줘요.
 export function getPopupReviews(popupId: number, page = 0, size = 20) {
   return withMockFallback(
