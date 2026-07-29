@@ -30,4 +30,11 @@ public class AdminNoticeController {
                 request.getTitle(), request.getContent(), authentication.getName());
         return ResponseEntity.status(201).body(response);
     }
+
+    // 관리자가 지금까지 주최자들에게 보낸 공지 전체 모아보기 (adminfrontend "공지" 더보기 화면용)
+    @GetMapping("/business")
+    public ResponseEntity<?> getSentToBusinessHistory(Authentication authentication) {
+        checkAdmin(authentication);
+        return ResponseEntity.ok(noticeService.getAdminSentToBusinessHistory());
+    }
 }

@@ -26,4 +26,9 @@ public interface NoticeRecipientRepository extends JpaRepository<NoticeRecipient
     long countUnread(@Param("recipientId") Long recipientId, @Param("recipientType") NoticeRecipientType recipientType);
 
     Optional<NoticeRecipient> findByIdAndRecipientId(Long id, Long recipientId);
+
+    // 관리자용 - 특정 유형(BUSINESS)으로 발송된 공지 전체 이력 (누가 받았는지 포함)
+    @Query("SELECT nr FROM NoticeRecipient nr JOIN FETCH nr.notice n " +
+            "WHERE n.recipientType = :recipientType ORDER BY n.sentAt DESC")
+    List<NoticeRecipient> findAllByRecipientType(@Param("recipientType") NoticeRecipientType recipientType);
 }
