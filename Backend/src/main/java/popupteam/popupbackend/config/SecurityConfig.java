@@ -30,10 +30,9 @@ public class SecurityConfig {
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/popups/*/slots").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/reservations/popup/**").authenticated()
-                        .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/reservations/*/cancel").authenticated()
+                        .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/reservations/*/cancel").permitAll()   // === 수정: 소비자 본인취소는 컨트롤러 안에서 customerId로 권한 체크함 ===
                         .requestMatchers("/api/reservations/**").permitAll()
                         .requestMatchers("/api/admin/auth/**").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/reservations/*/cancel").authenticated()
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/reservations/checkin/qr").authenticated()
                         .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/reservations/*/checkin").authenticated()
                         .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/reservations/*/no-show").authenticated()
