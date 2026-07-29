@@ -1,5 +1,5 @@
 // lib/api/popups.ts
-import { apiFetch } from "./client";
+import { apiFetch, ApiError } from "./client";
 import { toLocalDateString } from "@/lib/utils/formatLocalDate";
 import {
   recentPopups,
@@ -39,6 +39,21 @@ export interface PopupDetail {
   // 없어서 지금까지 검색/홈 카테고리 필터가 팝업 이름 텍스트 매칭으로 흉내만 냈는데,
   // 이제 이걸로 정확하게 필터링할 수 있어요.
   hashtags: string[];
+  // [신규] popup_sns_link 테이블 - PopupResponse에 직접 실려서 와요(별도 API 호출 불필요).
+  snsLinks: SnsLink[];
+  // [신규] 백엔드가 DB 전체 후기 기준으로 미리 계산해서 내려주는 평균 평점/후기 수.
+  // 클라이언트에서 로드된 후기 목록만으로 평균을 내면 페이지네이션 때문에 부정확할 수
+  // 있어서, 이제 이 값을 그대로 써요.
+  avgRating: number | null;
+  reviewCount: number;
+}
+
+export interface SnsLink {
+  id: number;
+  platform: "INSTAGRAM" | "YOUTUBE" | "X" | "FACEBOOK" | "TIKTOK" | "BLOG" | "HOMEPAGE" | "ETC";
+  url: string;
+  displayName: string | null;
+  sortOrder: number;
 }
 
 // -------------------- 백엔드 연결 안 될 때를 위한 mock (data/mockPopups.ts 재사용) --------------------
@@ -105,6 +120,9 @@ function buildMockPopupDetails(): PopupDetail[] {
       queueMode: null,
       maxPartySizePerTeam: null,
       hashtags: item.category ? [item.category] : [],
+      snsLinks: [],
+      avgRating: null,
+      reviewCount: 0,
     };
   });
 }
@@ -137,7 +155,11 @@ async function withMockFallback<T>(realCall: () => Promise<T>, mockCall: () => T
   try {
     return await realCall();
   } catch (error) {
-    if (process.env.NODE_ENV === "development") {
+    // [수정] "백엔드가 아예 안 떠있음"(네트워크 실패/5xx)일 때만 mock으로 대체해요.
+    // "존재하지 않는 팝업입니다" 같은 정상 404는 백엔드가 멀쩡히 응답한 진짜 결과라서,
+    // mock으로 덮어버리면 안 되는(없는 걸 있는 것처럼 보여주는) 상황이었어요.
+    const isConnectivityIssue = error instanceof ApiError && (error.isNetworkError || (error.status ?? 0) >= 500);
+    if (process.env.NODE_ENV === "development" && isConnectivityIssue) {
       console.warn("[popups] 실 API 호출 실패 → mock 데이터로 대체합니다.", error);
       return mockCall();
     }
@@ -285,6 +307,13 @@ export interface PopupWaitTime {
 
 // [수정] FREE 모드 팝업은 date 파라미터 없이 부르면 400 에러가 나요
 // ("FREE 모드 팝업은 date 파라미터가 필요합니다"). 기본값으로 오늘 날짜를 넘겨요.
+// [신규 연결] 백엔드가 해시태그 겹침/지역 등을 기준으로 직접 점수를 매겨 계산해주는
+// "비슷한 팝업" API가 있어요. 이전엔 프론트에서 직접 같은 방식으로 흉내내고
+// 있었는데, 이제 백엔드 걸 그대로 써요 (인증 불필요, 공개 API).
+export function getSimilarPopups(popupId: string | number, limit = 4) {
+  return apiFetch<PopupDetail[]>(`/api/popups/${popupId}/similar?limit=${limit}`);
+}
+
 export function getPopupWaitTime(popupId: string | number, date?: string) {
   const d = date ?? toLocalDateString(new Date());
   return apiFetch<PopupWaitTime>(`/api/popups/${popupId}/wait-time?date=${d}`);

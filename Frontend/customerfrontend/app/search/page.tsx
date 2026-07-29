@@ -16,12 +16,9 @@ import { toPopupItem } from "@/lib/utils/popupMapper";
 import { type PopupItem } from "@/data/mockPopups";
 import { HeartButton } from "@/components/ui/HeartButton";
 import { LoadingState, EmptyState } from "@/components/ui/EmptyState";
+import { getKeywords } from "@/lib/api/customer";
 
 const STATUSES = ["예정", "진행중", "종료"] as const;
-
-// 카테고리 목록 자체는 아직 고정값이지만(관리자 키워드 API와 완전히 통일하는 건 별도 작업),
-// 선택 시 필터링은 아래에서 실제 popup_hashtag 기반 정확 매칭을 사용해요.
-const CATEGORIES = ["뷰티", "패션", "애니", "푸드", "스포츠", "라이프", "굿즈", "문구"] as const;
 
 export default function SearchPage({
   searchParams,
@@ -30,6 +27,12 @@ export default function SearchPage({
 }) {
   const { q: query, status: statusParam, region: regionParam } = use(searchParams);
   const [category, setCategory] = useState<string | null>(null);
+  const [categories, setCategories] = useState<string[]>([]);
+  useEffect(() => {
+    getKeywords()
+      .then((list) => setCategories(list.map((k) => k.name)))
+      .catch((err) => console.error("키워드 목록 조회 실패", err));
+  }, []);
   const [region, setRegion] = useState<string | null>(regionParam ?? null);
   const [status, setStatus] = useState<(typeof STATUSES)[number] | null>(
     (STATUSES as readonly string[]).includes(statusParam ?? "") ? (statusParam as (typeof STATUSES)[number]) : null
@@ -69,10 +72,10 @@ export default function SearchPage({
   useEffect(() => {
     if (!query) return;
     const q = query.trim();
-    setCategory(CATEGORIES.find((c) => c === q) ?? null);
+    setCategory(categories.find((c) => c === q) ?? null);
     setRegion(REGIONS.find((r) => r === q) ?? null);
     setStatus(STATUSES.find((s) => s === q) ?? null);
-  }, [query, CATEGORIES, REGIONS]);
+  }, [query, categories, REGIONS]);
 
   const results = useMemo(() => {
     if (!hasActiveFilter) return [];
@@ -138,7 +141,7 @@ export default function SearchPage({
                 지도로 보기
               </Link>
             </div>
-            <FilterRow label="카테고리" options={CATEGORIES} selected={category} onSelect={setCategory} />
+            <FilterRow label="카테고리" options={categories} selected={category} onSelect={setCategory} />
             <FilterRow label="지역" options={REGIONS} selected={region} onSelect={setRegion} />
             <FilterRow label="운영여부" options={[...STATUSES]} selected={status} onSelect={setStatus} />
           </div>

@@ -7,6 +7,7 @@ import { Footer } from "@/components/layout/Footer";
 import { StickyActionBar } from "@/components/popup/StickyActionBar";
 import { ReviewCard } from "@/components/popup/ReviewCard";
 import { PlaceCard } from "@/components/popup/PlaceCard";
+import { PopupSnsLinks } from "@/components/popup/PopupSnsLinks";
 import { HorizontalCarousel } from "@/components/ui/HorizontalCarousel";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { ReservationModal } from "@/components/popup/ReservationModal";
@@ -19,9 +20,9 @@ import {
   getPopupSlots,
   getPopupLiveStatus,
   getPopupWaitTime,
+  getSimilarPopups,
   getQueueBoardCount,
   getPopupImages,
-  searchPopups,
   type PopupDetail,
   type PopupSlot,
   type PopupLiveStatus,
@@ -220,24 +221,15 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     };
   }, [popup]);
 
-  // [수정] "비슷한 팝업"이 그냥 진행중 팝업 중 앞에서부터 4개를 보여주는 거라
-  // 실제로 안 비슷해도 나왔었어요. 같은 해시태그가 몇 개 겹치는지 + 같은 지역인지로
-  // 점수를 매겨서 정렬하고, 겹치는 게 하나도 없으면 최근 등록순으로라도 채워줘요.
+  // [수정] 해시태그/지역 겹침으로 점수를 매기던 클라이언트 로직을, 백엔드가 같은
+  // 방식으로 직접 계산해주는 GET /api/popups/{id}/similar로 교체했어요.
   useEffect(() => {
     if (!popup) return;
     let cancelled = false;
 
-    searchPopups({ status: "OPEN" })
+    getSimilarPopups(popup.id, 4)
       .then((list) => {
-        if (cancelled) return;
-        const others = list.filter((p) => p.id !== popup.id);
-        const scored = others.map((p) => {
-          const sharedTags = (p.hashtags ?? []).filter((t) => popup.hashtags?.includes(t)).length;
-          const sameRegion = popup.regionName && p.regionName === popup.regionName ? 1 : 0;
-          return { popup: p, score: sharedTags * 2 + sameRegion };
-        });
-        scored.sort((a, b) => b.score - a.score);
-        setSimilar(scored.slice(0, 4).map(({ popup }) => toPopupItem(popup)));
+        if (!cancelled) setSimilar(list.map(toPopupItem));
       })
       .catch((err) => console.error("비슷한 팝업 조회 실패", err));
 
@@ -287,10 +279,9 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
       photos: r.imageUrls.length > 0 ? r.imageUrls : undefined,
     }));
   const relatedReviews = [...myReviewsAsItems, ...otherReviewsAsItems];
-  const averageRating =
-    relatedReviews.length > 0
-      ? relatedReviews.reduce((sum, r) => sum + r.rating, 0) / relatedReviews.length
-      : null;
+  // [수정] 로드된 후기 목록(페이지네이션으로 최대 20개까지만)으로 평균을 내던 걸,
+  // 백엔드가 DB 전체 후기 기준으로 미리 계산해서 내려주는 popup.avgRating으로 교체.
+  const averageRating = popup.avgRating;
 
   return (
     <main className="w-full mobile:max-w-[1000px] mobile:mx-auto pb-24">
@@ -491,13 +482,16 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                   : "text-gray-400"
               }`}
             >
-              {tab === "후기" ? `후기 (${relatedReviews.length})` : tab}
+              {tab === "후기" ? `후기 (${popup.reviewCount})` : tab}
             </button>
           ))}
         </div>
 
         {activeTab === "정보" && (
           <div className="flex flex-col gap-8">
+            {/* [신규] SNS/홈페이지 - popup_sns_link, 정보 탭 맨 위에 배치 */}
+            <PopupSnsLinks links={popup.snsLinks} />
+
             <section>
               <h2 className="text-sm font-semibold mb-2">공지사항</h2>
               {/* TODO: 실제 공지 데이터 연결 */}
