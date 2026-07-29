@@ -303,6 +303,11 @@ export function uploadPopupImage(id: number | string, file: File, type: PopupIma
 // 팝업 이미지 조회 — 인증 불필요 (type 생략 시 전체)
 export type PopupImageItem = { id: number; imageUrl: string; type: PopupImageTypeCode; sortOrder: number };
 
+// 팝업 이미지 삭제 — 수정 화면에서 기존 이미지를 빼거나 교체할 때 사용 (7/29)
+export function deletePopupImage(popupId: number | string, imageId: number) {
+  return request<void>(`/api/popups/${popupId}/images/${imageId}`, { method: "DELETE" });
+}
+
 export function getPopupImages(id: number | string, type?: PopupImageTypeCode) {
   return request<PopupImageItem[]>(`/api/popups/${id}/images${type ? `?type=${type}` : ""}`);
 }

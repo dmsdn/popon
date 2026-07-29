@@ -2,9 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import {
   FileText, MapPin, Image as ImageIcon, AlignLeft, CalendarClock,
-  Ticket, Upload, Plus, X, Info, CheckCircle2, Search, Loader2, AlertTriangle,
+  Ticket, Upload, Plus, X, Info, CheckCircle2, Search, Loader2, AlertTriangle, RotateCcw,
 } from "lucide-react";
-import { createPopup, updatePopup, getPopup, uploadPopupImage, getKeywords, getRegions, IdName, SnsLinkInput, SnsPlatformCode } from "../../lib/api";
+import {
+  createPopup, updatePopup, getPopup, uploadPopupImage, getPopupImages, deletePopupImage,
+  getKeywords, getRegions, IdName, SnsLinkInput, SnsPlatformCode, PopupImageItem,
+} from "../../lib/api";
 import { ensureSlots } from "../../lib/slotAutoGen";
 import { loadOpsMode, saveOpsMode, OpsMode } from "../../lib/walkinQueue";
 import {
@@ -71,8 +74,12 @@ function filterJpegs(files: File[]): { ok: File[]; rejected: string[] } {
   return { ok, rejected };
 }
 
-const inputCls =
-  "w-full px-3 py-2 text-[13px] border border-border rounded-sm bg-white focus:outline-none focus:border-accent placeholder:text-muted-foreground/60";
+// 폭 유틸(w-full)을 뺀 본체. 폭을 따로 지정해야 하는 칸은 이걸 쓴다.
+// inputCls(=w-full 포함)에 " w-36"을 덧붙이면 둘 다 width 유틸이라 CSS 파일 순서로 승자가 갈리는데,
+// 실제로 w-full이 이겨서 SNS 셀렉트가 행을 다 차지하고 옆 URL 칸이 26px로 찌그러졌다 (7/29).
+const inputBase =
+  "px-3 py-2 text-[13px] border border-border rounded-sm bg-white focus:outline-none focus:border-accent placeholder:text-muted-foreground/60";
+const inputCls = `w-full ${inputBase}`;
 const labelCls = "block text-xs font-medium mb-1.5";
 const Req = () => <span className="text-red-500 ml-0.5">*</span>;
 
@@ -85,6 +92,30 @@ function Section({ id, title, desc, children }: { id: string; title: string; des
       </div>
       <div className="p-5 flex flex-col gap-5">{children}</div>
     </section>
+  );
+}
+
+// 서버에 이미 올라가 있는 이미지 한 장 (수정 모드 전용).
+// X를 눌러도 그 자리에서 서버 요청을 보내지 않는다 — 표시만 바꿔두고 「수정 저장」을 눌러야 실제로 지운다.
+// 그래야 실수로 눌렀을 때 되돌릴 수 있고, 저장을 취소하면 아무 일도 일어나지 않는다.
+function ExistingImage({ img, removed, onRemove, onUndo }: {
+  img: PopupImageItem; removed: boolean; onRemove: () => void; onUndo: () => void;
+}) {
+  return (
+    <div className={`relative w-20 h-20 rounded-sm overflow-hidden border ${removed ? "border-red-300" : "border-border"}`}>
+      <img src={img.imageUrl} alt="" className={`w-full h-full object-cover ${removed ? "opacity-30" : ""}`} />
+      {removed && (
+        <span className="absolute inset-x-0 bottom-0 bg-red-500/90 text-white text-[9px] text-center py-0.5">삭제 예정</span>
+      )}
+      <button
+        type="button"
+        onClick={removed ? onUndo : onRemove}
+        title={removed ? "삭제 취소" : "이 이미지 제거"}
+        className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-white/90 border border-border flex items-center justify-center hover:bg-white"
+      >
+        {removed ? <RotateCcw size={10} /> : <X size={11} />}
+      </button>
+    </div>
   );
 }
 
@@ -105,6 +136,15 @@ export default function PopupRegister() {
   const [images, setImages] = useState<File[]>([]);
   // 상세 설명용 세로형 JPG — 7/29부터 여러 장 (쿠팡 상품 상세처럼 본문 아래 세로로 이어붙음)
   const [detailImages, setDetailImages] = useState<File[]>([]);
+  // 수정 모드에서 서버에 이미 올라가 있는 이미지 (7/29 신설).
+  // images/detailImages는 File[]이라 "새로 고른 파일"만 담을 수 있어서 서버 이미지는 따로 들고 있어야 한다.
+  // 이게 없던 동안은 수정 화면에 기존 이미지가 아예 안 보였고, 새로 올리면 교체가 아니라 위에 쌓였다.
+  const [serverImages, setServerImages] = useState<PopupImageItem[]>([]);
+  const [removedImageIds, setRemovedImageIds] = useState<number[]>([]);
+  const markImageRemoved = (id: number) => setRemovedImageIds((prev) => [...prev, id]);
+  const undoImageRemoved = (id: number) => setRemovedImageIds((prev) => prev.filter((x) => x !== id));
+  const serverThumbs = serverImages.filter((i) => i.type === "THUMBNAIL");
+  const serverDetails = serverImages.filter((i) => i.type === "DETAIL");
   // SNS 링크 (7/29 — 홍보영상 칸 대체, 백엔드 snsLinks 실저장)
   const [snsLinks, setSnsLinks] = useState<SnsLinkInput[]>([]);
   const [snsPlatform, setSnsPlatform] = useState<SnsPlatformCode>("INSTAGRAM");
@@ -200,6 +240,8 @@ export default function PopupRegister() {
         if (p.location) previewOnMap(p.location);    // 수정 모드도 지도에 기존 위치 표시
       })
       .catch((e) => setError(e instanceof Error ? e.message : "팝업 정보를 불러오지 못했습니다."));
+    // 기존 이미지 — 본문 로드와 독립이라 따로 받는다. 실패해도 폼은 쓸 수 있어야 하므로 조용히 넘어간다.
+    getPopupImages(editId).then(setServerImages).catch(() => {});
   }, [editId]);
 
   // 주소가 정해지면 좌표를 구해 지도에 핀을 찍는다.
@@ -333,6 +375,11 @@ export default function PopupRegister() {
     try {
       const popup = editId ? await updatePopup(editId, payload) : await createPopup(payload);
       saveOpsMode(popup.id, opsMode); // 대기열·인원 관제가 이 값을 읽어 표시
+      // 수정 화면에서 X로 빼둔 기존 이미지를 먼저 지운다.
+      // 올리기 전에 지워야 서버가 매기는 sortOrder가 빈 자리 없이 이어진다.
+      for (const id of removedImageIds) {
+        await deletePopupImage(popup.id, id);
+      }
       // 7/29 — 서버가 type별로 규격 리사이즈 (THUMB_SPEC / DETAIL_SPEC). 순서 보존 위해 순차 업로드
       for (const file of images) {
         await uploadPopupImage(popup.id, file, "THUMBNAIL");
@@ -519,18 +566,18 @@ export default function PopupRegister() {
             </div>
             {sameHours ? (
               <div className="flex items-center gap-2 text-[13px]">
-                <input type="time" value={openTime} onChange={(e) => setOpenTime(e.target.value)} className={inputCls + " w-32"} />
+                <input type="time" value={openTime} onChange={(e) => setOpenTime(e.target.value)} className={inputBase + " w-32"} />
                 <span className="text-muted-foreground">—</span>
-                <input type="time" value={closeTime} onChange={(e) => setCloseTime(e.target.value)} className={inputCls + " w-32"} />
+                <input type="time" value={closeTime} onChange={(e) => setCloseTime(e.target.value)} className={inputBase + " w-32"} />
               </div>
             ) : (
               <div className="flex flex-col gap-1.5">
                 {DAYS.map((d) => (
                   <div key={d} className="flex items-center gap-2 text-[13px]">
                     <span className="w-6 text-xs text-muted-foreground">{d}</span>
-                    <input type="time" defaultValue={d === "토" || d === "일" ? "10:00" : "11:00"} className={inputCls + " w-32"} />
+                    <input type="time" defaultValue={d === "토" || d === "일" ? "10:00" : "11:00"} className={inputBase + " w-32"} />
                     <span className="text-muted-foreground">—</span>
-                    <input type="time" defaultValue={d === "토" || d === "일" ? "21:00" : "20:00"} className={inputCls + " w-32"} />
+                    <input type="time" defaultValue={d === "토" || d === "일" ? "21:00" : "20:00"} className={inputBase + " w-32"} />
                     <label className="flex items-center gap-1 text-[11px] text-muted-foreground ml-2">
                       <input type="checkbox" className="accent-[#E85D3C]" /> 휴무
                     </label>
@@ -689,6 +736,20 @@ export default function PopupRegister() {
             >
               <Upload size={18} /> 클릭하여 업로드 (등록 완료 시 서버로 전송됩니다)
             </button>
+            {/* 이미 서버에 올라가 있는 썸네일 (수정 모드) */}
+            {serverThumbs.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {serverThumbs.map((img) => (
+                  <ExistingImage
+                    key={img.id}
+                    img={img}
+                    removed={removedImageIds.includes(img.id)}
+                    onRemove={() => markImageRemoved(img.id)}
+                    onUndo={() => undoImageRemoved(img.id)}
+                  />
+                ))}
+              </div>
+            )}
             {images.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {images.map((f, i) => (
@@ -707,14 +768,15 @@ export default function PopupRegister() {
               <select
                 value={snsPlatform}
                 onChange={(e) => setSnsPlatform(e.target.value as SnsPlatformCode)}
-                className={inputCls + " w-36 shrink-0"}
+                className={inputBase + " w-36 shrink-0"}
               >
                 {SNS_PLATFORMS.map((p) => (
                   <option key={p.code} value={p.code}>{p.label}</option>
                 ))}
               </select>
               <input
-                className={inputCls}
+                /* flex-1 + min-w-0 — 긴 URL을 넣어도 칸이 부모를 밀어내지 않고 그 안에서 줄어든다 */
+                className={inputBase + " flex-1 min-w-0"}
                 value={snsUrl}
                 onChange={(e) => setSnsUrl(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addSnsLink())}
@@ -839,6 +901,20 @@ export default function PopupRegister() {
             >
               <Upload size={15} /> 상세 이미지 JPG 업로드 (여러 장 가능)
             </button>
+            {/* 이미 서버에 올라가 있는 상세 이미지 (수정 모드) */}
+            {serverDetails.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {serverDetails.map((img) => (
+                  <ExistingImage
+                    key={img.id}
+                    img={img}
+                    removed={removedImageIds.includes(img.id)}
+                    onRemove={() => markImageRemoved(img.id)}
+                    onUndo={() => undoImageRemoved(img.id)}
+                  />
+                ))}
+              </div>
+            )}
             {detailImages.length > 0 && (
               <div className="flex flex-col gap-1.5 mt-2">
                 {detailImages.map((f, i) => (
