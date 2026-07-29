@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus, Eye, EyeOff, Newspaper, Image as ImageIcon, Trash2, Loader2, Megaphone } from "lucide-react";
 import {
   getAdminBanners, createBanner, updateBanner, deleteBanner, Banner,
@@ -19,9 +19,22 @@ export default function ContentManage() {
   const [error, setError] = useState("");
   const [actingId, setActingId] = useState<string | null>(null); // "banner:3" / "ann:1" — 두 목록 id 충돌 방지
 
-  // 배너 추가 폼
+  // 배너 추가 폼 — 7/29부터 URL 직접 입력이 아니라 파일 업로드 (백엔드가 multipart를 받는다)
   const [showBannerForm, setShowBannerForm] = useState(false);
-  const [bForm, setBForm] = useState({ title: "", imageUrl: "", linkUrl: "" });
+  const [bForm, setBForm] = useState({ title: "", linkUrl: "" });
+  const [bFile, setBFile] = useState<File | null>(null);
+  const bFileRef = useRef<HTMLInputElement>(null);
+  // 고른 파일 미리보기 — objectURL은 정리 함수에서 해제해야 메모리가 새지 않는다
+  const [bPreview, setBPreview] = useState<string | null>(null);
+  useEffect(() => {
+    if (!bFile) {
+      setBPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(bFile);
+    setBPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [bFile]);
   // 공지 추가 폼
   const [showAnnForm, setShowAnnForm] = useState(false);
   const [aForm, setAForm] = useState({ title: "", content: "" });
@@ -65,17 +78,19 @@ export default function ContentManage() {
   };
 
   const submitBanner = async () => {
-    if (!bForm.title.trim() || !bForm.imageUrl.trim()) return alert("제목과 이미지 URL을 입력해 주세요.");
+    if (!bForm.title.trim()) return alert("배너 제목을 입력해 주세요.");
+    if (!bFile) return alert("배너 이미지 파일을 선택해 주세요.");
     setActingId("banner:new");
     try {
-      const created = await createBanner({
+      const created = await createBanner(bFile, {
         title: bForm.title.trim(),
-        imageUrl: bForm.imageUrl.trim(),
         linkUrl: bForm.linkUrl.trim() || undefined,
         sortOrder: banners.length + 1,
       });
       setBanners((prev) => [...prev, created]);
-      setBForm({ title: "", imageUrl: "", linkUrl: "" });
+      setBForm({ title: "", linkUrl: "" });
+      setBFile(null);
+      if (bFileRef.current) bFileRef.current.value = ""; // 같은 파일을 다시 고를 수 있게 비운다
       setShowBannerForm(false);
     } catch (e) {
       alert(e instanceof Error ? e.message : "등록에 실패했습니다.");
@@ -148,9 +163,27 @@ export default function ContentManage() {
                   제목 *
                   <input className={inputCls + " w-52"} value={bForm.title} onChange={(e) => setBForm((p) => ({ ...p, title: e.target.value }))} />
                 </label>
-                <label className="flex flex-col gap-1 text-[11px] text-muted-foreground flex-1 min-w-[200px]">
-                  이미지 URL * <span className="normal-case">(업로드된 /uploads/... 경로 또는 외부 URL)</span>
-                  <input className={inputCls} value={bForm.imageUrl} onChange={(e) => setBForm((p) => ({ ...p, imageUrl: e.target.value }))} placeholder="/uploads/banner1.jpg" />
+                <label className="flex flex-col gap-1 text-[11px] text-muted-foreground flex-1 min-w-[240px]">
+                  배너 이미지 * <span className="normal-case">(JPG·PNG · 서버가 1080×1440으로 변환)</span>
+                  <div className="flex items-center gap-2">
+                    <input
+                      ref={bFileRef}
+                      type="file"
+                      accept="image/jpeg,image/png"
+                      onChange={(e) => setBFile(e.target.files?.[0] ?? null)}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => bFileRef.current?.click()}
+                      className={inputCls + " flex-1 min-w-0 text-left truncate hover:border-accent"}
+                    >
+                      {bFile ? bFile.name : "클릭하여 파일 선택"}
+                    </button>
+                    {bPreview && (
+                      <img src={bPreview} alt="" className="w-12 h-9 object-cover rounded-sm border border-border shrink-0" />
+                    )}
+                  </div>
                 </label>
                 <label className="flex flex-col gap-1 text-[11px] text-muted-foreground w-44">
                   링크 URL (선택)

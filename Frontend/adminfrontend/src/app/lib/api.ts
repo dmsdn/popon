@@ -668,11 +668,32 @@ export type Banner = {
 export function getAdminBanners() {
   return request<Banner[]>("/api/admin/banners");
 }
-export function createBanner(data: { title: string; imageUrl: string; linkUrl?: string; sortOrder?: number; startDate?: string; endDate?: string; active?: boolean }) {
-  return request<Banner>("/api/admin/banners", { method: "POST", body: JSON.stringify(data) });
+// 7/29 — 배너 등록·수정은 JSON이 아니라 multipart/form-data다.
+// 백엔드(BannerController)는 @RequestParam("file") MultipartFile을 받고 imageUrl은 서버가 만들어 돌려준다.
+// 이전에는 프론트가 {imageUrl:"..."} JSON을 보내고 있어서 아예 동작하지 않았다.
+// 서버가 1080×1440 JPEG으로 리사이즈하므로 프론트는 원본을 그대로 올린다.
+export type BannerFields = {
+  title?: string; linkUrl?: string; sortOrder?: number;
+  startDate?: string; endDate?: string; active?: boolean;
+};
+
+function bannerForm(fields: BannerFields, file?: File | null): FormData {
+  const form = new FormData();
+  if (file) form.append("file", file);
+  // 빈 문자열을 보내면 서버가 "값이 있다"고 보고 기존 값을 덮어쓰므로, 값이 있는 것만 담는다.
+  // active:false는 이 검사를 통과한다 (false !== "") — 노출 토글이 꺼지지 않는 사고를 막는 부분.
+  for (const [k, v] of Object.entries(fields)) {
+    if (v !== undefined && v !== null && v !== "") form.append(k, String(v));
+  }
+  return form;
 }
-export function updateBanner(id: number, data: Partial<Omit<Banner, "id">>) {
-  return request<Banner>(`/api/admin/banners/${id}`, { method: "PUT", body: JSON.stringify(data) });
+
+export function createBanner(file: File, fields: BannerFields) {
+  return request<Banner>("/api/admin/banners", { method: "POST", body: bannerForm(fields, file) });
+}
+
+export function updateBanner(id: number, fields: BannerFields, file?: File | null) {
+  return request<Banner>(`/api/admin/banners/${id}`, { method: "PUT", body: bannerForm(fields, file) });
 }
 export function deleteBanner(id: number) {
   return request<void>(`/api/admin/banners/${id}`, { method: "DELETE" });
