@@ -40,6 +40,7 @@ public class PopupResponse {
     private String notice;
     private List<String> keywordNames; // 이 팝업이 연결된 표준 카테고리 이름들 (예: ["패션", "라이프스타일"])
     private List<PopupSnsLinkResponse> snsLinks;
+    private String regionName; // 팝업이 속한 지역(address_keyword) 이름, 예: "성수"
     private String businessProfileImage;
     private List<String> thumbnailImages;
     private List<String> detailImages;
@@ -69,6 +70,15 @@ public class PopupResponse {
                                      List<String> keywordNames, List<PopupSnsLinkResponse> snsLinks) {
         return from(popup, hashtags, avgRating, reviewCount, keywordNames, snsLinks,
                 Collections.emptyList(), Collections.emptyList());
+    }
+
+    // 목록/검색 화면 전용 - 해시태그·키워드명·썸네일까지 배치조회로 채워서 리턴 (평점·SNS·상세이미지는 목록에서 안 씀)
+    // 이름을 from()으로 겹치게 하면 List<PopupSnsLinkResponse> 버전과 파라미터 개수·순서가 같아져서
+    // 제네릭 소거(erasure) 후 시그니처가 동일해져 컴파일 에러(name clash)가 나므로 이름을 분리했다.
+    public static PopupResponse fromForList(Popup popup, List<String> hashtags,
+                                            List<String> keywordNames, List<String> thumbnailImages) {
+        return from(popup, hashtags, null, 0L, keywordNames, Collections.emptyList(),
+                thumbnailImages, Collections.emptyList());
     }
 
     // 상세조회(findById)용 — 키워드·SNS·이미지까지 한 번에 채워서 리턴
@@ -138,6 +148,11 @@ public class PopupResponse {
                         snsLinks != null
                                 ? snsLinks
                                 : Collections.emptyList()
+                )
+                .regionName(
+                        popup.getAddressKeyword() != null
+                                ? popup.getAddressKeyword().getName()
+                                : null
                 )
                 .avgRating(avgRating != null ? avgRating.setScale(1, java.math.RoundingMode.HALF_UP) : null)
                 .reviewCount(reviewCount)

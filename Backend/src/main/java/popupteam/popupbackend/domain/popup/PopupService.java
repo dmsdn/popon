@@ -8,10 +8,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Transactional
 @RequiredArgsConstructor
+@Slf4j
 public class PopupService {
 
     private final PopupRepository popupRepository;
@@ -75,7 +77,7 @@ public class PopupService {
         List<String> hashtags = saveHashtags(saved.getId(), request.getHashtags());
         savePopupKeywords(saved.getId(), request.getKeywordIds());
         List<PopupSnsLinkResponse> snsLinks =
-        replaceSnsLinks(saved, request.getSnsLinks());
+                replaceSnsLinks(saved, request.getSnsLinks());
 
         return PopupResponse.from(saved, hashtags, getPopupKeywordNames(saved.getId()), snsLinks);
     }
@@ -106,9 +108,8 @@ public class PopupService {
         String locationParam = (location != null && !location.isBlank()) ? location : null;
         String keywordParam = (keyword != null && !keyword.isBlank()) ? keyword : null;
 
-        return popupRepository.search(locationParam, statusEnum, keywordParam).stream()
-                .map(PopupResponse::from)
-                .collect(java.util.stream.Collectors.toList());
+        List<Popup> popups = popupRepository.search(locationParam, statusEnum, keywordParam);
+        return enrichForList(popups);
     }
 
     public PopupResponse findById(Long id) {
@@ -352,18 +353,17 @@ public class PopupService {
     }
 
     public List<PopupResponse> getMyPopups(Long businessId) {
-        return popupRepository.findByBusinessIdOrderByCreatedAtDesc(businessId).stream()
-                .map(PopupResponse::from)
-                .collect(Collectors.toList());
+        List<Popup> popups = popupRepository.findByBusinessIdWithRegion(businessId);
+        return enrichForList(popups);
     }
 
     // 곧 오픈하는 팝업 (BEFOR 상태 중 시작일 가까운 순)
     public List<PopupResponse> getUpcomingPopups(int limit) {
-        return popupRepository.findByStatus(PopupStatus.BEFOR).stream()
+        List<Popup> popups = popupRepository.findByStatus(PopupStatus.BEFOR).stream()
                 .sorted(java.util.Comparator.comparing(Popup::getStartDate))
                 .limit(limit)
-                .map(PopupResponse::from)
                 .toList();
+        return enrichForList(popups);
     }
 
     // 비슷한 팝업 추천 (해시태그 겹침 +2점/개, 같은 지역 +1점, 점수순 정렬 / 부족하면 최근 팝업으로 채움)
@@ -408,39 +408,29 @@ public class PopupService {
                     .collect(Collectors.toList());
         }
 
-        List<PopupResponse> result = new java.util.ArrayList<>(ranked.stream().map(PopupResponse::from).toList());
+        java.util.Set<Long> excludeIds = ranked.stream().map(Popup::getId).collect(Collectors.toSet());
+        excludeIds.add(id);
 
         // 유사 팝업이 limit보다 부족하면 최근 오픈예정/진행중 팝업으로 채움 (빈 화면 방지)
-        if (result.size() < limit) {
-            java.util.Set<Long> excludeIds = ranked.stream().map(Popup::getId).collect(Collectors.toSet());
-            excludeIds.add(id);
-
+        List<Popup> combined = new java.util.ArrayList<>(ranked);
+        if (combined.size() < limit) {
             List<Popup> fillCandidates = new java.util.ArrayList<>();
             fillCandidates.addAll(popupRepository.findByStatus(PopupStatus.OPEN));
             fillCandidates.addAll(popupRepository.findByStatus(PopupStatus.BEFOR));
 
-            List<PopupResponse> filler = fillCandidates.stream()
+            List<Popup> filler = fillCandidates.stream()
                     .filter(p -> !excludeIds.contains(p.getId()))
                     .sorted(java.util.Comparator.comparing(Popup::getCreatedAt).reversed())
-                    .limit(limit - result.size())
-                    .map(PopupResponse::from)
+                    .limit(limit - combined.size())
                     .toList();
 
-            result.addAll(filler);
+            combined.addAll(filler);
         }
 
-        return result;
+        return enrichForList(combined);
     }
 
-    private void validateLocationMatchesRegion(String location, popupteam.popupbackend.domain.consumer.Region region) {
-        if (location == null || region == null) return;
-        if (!location.contains(region.getName())) {
-            throw new IllegalArgumentException(
-                    "입력하신 상세주소(\"" + location + "\")가 선택하신 지역(\"" + region.getName() + "\")과 일치하지 않습니다.");
-        }
-    }
-
-    // location(상세주소)과 addressKeyword(선택한 지역)가 서로 맞는지 확인
+    // location(상세주소)과 addressKeyword(선택한 지역)가 서로 맞는지 참고용으로만 확인 (도로명주소엔 동명이 안 들어가는 경우가 많아 차단하지 않음)
     private void applyAddressKeyword(Popup popup, Long addressKeywordId, String location) {
         if (addressKeywordId == null) return;
 
@@ -448,8 +438,7 @@ public class PopupService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 지역입니다."));
 
         if (location != null && !location.contains(region.getName())) {
-            throw new IllegalArgumentException(
-                    "입력하신 상세주소(\"" + location + "\")가 선택하신 지역(\"" + region.getName() + "\")과 일치하지 않습니다.");
+            log.warn("[지역 불일치 - 참고용 경고, 저장은 진행됨] location=\"{}\", region=\"{}\"", location, region.getName());
         }
 
         popup.setAddressKeyword(region);
@@ -466,8 +455,7 @@ public class PopupService {
         }
     }
 
-    // 팝업이 가진 표준 키워드 ID 목록 조회
-    // 팝업이 가진 표준 키워드 "이름" 목록 조회 (PopupResponse용)
+    // 팝업이 가진 표준 키워드 "이름" 목록 조회 (PopupResponse용, 단건 - create/update/findById에서 사용)
     private List<String> getPopupKeywordNames(Long popupId) {
         List<Long> keywordIds = getPopupKeywordIds(popupId);
         if (keywordIds.isEmpty()) return List.of();
@@ -490,58 +478,97 @@ public class PopupService {
 
         if (popupIds.isEmpty()) return java.util.List.of();
 
-        return popupRepository.findAllByIdWithBusiness(popupIds).stream()
-                .map(PopupResponse::from)
+        List<Popup> popups = popupRepository.findAllByIdWithBusiness(popupIds);
+        return enrichForList(popups);
+    }
+
+    // 목록/검색 화면 공용 배치 조회 - 해시태그·표준키워드이름·썸네일을 팝업별 개별쿼리 없이 한 번씩만 조회해서 조립
+    private List<PopupResponse> enrichForList(List<Popup> popups) {
+        if (popups.isEmpty()) return List.of();
+
+        List<Long> ids = popups.stream().map(Popup::getId).toList();
+
+        java.util.Map<Long, List<String>> hashtagsByPopup = popupHashtagRepository
+                .findByPopupIdInOrderBySortOrderAsc(ids).stream()
+                .collect(Collectors.groupingBy(PopupHashtag::getPopupId,
+                        Collectors.mapping(PopupHashtag::getTag, Collectors.toList())));
+
+        List<PopupKeyword> popupKeywords = popupKeywordRepository.findByPopupIdIn(ids);
+        java.util.Set<Long> keywordIds = popupKeywords.stream()
+                .map(PopupKeyword::getKeywordId).collect(Collectors.toSet());
+        java.util.Map<Long, String> keywordNameById = keywordIds.isEmpty()
+                ? java.util.Map.of()
+                : keywordRepository.findAllById(keywordIds).stream()
+                .collect(Collectors.toMap(
+                        popupteam.popupbackend.domain.consumer.Keyword::getId,
+                        popupteam.popupbackend.domain.consumer.Keyword::getName));
+        java.util.Map<Long, List<String>> keywordNamesByPopup = popupKeywords.stream()
+                .collect(Collectors.groupingBy(PopupKeyword::getPopupId,
+                        Collectors.mapping(pk -> keywordNameById.get(pk.getKeywordId()), Collectors.toList())));
+
+        java.util.Map<Long, List<String>> thumbnailsByPopup = popupImageRepository
+                .findByPopupIdInAndTypeOrderBySortOrder(ids, PopupImageType.THUMBNAIL).stream()
+                .collect(Collectors.groupingBy(img -> img.getPopup().getId(),
+                        Collectors.mapping(PopupImage::getImageUrl, Collectors.toList())));
+
+        return popups.stream()
+                .map(popup -> {
+                    Long popupId = popup.getId();
+                    return PopupResponse.fromForList(popup,
+                            hashtagsByPopup.getOrDefault(popupId, List.of()),
+                            keywordNamesByPopup.getOrDefault(popupId, List.of()),
+                            thumbnailsByPopup.getOrDefault(popupId, List.of()));
+                })
                 .toList();
     }
 
     private List<PopupSnsLinkResponse> replaceSnsLinks(
-        Popup popup,
-        List<PopupSnsLinkRequest> requests
-) {
-    popupSnsLinkRepository.deleteByPopup_Id(popup.getId());
+            Popup popup,
+            List<PopupSnsLinkRequest> requests
+    ) {
+        popupSnsLinkRepository.deleteByPopup_Id(popup.getId());
 
-    if (requests == null || requests.isEmpty()) {
-        return java.util.Collections.emptyList();
-    }
-
-    int defaultOrder = 0;
-
-    for (PopupSnsLinkRequest request : requests) {
-        if (request == null) {
-            continue;
+        if (requests == null || requests.isEmpty()) {
+            return java.util.Collections.emptyList();
         }
 
-        PopupSnsLink link = new PopupSnsLink();
-        link.setPopup(popup);
-        link.setPlatform(request.getPlatform());
-        link.setUrl(request.getUrl().trim());
+        int defaultOrder = 0;
 
-        if (request.getDisplayName() != null
-                && !request.getDisplayName().isBlank()) {
-            link.setDisplayName(request.getDisplayName().trim());
+        for (PopupSnsLinkRequest request : requests) {
+            if (request == null) {
+                continue;
+            }
+
+            PopupSnsLink link = new PopupSnsLink();
+            link.setPopup(popup);
+            link.setPlatform(request.getPlatform());
+            link.setUrl(request.getUrl().trim());
+
+            if (request.getDisplayName() != null
+                    && !request.getDisplayName().isBlank()) {
+                link.setDisplayName(request.getDisplayName().trim());
+            }
+
+            link.setSortOrder(
+                    request.getSortOrder() != null
+                            ? request.getSortOrder()
+                            : defaultOrder
+            );
+
+            popupSnsLinkRepository.save(link);
+            defaultOrder++;
         }
 
-        link.setSortOrder(
-                request.getSortOrder() != null
-                        ? request.getSortOrder()
-                        : defaultOrder
-        );
-
-        popupSnsLinkRepository.save(link);
-        defaultOrder++;
+        return getSnsLinks(popup.getId());
     }
 
-    return getSnsLinks(popup.getId());
-}
+    private List<PopupSnsLinkResponse> getSnsLinks(Long popupId) {
+        return popupSnsLinkRepository
+                .findByPopup_IdOrderBySortOrderAscIdAsc(popupId)
+                .stream()
+                .map(PopupSnsLinkResponse::from)
+                .toList();
+    }
 
-private List<PopupSnsLinkResponse> getSnsLinks(Long popupId) {
-    return popupSnsLinkRepository
-            .findByPopup_IdOrderBySortOrderAscIdAsc(popupId)
-            .stream()
-            .map(PopupSnsLinkResponse::from)
-            .toList();
-}
 
-    
 }
