@@ -36,5 +36,8 @@ export function toPopupItem(popup: PopupDetail): PopupItem {
     // location 자유텍스트로 대체
     location: popup.regionName ?? popup.location ?? undefined,
     status: STATUS_MAP[popup.status],
+    // [신규] 백엔드가 이제 팝업 응답에 썸네일 이미지를 바로 실어줘서, 목록 카드에서
+    // "이미지" 텍스트 placeholder 대신 진짜 이미지를 보여줄 수 있어요.
+    imageUrl: popup.thumbnailImages?.[0],
   };
 }

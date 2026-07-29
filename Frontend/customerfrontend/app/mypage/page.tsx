@@ -602,7 +602,13 @@ if (queryMenu !== syncedQueryMenu) {
                     customer.provider === "KAKAO" ? "bg-[#FEE500]" : "bg-gray-100 text-gray-700"
                   }`}
                 >
-                  {customer.provider === "KAKAO" ? "💬" : customer.provider === "GOOGLE" ? "G" : "🛠️"}{" "}
+                  {customer.provider === "KAKAO" ? (
+                    <img src="/icon/kakao.svg" alt="Kakao" className="w-4 h-4" />
+                  ) : customer.provider === "GOOGLE" ? (
+                    <img src="/icon/google.svg" alt="Google" className="w-4 h-4" />
+                  ) : (
+                    <img src="/icon/admin.svg" alt="Admin" className="w-4 h-4" />
+                  )}{" "}
                   {PROVIDER_LABEL[customer.provider]}
                 </span>
               </div>
@@ -852,14 +858,16 @@ if (queryMenu !== syncedQueryMenu) {
                     onClick={() => toggleNotif(item.id)}
                     aria-pressed={item.enabled}
                     className={`w-11 h-6 rounded-full relative transition-colors ${
-                      item.enabled ? "bg-gray-900" : "bg-gray-200"
+                      item.enabled ? "bg-gray-200" : "bg-gray-600"
                     }`}
                   >
-                    <span
-                      className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
-                        item.enabled ? "translate-x-[22px]" : "translate-x-0.5"
-                      }`}
-                    />
+                  <span
+                    className={`absolute top-0.5 w-5 h-5 rounded-full transition-all ${
+                      item.enabled
+                      ? "translate-x-[0.5px] bg-white"      // ON일 때: 오른쪽 이동 (22px) + 흰색 원
+                      : "translate-x-[-20px] bg-gray-300"      // OFF일 때: 왼쪽 밀착 (2px) + 회색 원 (원하는 색상으로 변경 가능)
+                    }`}
+                  />
                   </button>
                 </div>
               ))}
