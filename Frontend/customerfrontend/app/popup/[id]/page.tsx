@@ -8,6 +8,7 @@ import { StickyActionBar } from "@/components/popup/StickyActionBar";
 import { ReviewCard } from "@/components/popup/ReviewCard";
 import { PlaceCard } from "@/components/popup/PlaceCard";
 import { PopupSnsLinks } from "@/components/popup/PopupSnsLinks";
+import { ReviewImageModal } from "@/components/popup/ReviewImageModal";
 import { HorizontalCarousel } from "@/components/ui/HorizontalCarousel";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { ReservationModal } from "@/components/popup/ReservationModal";
@@ -38,6 +39,7 @@ import { recordPopupView } from "@/lib/recentlyViewed";
 import { saveRedirectTarget } from "@/lib/postLoginRedirect";
 import { toLocalDateString } from "@/lib/utils/formatLocalDate";
 import { StarRatingDisplay } from "@/components/ui/StarRatingDisplay";
+import { StarRatingInput } from "@/components/popup/StarRatingInput";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 import { type PopupItem, type ReviewItem } from "@/data/mockPopups";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -67,6 +69,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   const [popupReviews, setPopupReviews] = useState<Review[]>([]);
   const [reviewSort, setReviewSort] = useState<"latest" | "recommended">("latest");
   const [photoOnly, setPhotoOnly] = useState(false);
+  const [imageModal, setImageModal] = useState<{ reviewIndex: number; photoIndex: number } | null>(null);
   const [hotPlaces, setHotPlaces] = useState<HotPlace[]>([]);
   const [liveStatus, setLiveStatus] = useState<PopupLiveStatus | null>(null);
   const [waitTime, setWaitTime] = useState<PopupWaitTime | null>(null);
@@ -265,6 +268,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     rating: r.rating,
     photos: r.imageUrls.length > 0 ? r.imageUrls : undefined,
     likeCount: r.likeCount,
+    likedByMe: r.likedByMe,
   }));
   const myReviewIds = new Set(myReviewsForPopup.map((r) => r.id));
   // ⚠️ 백엔드 ReviewResponse에 작성자 닉네임이 없어서 "방문자"로만 표시해요. (백엔드 요청사항 참고)
@@ -281,6 +285,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
       rating: r.rating,
       photos: r.imageUrls.length > 0 ? r.imageUrls : undefined,
       likeCount: r.likeCount,
+    likedByMe: r.likedByMe,
     }));
   const relatedReviews = [...myReviewsAsItems, ...otherReviewsAsItems];
   // [신규] 정렬(최신순/추천순) + 사진 리뷰만 보기 필터
@@ -481,6 +486,15 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
           />
         )}
 
+        {imageModal && (
+          <ReviewImageModal
+            reviews={visibleReviews}
+            initialReviewIndex={imageModal.reviewIndex}
+            initialPhotoIndex={imageModal.photoIndex}
+            onClose={() => setImageModal(null)}
+          />
+        )}
+
         {/* 탭 */}
         <div className="flex border-b border-gray-100 mb-6">
           {TABS.map((tab) => (
@@ -563,14 +577,11 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                 <img src="/icon/Name=camera.svg" alt="" width={28} height={28} className="flex-none opacity-70" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium">다녀오셨나요?</p>
-                  <p className="text-xs text-gray-400">사진과 함께 후기를 남기면 다른 분들께 큰 도움이 돼요</p>
+                  <p className="text-xs text-gray-400">별점을 눌러 바로 후기를 남겨보세요</p>
                 </div>
-                <Link
-                  href={`/popup/${id}/review`}
-                  className="flex-none text-sm font-medium border border-gray-300 text-gray-700 rounded-full px-4 py-2"
-                >
-                  후기 작성
-                </Link>
+                {/* [수정] "후기 작성" 텍스트 버튼 대신 별점을 여기서 바로 누를 수 있게
+                    했어요 - 누른 별점이 그대로 반영된 채로 작성 화면으로 넘어가요. */}
+                <StarRatingInput value={0} onChange={(v) => router.push(`/popup/${id}/review?rating=${v}`)} size={20} />
               </div>
             )}
 
@@ -607,7 +618,13 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
             ) : visibleReviews.length === 0 ? (
               <EmptyState message="사진이 있는 후기가 없어요." />
             ) : (
-              visibleReviews.map((review) => <ReviewCard key={review.id} review={review} />)
+              visibleReviews.map((review, i) => (
+                <ReviewCard
+                  key={review.id}
+                  review={review}
+                  onImageClick={(photoIndex) => setImageModal({ reviewIndex: i, photoIndex })}
+                />
+              ))
             )}
           </section>
         )}
