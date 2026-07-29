@@ -43,7 +43,11 @@ public class CustomerController {
             customer.setBirthDate(request.getBirthDate());
         }
         if (request.getGender() != null) {
-            customer.setGender(Customer.Gender.valueOf(request.getGender().toUpperCase()));
+            try {
+                customer.setGender(Customer.Gender.valueOf(request.getGender().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("성별 값이 올바르지 않아요. (MALE/FEMALE/UNKNOWN 중 하나여야 해요, 입력값: " + request.getGender() + ")");
+            }
         }
         if (request.getPhone() != null && !request.getPhone().isBlank()) {
             customer.setPhone(request.getPhone());
