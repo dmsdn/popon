@@ -1,7 +1,7 @@
 // app/search/page.tsx
 "use client";
 
-import { use, useEffect, useMemo, useState } from "react";
+import { use, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Header } from "@/components/layout/Header";
 import { MobileHeader } from "@/components/layout/MobileHeader";
@@ -86,6 +86,7 @@ export default function SearchPage({
         !q ||
         item.name.toLowerCase().includes(q) ||
         (item.hashtags?.some((h) => h.toLowerCase().includes(q)) ?? false) ||
+        (item.keywordNames?.some((k) => k.toLowerCase().includes(q)) ?? false) ||
         (item.location?.toLowerCase().includes(q) ?? false);
       if (!matchesQuery) return false;
       // [수정] 백엔드에 실제 popup_hashtag 데이터가 생겨서, 이름/지역 텍스트로 카테고리를
@@ -106,7 +107,7 @@ export default function SearchPage({
   );
 
   return (
-    <main className="pb-16 mobile:pb-0 mobile:max-w-[1000px] mobile:mx-auto">
+    <main className="min-h-screen flex flex-col pb-16 mobile:pb-0 mobile:max-w-[1000px] mobile:mx-auto">
       {/* 데스크톱: 원래 쓰던 헤더(로고+검색창+아이콘) 그대로, 검색어만 채워서 보여줌 */}
       <div className="hidden mobile:block">
         <Header initialQuery={query ?? ""} />
@@ -117,6 +118,9 @@ export default function SearchPage({
         <MobileHeader searchMode initialQuery={query ?? ""} onSearchFocusChange={setMobileSearchFocused} />
       </div>
 
+      {/* [신규] 내용이 짧아도(예: 검색결과 0건) Footer가 화면 중간에 붕 뜨지 않고
+          항상 화면 맨 아래에 붙어있도록, 이 사이 영역이 남는 공간을 다 차지하게 해요. */}
+      <div className="flex-1">
       {hasActiveFilter && !mobileSearchFocused ? (
         <div>
           <div className="px-4 mobile:px-8 pt-3 pb-1">
@@ -131,19 +135,21 @@ export default function SearchPage({
 
           {/* 카테고리 / 지역 / 운영여부로 결과 좁히기 */}
           <div className="flex flex-col gap-2 px-4 mobile:px-8 py-3 border-b border-gray-100">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-400">필터</span>
+            <span className="text-xs text-gray-400">필터</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <FilterDropdown label="카테고리" options={categories} selected={category} onSelect={setCategory} />
+              <FilterDropdown label="지역" options={REGIONS} selected={region} onSelect={setRegion} />
+              <FilterDropdown label="운영여부" options={[...STATUSES]} selected={status} onSelect={setStatus} />
+              {/* [수정] "지도로 보기" 문구를 "지도에서 찾기"로 바꾸고, 필터 칩들 옆으로
+                  옮겼어요(기존엔 따로 한 줄을 차지하고 있었어요). */}
               <Link
                 href="/map"
-                className="flex items-center gap-1 text-xs text-gray-600 border border-gray-200 rounded-full px-2.5 py-1"
+                className="flex-none flex items-center gap-1 text-xs text-gray-600 border border-gray-200 rounded-full px-3 py-1.5"
               >
-                <img src="/icon/pin.svg" alt="" width={13} height={13} className="text-gray-500"  />
-                지도로 보기
+                <img src="/icon/pin.svg" alt="" width={13} height={13} className="text-gray-500" />
+                지도에서 찾기
               </Link>
             </div>
-            <FilterRow label="카테고리" options={categories} selected={category} onSelect={setCategory} />
-            <FilterRow label="지역" options={REGIONS} selected={region} onSelect={setRegion} />
-            <FilterRow label="운영여부" options={[...STATUSES]} selected={status} onSelect={setStatus} />
           </div>
 
           {!loaded ? (
@@ -187,6 +193,7 @@ export default function SearchPage({
           )}
         </div>
       )}
+      </div>
 
       <Footer />
 
@@ -197,7 +204,7 @@ export default function SearchPage({
   );
 }
 
-function FilterRow<T extends string>({
+function FilterDropdown<T extends string>({
   label,
   options,
   selected,
@@ -208,30 +215,88 @@ function FilterRow<T extends string>({
   selected: T | null;
   onSelect: (value: T | null) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  // [신규] 드롭다운 목록을 마우스로 클릭+드래그해서 위아래로 스크롤할 수 있게 -
+  // 스크롤바를 안 보이게 하는 대신, 데스크탑 마우스 사용자도 스크롤할 방법이
+  // 있어야 해서 추가했어요. (터치/트랙패드는 원래도 자연스럽게 스크롤 가능)
+  const dropdownScrollRef = useRef<HTMLDivElement>(null);
+  const dragStartY = useRef<number | null>(null);
+  const dragStartScrollTop = useRef(0);
+  const handleDropdownMouseDown = (e: React.MouseEvent) => {
+    dragStartY.current = e.clientY;
+    dragStartScrollTop.current = dropdownScrollRef.current?.scrollTop ?? 0;
+  };
+  const handleDropdownMouseMove = (e: React.MouseEvent) => {
+    if (dragStartY.current === null || !dropdownScrollRef.current) return;
+    const delta = e.clientY - dragStartY.current;
+    dropdownScrollRef.current.scrollTop = dragStartScrollTop.current - delta;
+  };
+  const handleDropdownDragEnd = () => {
+    dragStartY.current = null;
+  };
+  const ref = useRef<HTMLDivElement>(null);
+
+  // 바깥을 누르면 드롭다운이 닫히게
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
   return (
-    <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
-      <span className="text-xs text-gray-400 flex-none w-14">{label}</span>
+    <div className="relative" ref={ref}>
       <button
         type="button"
-        onClick={() => onSelect(null)}
-        className={`flex-none text-xs px-3 py-1.5 rounded-full border ${
-          selected === null ? "bg-gray-900 text-white border-gray-900" : "border-gray-200 text-gray-600"
+        onClick={() => setOpen((prev) => !prev)}
+        className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border ${
+          selected ? "border-gray-900 text-gray-900 font-medium" : "border-gray-200 text-gray-600"
         }`}
       >
-        전체
+        {selected ?? label}
+        <span className={`text-[10px] transition-transform ${open ? "rotate-180" : ""}`}>⌄</span>
       </button>
-      {options.map((option) => (
-        <button
-          key={option}
-          type="button"
-          onClick={() => onSelect(option)}
-          className={`flex-none text-xs px-3 py-1.5 rounded-full border ${
-            selected === option ? "bg-gray-900 text-white border-gray-900" : "border-gray-200 text-gray-600"
-          }`}
+
+      {open && (
+        <div
+          ref={dropdownScrollRef}
+          onMouseDown={handleDropdownMouseDown}
+          onMouseMove={handleDropdownMouseMove}
+          onMouseUp={handleDropdownDragEnd}
+          onMouseLeave={handleDropdownDragEnd}
+          className="absolute top-full left-0 mt-1.5 z-20 bg-white border border-gray-200 rounded-xl shadow-md p-2 flex flex-col gap-0.5 min-w-[120px] max-h-60 overflow-y-auto scrollbar-hide cursor-grab active:cursor-grabbing"
         >
-          {option}
-        </button>
-      ))}
+          <button
+            type="button"
+            onClick={() => {
+              onSelect(null);
+              setOpen(false);
+            }}
+            className={`text-left text-xs px-3 py-2 rounded-lg ${
+              selected === null ? "bg-gray-100 font-medium text-gray-900" : "text-gray-600"
+            }`}
+          >
+            전체
+          </button>
+          {options.map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => {
+                onSelect(option);
+                setOpen(false);
+              }}
+              className={`text-left text-xs px-3 py-2 rounded-lg ${
+                selected === option ? "bg-gray-100 font-medium text-gray-900" : "text-gray-600"
+              }`}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

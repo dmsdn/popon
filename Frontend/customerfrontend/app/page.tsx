@@ -170,7 +170,8 @@ export default function Home() {
   }, [allOpenPopups, preferredCategories]);
 
   return (
-    <main className="pb-16 mobile:pb-0 mobile:max-w-[1000px] mobile:mx-auto">
+    <main className="min-h-screen flex flex-col pb-16 mobile:pb-0 mobile:max-w-[1000px] mobile:mx-auto">
+      <div className="flex-1">
       <div className="hidden mobile:block">
         <Header />
       </div>
@@ -248,6 +249,8 @@ export default function Home() {
       />
 
       <ReviewSection />
+
+      </div>
 
       <Footer />
 
