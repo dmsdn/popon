@@ -44,6 +44,7 @@ public class PopupResponse {
     private String businessProfileImage;
     private List<String> thumbnailImages;
     private List<String> detailImages;
+    private List<OperatingHoursResponse> operatingHours; // 요일별 운영시간·휴무일
 
     public static PopupResponse from(Popup popup) {
         return from(popup, Collections.emptyList());
@@ -64,12 +65,20 @@ public class PopupResponse {
         return from(popup, hashtags, null, 0L, keywordNames, snsLinks);
     }
 
+    // 키워드 + SNS + 운영시간 (평점·이미지 미조회) — 등록/수정 응답용, 운영시간까지 바로 확인시켜줄 때 사용
+    public static PopupResponse from(Popup popup, List<String> hashtags,
+                                     List<String> keywordNames, List<PopupSnsLinkResponse> snsLinks,
+                                     List<OperatingHoursResponse> operatingHours) {
+        return from(popup, hashtags, null, 0L, keywordNames, snsLinks,
+                Collections.emptyList(), Collections.emptyList(), operatingHours);
+    }
+
     // 목록/검색용 — 이미지는 N+1 방지를 위해 안 채운다
     public static PopupResponse from(Popup popup, List<String> hashtags,
                                      java.math.BigDecimal avgRating, Long reviewCount,
                                      List<String> keywordNames, List<PopupSnsLinkResponse> snsLinks) {
         return from(popup, hashtags, avgRating, reviewCount, keywordNames, snsLinks,
-                Collections.emptyList(), Collections.emptyList());
+                Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
     }
 
     // 목록/검색 화면 전용 - 해시태그·키워드명·썸네일까지 배치조회로 채워서 리턴 (평점·SNS·상세이미지는 목록에서 안 씀)
@@ -78,14 +87,15 @@ public class PopupResponse {
     public static PopupResponse fromForList(Popup popup, List<String> hashtags,
                                             List<String> keywordNames, List<String> thumbnailImages) {
         return from(popup, hashtags, null, 0L, keywordNames, Collections.emptyList(),
-                thumbnailImages, Collections.emptyList());
+                thumbnailImages, Collections.emptyList(), Collections.emptyList());
     }
 
-    // 상세조회(findById)용 — 키워드·SNS·이미지까지 한 번에 채워서 리턴
+    // 상세조회(findById)용 — 키워드·SNS·이미지·운영시간까지 한 번에 채워서 리턴
     public static PopupResponse from(Popup popup, List<String> hashtags,
                                      java.math.BigDecimal avgRating, Long reviewCount,
                                      List<String> keywordNames, List<PopupSnsLinkResponse> snsLinks,
-                                     List<String> thumbnailImages, List<String> detailImages) {
+                                     List<String> thumbnailImages, List<String> detailImages,
+                                     List<OperatingHoursResponse> operatingHours) {
         return PopupResponse.builder()
                 .id(popup.getId())
                 .businessId(
@@ -165,6 +175,11 @@ public class PopupResponse {
                 .detailImages(
                         detailImages != null
                                 ? detailImages
+                                : Collections.emptyList()
+                )
+                .operatingHours(
+                        operatingHours != null
+                                ? operatingHours
                                 : Collections.emptyList()
                 )
                 .build();
