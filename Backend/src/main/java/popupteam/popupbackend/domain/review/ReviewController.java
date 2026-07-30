@@ -11,6 +11,7 @@ import popupteam.popupbackend.domain.review.ReviewRepository;
 import popupteam.popupbackend.domain.consumer.auth.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -23,6 +24,7 @@ import org.springframework.data.domain.Pageable;
 @RestController
 @RequestMapping("/api/customer/reviews")
 @RequiredArgsConstructor
+@Transactional
 public class ReviewController {
 
     private static final int MAX_IMAGE_COUNT = 5;
@@ -47,6 +49,7 @@ public class ReviewController {
         review.setPopupId(request.getPopupId());
         review.setRating(request.getRating());
         review.setContent(request.getContent());
+        review.setVisitDate(request.getVisitDate());
 
         Review saved;
         try {
