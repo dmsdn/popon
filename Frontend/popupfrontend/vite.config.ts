@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
@@ -16,7 +16,18 @@ function figmaAssetResolver() {
   }
 }
 
-export default defineConfig({
+// 프록시가 바라볼 백엔드 주소. 기본은 로컬, .env.local의 VITE_API_TARGET이 있으면 그걸 쓴다.
+//   로컬 개발  → 아무것도 안 하면 http://localhost:8080
+//   배포 백엔드 → .env.local 에 VITE_API_TARGET=http://3.35.218.209:8080
+// .env.local은 gitignore 대상이라 각자 환경을 커밋 없이 바꿀 수 있다. (7/30 EC2 배포)
+export default defineConfig(({ mode }) => {
+  const apiTarget = loadEnv(mode, __dirname, '').VITE_API_TARGET || 'http://localhost:8080'
+
+  // 어느 백엔드를 보고 있는지 기동 로그에 찍어둔다.
+  // 프록시 대상이 조용히 localhost로 떨어지면 원인 찾기가 까다로워서 눈에 보이게 남긴다.
+  console.log(`[vite.config] 백엔드 프록시 대상: ${apiTarget}`)
+
+  return {
   plugins: [
     figmaAssetResolver(),
     // The React and Tailwind plugins are both required for Make, even if
@@ -40,8 +51,9 @@ export default defineConfig({
     port: 5174,
     strictPort: true,
     proxy: {
-      '/api': { target: 'http://localhost:8080', changeOrigin: true },
-      '/uploads': { target: 'http://localhost:8080', changeOrigin: true },
+      '/api': { target: apiTarget, changeOrigin: true },
+      '/uploads': { target: apiTarget, changeOrigin: true },
     },
   },
+  }
 })

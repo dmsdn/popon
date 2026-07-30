@@ -32,6 +32,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# .env.example은 예외 — 어떤 환경변수를 쓰는지 팀에 알리는 문서 역할이라 커밋한다.
+!.env.example
 
 # vercel
 .vercel
