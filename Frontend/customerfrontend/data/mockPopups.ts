@@ -29,6 +29,7 @@ export type ReviewItem = {
   reviewCount?: number; // 이 팝업에 달린 전체 후기 개수
   likeCount?: number; // [신규] 추천순 정렬에 사용
   likedByMe?: boolean; // [신규] 내가 이미 추천했는지 - 추천 버튼 상태 표시용
+  isMine?: boolean; // [신규] 내가 쓴 후기인지 - 수정/삭제 버튼 표시 여부 판단용
 };
 
 export const promoCards = [

@@ -13,6 +13,7 @@ import {
 import { getPopup, type PopupDetail } from "@/lib/api/popups";
 import { waitingStatusLabel } from "@/lib/utils/statusLabels";
 import { QRCodeDisplay } from "@/components/ui/QRCodeDisplay";
+import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 
 const POLICY = [
   "순서가 되면 카카오톡으로 알림을 보내드려요. 5분 내 미확인 시 다음 순번으로 넘어갈 수 있어요.",
@@ -111,8 +112,12 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
 
       <div className="px-4 mobile:px-8 py-6 flex flex-col gap-8">
         <Link href={`/popup/${popup.id}`} className="flex items-center gap-4">
-          <div className="w-16 h-16 flex-none bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs">
-            이미지
+          <div className="w-16 h-16 flex-none bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-xs">
+            {popup.thumbnailImages?.[0] ? (
+              <ImageWithFallback src={popup.thumbnailImages[0]} className="w-full h-full object-cover" />
+            ) : (
+              "이미지"
+            )}
           </div>
           <div>
             <span className="inline-block text-xs text-gray-500 mb-1">{waitingStatusLabel(waiting.status)}</span>

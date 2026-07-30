@@ -74,8 +74,12 @@ export default function EasyEntryListPage() {
                 href={`/popup/${item.id}`}
                 className="flex items-center gap-4 py-4 border-b border-gray-50"
               >
-                <div className="w-16 h-16 flex-none rounded-lg bg-gray-100 flex items-center justify-center text-xs text-gray-400">
-                  이미지
+                <div className="w-16 h-16 flex-none rounded-lg bg-gray-100 overflow-hidden flex items-center justify-center text-xs text-gray-400">
+                  {item.imageUrl ? (
+                    <ImageWithFallback src={item.imageUrl} className="w-full h-full object-cover" />
+                  ) : (
+                    "이미지"
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-base font-medium truncate">{item.name}</p>
