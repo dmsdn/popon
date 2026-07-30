@@ -30,6 +30,7 @@ export function toPopupItem(popup: PopupDetail): PopupItem {
     // [수정] 백엔드에 popup_hashtag 실 데이터가 생겨서, 이제 진짜 태그로 카테고리를 채워요.
     category: popup.hashtags?.[0],
     hashtags: popup.hashtags,
+    keywordNames: popup.keywordNames,
     regionId: popup.regionId,
     dateRange: `${formatDate(popup.startDate)} ~ ${formatDate(popup.endDate)}`,
     // [수정] regionName(동네 단위 정식 지역명)이 있으면 그걸 우선 쓰고, 없으면 기존

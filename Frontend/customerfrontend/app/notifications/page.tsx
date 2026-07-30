@@ -58,7 +58,8 @@ export default function NotificationsPage() {
   const filtered = (notifications ?? []).filter((n) => tab === "전체" || n.type === tab);
 
   return (
-    <main className="mobile:max-w-[1000px] mobile:mx-auto pb-16 mobile:pb-0">
+    <main className="min-h-screen flex flex-col mobile:max-w-[1000px] mobile:mx-auto pb-16 mobile:pb-0">
+      <div className="flex-1">
       <div className="hidden mobile:block">
         <Header />
       </div>
@@ -122,6 +123,8 @@ export default function NotificationsPage() {
           ))}
         </div>
       )}
+
+      </div>
 
       <Footer />
       <div className="block mobile:hidden">

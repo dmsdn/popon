@@ -123,7 +123,7 @@ export default function EditProfilePage() {
   if (loading || !customer) return null;
 
   return (
-    <main className="w-full mobile:max-w-[600px] mobile:mx-auto min-h-screen px-6 py-10">
+    <main className="w-full mobile:max-w-[600px] mobile:mx-auto min-h-screen flex flex-col px-6 py-10">
       <button type="button" onClick={() => router.back()} className="text-sm text-gray-500 mb-6">
         ‹ 뒤로
       </button>

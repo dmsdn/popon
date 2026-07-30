@@ -2,14 +2,16 @@
 
 import { useState } from "react";
 import { CountStepper } from "./CountStepper";
+import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 
 interface WaitingModalProps {
   popupName: string;
+  imageUrl?: string;
   onClose: () => void;
   onSubmit: (count: number) => void;
 }
 
-export function WaitingModal({ popupName, onClose, onSubmit }: WaitingModalProps) {
+export function WaitingModal({ popupName, imageUrl, onClose, onSubmit }: WaitingModalProps) {
   const [count, setCount] = useState(1);
 
   return (
@@ -28,8 +30,12 @@ export function WaitingModal({ popupName, onClose, onSubmit }: WaitingModalProps
           </button>
         </div>
 
-        <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-sm mb-8">
-          이미지
+        <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-sm mb-8">
+          {imageUrl ? (
+            <ImageWithFallback src={imageUrl} className="w-full h-full object-cover" />
+          ) : (
+            "이미지"
+          )}
         </div>
 
         <div className="flex items-center justify-between mb-8">

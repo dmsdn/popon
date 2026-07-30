@@ -60,12 +60,28 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   const [showReservation, setShowReservation] = useState(false);
   const [showWaiting, setShowWaiting] = useState(false);
   const [slots, setSlots] = useState<PopupSlot[]>([]);
+
+  // [신규] 찜 목록 카드의 "웨이팅하기"/"예약하기" 버튼에서 ?action=waiting 또는
+  // ?action=reservation으로 들어오면, 해당 모달을 자동으로 열어줘요. 로그인
+  //안 했으면 그냥 아무것도 안 해요(각 모달을 열 때 원래 하던 로그인 확인은
+  // StickyActionBar 버튼 쪽에서 이미 하고 있어서, 여기선 로그인된 경우만 열어요).
+  useEffect(() => {
+    if (!customer) return;
+    const action = searchParams.get("action");
+    if (action === "waiting") setShowWaiting(true);
+    else if (action === "reservation") setShowReservation(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customer]);
   // [수정] 후기 작성 후 돌아올 때 "?tab=review"를 붙여서 보내주면, 새로고침 없이도
   // 곧바로 후기 탭이 선택된 상태로 상세페이지가 열려요.
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>(
     searchParams.get("tab") === "review" ? "후기" : "정보"
   );
   const [myReviewsForPopup, setMyReviewsForPopup] = useState<Review[]>([]);
+  // [신규] 내가 쓴 후기 삭제 - 성공하면 화면에서도 바로 빼줘요.
+  const handleDeleteReview = (reviewId: number) => {
+    setMyReviewsForPopup((prev) => prev.filter((r) => r.id !== reviewId));
+  };
   const [popupReviews, setPopupReviews] = useState<Review[]>([]);
   const [reviewSort, setReviewSort] = useState<"latest" | "recommended">("latest");
   const [photoOnly, setPhotoOnly] = useState(false);
@@ -270,6 +286,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     photos: r.imageUrls.length > 0 ? r.imageUrls : undefined,
     likeCount: r.likeCount,
     likedByMe: r.likedByMe,
+    isMine: true,
   }));
   const myReviewIds = new Set(myReviewsForPopup.map((r) => r.id));
   // ⚠️ 백엔드 ReviewResponse에 작성자 닉네임이 없어서 "방문자"로만 표시해요. (백엔드 요청사항 참고)
@@ -302,7 +319,8 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   const averageRating = popup.avgRating;
 
   return (
-    <main className="w-full mobile:max-w-[1000px] mobile:mx-auto pb-24">
+    <main className="min-h-screen flex flex-col w-full mobile:max-w-[1000px] mobile:mx-auto pb-24">
+      <div className="flex-1">
       <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100">
         <button
           type="button"
@@ -346,17 +364,48 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
           )}
         </div>
 
-        <p className="text-sm text-gray-500 mb-3">
+        <p className="text-sm text-gray-500 mb-1">
           {new Date(popup.startDate).toLocaleDateString("ko-KR")} ~{" "}
           {new Date(popup.endDate).toLocaleDateString("ko-KR")}
         </p>
 
-        {/* [수정] 위치가 바로 위 문단과 태그, 두 군데에 중복으로 나오고 있었어요 — 태그 하나로 정리 */}
+        {/* [수정] 상세주소가 "태그"로 잘못 들어가 있었어요 - 날짜 밑으로 옮기고,
+            누르면(확인 문구 먼저 띄우고) 네이버 지도 길찾기로 연결되게 했어요. */}
         {popup.location && (
-          <div className="flex gap-2 mb-6">
-            <span className="text-xs border border-gray-200 rounded-full px-3 py-1 text-gray-600">
-              {popup.location}
-            </span>
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm(`네이버 지도에서 "${popup.location}" 길찾기를 시작할까요?`)) {
+                window.open(`https://map.naver.com/p/search/${encodeURIComponent(popup.location!)}`, "_blank");
+              }
+            }}
+            className="flex items-center gap-1 text-sm text-gray-500 mb-3"
+          >
+            {popup.location}
+            <span className="text-gray-400">›</span>
+          </button>
+        )}
+
+        {/* [수정] 상세주소 대신 진짜 태그(지역/카테고리/해시태그)를 가져와요.
+            [수정] keywordNames/hashtags가 응답에 없어도(undefined) 죽지 않게 방어 코드 추가 -
+            이게 없으면 여기서 에러가 나서 페이지 전체가 안 그려질 수 있었어요. */}
+        {(popup.regionName || (popup.keywordNames ?? []).length > 0 || (popup.hashtags ?? []).length > 0) && (
+          <div className="flex flex-wrap gap-2 mb-6">
+            {popup.regionName && (
+              <span className="text-xs border border-gray-200 rounded-full px-3 py-1 text-gray-600">
+                #{popup.regionName}
+              </span>
+            )}
+            {(popup.keywordNames ?? []).map((name) => (
+              <span key={name} className="text-xs border border-gray-200 rounded-full px-3 py-1 text-gray-600">
+                #{name}
+              </span>
+            ))}
+            {(popup.hashtags ?? []).map((tag) => (
+              <span key={tag} className="text-xs border border-gray-200 rounded-full px-3 py-1 text-gray-600">
+                #{tag}
+              </span>
+            ))}
           </div>
         )}
 
@@ -447,6 +496,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         {showWaiting && (
           <WaitingModal
             popupName={popup.title}
+            imageUrl={images[0]?.imageUrl}
             onClose={() => setShowWaiting(false)}
             onSubmit={async (count) => {
               if (!customer) {
@@ -519,19 +569,11 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
             {/* [신규] SNS/홈페이지 - popup_sns_link, 정보 탭 맨 위에 배치 */}
             <PopupSnsLinks links={popup.snsLinks} />
 
-            <section>
-              <h2 className="text-sm font-semibold mb-2">공지사항</h2>
-              {/* TODO: 실제 공지 데이터 연결 */}
-              <div className="bg-gray-50 rounded-lg px-4 py-3 text-sm text-gray-600">
-                운영 시작 시간은 현장 상황에 따라 변경될 수 있습니다.
-              </div>
-            </section>
-
-            <section>
-              <h2 className="text-sm font-semibold mb-2">혜택</h2>
-              {/* TODO: 실제 혜택 데이터 연결 */}
-              <p className="text-sm text-gray-400">등록된 혜택이 없어요.</p>
-            </section>
+            {/* [수정] "공지사항"/"혜택"이 실제 데이터 없이 고정 문구만 보여주던
+                자리표시자였어서 없앴어요. 요청하신 "운영시간 안내"를 여기 넣으려고
+                했는데, 백엔드 Popup 테이블에 요일별 운영시간을 저장하는 필드 자체가
+                없어요(시작일/종료일만 있고, "매일 몇 시~몇 시" 같은 정보가 없어요) -
+                이 데이터가 추가되면 바로 이 자리에 넣을 수 있어요. */}
 
             <section>
               <h2 className="text-sm font-semibold mb-2">소개</h2>
@@ -641,6 +683,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                   key={review.id}
                   review={review}
                   onImageClick={(photoIndex) => setImageModal({ reviewIndex: i, photoIndex })}
+                  onDelete={handleDeleteReview}
                 />
               ))
             )}
@@ -683,6 +726,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
           ))}
         </HorizontalCarousel>
       </section>
+      </div>
 
       <Footer />
 
