@@ -227,16 +227,34 @@ export type Popup = {
   adminEditNote: string | null;   // 반려·게시중지 사유 (승인 시 서버가 null로 초기화)
   hashtags: string[] | null;      // 7/27 jmy — 등록/수정 시 전송, 응답에 포함 (구 데이터는 null/[])
   keywordNames: string[] | null;  // 7/28 jmy — 표준 카테고리(keyword 테이블) 이름 목록. 상세 조회에서 채워짐
-  regionName?: string | null;     // 7/29 — 지역(region) 이름. ⚠ 백엔드 PopupResponse 노출 대기 — 채워지면 목록 지역 컬럼에 표시
+  regionName?: string | null;     // 7/29 — 지역(region) 이름 (백엔드 노출 확인됨)
   snsLinks?: { id: number; platform: string; url: string; displayName?: string | null; sortOrder?: number | null }[] | null; // 7/28 jmy
   thumbnailImages: string[] | null; // 7/28 jsw — 썸네일 이미지 URL 목록 (상세 조회에서만 채워짐)
   detailImages: string[] | null;    // 7/28 jsw — 상세 설명 이미지 URL 목록 (상세 조회에서만 채워짐)
+  // 7/30 jsw — 요일별 운영시간·현장 웨이팅 팀당 최대 인원·유의사항·별점 집계
+  operatingHours?: OperatingHoursItem[] | null;
+  maxPartySizePerTeam?: number | null;
+  notice?: string | null;          // 팝업 상세 유의사항
+  avgRating?: number | null;       // 소비자 후기 평균 별점
+  reviewCount?: number | null;
 };
 
 // ── SNS 링크 (7/28 jmy — 팝업과 함께 등록, 응답 snsLinks로 반환) ──
 
-export type SnsPlatformCode = "INSTAGRAM" | "YOUTUBE" | "X" | "FACEBOOK" | "TIKTOK" | "BLOG" | "HOMEPAGE" | "ETC";
+// 7/30 백엔드 SnsPlatform enum 개편 — FACEBOOK·TIKTOK 삭제, NAVERMAP 추가.
+// 옛 코드를 보내면 서버가 enum 파싱에 실패해 400이 나므로 반드시 이 목록과 일치시킬 것.
+export type SnsPlatformCode = "INSTAGRAM" | "YOUTUBE" | "X" | "BLOG" | "HOMEPAGE" | "NAVERMAP" | "ETC";
 export type SnsLinkInput = { platform: SnsPlatformCode; url: string; displayName?: string; sortOrder?: number };
+
+// ── 요일별 운영시간 (7/30 jsw — 등록/수정 요청의 operatingHours로 전송, 응답에도 동일 형태) ──
+
+export type DayOfWeekCode = "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY";
+export type OperatingHoursItem = {
+  dayOfWeek: DayOfWeekCode;
+  openTime: string | null;  // "HH:mm[:ss]" — 휴무면 null
+  closeTime: string | null;
+  closed: boolean;
+};
 
 // ── 카테고리(keyword)·지역(region) 마스터 — 등록 폼 선택지용 (permitAll) ──
 
@@ -277,6 +295,9 @@ export function createPopup(data: {
   reservationMode: "SLOT" | "FREE"; // 백엔드 필수
   avgExperienceMinutes: number; // 백엔드 필수 (슬롯 단위·분)
   queueMode: "PRERESERVATION_ONLY" | "ONSITE_WAITING_ONLY" | "BOTH"; // 백엔드 필수 (7/24 jsw DTO 추가 — 미전송 시 400)
+  operatingHours?: OperatingHoursItem[]; // 7/30 jsw — 요일별 운영시간 7개 (휴무는 closed=true)
+  maxPartySizePerTeam?: number;          // 7/30 jsw — 현장 웨이팅 팀당 최대 인원 (미전송 = 제한 없음)
+  notice?: string;                       // 유의사항 (소비자 상세 노출)
 }) {
   return request<Popup>("/api/popups", { method: "POST", body: JSON.stringify(data) });
 }
@@ -298,6 +319,9 @@ export function updatePopup(
     reservationMode?: "SLOT" | "FREE";
     avgExperienceMinutes?: number;
     queueMode?: "PRERESERVATION_ONLY" | "ONSITE_WAITING_ONLY" | "BOTH"; // 수정 시 선택 (7/24 jsw DTO 추가)
+    operatingHours?: OperatingHoursItem[]; // 7/30 jsw — 전송 시 전체 교체, 미전송 시 기존 유지
+    maxPartySizePerTeam?: number;
+    notice?: string;
   },
 ) {
   return request<Popup>(`/api/popups/${id}`, { method: "PUT", body: JSON.stringify(data) });

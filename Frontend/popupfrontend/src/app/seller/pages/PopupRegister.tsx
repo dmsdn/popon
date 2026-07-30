@@ -3,18 +3,23 @@ import { Link, useNavigate, useSearchParams } from "react-router";
 import {
   FileText, MapPin, Image as ImageIcon, AlignLeft, CalendarClock,
   Ticket, Upload, Plus, X, Info, CheckCircle2, Search, Loader2, AlertTriangle, RotateCcw,
+  ArrowUp, ArrowDown,
 } from "lucide-react";
 import {
   createPopup, updatePopup, getPopup, uploadPopupImage, getPopupImages, deletePopupImage,
   getKeywords, getRegions, getMyInfo, getSlots,
   IdName, SnsLinkInput, SnsPlatformCode, PopupImageItem, PopupStatusCode,
+  DayOfWeekCode, OperatingHoursItem,
 } from "../../lib/api";
 import { ensureSlots } from "../../lib/slotAutoGen";
 import { loadOpsMode, saveOpsMode, OpsMode } from "../../lib/walkinQueue";
+// 다음 우편번호(loadPostcode)는 7/30 제거 — 키 없는 외부 위젯이라 환경 따라 로드가 자주 막혔고,
+// 팝업 열기→검색→선택 3단계를 요구했다. 네이버 지오코딩 검색을 1차 경로로 승격.
 import {
-  loadPostcode, loadNaverMaps, geocodeAddress, searchAddressByNaver,
-  DaumPostcodeResult, NaverMap, AddressCandidate,
+  loadNaverMaps, geocodeAddress, searchAddressByNaver,
+  NaverMap, AddressCandidate,
 } from "../../lib/externalScripts";
+import { PopupDraft, findDraft, upsertDraft, removeDraft } from "../../lib/popupDrafts";
 
 // 운영 기간 기본값: 시작일 = 작성 당일, 종료일 = 2주 뒤
 const toDateStr = (d: Date) =>
@@ -33,16 +38,22 @@ const OPS_MODE_LABEL: Record<OpsMode, string> = {
 
 // 카테고리는 7/29부터 하드코딩 대신 keyword 테이블(GET /api/keywords) 실데이터 — 컴포넌트에서 로드
 const DAYS = ["월", "화", "수", "목", "금", "토", "일"];
+// 화면의 월~일 순서를 서버 java.time.DayOfWeek 이름으로 — operatingHours 전송·복원 양쪽에서 사용
+const DAY_CODES: DayOfWeekCode[] = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
+const defaultDayHours = () =>
+  DAYS.map((d) => ({ open: d === "토" || d === "일" ? "10:00" : "11:00", close: d === "토" || d === "일" ? "21:00" : "20:00", closed: false }));
 
 // SNS 플랫폼 선택지 (백엔드 SnsPlatform enum과 1:1)
+// 7/30 백엔드 enum 개편 반영 — FACEBOOK·TIKTOK 삭제, NAVERMAP 추가.
+// 요청 DTO의 platform이 enum 타입이라, 목록이 어긋난 값을 보내면 역직렬화 단계에서
+// 등록·수정 요청 "전체"가 400으로 거부된다 (SNS만 빠지는 게 아니라 팝업 저장 자체가 실패).
 const SNS_PLATFORMS: { code: SnsPlatformCode; label: string }[] = [
   { code: "INSTAGRAM", label: "인스타그램" },
   { code: "YOUTUBE", label: "유튜브" },
   { code: "X", label: "X(트위터)" },
-  { code: "FACEBOOK", label: "페이스북" },
-  { code: "TIKTOK", label: "틱톡" },
   { code: "BLOG", label: "블로그" },
   { code: "HOMEPAGE", label: "홈페이지" },
+  { code: "NAVERMAP", label: "네이버 지도" },
   { code: "ETC", label: "기타" },
 ];
 
@@ -188,6 +199,19 @@ export default function PopupRegister() {
     acceptFiles(Array.from(e.dataTransfer.files), target);
   };
 
+  // 새로 고른 파일의 순서 바꾸기 (7/30) — 업로드 순서가 곧 서버 sortOrder = 소비자 노출 순서라서
+  // 전송 전에 조정할 수 있어야 한다. (서버에 이미 올라간 이미지는 재정렬 API가 없어 X로 빼고 다시 올린다)
+  const moveFile = (target: "thumb" | "detail", i: number, dir: -1 | 1) => {
+    const setter = target === "thumb" ? setImages : setDetailImages;
+    setter((prev) => {
+      const j = i + dir;
+      if (j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+  };
+
   // dragOver에서도 preventDefault가 필요하다 — 안 하면 drop 이벤트 자체가 발생하지 않는다.
   const onDragOver = (e: React.DragEvent, target: "thumb" | "detail") => {
     e.preventDefault();
@@ -215,6 +239,15 @@ export default function PopupRegister() {
   const [endDate, setEndDate] = useState(() => toDateStr(twoWeeksLater()));
   const [openTime, setOpenTime] = useState("11:00");
   const [closeTime, setCloseTime] = useState("20:00");
+  // 요일별 운영시간 (7/30 jsw operatingHours API 연동) — 「모든 요일 동일」을 끄면 요일마다 이 값이 적용된다.
+  // 그 전에는 요일별 입력칸이 상태와 연결되지 않은 장식이어서 뭘 적어도 저장되지 않았다.
+  const [dayHours, setDayHours] = useState(defaultDayHours);
+  const setDayHour = (i: number, patch: Partial<{ open: string; close: string; closed: boolean }>) =>
+    setDayHours((prev) => prev.map((h, j) => (j === i ? { ...h, ...patch } : h)));
+  // 유의사항 — 백엔드 notice 컬럼 (소비자 상세페이지 안내 노출)
+  const [notice, setNotice] = useState("");
+  // 현장 웨이팅 팀당 최대 인원 — 백엔드 maxPartySizePerTeam ("" = 제한 없음, 미전송)
+  const [maxPartyPerTeam, setMaxPartyPerTeam] = useState<number | "">("");
   // 예약 정책 (백엔드 필수: reservationMode·avgExperienceMinutes) — 슬롯은 이 값 기준 자동 생성
   const [slotUnit, setSlotUnit] = useState(30); // 슬롯 단위(분) = 체험 소요시간
   const [slotCapacity, setSlotCapacity] = useState(10); // 슬롯당 예약 정원 (자동 생성 시 사용)
@@ -302,7 +335,32 @@ export default function PopupRegister() {
         if (p.keywordNames?.length) setPendingCatNames(p.keywordNames); // 7/29 카테고리 복원 (이름→id는 마스터 로드 후)
         if (p.regionName) setPendingRegionName(p.regionName);           // 7/29 지역 복원 (동일하게 이름→id)
         if (p.companyName) setCompanyName(p.companyName);               // 7/29 브랜드명 표시용
-        if (p.snsLinks?.length) setSnsLinks(p.snsLinks.map((l) => ({ platform: l.platform as SnsPlatformCode, url: l.url }))); // 7/29 SNS 복원
+        // 7/30 SNS 복원 — 구 enum(FACEBOOK·TIKTOK)으로 저장된 링크가 남아 있어도
+        // 셀렉트가 죽지 않도록 모르는 코드는 「기타」로 승계한다. url은 그대로 유지.
+        if (p.snsLinks?.length) setSnsLinks(p.snsLinks.map((l) => ({
+          platform: SNS_PLATFORMS.some((sp) => sp.code === l.platform) ? (l.platform as SnsPlatformCode) : "ETC",
+          url: l.url,
+        })));
+        // 7/30 요일별 운영시간 복원 — 전 요일이 같은 시간이면 「모든 요일 동일」로 접어서 보여준다
+        if (p.operatingHours?.length) {
+          const byCode = new Map(p.operatingHours.map((h) => [h.dayOfWeek, h]));
+          const restored = DAY_CODES.map((code, i) => {
+            const h = byCode.get(code);
+            if (!h) return defaultDayHours()[i];
+            return {
+              open: (h.openTime ?? "11:00").slice(0, 5),
+              close: (h.closeTime ?? "20:00").slice(0, 5),
+              closed: h.closed,
+            };
+          });
+          setDayHours(restored);
+          const open7 = restored.filter((h) => !h.closed);
+          const uniform = open7.length === 7 && open7.every((h) => h.open === open7[0].open && h.close === open7[0].close);
+          setSameHours(uniform);
+          if (uniform) { setOpenTime(open7[0].open); setCloseTime(open7[0].close); }
+        }
+        if (p.maxPartySizePerTeam != null) setMaxPartyPerTeam(p.maxPartySizePerTeam); // 7/30
+        if (p.notice) setNotice(p.notice);                                            // 7/30 유의사항 복원
         if (p.location) previewOnMap(p.location);    // 수정 모드도 지도에 기존 위치 표시
       })
       .catch((e) => setError(e instanceof Error ? e.message : "팝업 정보를 불러오지 못했습니다."));
@@ -314,6 +372,52 @@ export default function PopupRegister() {
       .then((slots) => { if (slots.length) setSlotCapacity(slots[0].capacity); })
       .catch(() => {});
   }, [editId]);
+
+  // ── 임시저장 (7/30) — 진짜로 저장한다 ─────────────────────────────
+  // 그 전의 「임시저장」 버튼은 목록으로 이동만 하고 아무것도 저장하지 않는 장식이었다.
+  // 백엔드에 "작성 중" 상태가 없으므로(등록 즉시 PENDING 심사 대기) localStorage에 보관하고,
+  // 「팝업 조회/수정」 표가 이 목록을 함께 보여준다. 자세한 구조는 lib/popupDrafts.ts.
+  const draftParam = searchParams.get("draft");
+  const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!draftParam || editId) return;
+    const d = findDraft(draftParam);
+    if (!d) return;
+    setActiveDraftId(d.id);
+    setTitle(d.title);
+    setDescription(d.description);
+    setNotice(d.notice);
+    setStartDate(d.startDate);
+    setEndDate(d.endDate);
+    setOpenTime(d.openTime);
+    setCloseTime(d.closeTime);
+    setSameHours(d.sameHours);
+    if (d.dayHours?.length === 7) setDayHours(d.dayHours);
+    setDirectAddress(d.directAddress);
+    setZonecode(d.zonecode);
+    setTags(d.tags);
+    setCats(d.cats);
+    setRegionId(d.regionId);
+    setSnsLinks(d.snsLinks);
+    setOpsMode(d.opsMode);
+    setMaxCapacity(d.maxCapacity);
+    setSlotUnit(d.slotUnit);
+    setSlotCapacity(d.slotCapacity);
+    setMaxPartyPerTeam(d.maxPartyPerTeam);
+    if (d.directAddress) previewOnMap(d.directAddress);
+  }, [draftParam, editId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const saveDraft = () => {
+    const id = activeDraftId ?? String(Date.now());
+    upsertDraft({
+      id, savedAt: new Date().toISOString(),
+      title, description, notice, startDate, endDate, openTime, closeTime,
+      sameHours, dayHours, directAddress, zonecode, tags, cats, regionId,
+      snsLinks, opsMode, maxCapacity, slotUnit, slotCapacity, maxPartyPerTeam,
+    });
+    setActiveDraftId(id);
+    navigate("/seller/popups");
+  };
 
   // 주소가 정해지면 좌표를 구해 지도에 핀을 찍는다.
   // 서버도 등록 시 같은 주소를 지오코딩하므로, 여기 좌표는 "등록 전 확인용" 미리보기다.
@@ -349,38 +453,26 @@ export default function PopupRegister() {
     }
   };
 
-  // 「주소 검색」 — 다음 우편번호 팝업을 띄우고, 고른 도로명 주소를 입력칸에 채운다.
-  // 사내망 등에서 daum.net이 막히면 네이버 지오코딩 기반 대체 검색으로 자동 전환한다.
-  const openAddressSearch = async () => {
+  // 「주소 검색」 — 네이버 지오코딩 검색 패널을 바로 연다 (7/30).
+  // 그 전에는 다음 우편번호 팝업을 먼저 시도했는데, 키 없이 쓰는 외부 위젯이라 환경에 따라
+  // 로드가 자주 막혔고 성공해도 팝업 열기→검색→선택 3번을 눌러야 했다.
+  // 지금은 주소칸에 적힌 값으로 즉시 후보를 검색하므로: 버튼 1번 → 후보 선택 1번이면 끝.
+  const openAddressSearch = () => {
     setMapError("");
-    try {
-      await loadPostcode();
-    } catch {
-      // 다음 우편번호가 막힌 환경 — 네이버 지오코딩 기반 검색으로 조용히 전환한다.
-      // 우편번호까지 같이 나오므로 사용자가 잃는 정보는 없다(경고 대신 안내만).
-      setFallbackOpen(true);
-      setFallbackQuery(directAddress);
-      return;
-    }
-    new window.daum!.Postcode({
-      oncomplete: (data: DaumPostcodeResult) => {
-        // 도로명이 없는 지역은 지번 주소로 대체
-        const base = data.roadAddress || data.jibunAddress;
-        const full = data.buildingName ? `${base} (${data.buildingName})` : base;
-        setDirectAddress(full);
-        setZonecode(data.zonecode);
-        previewOnMap(base); // 좌표 검색은 건물명 없는 순수 주소로
-      },
-    }).open();
+    setFallbackOpen(true);
+    setFallbackQuery(directAddress);
+    if (directAddress.trim()) runFallbackSearch(directAddress);
   };
 
-  // 대체 검색 실행 — 네이버 지오코딩이 돌려준 후보 목록을 보여준다
-  const runFallbackSearch = async () => {
-    if (!fallbackQuery.trim()) return;
+  // 주소 후보 검색 — 네이버 지오코딩이 돌려준 목록을 보여준다.
+  // q를 직접 받는 이유: openAddressSearch가 setFallbackQuery 직후 부르는데 state는 아직 이전 값이라서.
+  const runFallbackSearch = async (q?: string) => {
+    const query = (q ?? fallbackQuery).trim();
+    if (!query) return;
     setFallbackBusy(true);
     setMapError("");
     try {
-      const list = await searchAddressByNaver(fallbackQuery.trim());
+      const list = await searchAddressByNaver(query);
       setFallbackList(list);
       if (list.length === 0) setMapError("검색 결과가 없습니다. 도로명 주소를 더 정확히 입력해 주세요.");
     } catch (e) {
@@ -418,6 +510,21 @@ export default function PopupRegister() {
     if (!startDate || !endDate) return setError("운영 기간(시작일·종료일)을 입력해 주세요.");
     if (!maxCapacity || maxCapacity < 1) return setError("최대 수용 정원을 입력해 주세요.");
 
+    // 요일별 운영시간 — 「모든 요일 동일」이면 7일 같은 값으로 펼쳐 전송한다.
+    // startDate·endDate의 시각 부분은 슬롯 생성 창으로 쓰이므로, 요일별 시간이 갈릴 때는
+    // 그 합집합(가장 이른 오픈 ~ 가장 늦은 마감)을 준다 — 슬롯은 요일 구분 없이 한 창으로 생성된다.
+    const operatingHours: OperatingHoursItem[] = DAY_CODES.map((code, i) =>
+      sameHours
+        ? { dayOfWeek: code, openTime, closeTime, closed: false }
+        : dayHours[i].closed
+          ? { dayOfWeek: code, openTime: null, closeTime: null, closed: true }
+          : { dayOfWeek: code, openTime: dayHours[i].open, closeTime: dayHours[i].close, closed: false },
+    );
+    const openDays = operatingHours.filter((h) => !h.closed);
+    if (openDays.length === 0) return setError("모든 요일이 휴무입니다. 운영 요일을 하나 이상 남겨 주세요.");
+    const earliestOpen = openDays.map((h) => h.openTime!).reduce((a, b) => (a < b ? a : b));
+    const latestClose = openDays.map((h) => h.closeTime!).reduce((a, b) => (a > b ? a : b));
+
     const payload = {
       // 반려된 팝업을 다시 올릴 때만 상태를 PENDING으로 되돌려 심사 대기열에 다시 넣는다.
       // 그 외(정상 수정)에는 status를 아예 보내지 않아 서버가 현재 상태를 그대로 유지하게 한다 —
@@ -426,8 +533,12 @@ export default function PopupRegister() {
       title: title.trim(),
       description: description.trim(),
       location: directAddress.trim(),
-      startDate: `${startDate}T${openTime}:00`,
-      endDate: `${endDate}T${closeTime}:00`,
+      startDate: `${startDate}T${earliestOpen}:00`,
+      endDate: `${endDate}T${latestClose}:00`,
+      operatingHours, // 7/30 jsw — 요일별 운영시간·휴무 실저장
+      notice: notice.trim() || undefined, // 유의사항 (소비자 상세 안내)
+      // 현장 웨이팅 팀당 최대 인원 — 웨이팅을 받는 운영 방식일 때만 의미가 있다
+      ...(opsMode !== "RESERVATION" && maxPartyPerTeam !== "" ? { maxPartySizePerTeam: Number(maxPartyPerTeam) } : {}),
       // 서버가 capacity·areaSqm 둘 다 없으면 400을 던지므로 (PopupService.create) capacity는 필수 전송
       capacity: maxCapacity,
       // 7/27 jmy 해시태그 — 화면의 태그 입력을 서버에 실저장 (소비자 검색 노출)
@@ -470,6 +581,8 @@ export default function PopupRegister() {
         if (keptStale > 0) note += ` · 이전 설정의 슬롯 ${keptStale}개는 예약이 있어 유지됨`;
         setSlotProgress(note);
       }
+      // 임시저장으로 시작한 등록이 서버에 들어갔으면 초안은 소임을 다했다 — 목록에 유령으로 남지 않게 제거
+      if (activeDraftId) removeDraft(activeDraftId);
       setSubmitted(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "등록에 실패했습니다.");
@@ -669,15 +782,28 @@ export default function PopupRegister() {
                 <input type="time" value={closeTime} onChange={(e) => setCloseTime(e.target.value)} className={inputBase + " w-32"} />
               </div>
             ) : (
+              /* 7/30 — 상태(dayHours)와 실제로 연결. 그 전에는 defaultValue만 있는 장식이라 입력해도 저장되지 않았다. */
               <div className="flex flex-col gap-1.5">
-                {DAYS.map((d) => (
+                {DAYS.map((d, i) => (
                   <div key={d} className="flex items-center gap-2 text-[13px]">
                     <span className="w-6 text-xs text-muted-foreground">{d}</span>
-                    <input type="time" defaultValue={d === "토" || d === "일" ? "10:00" : "11:00"} className={inputBase + " w-32"} />
+                    <input
+                      type="time" value={dayHours[i].open} disabled={dayHours[i].closed}
+                      onChange={(e) => setDayHour(i, { open: e.target.value })}
+                      className={inputBase + " w-32 disabled:opacity-40"}
+                    />
                     <span className="text-muted-foreground">—</span>
-                    <input type="time" defaultValue={d === "토" || d === "일" ? "21:00" : "20:00"} className={inputBase + " w-32"} />
-                    <label className="flex items-center gap-1 text-[11px] text-muted-foreground ml-2">
-                      <input type="checkbox" className="accent-[#E85D3C]" /> 휴무
+                    <input
+                      type="time" value={dayHours[i].close} disabled={dayHours[i].closed}
+                      onChange={(e) => setDayHour(i, { close: e.target.value })}
+                      className={inputBase + " w-32 disabled:opacity-40"}
+                    />
+                    <label className="flex items-center gap-1 text-[11px] text-muted-foreground ml-2 cursor-pointer">
+                      <input
+                        type="checkbox" checked={dayHours[i].closed}
+                        onChange={(e) => setDayHour(i, { closed: e.target.checked })}
+                        className="accent-[#E85D3C]"
+                      /> 휴무
                     </label>
                   </div>
                 ))}
@@ -708,7 +834,7 @@ export default function PopupRegister() {
               <Search size={13} /> 주소 검색
             </button>
 
-            {/* 대체 검색 — 다음 우편번호를 못 쓸 때만 열린다 */}
+            {/* 주소 검색 패널 — 네이버 지오코딩 후보에서 선택하면 주소·우편번호·좌표가 한 번에 채워진다 */}
             {fallbackOpen && (
               <div className="sm:col-span-2 border border-accent/40 bg-accent/5 rounded-sm p-3 flex flex-col gap-2">
                 <p className="text-[11px] text-muted-foreground">
@@ -725,7 +851,7 @@ export default function PopupRegister() {
                   />
                   <button
                     type="button"
-                    onClick={runFallbackSearch}
+                    onClick={() => runFallbackSearch()} // 직접 넘기면 클릭 이벤트가 q 인자로 들어간다
                     disabled={fallbackBusy}
                     className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-50 shrink-0"
                   >
@@ -851,13 +977,25 @@ export default function PopupRegister() {
               </div>
             )}
             {images.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-2">
+              <div className="flex flex-col gap-1.5 mt-2">
                 {images.map((f, i) => (
-                  <span key={`${f.name}-${i}`} className="inline-flex items-center gap-1 text-xs bg-secondary px-2 py-1 rounded-sm">
-                    <ImageIcon size={11} /> {f.name}
-                    <button onClick={() => setImages(images.filter((_, j) => j !== i))}><X size={11} /></button>
-                  </span>
+                  <div key={`${f.name}-${i}`} className="flex items-center gap-2 text-xs bg-secondary px-3 py-1.5 rounded-sm">
+                    <span className="w-5 h-5 rounded-sm bg-card border border-border flex items-center justify-center text-[10px] font-semibold shrink-0" style={{ fontFamily: "'DM Mono', monospace" }}>{i + 1}</span>
+                    <ImageIcon size={11} className="shrink-0" /> <span className="truncate">{f.name}</span>
+                    <span className="ml-auto flex items-center gap-0.5 shrink-0">
+                      <button type="button" title="위로" disabled={i === 0} onClick={() => moveFile("thumb", i, -1)} className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-25">
+                        <ArrowUp size={12} />
+                      </button>
+                      <button type="button" title="아래로" disabled={i === images.length - 1} onClick={() => moveFile("thumb", i, 1)} className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-25">
+                        <ArrowDown size={12} />
+                      </button>
+                      <button type="button" title="제거" onClick={() => setImages(images.filter((_, j) => j !== i))} className="p-1 text-muted-foreground hover:text-foreground">
+                        <X size={12} />
+                      </button>
+                    </span>
+                  </div>
                 ))}
+                <p className="text-[10px] text-muted-foreground">순서대로 업로드되며, 첫 번째가 대표 썸네일이 됩니다.</p>
               </div>
             )}
           </div>
@@ -938,6 +1076,20 @@ export default function PopupRegister() {
                 className={inputCls}
               />
             </div>
+            {/* 7/30 — 백엔드 maxPartySizePerTeam 연동. 웨이팅을 받는 방식일 때만 의미가 있어 조건부 노출 */}
+            {opsMode !== "RESERVATION" && (
+              <div>
+                <label className={labelCls}>
+                  웨이팅 팀당 최대 인원 <span className="font-normal text-muted-foreground">(선택 — 비우면 제한 없음)</span>
+                </label>
+                <input
+                  type="number" min={1} value={maxPartyPerTeam}
+                  onChange={(e) => setMaxPartyPerTeam(e.target.value === "" ? "" : Number(e.target.value))}
+                  className={inputCls}
+                  placeholder="예: 4"
+                />
+              </div>
+            )}
           </div>
           {useReservation && (
             <div className="p-4 bg-secondary/60 rounded-sm">
@@ -978,6 +1130,20 @@ export default function PopupRegister() {
               className={inputCls + " resize-y leading-relaxed"}
               placeholder={"팝업의 콘셉트, 판매 상품, 포토존·이벤트 등을 소개해 주세요.\n\n## 이런 걸 만나요\n- 한정판 굿즈 20종\n- 브랜드 캐릭터 포토존"}
           />
+          <div>
+            {/* 7/30 — 백엔드 notice 컬럼 연동. 소비자 상세페이지의 유의사항 안내로 노출된다 */}
+            <label className={labelCls}>
+              유의사항 <span className="font-normal text-muted-foreground">(선택 — 소비자 상세페이지에 안내로 노출)</span>
+            </label>
+            <textarea
+              rows={3}
+              maxLength={500}
+              value={notice}
+              onChange={(e) => setNotice(e.target.value)}
+              className={inputCls + " resize-y leading-relaxed"}
+              placeholder={"예: 반려동물 동반 불가 · 재입장 불가 · 인근 주차 공간 없음 (대중교통 이용 권장)"}
+            />
+          </div>
           <div>
             {/* 7/29 — 여러 장 허용. 업로드 순서 = 본문 아래 노출 순서(서버 sortOrder). 규격은 서버가 DETAIL_SPEC으로 리사이즈 */}
             <label className={labelCls}>상세 설명 이미지 <span className="font-normal text-muted-foreground">(JPG 여러 장 · {DETAIL_SPEC} 세로형으로 변환 — 상품 상세페이지처럼 본문 아래 순서대로 이어붙습니다)</span></label>
@@ -1022,11 +1188,19 @@ export default function PopupRegister() {
                 {detailImages.map((f, i) => (
                   <div key={`${f.name}-${i}`} className="flex items-center gap-2 text-xs bg-secondary px-3 py-2 rounded-sm">
                     <span className="w-5 h-5 rounded-sm bg-card border border-border flex items-center justify-center text-[10px] font-semibold shrink-0" style={{ fontFamily: "'DM Mono', monospace" }}>{i + 1}</span>
-                    <ImageIcon size={13} /> <span className="truncate">{f.name}</span>
+                    <ImageIcon size={13} className="shrink-0" /> <span className="truncate">{f.name}</span>
                     <span className="text-muted-foreground shrink-0">({(f.size / 1024 / 1024).toFixed(1)}MB)</span>
-                    <button type="button" onClick={() => setDetailImages(detailImages.filter((_, j) => j !== i))} className="ml-auto text-muted-foreground hover:text-foreground shrink-0">
-                      <X size={13} />
-                    </button>
+                    <span className="ml-auto flex items-center gap-0.5 shrink-0">
+                      <button type="button" title="위로" disabled={i === 0} onClick={() => moveFile("detail", i, -1)} className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-25">
+                        <ArrowUp size={12} />
+                      </button>
+                      <button type="button" title="아래로" disabled={i === detailImages.length - 1} onClick={() => moveFile("detail", i, 1)} className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-25">
+                        <ArrowDown size={12} />
+                      </button>
+                      <button type="button" title="제거" onClick={() => setDetailImages(detailImages.filter((_, j) => j !== i))} className="p-1 text-muted-foreground hover:text-foreground">
+                        <X size={12} />
+                      </button>
+                    </span>
                   </div>
                 ))}
               </div>
@@ -1034,13 +1208,23 @@ export default function PopupRegister() {
           </div>
         </Section>
 
-        {/* 하단 액션 바 */}
+        {/* 하단 액션 바 — 임시저장은 7/30부터 실제로 저장한다 (그 전엔 목록 이동만 하는 장식이었다) */}
         <div className="sticky bottom-0 bg-card border border-border rounded-sm px-5 py-3 flex items-center justify-between shadow-[0_-4px_12px_rgba(0,0,0,0.04)]">
-          <p className="text-[11px] text-muted-foreground hidden sm:block">임시저장 시 「팝업 조회/수정」에서 이어서 작성할 수 있습니다.</p>
+          <p className="text-[11px] text-muted-foreground hidden sm:block">
+            {editId
+              ? "수정 중인 팝업은 임시저장 없이 「수정 저장」으로만 반영됩니다."
+              : "임시저장하면 「팝업 조회/수정」 표에 남아 이어서 작성할 수 있습니다. (이 브라우저에만 보관 · 이미지 제외)"}
+          </p>
           <div className="flex gap-2 ml-auto">
-            <button type="button" onClick={() => navigate("/seller/popups")} className="text-xs px-4 py-2.5 border border-border rounded-sm hover:bg-secondary">
-              임시저장
-            </button>
+            {editId ? (
+              <button type="button" onClick={() => navigate("/seller/popups")} className="text-xs px-4 py-2.5 border border-border rounded-sm hover:bg-secondary">
+                취소
+              </button>
+            ) : (
+              <button type="button" onClick={saveDraft} className="text-xs px-4 py-2.5 border border-border rounded-sm hover:bg-secondary">
+                임시저장
+              </button>
+            )}
             <button
               type="button"
               disabled={submitting}
