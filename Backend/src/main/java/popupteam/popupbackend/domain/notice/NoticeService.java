@@ -298,7 +298,7 @@ public class NoticeService {
         if (popup == null) return; // 팝업이 이미 삭제됐으면 알림은 조용히 생략 (치명적이지 않음)
 
         Notice notice = createNotice(popup, NoticeRecipientType.CUSTOMER, NoticeCategory.NOTICE,
-                "후기 가림 처리 안내", "고객님의 후기가 다른 사용자의 신고로인해 가려�었습니다.",
+                "후기 가림 처리 안내", "고객님의 후기가 다른 사용자의 신고로인해 가려졌습니다.",
                 "system", 1);
         saveRecipients(notice, Set.of(reviewAuthorCustomerId));
     }
