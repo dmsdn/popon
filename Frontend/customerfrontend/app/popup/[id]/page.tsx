@@ -66,10 +66,6 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     searchParams.get("tab") === "review" ? "후기" : "정보"
   );
   const [myReviewsForPopup, setMyReviewsForPopup] = useState<Review[]>([]);
-  // [신규] 내가 쓴 후기 삭제 - 성공하면 화면에서도 바로 빼줘요.
-  const handleDeleteReview = (reviewId: number) => {
-    setMyReviewsForPopup((prev) => prev.filter((r) => r.id !== reviewId));
-  };
   const [popupReviews, setPopupReviews] = useState<Review[]>([]);
   const [reviewSort, setReviewSort] = useState<"latest" | "recommended">("latest");
   const [photoOnly, setPhotoOnly] = useState(false);
@@ -274,7 +270,6 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     photos: r.imageUrls.length > 0 ? r.imageUrls : undefined,
     likeCount: r.likeCount,
     likedByMe: r.likedByMe,
-    isMine: true,
   }));
   const myReviewIds = new Set(myReviewsForPopup.map((r) => r.id));
   // ⚠️ 백엔드 ReviewResponse에 작성자 닉네임이 없어서 "방문자"로만 표시해요. (백엔드 요청사항 참고)
@@ -452,7 +447,6 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         {showWaiting && (
           <WaitingModal
             popupName={popup.title}
-            imageUrl={images[0]?.imageUrl}
             onClose={() => setShowWaiting(false)}
             onSubmit={async (count) => {
               if (!customer) {
@@ -647,7 +641,6 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                   key={review.id}
                   review={review}
                   onImageClick={(photoIndex) => setImageModal({ reviewIndex: i, photoIndex })}
-                  onDelete={handleDeleteReview}
                 />
               ))
             )}

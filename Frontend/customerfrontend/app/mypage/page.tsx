@@ -169,7 +169,6 @@ function MyPageContent() {
   const [myReservations, setMyReservations] = useState<Reservation[] | null>(null);
   const [myWaitings, setMyWaitings] = useState<Waiting[]>([]);
   const [reservationPopupTitles, setReservationPopupTitles] = useState<Record<number, string>>({});
-  const [reservationPopupImages, setReservationPopupImages] = useState<Record<number, string | undefined>>({});
 
   useEffect(() => {
     if (!isLoggedIn || !customer) return;
@@ -221,7 +220,6 @@ function MyPageContent() {
       getPopup(popupId)
         .then((detail) => {
           setReservationPopupTitles((prev) => ({ ...prev, [popupId]: detail.title }));
-          setReservationPopupImages((prev) => ({ ...prev, [popupId]: detail.thumbnailImages?.[0] }));
         })
         .catch(() => {
           /* 팝업이 삭제됐을 수도 있어요 */
@@ -697,12 +695,8 @@ if (queryMenu !== syncedQueryMenu) {
                       href={`/popup/${popupId}`}
                       className="flex items-center gap-4 border border-gray-200 rounded-xl p-4"
                     >
-                      <div className="w-16 h-16 flex-none bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-xs">
-                        {p?.thumbnailImages?.[0] ? (
-                          <ImageWithFallback src={p.thumbnailImages[0]} className="w-full h-full object-cover" />
-                        ) : (
-                          "이미지"
-                        )}
+                      <div className="w-16 h-16 flex-none bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs">
+                        이미지
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold truncate">{p?.title ?? `팝업 #${popupId}`}</p>
@@ -740,15 +734,8 @@ if (queryMenu !== syncedQueryMenu) {
                         className="block border border-gray-200 rounded-xl p-5"
                       >
                         <div className="flex items-start gap-4">
-                          <div className="w-16 h-16 flex-none bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-xs">
-                            {reservationPopupImages[w.popupId] ? (
-                              <ImageWithFallback
-                                src={reservationPopupImages[w.popupId]!}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              "이미지"
-                            )}
+                          <div className="w-16 h-16 flex-none bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs">
+                            이미지
                           </div>
                           <div className="flex-1">
                             <p className="text-sm font-semibold mb-1">
@@ -783,15 +770,8 @@ if (queryMenu !== syncedQueryMenu) {
                         href={`/reservations/${r.id}`}
                         className="flex items-center gap-4 border border-gray-200 rounded-xl p-5"
                       >
-                        <div className="w-16 h-16 flex-none bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-xs">
-                          {reservationPopupImages[r.popupId] ? (
-                            <ImageWithFallback
-                              src={reservationPopupImages[r.popupId]!}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            "이미지"
-                          )}
+                        <div className="w-16 h-16 flex-none bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs">
+                          이미지
                         </div>
                         <div>
                           <span className="inline-block text-xs text-gray-500 mb-1">
@@ -878,14 +858,16 @@ if (queryMenu !== syncedQueryMenu) {
                     onClick={() => toggleNotif(item.id)}
                     aria-pressed={item.enabled}
                     className={`w-11 h-6 rounded-full relative transition-colors ${
-                      item.enabled ? "bg-gray-900" : "bg-gray-200"
+                      item.enabled ? "bg-gray-200" : "bg-gray-600"
                     }`}
                   >
-                    <span
-                      className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
-                        item.enabled ? "translate-x-[22px]" : "translate-x-0.5"
-                      }`}
-                    />
+                  <span
+                    className={`absolute top-0.5 w-5 h-5 rounded-full transition-all ${
+                      item.enabled
+                      ? "translate-x-[0.5px] bg-white"      // ON일 때: 오른쪽 이동 (22px) + 흰색 원
+                      : "translate-x-[-20px] bg-gray-300"      // OFF일 때: 왼쪽 밀착 (2px) + 회색 원 (원하는 색상으로 변경 가능)
+                    }`}
+                  />
                   </button>
                 </div>
               ))}

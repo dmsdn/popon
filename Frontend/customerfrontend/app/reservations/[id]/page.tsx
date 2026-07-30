@@ -14,7 +14,6 @@ import { getPopup, getPopupSlots, type PopupDetail, type PopupSlot } from "@/lib
 import { toLocalDateString } from "@/lib/utils/formatLocalDate";
 import { ReservationModal } from "@/components/popup/ReservationModal";
 import { QRCodeDisplay } from "@/components/ui/QRCodeDisplay";
-import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 
 const POLICY = [
   "예약 시간 10분 전까지 입장해 주세요. 시간이 지나면 예약이 자동 취소될 수 있어요.",
@@ -133,12 +132,8 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
 
       <div className="px-4 mobile:px-8 py-6 flex flex-col gap-8">
         <Link href={`/popup/${popup.id}`} className="flex items-center gap-4">
-          <div className="w-16 h-16 flex-none bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-xs">
-            {popup.thumbnailImages?.[0] ? (
-              <ImageWithFallback src={popup.thumbnailImages[0]} className="w-full h-full object-cover" />
-            ) : (
-              "이미지"
-            )}
+          <div className="w-16 h-16 flex-none bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs">
+            이미지
           </div>
           <div>
             <span className="inline-block text-xs text-gray-500 mb-1">
