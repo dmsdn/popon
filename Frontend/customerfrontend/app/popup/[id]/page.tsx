@@ -744,43 +744,43 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
 
       <Footer />
 
-      <div className="fixed bottom-0 left-0 right-0 z-40">
-        <StickyActionBar
-          popupId={popup.id}
-          waitingTeams={waitingTeams}
-          wishlistCount={popup.wishlistCount}
-          onReserve={() => {
-            // [수정] 이전엔 로그인 여부 확인 없이 바로 모달이 열려서, 폼을 다 채운 뒤에야
-            // (제출 시점에) 로그인하라고 튕겨서 입력한 내용이 다 날아갔어요. 버튼을
-            // 누르는 즉시 확인하도록 앞으로 옮겼어요.
-            if (!customer) {
-            saveRedirectTarget(`/popup/${id}`);
-            router.push("/login");
-            return;
-          }
-          // [수정] SLOT 모드 팝업인데 slots가 비어있으면(아직 시간대가 하나도 등록 안 됨),
-          // 모달이 자유입력(FREE) UI로 잘못 보여지면서 결국 slotId 없이 제출돼서
-          // "slotId를 입력해주세요" 에러가 나는 문제가 있었어요. 슬롯이 실제로 없는
-          // 경우엔 애초에 예약할 수 없는 상태라, 모달을 열지 않고 바로 안내해요.
-          if (popup.reservationMode === "SLOT" && slots.length === 0) {
-            alert("아직 예약 가능한 시간대가 등록되지 않았어요. 잠시 후 다시 시도해주세요.");
-            return;
-          }
-          setShowReservation(true);
-        }}
-        onWaiting={() => {
-          if (!customer) {
-            saveRedirectTarget(`/popup/${id}`);
-            router.push("/login");
-            return;
-          }
-          setShowWaiting(true);
-        }}
-      />
       <div className="block mobile:hidden">
         <BottomTabBar />
       </div>
-      </div>
+
+      <StickyActionBar
+        popupId={popup.id}
+        popupStatus={toPopupItem(popup).status}
+        waitingTeams={waitingTeams}
+        wishlistCount={popup.wishlistCount}
+        onReserve={() => {
+          // [수정] 이전엔 로그인 여부 확인 없이 바로 모달이 열려서, 폼을 다 채운 뒤에야
+          // (제출 시점에) 로그인하라고 튕겨서 입력한 내용이 다 날아갔어요. 버튼을
+          // 누르는 즉시 확인하도록 앞으로 옮겼어요.
+          if (!customer) {
+          saveRedirectTarget(`/popup/${id}`);
+          router.push("/login");
+          return;
+        }
+        // [수정] SLOT 모드 팝업인데 slots가 비어있으면(아직 시간대가 하나도 등록 안 됨),
+        // 모달이 자유입력(FREE) UI로 잘못 보여지면서 결국 slotId 없이 제출돼서
+        // "slotId를 입력해주세요" 에러가 나는 문제가 있었어요. 슬롯이 실제로 없는
+        // 경우엔 애초에 예약할 수 없는 상태라, 모달을 열지 않고 바로 안내해요.
+        if (popup.reservationMode === "SLOT" && slots.length === 0) {
+          alert("아직 예약 가능한 시간대가 등록되지 않았어요. 잠시 후 다시 시도해주세요.");
+          return;
+        }
+        setShowReservation(true);
+      }}
+      onWaiting={() => {
+        if (!customer) {
+          saveRedirectTarget(`/popup/${id}`);
+          router.push("/login");
+          return;
+        }
+        setShowWaiting(true);
+      }}
+      />
     </main>
   );
 }

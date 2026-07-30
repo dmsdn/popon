@@ -511,7 +511,7 @@ if (queryMenu !== syncedQueryMenu) {
               <button
                 type="button"
                 onClick={() => handleSelectMenu("내 정보")}
-                className="hidden mobile:flex w-full flex-col items-center mobile:items-start px-4 mobile:px-6 mb-6"
+                className="w-full flex flex-col items-center mobile:items-start px-4 mobile:px-6 mb-6"
               >
                 <div className="w-16 h-16 rounded-full bg-gray-200 mb-3 overflow-hidden">
                   {customer.profileImage && (
