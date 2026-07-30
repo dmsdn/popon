@@ -115,5 +115,7 @@ List<Object[]> countDailyCheckedInVisitors(
 
     // 예약 전환율 계산용 - 취소되지 않은 전체 예약 건수
     long countByPopupIdAndStatus(Long popupId, ReservationStatus status);
+    // 후기 작성 가능 여부 확인용 - 이 소비자가 이 팝업에 실제로 체크인(입장)한 예약이 있는지
+    boolean existsByPopup_IdAndCustomer_IdAndEntryStatus(Long popupId, Long customerId, EntryStatus entryStatus);
 
 }

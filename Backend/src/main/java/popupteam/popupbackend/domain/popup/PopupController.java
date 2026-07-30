@@ -20,6 +20,7 @@ public class PopupController {
     private final PopupPopularityService popupPopularityService;
     private final popupteam.popupbackend.domain.reservation.PopupVisitorAgeStatsService popupVisitorAgeStatsService;
     private final PopupImageRepository popupImageRepository;
+    private final popupteam.popupbackend.domain.wishlist.PopupWishlistRepository popupWishlistRepository;
 
     private Long getBusinessId(Authentication authentication) {
         String email = authentication.getName();
@@ -73,14 +74,14 @@ public class PopupController {
         return ResponseEntity.ok(popupService.uploadImage(id, businessId, file, type));
     }
 
-    // 이미지 목록 조회 - 인증 불필요 (소비자/주최자/관리자 다 같은 API로 조회). type 안 주면 전체(썸네일+상세) 다 나옴
+    // 팝업 이미지 목록 조회 - 로그인 여부 무관, 누구나 조회 가능. type 안 주면 전체(썸네일+상세) 다 나옴
     @GetMapping("/{id}/images")
     public ResponseEntity<?> getImages(@PathVariable Long id,
                                        @RequestParam(required = false) PopupImageType type) {
         return ResponseEntity.ok(popupService.getImages(id, type));
     }
 
-    // 이미지 삭제 - 본인이 등록한 팝업만 가능
+    // 팝업 이미지 삭제 - 본인이 등록한 팝업만 가능
     @DeleteMapping("/{id}/images/{imageId}")
     public ResponseEntity<?> deleteImage(@PathVariable Long id, @PathVariable Long imageId,
                                          Authentication authentication) {
@@ -89,8 +90,12 @@ public class PopupController {
         return ResponseEntity.noContent().build();
     }
 
-    // (7/29 머지 정리) jmy의 GET /{id}/images 무필터 버전은 위 jsw 버전(type 선택 파라미터)과
-    // 경로가 겹쳐 Ambiguous mapping으로 부팅이 깨져 제거 — type 미지정 호출이 동일 동작을 대체한다.
+    // 이 팝업을 찜한 사람 수 - 로그인 여부 무관, 누구나 조회 가능
+    @GetMapping("/{id}/wishlist-count")
+    public ResponseEntity<java.util.Map<String, Long>> getWishlistCount(@PathVariable Long id) {
+        long count = popupWishlistRepository.countByPopupId(id);
+        return ResponseEntity.ok(java.util.Map.of("wishlistCount", count));
+    }
 
     @GetMapping("/my")
     public ResponseEntity<List<PopupResponse>> getMyPopups(Authentication authentication) {
@@ -116,13 +121,6 @@ public class PopupController {
     @GetMapping("/upcoming")
     public ResponseEntity<?> getUpcomingPopups(@RequestParam(defaultValue = "10") int limit) {
         return ResponseEntity.ok(popupService.getUpcomingPopups(limit));
-    }
-
-    // 비슷한 팝업 추천 (팝업 상세페이지 하단용, 인증 불필요)
-    @GetMapping("/{id}/similar")
-    public ResponseEntity<?> getSimilarPopups(@PathVariable Long id,
-                                              @RequestParam(defaultValue = "4") int limit) {
-        return ResponseEntity.ok(popupService.getSimilarPopups(id, limit));
     }
 
     // 방문객(체크인 완료자) 연령 분포 - 본인 팝업만 조회 가능

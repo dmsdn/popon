@@ -22,9 +22,8 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class SignupInfoController {
 
-    // 이메일 형식 검증 — CustomerController·프론트 회원가입 폼과 같은 규칙.
-    private static final Pattern EMAIL_PATTERN =
-            Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$");
+    // 이메일 형식 검증 — CustomerController와 같은 규칙을 쓴다. (7/30 머지: jsw 버전 채택)
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
     private final CustomerAccountRepository customerRepository;
     private final JwtUtil jwtUtil;
@@ -55,7 +54,7 @@ public class SignupInfoController {
 
     @PostMapping
     public Map<String, Object> submit(@RequestHeader("Authorization") String authHeader,
-                                       @RequestBody SignupInfoRequest request) {
+                                      @RequestBody SignupInfoRequest request) {
         if (request.phone == null || request.phone.isBlank()) {
             throw new IllegalArgumentException("전화번호는 필수예요.");
         }
@@ -101,8 +100,11 @@ public class SignupInfoController {
             customer.setNickname(request.nickname);
         }
         customer.setPhone(request.phone);
-        if (request.email != null && !request.email.isBlank() && !EMAIL_PATTERN.matcher(request.email).matches()) {
+        if (request.email != null && !request.email.isBlank()) {
+            if (!EMAIL_PATTERN.matcher(request.email).matches()) {
                 throw new IllegalArgumentException("이메일 형식이 올바르지 않아요.");
+            }
+            customer.setEmail(request.email.trim());
         }
         if (request.birthDate != null && !request.birthDate.isBlank()) {
             try {
