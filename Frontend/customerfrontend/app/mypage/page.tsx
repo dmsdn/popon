@@ -10,13 +10,14 @@ import { getPopup, type PopupDetail } from "@/lib/api/popups";
 import { getMyReservations, type Reservation } from "@/lib/api/reservations";
 import { getMyWaitingStatus, getMyWaitingIds, type Waiting } from "@/lib/api/waiting";
 import { createCsRequest, getMyCsRequests, type CsRequestItem } from "@/lib/api/cs";
-import { getTerms, type Terms } from "@/lib/api/terms";
+import { TERMS_SECTIONS } from "@/data/termsContent";
 import { StarRatingDisplay } from "@/components/ui/StarRatingDisplay";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { reservationStatusLabel, waitingStatusLabel } from "@/lib/utils/statusLabels";
 import { getNotificationSettings, updateNotificationSettings, type NotificationSettings } from "@/lib/api/notificationSettings";
 import { getRegions, getMyRegions } from "@/lib/api/regions";
-import { getKeywords, getMyInterests } from "@/lib/api/customer";
+import { getKeywords, getMyInterests, withdrawCustomer } from "@/lib/api/customer";
 import {
   subscribeWishlist,
   getWishlistSnapshot,
@@ -32,13 +33,14 @@ type MenuKey =
   | "쿠폰함"
   | "다녀간 팝업"
   | "알림 설정"
+  | "화면 설정"
   | "공지사항"
   | "1:1 문의"
   | "Q&A"
   | "약관";
 
 const PUBLIC_MENU: MenuKey[] = ["공지사항", "1:1 문의", "Q&A", "약관"];
-const PRIVATE_MENU: MenuKey[] = ["찜 목록", "예약 / 웨이팅", "쿠폰함", "다녀간 팝업", "알림 설정"];
+const PRIVATE_MENU: MenuKey[] = ["찜 목록", "예약 / 웨이팅", "쿠폰함", "다녀간 팝업", "알림 설정", "화면 설정"];
 const SIDEBAR_MENU: MenuKey[] = [...PRIVATE_MENU, ...PUBLIC_MENU];
 
 const PROVIDER_LABEL = {
@@ -240,28 +242,6 @@ function MyPageContent() {
   const [csContent, setCsContent] = useState("");
   const [csSubmitting, setCsSubmitting] = useState(false);
 
-  // 약관 - 로그인 여부 상관없이 볼 수 있는 공개 정보라 activeMenu가 "약관"일 때만 불러옵니다.
-  const [terms, setTerms] = useState<Terms | null>(null);
-  const [termsError, setTermsError] = useState(false);
-
-  useEffect(() => {
-    if (activeMenu !== "약관" || terms) return;
-    let cancelled = false;
-
-    getTerms()
-      .then((data) => {
-        if (!cancelled) setTerms(data);
-      })
-      .catch((err) => {
-        console.error("약관 조회 실패", err);
-        if (!cancelled) setTermsError(true);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [activeMenu, terms]);
-
   // 공지사항 - 마찬가지로 로그인 여부 상관없는 공개 정보
   const [announcements, setAnnouncements] = useState<Announcement[] | null>(null);
 
@@ -397,6 +377,25 @@ if (queryMenu !== syncedQueryMenu) {
     router.push("/");
   };
 
+  // [신규] 회원탈퇴 - 기존엔 "준비 중이에요" 알럿만 뜨고 실제로 아무 일도 안
+  // 일어났는데, DB에 실제로 연결된 withdrawCustomer(DELETE /api/customer/me)가
+  // 이미 있어서 로그아웃과 같은 방식(확인 모달)으로 연결했어요.
+  const [showWithdrawConfirm, setShowWithdrawConfirm] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const handleConfirmWithdraw = async () => {
+    setWithdrawing(true);
+    try {
+      await withdrawCustomer();
+      logout();
+      setShowWithdrawConfirm(false);
+      router.push("/");
+    } catch (err) {
+      console.error("회원탈퇴 실패", err);
+      alert("탈퇴 처리에 실패했어요. 잠시 후 다시 시도해주세요.");
+      setWithdrawing(false);
+    }
+  };
+
   const toggleNotif = (id: string) => {
     setNotifSettings((prev) => {
       const next = prev.map((item) => (item.id === id ? { ...item, enabled: !item.enabled } : item));
@@ -407,6 +406,16 @@ if (queryMenu !== syncedQueryMenu) {
       });
       return next;
     });
+  };
+
+  // [신규] "전체" 토글 - 세 개 설정을 한 번에 켜거나 꺼요.
+  const allNotifEnabled = notifSettings.every((item) => item.enabled);
+  const toggleAllNotif = () => {
+    const nextEnabled = !allNotifEnabled;
+    setNotifSettings((prev) => prev.map((item) => ({ ...item, enabled: nextEnabled })));
+    updateNotificationSettings(
+      Object.fromEntries(Object.values(NOTIF_FIELD_BY_ID).map((field) => [field, nextEnabled]))
+    ).catch((err) => console.error("알림 설정 저장 실패", err));
   };
 
   // 웨이팅 + 예약을 합친 총 "대기중" 건수 - 프로필 아래 바로가기 카드 분기에 씁니다.
@@ -481,7 +490,7 @@ if (queryMenu !== syncedQueryMenu) {
 
   return (
     <main className="min-h-screen flex flex-col w-full mobile:max-w-[1000px] mobile:mx-auto">
-      <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100">
+      <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100 dark:border-gray-800">
         <button
           type="button"
           onClick={() => router.back()}
@@ -495,14 +504,14 @@ if (queryMenu !== syncedQueryMenu) {
 
       <div className="flex flex-col mobile:flex-row">
         <aside
-          className={`${mobileView === "detail" ? "hidden mobile:block" : "block"} mobile:w-[240px] mobile:border-r border-gray-100 py-6`}
+          className={`${mobileView === "detail" ? "hidden mobile:block" : "block"} mobile:w-[240px] mobile:border-r border-gray-100 dark:border-gray-800 py-6`}
         >
           {isLoggedIn && customer ? (
             <>
               <button
                 type="button"
                 onClick={() => handleSelectMenu("내 정보")}
-                className="w-full flex flex-col items-center mobile:items-start px-4 mobile:px-6 mb-6"
+                className="hidden mobile:flex w-full flex-col items-center mobile:items-start px-4 mobile:px-6 mb-6"
               >
                 <div className="w-16 h-16 rounded-full bg-gray-200 mb-3 overflow-hidden">
                   {customer.profileImage && (
@@ -521,9 +530,9 @@ if (queryMenu !== syncedQueryMenu) {
                 <button
                   type="button"
                   onClick={() => handleSelectMenu("찜 목록")}
-                  className="flex flex-col items-start rounded-xl border border-gray-200 px-4 py-3 text-left"
+                  className="flex flex-col items-start rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-3 text-left"
                 >
-                  <span className="text-xs text-gray-400 mb-1">찜</span>
+                  <span className="text-sm text-gray-400 mb-1">찜</span>
                   <span className="text-sm font-semibold text-gray-800">
                     {wishlistIds.size > 0 ? `${wishlistIds.size}개` : "둘러보기"}
                   </span>
@@ -531,9 +540,9 @@ if (queryMenu !== syncedQueryMenu) {
                 <button
                   type="button"
                   onClick={() => handleSelectMenu("예약 / 웨이팅")}
-                  className="flex flex-col items-start rounded-xl border border-gray-200 px-4 py-3 text-left"
+                  className="flex flex-col items-start rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-3 text-left"
                 >
-                  <span className="text-xs text-gray-400 mb-1">웨이팅 · 예약</span>
+                  <span className="text-sm text-gray-400 mb-1">웨이팅 · 예약</span>
                   <span className="text-sm font-semibold text-gray-800">
                     {activeCount > 0 ? `${activeCount}개` : "둘러보기"}
                   </span>
@@ -561,7 +570,7 @@ if (queryMenu !== syncedQueryMenu) {
                 type="button"
                 onClick={() => handleSelectMenu(menu)}
                 className={`w-full text-left px-4 mobile:px-6 py-3.5 text-sm ${
-                  activeMenu === menu ? "font-semibold text-gray-900 bg-gray-50" : "text-gray-700"
+                  activeMenu === menu ? "font-semibold text-gray-900 dark:text-white bg-gray-50" : "text-gray-700 dark:text-gray-300"
                 }`}
               >
                 {menu}
@@ -571,7 +580,7 @@ if (queryMenu !== syncedQueryMenu) {
               <button
                 type="button"
                 onClick={() => setShowLogoutConfirm(true)}
-                className="w-full text-left px-4 mobile:px-6 py-3.5 text-sm text-gray-700"
+                className="w-full text-left px-4 mobile:px-6 py-3.5 text-sm text-gray-700 dark:text-gray-300"
               >
                 로그아웃
               </button>
@@ -601,58 +610,58 @@ if (queryMenu !== syncedQueryMenu) {
               </div>
 
               <div className="flex items-center justify-between py-4 border-b border-gray-50">
-                <span className="text-sm text-gray-700">닉네임</span>
+                <span className="text-sm text-gray-700 dark:text-gray-300">닉네임</span>
                 <span className="text-sm text-gray-500">{customer.nickname}</span>
               </div>
 
               <div className="flex items-center justify-between py-4 border-b border-gray-50">
-                <span className="text-sm text-gray-700">연결된 로그인</span>
+                <span className="text-sm text-gray-700 dark:text-gray-300">연결된 로그인</span>
                 <span
-                  className={`flex items-center gap-1.5 text-xs font-medium rounded-full px-3 py-1.5 ${
-                    customer.provider === "KAKAO" ? "bg-[#FEE500]" : "bg-gray-100 text-gray-700"
+                  className={`flex items-center gap-1.5 text-sm font-medium rounded-full px-3 py-1.5 ${
+                    customer.provider === "KAKAO" ? "bg-[#FEE500]" : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
                   }`}
                 >
                   {customer.provider === "KAKAO" ? (
-                    <img src="/icon/kakao.svg" alt="Kakao" className="w-4 h-4" />
+                    <img src="/Icon/kakao.svg" alt="Kakao" className="w-4 h-4" />
                   ) : customer.provider === "GOOGLE" ? (
-                    <img src="/icon/google.svg" alt="Google" className="w-4 h-4" />
+                    <img src="/Icon/google.svg" alt="Google" className="w-4 h-4" />
                   ) : (
-                    <img src="/icon/admin.svg" alt="Admin" className="w-4 h-4" />
+                    <img src="/Icon/admin.svg" alt="Admin" className="w-4 h-4" />
                   )}{" "}
                   {PROVIDER_LABEL[customer.provider]}
                 </span>
               </div>
 
               <div className="flex items-center justify-between py-4 border-b border-gray-50">
-                <span className="text-sm text-gray-700">전화번호</span>
+                <span className="text-sm text-gray-700 dark:text-gray-300">전화번호</span>
                 <span className="text-sm text-gray-500">{customer.phone || "미입력"}</span>
               </div>
 
               <div className="flex items-center justify-between py-4 border-b border-gray-50">
-                <span className="text-sm text-gray-700">이메일</span>
+                <span className="text-sm text-gray-700 dark:text-gray-300">이메일</span>
                 <span className="text-sm text-gray-500">{customer.email || "미입력"}</span>
               </div>
 
               <div className="flex items-center justify-between py-4 border-b border-gray-50">
-                <span className="text-sm text-gray-700">성별</span>
+                <span className="text-sm text-gray-700 dark:text-gray-300">성별</span>
                 <span className="text-sm text-gray-500">
                   {customer.gender === "MALE" ? "남성" : customer.gender === "FEMALE" ? "여성" : "미입력"}
                 </span>
               </div>
 
               <div className="flex items-center justify-between py-4 border-b border-gray-50">
-                <span className="text-sm text-gray-700">나이</span>
+                <span className="text-sm text-gray-700 dark:text-gray-300">나이</span>
                 <span className="text-sm text-gray-500">{calculateAge(customer.birthDate)}</span>
               </div>
 
               <div className="py-4 border-b border-gray-50">
-                <p className="text-sm text-gray-700 mb-2">관심 카테고리</p>
+                <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">관심 카테고리</p>
                 {preferredCategories.length === 0 ? (
                   <p className="text-sm text-gray-400">아직 선택한 관심 카테고리가 없어요.</p>
                 ) : (
                   <div className="flex flex-wrap gap-1.5">
                     {preferredCategories.map((c) => (
-                      <span key={c} className="text-xs bg-gray-100 text-gray-600 rounded-full px-2.5 py-1">
+                      <span key={c} className="text-sm bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-full px-2.5 py-1">
                         {c}
                       </span>
                     ))}
@@ -661,13 +670,13 @@ if (queryMenu !== syncedQueryMenu) {
               </div>
 
               <div className="py-4">
-                <p className="text-sm text-gray-700 mb-2">관심 지역</p>
+                <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">관심 지역</p>
                 {preferredRegions.length === 0 ? (
                   <p className="text-sm text-gray-400">아직 선택한 관심 지역이 없어요.</p>
                 ) : (
                   <div className="flex flex-wrap gap-1.5">
                     {preferredRegions.map((r) => (
-                      <span key={r} className="text-xs bg-gray-100 text-gray-600 rounded-full px-2.5 py-1">
+                      <span key={r} className="text-sm bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-full px-2.5 py-1">
                         {r}
                       </span>
                     ))}
@@ -684,7 +693,7 @@ if (queryMenu !== syncedQueryMenu) {
 
               <button
                 type="button"
-                onClick={() => alert("준비 중이에요.")}
+                onClick={() => setShowWithdrawConfirm(true)}
                 className="text-sm text-gray-500 mt-8"
               >
                 회원 탈퇴 ›
@@ -703,11 +712,11 @@ if (queryMenu !== syncedQueryMenu) {
                   // (종료된 팝업은 등록해봤자 의미가 없으니까요).
                   const isActionable = p?.status === "OPEN" || p?.status === "BEFOR";
                   return (
-                    <div key={popupId} className="flex flex-col gap-3 border border-gray-200 rounded-xl p-4">
+                    <div key={popupId} className="flex flex-col gap-3 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
                       <div className="flex items-center gap-4">
                         <Link href={`/popup/${popupId}`} className="flex items-center gap-4 flex-1 min-w-0">
                           {/* [수정] 썸네일 크기를 16→24로 키웠어요(너무 작다는 피드백) */}
-                          <div className="w-24 h-24 flex-none bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-xs">
+                          <div className="w-24 h-24 flex-none bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-sm">
                             {p?.thumbnailImages?.[0] ? (
                               <ImageWithFallback src={p.thumbnailImages[0]} className="w-full h-full object-cover" />
                             ) : (
@@ -716,7 +725,7 @@ if (queryMenu !== syncedQueryMenu) {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold truncate">{p?.title ?? `팝업 #${popupId}`}</p>
-                            {p?.location && <p className="text-xs text-gray-400 mt-0.5">{p.location}</p>}
+                            {p?.location && <p className="text-sm text-gray-400 mt-0.5">{p.location}</p>}
                           </div>
                         </Link>
                         <button
@@ -734,13 +743,13 @@ if (queryMenu !== syncedQueryMenu) {
                         <div className="flex items-center gap-2">
                           <Link
                             href={`/popup/${popupId}?action=waiting`}
-                            className="flex-1 text-center text-xs font-medium border border-gray-300 text-gray-700 rounded-full py-2"
+                            className="flex-1 text-center text-sm font-medium border border-gray-300 text-gray-700 dark:text-gray-300 rounded-full py-2"
                           >
                             웨이팅하기
                           </Link>
                           <Link
                             href={`/popup/${popupId}?action=reservation`}
-                            className="flex-1 text-center text-xs font-medium border border-gray-300 text-gray-700 rounded-full py-2"
+                            className="flex-1 text-center text-sm font-medium border border-gray-300 text-gray-700 dark:text-gray-300 rounded-full py-2"
                           >
                             예약하기
                           </Link>
@@ -764,10 +773,10 @@ if (queryMenu !== syncedQueryMenu) {
                       <Link
                         key={w.id}
                         href={`/waiting/${w.id}`}
-                        className="block border border-gray-200 rounded-xl p-5"
+                        className="block border border-gray-200 dark:border-gray-800 rounded-xl p-5"
                       >
                         <div className="flex items-start gap-4">
-                          <div className="w-24 h-24 flex-none bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-xs">
+                          <div className="w-24 h-24 flex-none bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-sm">
                             {reservationPopupImages[w.popupId] ? (
                               <ImageWithFallback
                                 src={reservationPopupImages[w.popupId]!}
@@ -781,13 +790,13 @@ if (queryMenu !== syncedQueryMenu) {
                             <p className="text-sm font-semibold mb-1">
                               {reservationPopupTitles[w.popupId] ?? `팝업 #${w.popupId}`}
                             </p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-sm text-gray-500">
                               앞 {w.teamsAhead}팀 · {w.partySize}명 · {waitingStatusLabel(w.status)}
                             </p>
                           </div>
                           <div className="text-right flex-none">
                             <span className="text-2xl font-bold">{w.teamNumber}</span>
-                            <span className="text-xs text-gray-500 ml-0.5">번째</span>
+                            <span className="text-sm text-gray-500 ml-0.5">번째</span>
                           </div>
                         </div>
                       </Link>
@@ -808,9 +817,9 @@ if (queryMenu !== syncedQueryMenu) {
                       <Link
                         key={r.id}
                         href={`/reservations/${r.id}`}
-                        className="flex items-center gap-4 border border-gray-200 rounded-xl p-5"
+                        className="flex items-center gap-4 border border-gray-200 dark:border-gray-800 rounded-xl p-5"
                       >
-                        <div className="w-24 h-24 flex-none bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-xs">
+                        <div className="w-24 h-24 flex-none bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-sm">
                           {reservationPopupImages[r.popupId] ? (
                             <ImageWithFallback
                               src={reservationPopupImages[r.popupId]!}
@@ -821,13 +830,13 @@ if (queryMenu !== syncedQueryMenu) {
                           )}
                         </div>
                         <div>
-                          <span className="inline-block text-xs text-gray-500 mb-1">
+                          <span className="inline-block text-sm text-gray-500 mb-1">
                             {reservationStatusLabel(r.status)}
                           </span>
                           <p className="text-sm font-semibold mb-1">
                             {reservationPopupTitles[r.popupId] ?? `팝업 #${r.popupId}`}
                           </p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-sm text-gray-500">
                             {r.reservationDate
                               ? `${r.reservationDate}${r.reservationTime ? ` ${r.reservationTime.slice(0, 5)}` : ""}`
                               : "시간대 예약"}{" "}
@@ -851,26 +860,26 @@ if (queryMenu !== syncedQueryMenu) {
             ) : (
               <div className="flex flex-col gap-3">
                 {visitedItems.map((item) => (
-                  <div key={`${item.type}-${item.id}`} className="border border-gray-200 rounded-xl p-4">
+                  <div key={`${item.type}-${item.id}`} className="border border-gray-200 dark:border-gray-800 rounded-xl p-4">
                     <Link href={`/popup/${item.popupId}`} className="block">
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[11px] font-medium bg-gray-100 text-gray-500 rounded px-1.5 py-0.5">
+                          <span className="text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-500 rounded px-1.5 py-0.5">
                             {item.type === "review" ? "후기" : item.type === "reservation" ? "예약" : "웨이팅"}
                           </span>
                           <p className="text-sm font-semibold truncate">{item.title}</p>
                         </div>
-                        <span className="text-xs text-gray-400 flex-none ml-2">{toDisplayDate(item.date)}</span>
+                        <span className="text-sm text-gray-400 flex-none ml-2">{toDisplayDate(item.date)}</span>
                       </div>
                       {item.type === "review" && (
                         <>
-                          <p className="flex items-center gap-1 text-xs text-gray-500 mb-1">
+                          <p className="flex items-center gap-1 text-sm text-gray-500 mb-1">
                             <StarRatingDisplay rating={item.rating} size={12} /> {item.rating}
                             {item.visitDate && (
                               <span className="text-gray-400">· {item.visitDate} 다녀옴</span>
                             )}
                           </p>
-                          <p className="text-sm text-gray-600 line-clamp-2 mb-2">{item.content}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-2">{item.content}</p>
                           {item.photos.length > 0 && (
                             <div className="flex gap-1.5">
                               {item.photos.slice(0, 4).map((photo) => (
@@ -885,20 +894,20 @@ if (queryMenu !== syncedQueryMenu) {
                         </>
                       )}
                       {item.type !== "review" && (
-                        <p className="text-sm text-gray-600">방문 완료 · 아직 후기를 남기지 않았어요</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">방문 완료 · 아직 후기를 남기지 않았어요</p>
                       )}
                     </Link>
                     {/* [신규] 후기에도 수정/삭제 버튼 + 추천받은 수를 보여줘요. */}
                     {item.type === "review" && (
                       <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-50">
-                        <span className="text-xs text-gray-400">
+                        <span className="text-sm text-gray-400">
                           추천 {item.likeCount > 0 ? item.likeCount : 0}
                         </span>
                         <div className="flex items-center gap-2.5">
                           <button
                             type="button"
                             onClick={() => router.push(`/popup/${item.popupId}/review?editId=${item.reviewId}`)}
-                            className="text-xs font-medium text-gray-500"
+                            className="text-sm font-medium text-gray-500"
                           >
                             수정
                           </button>
@@ -914,7 +923,7 @@ if (queryMenu !== syncedQueryMenu) {
                                 alert("삭제에 실패했어요. 잠시 후 다시 시도해주세요.");
                               }
                             }}
-                            className="text-xs font-medium text-gray-500"
+                            className="text-sm font-medium text-gray-500"
                           >
                             삭제
                           </button>
@@ -928,9 +937,26 @@ if (queryMenu !== syncedQueryMenu) {
 
           {activeMenu === "알림 설정" && (
             <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between py-4 border-b border-gray-50">
+                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">전체</span>
+                <button
+                  type="button"
+                  onClick={toggleAllNotif}
+                  aria-pressed={allNotifEnabled}
+                  className={`w-11 h-6 rounded-full relative transition-colors ${
+                    allNotifEnabled ? "bg-gray-200" : "bg-gray-600"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 w-5 h-5 rounded-full transition-all ${
+                      allNotifEnabled ? "translate-x-[0.5px] bg-white" : "translate-x-[-20px] bg-gray-300"
+                    }`}
+                  />
+                </button>
+              </div>
               {notifSettings.map((item) => (
                 <div key={item.id} className="flex items-center justify-between py-4 border-b border-gray-50">
-                  <span className="text-sm text-gray-700">{item.label}</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">{item.label}</span>
                   <button
                     type="button"
                     onClick={() => toggleNotif(item.id)}
@@ -952,6 +978,16 @@ if (queryMenu !== syncedQueryMenu) {
             </div>
           )}
 
+          {/* [신규] 화면 설정 - 다크모드 토글을 여기로 옮겼어요. */}
+          {activeMenu === "화면 설정" && (
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between py-4 border-b border-gray-50">
+                <span className="text-sm text-gray-700 dark:text-gray-300">다크모드</span>
+                <ThemeToggle />
+              </div>
+            </div>
+          )}
+
           {activeMenu === "공지사항" && (
             <div className="flex flex-col">
               {!announcements ? (
@@ -966,7 +1002,7 @@ if (queryMenu !== syncedQueryMenu) {
                     className="block py-4 border-b border-gray-50"
                   >
                     <p className="text-sm text-gray-800">{notice.title}</p>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-sm text-gray-400 mt-1">
                       {new Date(notice.createdAt).toLocaleDateString("ko-KR")}
                     </p>
                   </Link>
@@ -976,22 +1012,13 @@ if (queryMenu !== syncedQueryMenu) {
           )}
 
           {activeMenu === "약관" && (
-            <div>
-              {termsError ? (
-                <EmptyState message="약관을 불러오지 못했어요." />
-              ) : !terms ? (
-                <LoadingState />
-              ) : (
-                <div>
-                  <p className="text-base font-semibold mb-1">{terms.title}</p>
-                  <p className="text-xs text-gray-400 mb-4">
-                    최종 수정일 {new Date(terms.updatedAt).toLocaleDateString("ko-KR")}
-                  </p>
-                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                    {terms.content}
-                  </p>
+            <div className="flex flex-col gap-8">
+              {TERMS_SECTIONS.map((section) => (
+                <div key={section.id} id={`terms-${section.id}`}>
+                  <p className="text-base font-semibold mb-3">{section.title}</p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{section.content}</p>
                 </div>
-              )}
+              ))}
             </div>
           )}
 
@@ -1016,14 +1043,14 @@ if (queryMenu !== syncedQueryMenu) {
                       value={csTitle}
                       onChange={(e) => setCsTitle(e.target.value)}
                       placeholder="제목"
-                      className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm outline-none"
+                      className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none"
                     />
                     <textarea
                       value={csContent}
                       onChange={(e) => setCsContent(e.target.value)}
                       placeholder="문의 내용을 입력해 주세요."
                       rows={5}
-                      className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm outline-none resize-none"
+                      className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none resize-none"
                     />
                   </div>
                   <button
@@ -1042,22 +1069,22 @@ if (queryMenu !== syncedQueryMenu) {
                       <p className="text-sm text-gray-400 text-center py-6">아직 문의한 내역이 없어요.</p>
                     ) : (
                       myCsRequests.map((cs) => (
-                        <div key={cs.id} className="border border-gray-100 rounded-xl p-4">
+                        <div key={cs.id} className="border border-gray-100 dark:border-gray-800 rounded-xl p-4">
                           <div className="flex items-center justify-between mb-1">
                             <p className="text-sm font-semibold">{cs.title}</p>
                             <span
-                              className={`text-xs px-2 py-0.5 rounded-full ${
-                                cs.status === "ANSWERED" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-500"
+                              className={`text-sm px-2 py-0.5 rounded-full ${
+                                cs.status === "ANSWERED" ? "bg-gray-900 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-500"
                               }`}
                             >
                               {cs.status === "ANSWERED" ? "답변완료" : "답변대기"}
                             </span>
                           </div>
-                          <p className="text-sm text-gray-600 whitespace-pre-wrap mb-2">{cs.content}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap mb-2">{cs.content}</p>
                           {cs.answerContent && (
                             <div className="bg-gray-50 rounded-lg px-3 py-2 mt-2">
-                              <p className="text-xs text-gray-400 mb-1">답변</p>
-                              <p className="text-sm text-gray-700 whitespace-pre-wrap">{cs.answerContent}</p>
+                              <p className="text-sm text-gray-400 mb-1">답변</p>
+                              <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{cs.answerContent}</p>
                             </div>
                           )}
                         </div>
@@ -1079,7 +1106,7 @@ if (queryMenu !== syncedQueryMenu) {
                     className="w-full flex items-center justify-between py-4 text-left"
                   >
                     <span className="text-sm text-gray-800">{faq.q}</span>
-                    <span className="text-xs text-gray-400">{openFaq === index ? "−" : "+"}</span>
+                    <span className="text-sm text-gray-400">{openFaq === index ? "−" : "+"}</span>
                   </button>
                   {openFaq === index && <p className="text-sm text-gray-500 pb-4">{faq.a}</p>}
                 </div>
@@ -1091,13 +1118,13 @@ if (queryMenu !== syncedQueryMenu) {
 
       {showLogoutConfirm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center px-6 z-50">
-          <div className="bg-white rounded-xl px-6 py-6 w-full max-w-xs">
+          <div className="bg-white dark:bg-gray-900 rounded-xl px-6 py-6 w-full max-w-xs">
             <p className="text-sm font-medium text-center mb-6">로그아웃 하시겠어요?</p>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setShowLogoutConfirm(false)}
-                className="flex-1 rounded-full py-3 text-sm font-medium bg-gray-100 text-gray-700"
+                className="flex-1 rounded-full py-3 text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
               >
                 취소
               </button>
@@ -1107,6 +1134,35 @@ if (queryMenu !== syncedQueryMenu) {
                 className="flex-1 rounded-full py-3 text-sm font-medium bg-gray-900 text-white"
               >
                 로그아웃
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showWithdrawConfirm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center px-6 z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-xl px-6 py-6 w-full max-w-xs">
+            <p className="text-sm font-medium text-center mb-2">정말 탈퇴하시겠어요?</p>
+            <p className="text-sm text-gray-400 text-center mb-6">
+              찜, 예약, 웨이팅, 후기 내역이 모두 사라지고 되돌릴 수 없어요.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowWithdrawConfirm(false)}
+                disabled={withdrawing}
+                className="flex-1 rounded-full py-3 text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 disabled:opacity-50"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmWithdraw}
+                disabled={withdrawing}
+                className="flex-1 rounded-full py-3 text-sm font-medium bg-red-500 text-white disabled:opacity-50"
+              >
+                {withdrawing ? "처리 중..." : "탈퇴하기"}
               </button>
             </div>
           </div>

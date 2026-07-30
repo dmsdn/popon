@@ -87,11 +87,11 @@ export function ReviewDetailModal({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl overflow-hidden max-w-[500px] w-full max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden max-w-[500px] w-full max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div
-          className="relative w-full aspect-square bg-gray-100 cursor-grab active:cursor-grabbing"
+          className="relative w-full aspect-square bg-gray-100 dark:bg-gray-800 cursor-grab active:cursor-grabbing"
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
           onTouchStart={handleTouchStart}
@@ -141,7 +141,7 @@ export function ReviewDetailModal({
             </button>
           )}
           {photos.length > 1 && (
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[11px] text-white bg-black/40 rounded-full px-2 py-0.5">
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-sm text-white bg-black/40 rounded-full px-2 py-0.5">
               {photoIndex + 1} / {photos.length}
             </div>
           )}
@@ -153,9 +153,9 @@ export function ReviewDetailModal({
               카드를 누르면 이동하도록 바꿨어요. */}
           <Link
             href={`/popup/${review.popupId}`}
-            className="flex items-center gap-3 mb-4 border border-gray-200 rounded-xl p-3"
+            className="flex items-center gap-3 mb-4 border border-gray-200 dark:border-gray-800 rounded-xl p-3"
           >
-            <div className="w-11 h-11 rounded-lg bg-gray-100 flex-none flex items-center justify-center text-base text-gray-400">
+            <div className="w-11 h-11 rounded-lg bg-gray-100 dark:bg-gray-800 flex-none flex items-center justify-center text-base text-gray-400">
               {review.popupName[0]}
             </div>
             <div className="min-w-0 flex-1">
@@ -163,7 +163,7 @@ export function ReviewDetailModal({
               <div className="flex items-center gap-1 mt-1 flex-wrap">
                 <StatusBadge status={review.status} />
                 {review.region && (
-                  <span className="text-xs text-gray-500 bg-gray-50 rounded px-1.5 py-0.5">
+                  <span className="text-sm text-gray-500 bg-gray-50 rounded px-1.5 py-0.5">
                     {review.region}
                   </span>
                 )}
@@ -173,13 +173,13 @@ export function ReviewDetailModal({
           </Link>
 
           <div className="flex items-center justify-between mb-3">
-            <span className="text-base text-gray-700">{review.nickname}</span>
+            <span className="text-base text-gray-700 dark:text-gray-300">{review.nickname}</span>
             <span className="flex items-center gap-1 text-base font-medium text-gray-800">
               <StarRatingDisplay rating={review.rating} size={16} /> {review.rating} / 5
             </span>
           </div>
 
-          <p className="text-base text-gray-700 leading-relaxed whitespace-pre-wrap mb-2">{review.content}</p>
+          <p className="text-base text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap mb-2">{review.content}</p>
           <p className="text-sm text-gray-400">{review.date}</p>
         </div>
       </div>

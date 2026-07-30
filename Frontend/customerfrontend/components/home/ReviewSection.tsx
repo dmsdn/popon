@@ -42,7 +42,7 @@ export function ReviewSection() {
             reviewId: r.id,
             popupId: String(r.popupId),
             popupName: popup.title,
-            nickname: "방문자",
+            nickname: r.nickname ?? "방문자",
             content: r.content,
             date: toDisplayDate(r.createdAt),
             rating: r.rating,

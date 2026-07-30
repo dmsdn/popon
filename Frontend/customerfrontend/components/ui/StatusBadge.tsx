@@ -9,7 +9,7 @@ const STATUS_STYLE: Record<NonNullable<PopupItem["status"]>, string> = {
 export function StatusBadge({ status, className = "" }: { status?: PopupItem["status"]; className?: string }) {
   if (!status) return null;
   return (
-    <span className={`inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded ${STATUS_STYLE[status]} ${className}`}>
+    <span className={`inline-flex items-center text-sm font-semibold px-2 py-0.5 rounded ${STATUS_STYLE[status]} ${className}`}>
       {status}
     </span>
   );

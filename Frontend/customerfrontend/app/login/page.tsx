@@ -23,14 +23,14 @@ export default function LoginPage() {
   return (
     <main>
       {/* 상단바 */}
-      <header className="flex items-center px-4 py-3 border-b border-gray-100">
+      <header className="flex items-center px-4 py-3 border-b border-gray-100 dark:border-gray-800">
         <Link href="/" className="font-bold text-lg">팝업</Link>
       </header>
 
       {/* 로그인 버튼 영역 */}
       <div className="flex flex-col items-center justify-center px-6 pt-40 gap-3">
         <div className="relative mb-3">
-          <span className="whitespace-nowrap bg-white border border-gray-200 rounded-full px-3 py-1.5 text-xs text-gray-600 shadow-sm">
+          <span className="whitespace-nowrap bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-full px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 shadow-sm">
             웨이팅은 카카오로만 가능해요
           </span>
         </div>
@@ -48,13 +48,13 @@ export default function LoginPage() {
           onClick={redirectToGoogleLogin}
           className="w-full max-w-sm flex items-center gap-3 bg-gray-100 rounded-full px-5 py-3.5"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="text-gray-900">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="text-gray-900 dark:text-white">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.99.66-2.26 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0012 23z"/>
             <path d="M5.84 14.09A6.6 6.6 0 015.5 12c0-.73.13-1.43.35-2.09V7.07H2.18A11 11 0 001 12c0 1.77.42 3.45 1.18 4.93l3.66-2.84z"/>
             <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1A11 11 0 002.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
           </svg>
-          <span className="flex-1 text-center text-sm font-medium text-gray-900">
+          <span className="flex-1 text-center text-sm font-medium text-gray-900 dark:text-white">
             구글로 시작하기
           </span>
         </button>

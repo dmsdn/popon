@@ -91,7 +91,7 @@ export function FilterPanel({
   return createPortal(
     <div className="fixed inset-0 bg-black/40 flex items-end mobile:items-center justify-center z-50" onClick={onClose}>
       <div
-        className="w-full mobile:max-w-md bg-white rounded-t-2xl mobile:rounded-2xl max-h-[85vh] flex flex-col"
+        className="w-full mobile:max-w-md bg-white dark:bg-gray-900 rounded-t-2xl mobile:rounded-2xl max-h-[85vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 pt-5">
@@ -103,7 +103,7 @@ export function FilterPanel({
               {selectedChips.map(({ group, value }) => (
                 <span
                   key={`${group}-${value}`}
-                  className="flex items-center gap-1 text-sm bg-gray-100 rounded-full pl-3 pr-2 py-1.5"
+                  className="flex items-center gap-1 text-sm bg-gray-100 dark:bg-gray-800 rounded-full pl-3 pr-2 py-1.5"
                 >
                   {value}
                   <button
@@ -120,14 +120,14 @@ export function FilterPanel({
           )}
 
           {/* 탭 */}
-          <div className="flex items-center gap-5 border-b border-gray-100">
+          <div className="flex items-center gap-5 border-b border-gray-100 dark:border-gray-800">
             {(["카테고리", "지역", "운영여부", "별점"] as FilterTab[]).map((t) => (
               <button
                 key={t}
                 type="button"
                 onClick={() => setTab(t)}
                 className={`pb-3 text-base ${
-                  tab === t ? "font-semibold text-gray-900 border-b-2 border-gray-900" : "text-gray-400"
+                  tab === t ? "font-semibold text-gray-900 dark:text-white border-b-2 border-gray-900 dark:border-white" : "text-gray-400"
                 }`}
               >
                 {t}
@@ -146,7 +146,7 @@ export function FilterPanel({
                     type="checkbox"
                     checked={draftCategories.includes(c)}
                     onChange={() => toggle(draftCategories, setDraftCategories, c)}
-                    className="w-5 h-5"
+                    className="w-5 h-5 accent-point"
                   />
                   {c}
                 </label>
@@ -161,7 +161,7 @@ export function FilterPanel({
                     type="checkbox"
                     checked={draftRegions.includes(r)}
                     onChange={() => toggle(draftRegions, setDraftRegions, r)}
-                    className="w-5 h-5"
+                    className="w-5 h-5 accent-point"
                   />
                   {r}
                 </label>
@@ -176,7 +176,7 @@ export function FilterPanel({
                     type="checkbox"
                     checked={draftStatuses.includes(s)}
                     onChange={() => toggle(draftStatuses, setDraftStatuses, s)}
-                    className="w-5 h-5"
+                    className="w-5 h-5 accent-point"
                   />
                   {s}
                 </label>
@@ -191,7 +191,7 @@ export function FilterPanel({
                     type="checkbox"
                     checked={draftMinRating === value}
                     onChange={() => setDraftMinRating(draftMinRating === value ? null : value)}
-                    className="w-5 h-5"
+                    className="w-5 h-5 accent-point"
                   />
                   {label}
                 </label>
@@ -201,11 +201,11 @@ export function FilterPanel({
         </div>
 
         {/* 하단 버튼 */}
-        <div className="flex items-center gap-2 p-5 border-t border-gray-100">
+        <div className="flex items-center gap-2 p-5 border-t border-gray-100 dark:border-gray-800">
           <button
             type="button"
             onClick={handleReset}
-            className="flex-none text-base font-medium border border-gray-300 text-gray-700 rounded-full px-5 py-3"
+            className="flex-none text-base font-medium border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-full px-5 py-3"
           >
             초기화
           </button>

@@ -147,7 +147,7 @@ export function ReservationModal({
       onClick={onClose}
     >
       <div
-        className={`w-full bg-white overflow-y-auto px-6 pt-6 pb-8 mobile:max-w-lg mobile:rounded-2xl mobile:max-h-[85vh] ${
+        className={`w-full bg-white dark:bg-gray-900 overflow-y-auto px-6 pt-6 pb-8 mobile:max-w-lg mobile:rounded-2xl mobile:max-h-[85vh] ${
           expanded ? "h-full rounded-none" : "rounded-t-2xl max-h-[85vh]"
         }`}
         onClick={(e) => e.stopPropagation()}
@@ -160,7 +160,7 @@ export function ReservationModal({
         </div>
 
         <div className="flex items-center justify-between mb-2">
-          <p className="text-sm font-medium text-gray-700">날짜</p>
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">날짜</p>
           {monthsToShow.length > 1 && (
             <div className="flex items-center gap-3">
               <button
@@ -172,7 +172,7 @@ export function ReservationModal({
               >
                 ‹
               </button>
-              <span className="text-xs text-gray-500 w-14 text-center">
+              <span className="text-sm text-gray-500 w-14 text-center">
                 {monthsToShow[monthIndex].year}.{String(monthsToShow[monthIndex].month + 1).padStart(2, "0")}
               </span>
               <button
@@ -192,7 +192,7 @@ export function ReservationModal({
         <div ref={scrollBoxRef} className="max-h-[220px] overflow-y-auto mb-6 pr-1">
           <div className="grid grid-cols-7 gap-y-1 text-center mb-1">
             {WEEKDAYS.map((wd) => (
-              <span key={wd} className="text-xs text-gray-400">{wd}</span>
+              <span key={wd} className="text-sm text-gray-400">{wd}</span>
             ))}
           </div>
           {monthsToShow.map(({ year, month }, mi) => (
@@ -204,7 +204,7 @@ export function ReservationModal({
               className={mi > 0 ? "mt-3" : ""}
             >
               {mi > 0 && (
-                <p className="text-xs font-medium text-gray-400 mb-1">
+                <p className="text-sm font-medium text-gray-400 mb-1">
                   {year}.{String(month + 1).padStart(2, "0")}
                 </p>
               )}
@@ -220,7 +220,7 @@ export function ReservationModal({
 
                   let textClass = "text-gray-200";
                   if (selectable) {
-                    textClass = isCurrentMonth ? "text-gray-900 font-semibold" : "text-gray-400 font-medium";
+                    textClass = isCurrentMonth ? "text-gray-900 dark:text-white font-semibold" : "text-gray-400 font-medium";
                   }
                   if (isToday && selectable && !isSelected) {
                     textClass = "text-orange-500 font-bold";
@@ -247,7 +247,7 @@ export function ReservationModal({
 
         {selectedDate !== null && (
           <div className="mb-6">
-            <p className="text-sm font-medium text-gray-700 mb-3">시간</p>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">시간</p>
             {hasSlots ? (
               slotsForSelectedDay.length === 0 ? (
                 <p className="text-sm text-gray-400">이 날짜엔 예약 가능한 시간대가 없어요.</p>
@@ -264,14 +264,14 @@ export function ReservationModal({
                         onClick={() => setSelectedSlotId(slot.id)}
                         className={`rounded-lg py-2 text-sm border ${
                           isFull
-                            ? "border-gray-100 text-gray-300 line-through"
+                            ? "border-gray-100 dark:border-gray-800 text-gray-300 line-through"
                             : isSelected
                             ? "bg-gray-900 text-white border-gray-900 font-medium"
-                            : "border-gray-200 text-gray-700"
+                            : "border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300"
                         }`}
                       >
                         {formatTime(slot.startTime)}
-                        {isFull && <span className="block text-[10px] mt-0.5">마감</span>}
+                        {isFull && <span className="block text-sm mt-0.5">마감</span>}
                       </button>
                     );
                   })}
@@ -291,10 +291,10 @@ export function ReservationModal({
                       onClick={() => setSelectedTime(time)}
                       className={`rounded-lg py-2 text-sm border ${
                         isPast
-                          ? "border-gray-100 text-gray-300 line-through"
+                          ? "border-gray-100 dark:border-gray-800 text-gray-300 line-through"
                           : selectedTime === time
                           ? "bg-gray-900 text-white border-gray-900 font-medium"
-                          : "border-gray-200 text-gray-700"
+                          : "border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300"
                       }`}
                     >
                       {time}
@@ -307,8 +307,8 @@ export function ReservationModal({
         )}
 
         <div className="flex items-center justify-between mb-8">
-          <span className="text-sm font-medium text-gray-700">
-            인원 <span className="text-xs text-gray-400 font-normal">(최대 {maxCount}명)</span>
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            인원 <span className="text-sm text-gray-400 font-normal">(최대 {maxCount}명)</span>
           </span>
           <CountStepper value={count} onChange={setCount} max={maxCount} />
         </div>
@@ -317,7 +317,7 @@ export function ReservationModal({
           type="button"
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="w-full rounded-full py-3.5 text-sm font-medium bg-gray-100 text-gray-900 disabled:opacity-60 enabled:bg-gray-900 enabled:text-white"
+          className="w-full rounded-full py-3.5 text-sm font-medium bg-gray-100 text-gray-900 dark:text-white disabled:opacity-60 enabled:bg-gray-900 enabled:text-white"
         >
           {buttonLabel}
         </button>

@@ -44,7 +44,7 @@ export default function RankingListPage() {
   return (
     <main className="min-h-screen flex flex-col w-full pb-16 mobile:pb-0 mobile:max-w-[1000px] mobile:mx-auto">
       <div className="flex-1">
-      <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100">
+      <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100 dark:border-gray-800">
         <button
           type="button"
           onClick={() => router.back()}
@@ -65,10 +65,10 @@ export default function RankingListPage() {
               key={k}
               type="button"
               onClick={() => setKeyword(k)}
-              className={`flex-none text-xs px-3 py-1.5 rounded-full border ${
+              className={`flex-none text-sm px-3 py-1.5 rounded-full border ${
                 keyword === k
                   ? "border-gray-900 bg-gray-900 text-white font-medium"
-                  : "border-gray-200 text-gray-500"
+                  : "border-gray-200 dark:border-gray-800 text-gray-500"
               }`}
             >
               {k}
@@ -88,10 +88,10 @@ export default function RankingListPage() {
                 href={`/popup/${item.id}`}
                 className="flex items-center gap-4 py-4 border-b border-gray-50"
               >
-                <span className="w-6 text-center text-sm font-bold text-gray-900 flex-none">
+                <span className="w-6 text-center text-sm font-bold text-gray-900 dark:text-white flex-none">
                   {index + 1}
                 </span>
-                <div className="w-24 h-24 flex-none rounded-lg bg-gray-100 overflow-hidden flex items-center justify-center text-xs text-gray-400">
+                <div className="w-24 h-24 flex-none rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden flex items-center justify-center text-sm text-gray-400">
                   {item.imageUrl ? (
                     <ImageWithFallback src={item.imageUrl} className="w-full h-full object-cover" />
                   ) : (

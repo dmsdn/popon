@@ -62,7 +62,7 @@ export default function DevLoginPage() {
 
       <div className="flex flex-col gap-4">
         <label className="block">
-          <span className="block text-sm font-medium text-gray-700 mb-2">
+          <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             테스트 ID <span className="text-gray-400 font-normal">(선택)</span>
           </span>
           <input
@@ -70,12 +70,12 @@ export default function DevLoginPage() {
             value={testId}
             onChange={(e) => setTestId(e.target.value)}
             placeholder="tester1"
-            className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm outline-none"
+            className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none"
           />
         </label>
 
         <label className="block">
-          <span className="block text-sm font-medium text-gray-700 mb-2">
+          <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             닉네임 <span className="text-gray-400 font-normal">(선택, 신규 계정일 때만 적용)</span>
           </span>
           <input
@@ -83,7 +83,7 @@ export default function DevLoginPage() {
             value={nickname}
             onChange={(e) => setNickname(e.target.value)}
             placeholder="테스트유저1"
-            className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm outline-none"
+            className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none"
             onKeyDown={(e) => {
               if (e.key === "Enter") handleSubmit();
             }}

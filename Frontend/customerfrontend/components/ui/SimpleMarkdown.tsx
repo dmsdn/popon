@@ -36,7 +36,7 @@ function renderInline(text: string, keyPrefix: string) {
           href={match[7]}
           target="_blank"
           rel="noopener noreferrer"
-          className="underline text-gray-900"
+          className="underline text-gray-900 dark:text-white"
         >
           {match[6]}
         </a>
@@ -99,7 +99,7 @@ export function SimpleMarkdown({ text }: { text: string }) {
       blocks.push(<div key={key} className="h-2" />);
     } else {
       blocks.push(
-        <p key={key} className="text-sm text-gray-600 leading-relaxed">
+        <p key={key} className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
           {renderInline(line, key)}
         </p>
       );

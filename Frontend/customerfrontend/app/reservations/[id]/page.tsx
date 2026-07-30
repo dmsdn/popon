@@ -124,7 +124,7 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
 
   return (
     <main className="min-h-screen flex flex-col w-full mobile:max-w-[1000px] mobile:mx-auto pb-16 mobile:pb-0">
-      <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100">
+      <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100 dark:border-gray-800">
         <button type="button" onClick={() => router.back()} aria-label="뒤로가기" className="text-lg text-gray-500">
           ‹
         </button>
@@ -133,7 +133,7 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
 
       <div className="px-4 mobile:px-8 py-6 flex flex-col gap-8">
         <Link href={`/popup/${popup.id}`} className="flex items-center gap-4">
-          <div className="w-24 h-24 flex-none bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-xs">
+          <div className="w-24 h-24 flex-none bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-sm">
             {popup.thumbnailImages?.[0] ? (
               <ImageWithFallback src={popup.thumbnailImages[0]} className="w-full h-full object-cover" />
             ) : (
@@ -141,15 +141,15 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
             )}
           </div>
           <div>
-            <span className="inline-block text-xs text-gray-500 mb-1">
+            <span className="inline-block text-sm text-gray-500 mb-1">
               {STATUS_LABEL[reservation.status] ?? reservation.status}
             </span>
             <p className="text-sm font-semibold">{popup.title}</p>
-            <p className="text-xs text-gray-400 mt-0.5">팝업 페이지 보기 ›</p>
+            <p className="text-sm text-gray-400 mt-0.5">팝업 페이지 보기 ›</p>
           </div>
         </Link>
 
-        <section className="border border-gray-200 rounded-xl p-5 flex flex-col gap-3">
+        <section className="border border-gray-200 dark:border-gray-800 rounded-xl p-5 flex flex-col gap-3">
           <h2 className="text-sm font-semibold mb-1">예약 정보</h2>
           <Row label="일시" value={dateTimeLabel} />
           <Row label="인원" value={`${reservation.partySize}명`} />
@@ -158,7 +158,7 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
 
         {/* [신규] 취소되지 않았고 아직 입장 전이면 QR을 보여줘요. */}
         {!isCancelled && reservation.entryStatus !== "CHECKED_IN" && (
-          <section className="border border-gray-200 rounded-xl p-5 flex flex-col items-center">
+          <section className="border border-gray-200 dark:border-gray-800 rounded-xl p-5 flex flex-col items-center">
             <p className="text-sm font-semibold mb-3">입장 QR</p>
             <QRCodeDisplay qrToken={reservation.qrToken} />
           </section>
@@ -178,7 +178,7 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
           <h2 className="text-sm font-semibold mb-2">이용 안내</h2>
           <ul className="flex flex-col gap-2">
             {POLICY.map((text) => (
-              <li key={text} className="text-xs text-gray-500 leading-relaxed">· {text}</li>
+              <li key={text} className="text-sm text-gray-500 leading-relaxed">· {text}</li>
             ))}
           </ul>
         </section>
@@ -196,7 +196,7 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
               <button
                 type="button"
                 onClick={handleCancel}
-                className="flex-1 rounded-full py-3 text-sm font-medium bg-gray-100 text-gray-700"
+                className="flex-1 rounded-full py-3 text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
               >
                 예약 취소
               </button>
@@ -215,13 +215,13 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
 
       {showQr && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center px-6 z-50" onClick={() => setShowQr(false)}>
-          <div className="bg-white rounded-xl px-6 py-8 w-full max-w-xs text-center" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white dark:bg-gray-900 rounded-xl px-6 py-8 w-full max-w-xs text-center" onClick={(e) => e.stopPropagation()}>
             <p className="text-sm font-medium mb-4">{popup.title}</p>
-            <div className="w-40 h-40 mx-auto bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs mb-4">
+            <div className="w-40 h-40 mx-auto bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 text-sm mb-4">
               QR 코드
             </div>
-            <p className="text-xs text-gray-400 mb-6">입장 시 이 QR을 보여주세요.</p>
-            <button type="button" onClick={() => setShowQr(false)} className="w-full rounded-full py-3 text-sm font-medium bg-gray-100 text-gray-700">
+            <p className="text-sm text-gray-400 mb-6">입장 시 이 QR을 보여주세요.</p>
+            <button type="button" onClick={() => setShowQr(false)} className="w-full rounded-full py-3 text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
               닫기
             </button>
           </div>
@@ -262,8 +262,8 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-xs text-gray-400">{label}</span>
-      <span className="text-sm text-gray-700">{value}</span>
+      <span className="text-sm text-gray-400">{label}</span>
+      <span className="text-sm text-gray-700 dark:text-gray-300">{value}</span>
     </div>
   );
 }

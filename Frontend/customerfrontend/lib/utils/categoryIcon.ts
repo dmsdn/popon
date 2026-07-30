@@ -26,5 +26,5 @@ export function getCategoryIcon(category: string): string {
   for (const [keywords, path] of ICON_RULES) {
     if (keywords.some((kw) => category.includes(kw))) return path;
   }
-  return "/icons/pin.svg";
+  return "/Icon/pin.svg";
 }
