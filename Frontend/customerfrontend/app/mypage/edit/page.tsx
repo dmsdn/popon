@@ -159,19 +159,22 @@ export default function EditProfilePage() {
 
       {/* [신규] 프로필 사진 수정 - 눌러서 파일 선택하면 정사각형으로 자른 뒤 업로드돼요. */}
       <div className="flex flex-col items-center mb-8">
-        <label className="relative w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-800 overflow-hidden cursor-pointer">
-          {profileImage && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={profileImage} alt="" className="w-full h-full object-cover" />
-          )}
-          {uploadingPhoto && (
-            <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-sm">
-              업로드 중...
-            </div>
-          )}
+        {/* [수정] overflow-hidden이 바깥(label)에 있어서 카메라 버튼이 원 밖으로
+            잘리고 있었어요 - 이미지를 감싸는 안쪽 div로 옮겼어요. */}
+        <label className="relative w-24 h-24 cursor-pointer">
+          <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-800 overflow-hidden">
+            {profileImage && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={profileImage} alt="" className="w-full h-full object-cover" />
+            )}
+            {uploadingPhoto && (
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-sm">
+                업로드 중...
+              </div>
+            )}
+          </div>
           <span className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-gray-900 dark:bg-gray-700 border-2 border-white dark:border-gray-900 flex items-center justify-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/Icon/Name=camera.svg" alt="" width={14} height={14} className="invert" />
+            <img src="/Icon/picture.svg" alt="" width={14} height={14} className="invert" />
           </span>
           <input
             type="file"

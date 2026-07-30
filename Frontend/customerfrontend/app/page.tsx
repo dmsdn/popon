@@ -85,9 +85,7 @@ export default function Home() {
           )
         ).then((results) => {
           if (cancelled) return;
-          const valid = results.filter(
-            (r): r is { item: PopupItem; status: PopupLiveStatus; imageUrl: string | null } => r !== null
-          );
+          const valid = results.filter((r): r is NonNullable<typeof r> => r !== null);
           valid.sort((a, b) => b.status.congestionRate - a.status.congestionRate);
           setCongestionItems(valid);
         });

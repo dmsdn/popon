@@ -239,6 +239,14 @@ function MyPageContent() {
   // 1:1 문의
   const [myCsRequests, setMyCsRequests] = useState<CsRequestItem[] | null>(null);
   const [csTitle, setCsTitle] = useState("");
+
+  // [신규] 팝업 상세페이지 "문의하기" 버튼에서 넘어온 경우, 어떤 팝업/브랜드에
+  // 대한 문의인지 제목에 미리 채워둬요.
+  useEffect(() => {
+    const prefillTitle = searchParams.get("prefillTitle");
+    if (prefillTitle) setCsTitle(prefillTitle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [csContent, setCsContent] = useState("");
   const [csSubmitting, setCsSubmitting] = useState(false);
 

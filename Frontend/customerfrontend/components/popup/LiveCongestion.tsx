@@ -40,7 +40,7 @@ function Segments({ label, size = "md" }: { label: PopupLiveStatus["congestionLa
  */
 export function LiveCongestionPanel({ status }: { status: PopupLiveStatus }) {
   return (
-    <div className="border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-4">
+    <div>
       <div className="flex items-center justify-between mb-1">
         <p className="text-sm font-semibold">실시간 혼잡도</p>
         <div className="flex items-center gap-2">

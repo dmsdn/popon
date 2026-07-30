@@ -10,6 +10,7 @@ import { StickyActionBar } from "@/components/popup/StickyActionBar";
 import { ReviewCard } from "@/components/popup/ReviewCard";
 import { PlaceCard } from "@/components/popup/PlaceCard";
 import { PopupSnsLinks } from "@/components/popup/PopupSnsLinks";
+import { OperatingHoursSection } from "@/components/popup/OperatingHoursSection";
 import { ReviewImageModal } from "@/components/popup/ReviewImageModal";
 import { SimpleMarkdown } from "@/components/ui/SimpleMarkdown";
 import { HorizontalCarousel } from "@/components/ui/HorizontalCarousel";
@@ -360,9 +361,9 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
           <Link href={`/brand/${popup.businessId}`} className="text-sm text-gray-400 inline-block">
             {popup.companyName} ›
           </Link>
-          {averageRating !== null && (
+          {averageRating != null && (
             <span className="flex items-center gap-1 text-sm text-gray-500 flex-none">
-              <StarRatingDisplay rating={averageRating} size={16} /> {averageRating.toFixed(1)}/5
+              <StarRatingDisplay rating={Number(averageRating)} size={16} /> {Number(averageRating).toFixed(1)}/5
             </span>
           )}
         </div>
@@ -417,41 +418,46 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        {/* [수정] 사전 예약 / 웨이팅 박스 제거 - 실시간 혼잡도 표시로 교체.
-            사전예약·웨이팅 기능 자체는 하단 고정 액션바(StickyActionBar)에 그대로 남아있어요. */}
-        <div className="mb-8">
+        {/* [수정] 실시간 혼잡도 + 예상 대기시간을 하나의 카드로 합쳤어요. 브랜드
+            문의하기 버튼도 여기 같이 넣었어요 - 기존 1:1 문의(마이페이지)를
+            재사용하되, 어떤 팝업/브랜드에 대한 문의인지 제목에 미리 채워서
+            보내요. */}
+        <div className="border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-4 mb-8 flex flex-col gap-4">
           {liveStatus ? (
             <LiveCongestionPanel status={liveStatus} />
           ) : (
-            <div className="border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-4 text-sm text-gray-400">
-              혼잡도 불러오는 중...
+            <p className="text-sm text-gray-400">혼잡도 불러오는 중...</p>
+          )}
+
+          {waitTime && (
+            <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
+              <p className="text-sm font-semibold mb-1">예상 대기시간</p>
+              {waitTime.reservationMode === "FREE" && waitTime.freeModeResult ? (
+                <p className="text-sm text-gray-400">
+                  지금 방문하면 약 {Math.round(waitTime.freeModeResult.estimatedWaitMinutes)}분 대기 예상
+                  (현재 {waitTime.freeModeResult.reservedCount}/{waitTime.freeModeResult.capacity}명)
+                </p>
+              ) : waitTime.slots && waitTime.slots.length > 0 ? (
+                <p className="text-sm text-gray-400">
+                  가장 빠른 시간대({waitTime.slots[0].startTime.slice(0, 5)}) 기준 약{" "}
+                  {Math.round(waitTime.slots[0].estimatedWaitMinutes)}분 대기 예상
+                </p>
+              ) : (
+                <p className="text-sm text-gray-400">예약 가능한 시간대가 없어요.</p>
+              )}
+              {queueCount !== null && (
+                <p className="text-sm text-gray-400 mt-1">현재 대기·체류 중인 인원 총 {queueCount}명</p>
+              )}
             </div>
           )}
-        </div>
 
-        {/* [신규] 예상 대기시간 - "지금 가면 대략 N분 대기" */}
-        {waitTime && (
-          <div className="border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-4 mb-8">
-            <p className="text-sm font-semibold mb-1">예상 대기시간</p>
-            {waitTime.reservationMode === "FREE" && waitTime.freeModeResult ? (
-              <p className="text-sm text-gray-400">
-                지금 방문하면 약 {Math.round(waitTime.freeModeResult.estimatedWaitMinutes)}분 대기 예상
-                (현재 {waitTime.freeModeResult.reservedCount}/{waitTime.freeModeResult.capacity}명)
-              </p>
-            ) : waitTime.slots && waitTime.slots.length > 0 ? (
-              <p className="text-sm text-gray-400">
-                가장 빠른 시간대({waitTime.slots[0].startTime.slice(0, 5)}) 기준 약{" "}
-                {Math.round(waitTime.slots[0].estimatedWaitMinutes)}분 대기 예상
-              </p>
-            ) : (
-              <p className="text-sm text-gray-400">예약 가능한 시간대가 없어요.</p>
-            )}
-            {/* 사전예약자+현장웨이팅자를 합친 실제 총 대기/체류 인원 */}
-            {queueCount !== null && (
-              <p className="text-sm text-gray-400 mt-1">현재 대기·체류 중인 인원 총 {queueCount}명</p>
-            )}
-          </div>
-        )}
+          <Link
+            href={`/mypage?menu=1:1 문의&prefillTitle=${encodeURIComponent(`[${popup.companyName}] ${popup.title} 관련 문의`)}`}
+            className="w-full text-center text-sm font-medium border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-full py-2.5"
+          >
+            문의하기
+          </Link>
+        </div>
 
         {showReservation && (
           <ReservationModal
@@ -577,11 +583,8 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
             {/* [신규] SNS/홈페이지 - popup_sns_link, 정보 탭 맨 위에 배치 */}
             <PopupSnsLinks links={popup.snsLinks} />
 
-            {/* [수정] "공지사항"/"혜택"이 실제 데이터 없이 고정 문구만 보여주던
-                자리표시자였어서 없앴어요. 요청하신 "운영시간 안내"를 여기 넣으려고
-                했는데, 백엔드 Popup 테이블에 요일별 운영시간을 저장하는 필드 자체가
-                없어요(시작일/종료일만 있고, "매일 몇 시~몇 시" 같은 정보가 없어요) -
-                이 데이터가 추가되면 바로 이 자리에 넣을 수 있어요. */}
+            {/* [수정] 백엔드에 요일별 운영시간 데이터가 새로 생겨서 연결했어요. */}
+            <OperatingHoursSection hours={popup.operatingHours} />
 
             <section>
               <h2 className="text-sm font-semibold mb-2">소개</h2>
@@ -751,6 +754,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
       <StickyActionBar
         popupId={popup.id}
         popupStatus={toPopupItem(popup).status}
+        queueMode={popup.queueMode}
         waitingTeams={waitingTeams}
         wishlistCount={popup.wishlistCount}
         onReserve={() => {
