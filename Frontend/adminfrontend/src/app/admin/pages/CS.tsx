@@ -1,22 +1,28 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Send, ChevronDown, ChevronUp, CheckCircle2, Info, Flag } from "lucide-react";
+import { Loader2, Send, ChevronDown, ChevronUp, CheckCircle2, Info, Flag, EyeOff, XCircle, Star } from "lucide-react";
 import {
   getAdminCsList, answerCs, getAdminInquiries, answerInquiry,
-  getAdminReports, processReport,
+  getAdminReports, rejectReport, hideReportedReview,
   CsItem, InquiryItem, ReportItem, ReportReasonCode,
 } from "../../lib/api";
 
 // 문의 및 신고관리 — 소비자 CS(/api/admin/cs)·주최자 문의(/api/admin/inquiries)·후기 신고(/api/admin/reports) 실데이터
 // 신고 접수 입구(리뷰 옆 신고 버튼)는 소비자 프론트(pew) 영역 — POST /api/reports
+// 7/30 jsw 신고 대개편 반영 — 「처리완료」 단일 버튼이 반려(후기 유지)·후기 가리기(마스킹) 두 갈래로 나뉨.
+// 응답에 신고 대상 후기의 본문·별점이 실려 와서, 후기를 따로 찾아보지 않고 이 자리에서 판단한다.
 
 type Tab = "cs" | "inquiry" | "report";
 
 const STATUS_BADGE: Record<string, string> = {
   PENDING: "bg-amber-50 text-amber-600 border-amber-200",
   ANSWERED: "bg-emerald-50 text-emerald-600 border-emerald-200",
-  PROCESSED: "bg-emerald-50 text-emerald-600 border-emerald-200",
+  REJECTED: "bg-slate-100 text-slate-500 border-slate-200",   // 신고 반려 — 후기 유지
+  HIDDEN: "bg-red-50 text-red-500 border-red-200",            // 신고 수용 — 후기 가림
 };
-const STATUS_LABEL: Record<string, string> = { PENDING: "답변 대기", ANSWERED: "답변 완료", PROCESSED: "처리 완료" };
+const STATUS_LABEL: Record<string, string> = {
+  PENDING: "답변 대기", ANSWERED: "답변 완료",
+  REJECTED: "신고 반려", HIDDEN: "후기 가림",
+};
 
 const REASON_LABEL: Record<ReportReasonCode, string> = {
   ABUSE: "욕설/비방",
@@ -78,12 +84,16 @@ export default function CS() {
     }
   };
 
-  // 신고 처리완료 — PATCH /api/admin/reports/{id}/process
-  const handleProcess = async (r: ReportItem) => {
-    if (!window.confirm(`신고 #${r.id}(${REASON_LABEL[r.reason]})를 처리완료로 변경할까요?`)) return;
+  // 신고 처리 (7/30 대개편) — 반려는 후기를 그대로 두고, 가리기는 후기 내용을 마스킹하고 작성자에게 알림이 간다
+  const handleReport = async (r: ReportItem, action: "reject" | "hide") => {
+    const msg =
+      action === "reject"
+        ? `신고 #${r.id}(${REASON_LABEL[r.reason]})를 반려할까요?\n후기는 그대로 유지됩니다.`
+        : `신고 #${r.id}(${REASON_LABEL[r.reason]})를 수용해 후기를 가릴까요?\n후기 내용이 마스킹되고 작성자에게 알림이 발송됩니다.`;
+    if (!window.confirm(msg)) return;
     setSavingId(r.id);
     try {
-      const updated = await processReport(r.id);
+      const updated = action === "reject" ? await rejectReport(r.id) : await hideReportedReview(r.id);
       setReports((prev) => prev.map((x) => (x.id === r.id ? updated : x)));
     } catch (e) {
       alert(e instanceof Error ? e.message : "신고 처리에 실패했습니다.");
@@ -162,8 +172,8 @@ export default function CS() {
           )}
           {reports.map((r) => (
             <div key={r.id} className="bg-card border border-border rounded-sm px-4 py-3.5 flex items-start gap-3">
-              <span className={`shrink-0 text-[11px] px-2 py-0.5 rounded-full border mt-0.5 ${STATUS_BADGE[r.status]}`}>
-                {r.status === "PENDING" ? "처리 대기" : "처리 완료"}
+              <span className={`shrink-0 text-[11px] px-2 py-0.5 rounded-full border mt-0.5 ${STATUS_BADGE[r.status] ?? STATUS_BADGE.PENDING}`}>
+                {r.status === "PENDING" ? "처리 대기" : STATUS_LABEL[r.status] ?? r.status}
               </span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 text-[13px] font-semibold">
@@ -172,19 +182,41 @@ export default function CS() {
                   <span className="text-[11px] font-normal text-muted-foreground" style={{ fontFamily: "'DM Mono', monospace" }}>리뷰 #{r.reviewId}</span>
                 </div>
                 {r.detail && <p className="text-[13px] mt-1 whitespace-pre-wrap">{r.detail}</p>}
-                <div className="text-[11px] text-muted-foreground mt-1">
+                {/* 신고 대상 후기 원문 (7/30) — 서버가 응답에 실어줘서 후기를 따로 찾을 필요 없이 여기서 판단 */}
+                {r.reviewContent != null && (
+                  <div className={`mt-2 rounded-sm border p-2.5 ${r.reviewHidden ? "border-red-200 bg-red-50/50" : "border-border bg-secondary/50"}`}>
+                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-1">
+                      <Star size={10} className="text-amber-500" /> 신고된 후기
+                      {r.reviewRating != null && ` · ★ ${Number(r.reviewRating).toFixed(1)}`}
+                      {r.reviewPopupId != null && ` · 팝업 #${r.reviewPopupId}`}
+                      {r.reviewHidden && <span className="text-red-500 font-medium">· 현재 가려짐</span>}
+                    </div>
+                    <p className="text-[12px] leading-relaxed whitespace-pre-wrap line-clamp-3">{r.reviewContent}</p>
+                  </div>
+                )}
+                <div className="text-[11px] text-muted-foreground mt-1.5">
                   신고자 {r.reporterNickname} · 접수 {fmt(r.createdAt)}
-                  {r.status === "PROCESSED" && ` · 처리 ${r.processedBy?.replace("admin:", "")} · ${fmt(r.processedAt)}`}
+                  {r.status !== "PENDING" && ` · 처리 ${r.processedBy?.replace("admin:", "")} · ${fmt(r.processedAt)}`}
                 </div>
               </div>
+              {/* 7/30 — 처리 버튼 2종: 반려(후기 유지) / 후기 가리기(마스킹+작성자 알림) */}
               {r.status === "PENDING" && (
-                <button
-                  onClick={() => handleProcess(r)}
-                  disabled={savingId === r.id}
-                  className="shrink-0 flex items-center gap-1.5 text-xs px-4 py-2 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-50"
-                >
-                  {savingId === r.id ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />} 처리완료
-                </button>
+                <div className="shrink-0 flex flex-col gap-1.5">
+                  <button
+                    onClick={() => handleReport(r, "hide")}
+                    disabled={savingId === r.id}
+                    className="flex items-center justify-center gap-1.5 text-xs px-4 py-2 rounded-sm bg-red-500 text-white hover:bg-red-600 disabled:opacity-50"
+                  >
+                    {savingId === r.id ? <Loader2 size={13} className="animate-spin" /> : <EyeOff size={13} />} 후기 가리기
+                  </button>
+                  <button
+                    onClick={() => handleReport(r, "reject")}
+                    disabled={savingId === r.id}
+                    className="flex items-center justify-center gap-1.5 text-xs px-4 py-2 rounded-sm border border-border text-muted-foreground hover:bg-secondary disabled:opacity-50"
+                  >
+                    <XCircle size={13} /> 신고 반려
+                  </button>
+                </div>
               )}
             </div>
           ))}

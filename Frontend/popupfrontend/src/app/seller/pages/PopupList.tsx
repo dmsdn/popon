@@ -1,9 +1,11 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { Search, Pencil, Loader2, ShieldAlert, ChevronDown, ChevronUp, MessageSquare, CheckCircle2, SlidersHorizontal, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Search, Pencil, Loader2, ShieldAlert, ChevronDown, ChevronUp, MessageSquare, CheckCircle2, SlidersHorizontal, ArrowUpDown, ArrowUp, ArrowDown, Trash2 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { getPopups, getMyPopups, getMyInquiries, getKeywords, Popup, PopupStatusCode, InquiryItem, IdName } from "../../lib/api";
 import { loadAllMeta, isSuspended } from "../../lib/adminPopupMeta";
+// 임시저장 초안 (7/30) — 서버가 아니라 이 브라우저 localStorage에 있다. 표 상단에 「임시저장」 상태로 노출
+import { PopupDraft, loadDrafts, removeDraft } from "../../lib/popupDrafts";
 
 // 백엔드 PopupStatus → 화면 표기 (등록 직후 PENDING, 관리자 승인 시 BEFOR, 반려 시 REJECTED)
 const STATUS_LABEL: Record<PopupStatusCode, string> = {
@@ -46,6 +48,13 @@ export default function PopupList() {
   // 이 팝업 관련 문의(제목의 [팝업명] 태그로 매칭) 중 답변 완료된 것 — 문의답변완료 버튼·확장
   const [inquiries, setInquiries] = useState<InquiryItem[]>([]);
   const [openInqPopupId, setOpenInqPopupId] = useState<number | null>(null);
+  // 임시저장 초안 (7/30) — 등록 화면에서 「임시저장」한 미완성 폼. 이어서 작성하거나 여기서 버린다
+  const [drafts, setDrafts] = useState<PopupDraft[]>(loadDrafts);
+  const deleteDraft = (id: string) => {
+    if (!window.confirm("이 임시저장을 삭제할까요? 되돌릴 수 없습니다.")) return;
+    removeDraft(id);
+    setDrafts(loadDrafts());
+  };
 
   useEffect(() => {
     let alive = true;
@@ -217,6 +226,35 @@ export default function PopupList() {
                 </td>
               </tr>
             )}
+            {/* 임시저장 초안 — 서버 팝업이 아니라 이 브라우저에만 있는 미완성 폼 (7/30).
+                상태·카테고리 필터는 서버 팝업 기준이라, 초안은 「전체」 탭에서만 보여 혼동을 막는다 */}
+            {!loading && filter === "전체" && catFilter === null &&
+              drafts
+                .filter((d) => q === "" || (d.title || "").includes(q))
+                .map((d) => (
+                  <tr key={`draft-${d.id}`} className="hover:bg-secondary/40">
+                    <td className="px-4 py-3">
+                      <Link to={`/seller/popups/new?draft=${d.id}`} className="font-medium hover:text-accent hover:underline underline-offset-2 transition-colors">
+                        {d.title || "(제목 없음)"}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-xs">{d.startDate} ~ {d.endDate}</td>
+                    <td className="px-4 py-3 text-xs">{d.directAddress || "-"}</td>
+                    <td className="px-4 py-3 text-xs">-</td>
+                    <td className="px-4 py-3">
+                      <span className="text-[11px] px-2 py-0.5 rounded-full border bg-violet-50 text-violet-600 border-violet-200">임시저장</span>
+                    </td>
+                    <td className="px-4 py-3 text-xs">-</td>
+                    <td className="px-4 py-3 text-xs" title="마지막 저장 시각">{d.savedAt.slice(0, 16).replace("T", " ")}</td>
+                    <td className="px-4 py-3 text-xs text-center text-muted-foreground">-</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                        <Link to={`/seller/popups/new?draft=${d.id}`} title="이어서 작성" className="hover:text-foreground"><Pencil size={14} /></Link>
+                        <button onClick={() => deleteDraft(d.id)} title="임시저장 삭제" className="hover:text-red-500"><Trash2 size={14} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
             {!loading && rows.map((p) => {
               const meta = adminMeta[String(p.id)] ?? {};
               const suspended = isSuspended(p.status, p.rejectReason);
@@ -331,7 +369,7 @@ export default function PopupList() {
                 </Fragment>
               );
             })}
-            {!loading && rows.length === 0 && (
+            {!loading && rows.length === 0 && !(filter === "전체" && catFilter === null && drafts.length > 0) && (
               <tr><td colSpan={9} className="px-4 py-10 text-center text-xs text-muted-foreground">조건에 맞는 팝업이 없습니다.</td></tr>
             )}
           </tbody>

@@ -34,8 +34,20 @@ const QUEUE_MODE_LABEL: Record<string, string> = {
   BOTH: "사전예약 + 현장 웨이팅",
 };
 
+// 7/30 — 심사 화면에서 등록 폼의 모든 항목을 볼 수 있게 (요일별 운영시간·SNS·유의사항 등)
+const DAY_LABEL: Record<string, string> = {
+  MONDAY: "월", TUESDAY: "화", WEDNESDAY: "수", THURSDAY: "목",
+  FRIDAY: "금", SATURDAY: "토", SUNDAY: "일",
+};
+const SNS_LABEL: Record<string, string> = {
+  INSTAGRAM: "인스타그램", YOUTUBE: "유튜브", X: "X(트위터)",
+  BLOG: "블로그", HOMEPAGE: "홈페이지", NAVERMAP: "네이버 지도",
+  FACEBOOK: "페이스북", TIKTOK: "틱톡", ETC: "기타", // 구 enum 데이터도 표기는 살린다
+};
+
 const fmtDate = (iso: string | null) => (iso ? iso.slice(0, 10) : "-");
 const fmtTime = (iso: string | null) => (iso ? iso.slice(11, 16) : "");
+const fmtHM = (t: string | null) => (t ? t.slice(0, 5) : "");
 
 export default function AdminPopupDetail() {
   const { id } = useParams();
@@ -256,9 +268,90 @@ export default function AdminPopupDetail() {
           <div>
             <div className="text-[11px] text-muted-foreground mb-0.5">최대 수용 정원</div>
             <div>{popup.capacity != null ? `${popup.capacity}명` : "-"}</div>
+            {popup.maxPartySizePerTeam != null && (
+              <div className="text-xs text-muted-foreground mt-0.5">웨이팅 팀당 최대 {popup.maxPartySizePerTeam}명</div>
+            )}
+          </div>
+        </div>
+        {/* 7/30 — 등록 폼의 나머지 항목: 지역·카테고리·해시태그·소비자 평가 */}
+        <div className="flex items-start gap-2.5">
+          <MapPin size={15} className="text-muted-foreground shrink-0 mt-0.5" />
+          <div>
+            <div className="text-[11px] text-muted-foreground mb-0.5">지역 · 카테고리</div>
+            <div>
+              {popup.regionName ?? "지역 미지정"}
+              {(popup.keywordNames?.length ?? 0) > 0 && ` · ${popup.keywordNames!.join(", ")}`}
+            </div>
+            {(popup.hashtags?.length ?? 0) > 0 && (
+              <div className="text-xs text-muted-foreground mt-0.5 break-all">{popup.hashtags!.map((t) => `#${t}`).join(" ")}</div>
+            )}
+          </div>
+        </div>
+        <div className="flex items-start gap-2.5">
+          <ShieldCheck size={15} className="text-muted-foreground shrink-0 mt-0.5" />
+          <div>
+            <div className="text-[11px] text-muted-foreground mb-0.5">소비자 평가</div>
+            <div>
+              {popup.avgRating != null && popup.reviewCount != null && popup.reviewCount > 0
+                ? `★ ${Number(popup.avgRating).toFixed(1)} · 후기 ${popup.reviewCount}건`
+                : "아직 후기 없음"}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* 요일별 운영시간 (7/30 jsw operatingHours) — 심사 시 운영 계획 확인용 */}
+      {(popup.operatingHours?.length ?? 0) > 0 && (
+        <div className="bg-card border border-border rounded-sm">
+          <div className="px-5 py-3 border-b border-border text-sm font-semibold">요일별 운영시간</div>
+          <div className="p-4 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 text-center">
+            {["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"].map((code) => {
+              const h = popup.operatingHours!.find((x) => x.dayOfWeek === code);
+              return (
+                <div key={code} className={`rounded-sm border px-2 py-2 ${h?.closed ? "border-red-200 bg-red-50/50" : "border-border bg-secondary/40"}`}>
+                  <div className="text-[11px] text-muted-foreground mb-1">{DAY_LABEL[code]}</div>
+                  {!h ? (
+                    <div className="text-xs text-muted-foreground">-</div>
+                  ) : h.closed ? (
+                    <div className="text-xs text-red-500 font-medium">휴무</div>
+                  ) : (
+                    <div className="text-xs" style={{ fontFamily: "'DM Mono', monospace" }}>
+                      {fmtHM(h.openTime)}<br />{fmtHM(h.closeTime)}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* SNS·홈페이지 링크 — 심사 시 실제 채널 확인용 (새 탭) */}
+      {(popup.snsLinks?.length ?? 0) > 0 && (
+        <div className="bg-card border border-border rounded-sm">
+          <div className="px-5 py-3 border-b border-border text-sm font-semibold">SNS·홈페이지 링크</div>
+          <ul className="divide-y divide-border">
+            {popup.snsLinks!.map((l) => (
+              <li key={l.id} className="px-5 py-2.5 flex items-center gap-3 text-[13px]">
+                <span className="shrink-0 text-[11px] px-2 py-0.5 rounded-full border border-border bg-secondary/60">
+                  {SNS_LABEL[l.platform] ?? l.platform}
+                </span>
+                <a href={l.url} target="_blank" rel="noreferrer" className="truncate text-accent hover:underline underline-offset-2">
+                  {l.url}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* 유의사항 — 주최자가 적은 소비자 안내 문구. 심사 대상에 포함 */}
+      {popup.notice && (
+        <div className="bg-amber-50 border border-amber-200 rounded-sm p-4">
+          <div className="text-xs font-semibold text-amber-800 mb-1">유의사항 (소비자 안내 문구)</div>
+          <p className="text-[13px] text-amber-900 leading-relaxed whitespace-pre-wrap">{popup.notice}</p>
+        </div>
+      )}
 
       {/* 등록 이미지 — 7/29 심사에 필요한 실제 이미지 확인 (썸네일·상세, 클릭 시 확대) */}
       {((popup.thumbnailImages?.length ?? 0) > 0 || (popup.detailImages?.length ?? 0) > 0) && (

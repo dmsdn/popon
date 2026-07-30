@@ -212,9 +212,17 @@ export type Popup = {
   statusChangedAt: string | null; // 관리자가 상태를 마지막으로 확정한 일시 (승인/반려/게시중지)
   adminEditNote: string | null;   // 반려·게시중지 사유 (승인 시 서버가 null로 초기화)
   keywordNames: string[] | null;  // 7/28 jmy — 표준 카테고리 이름 목록 (상세 조회에서 채워짐)
-  regionName?: string | null;     // 7/29 — 지역(region) 이름. ⚠ 백엔드 PopupResponse 노출 대기
+  regionName?: string | null;     // 7/29 — 지역(region) 이름 (백엔드 노출 확인됨)
   thumbnailImages: string[] | null; // 7/28 jsw — 썸네일 이미지 URL (상세 조회에서만)
   detailImages: string[] | null;    // 7/28 jsw — 상세 설명 이미지 URL (상세 조회에서만)
+  // 7/30 jsw — 요일별 운영시간·SNS 링크·해시태그·유의사항·별점 집계 (상세 조회에서 채워짐)
+  operatingHours?: { dayOfWeek: string; openTime: string | null; closeTime: string | null; closed: boolean }[] | null;
+  snsLinks?: { id: number; platform: string; url: string; displayName?: string | null; sortOrder?: number | null }[] | null;
+  hashtags?: string[] | null;
+  maxPartySizePerTeam?: number | null;
+  notice?: string | null;
+  avgRating?: number | null;
+  reviewCount?: number | null;
 };
 
 export function getPopups(params?: { location?: string; status?: string; keyword?: string }) {
@@ -534,6 +542,12 @@ export function getMyInquiries() {
 
 export type ReportReasonCode = "ABUSE" | "SPAM" | "FALSE_INFO" | "OTHER";
 
+// 7/30 jsw 신고 대개편 — 처리 방식이 「일괄 처리완료」에서 두 갈래로 나뉘었다.
+//   반려(reject): 신고가 부적절 — 후기는 그대로 둔다
+//   후기 가리기(hide-review): 신고 수용 — 후기 내용을 마스킹하고 작성자에게 알림 발송
+// 응답에는 신고 대상 후기의 맥락(본문·별점·작성자·가림 여부)이 함께 실려 목록에서 바로 판단할 수 있다.
+export type ReportStatusCode = "PENDING" | "REJECTED" | "HIDDEN";
+
 export type ReportItem = {
   id: number;
   reviewId: number;
@@ -541,17 +555,28 @@ export type ReportItem = {
   reporterNickname: string;
   reason: ReportReasonCode;
   detail: string | null;
-  status: "PENDING" | "PROCESSED";
+  status: ReportStatusCode;
   processedBy: string | null;
   processedAt: string | null;
   createdAt: string;
+  // 신고 대상 후기 맥락
+  reviewPopupId: number | null;
+  reviewRating: number | null;
+  reviewContent: string | null;
+  reviewAuthorCustomerId: number | null;
+  reviewHidden: boolean;
 };
 
-export function getAdminReports(status?: "PENDING" | "PROCESSED") {
+export function getAdminReports(status?: ReportStatusCode) {
   return request<ReportItem[]>(`/api/admin/reports${status ? `?status=${status}` : ""}`);
 }
-export function processReport(id: number) {
-  return request<ReportItem>(`/api/admin/reports/${id}/process`, { method: "PATCH" });
+// 신고 반려 — 후기 유지
+export function rejectReport(id: number) {
+  return request<ReportItem>(`/api/admin/reports/${id}/reject`, { method: "PATCH" });
+}
+// 신고 수용 — 후기 마스킹 (작성자에게 알림 발송)
+export function hideReportedReview(id: number) {
+  return request<ReportItem>(`/api/admin/reports/${id}/hide-review`, { method: "PATCH" });
 }
 
 // ── 지역 마스터 (popup.address_keyword가 참조하는 region 테이블 — jmy 도메인, permitAll) ──
