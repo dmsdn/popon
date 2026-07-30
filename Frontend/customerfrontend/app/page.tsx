@@ -170,7 +170,7 @@ export default function Home() {
   }, [allOpenPopups, preferredCategories]);
 
   return (
-    <main className="min-h-screen flex flex-col pb-16 mobile:pb-0 mobile:max-w-[1000px] mobile:mx-auto">
+    <main className="min-h-screen flex flex-col w-full pb-16 mobile:pb-0 mobile:max-w-[1000px] mobile:mx-auto">
       <div className="flex-1">
       <div className="hidden mobile:block">
         <Header />
@@ -195,7 +195,7 @@ export default function Home() {
         <PopupSection
           title="내 관심 지역 팝업"
           items={regionPopups}
-          moreHref={`/search?region=${encodeURIComponent(preferredRegions[0])}`}
+          moreHref={`/search?region=${encodeURIComponent(preferredRegions.join(","))}`}
         />
       )}
 

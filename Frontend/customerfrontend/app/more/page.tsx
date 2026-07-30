@@ -7,6 +7,7 @@ import { Footer } from "@/components/layout/Footer";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { getKeywords, getMyInterests, type Keyword } from "@/lib/api/customer";
 import { getRegions, getMyRegions, type Region } from "@/lib/api/regions";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 // 관심으로 설정해둔 것부터 위로 오게 정렬 (나머지는 원래 순서 유지)
 function sortByPreferred<T>(all: T[], isPreferred: (item: T) => boolean): T[] {
@@ -72,6 +73,12 @@ export default function MorePage() {
         </button>
         <h1 className="text-lg font-bold">더보기</h1>
       </div>
+
+      {/* [신규] 다크모드 토글 */}
+      <section className="px-4 mobile:px-8 py-4 border-b border-gray-100 flex items-center justify-between">
+        <span className="text-sm font-medium">다크모드</span>
+        <ThemeToggle />
+      </section>
 
       {/* 내 계정 정보 */}
       <section className="px-4 mobile:px-8 py-6 border-b border-gray-100">

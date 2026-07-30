@@ -5,7 +5,7 @@ import Link from "next/link";
 // 마이페이지의 "약관" 탭(실제 약관 본문을 보여주는 곳)으로 연결했습니다.
 export function Footer() {
   return (
-    <footer className="bg-gray-100 px-4 py-6 mt-4 text-xs text-gray-500">
+    <footer className="bg-gray-100 dark:bg-gray-900 px-4 py-6 mt-4 text-xs text-gray-500 dark:text-gray-400">
       <p className="font-semibold text-sm text-gray-700 mb-3">로고</p>
       <p className="mb-3 flex flex-wrap gap-x-1">
         <Link href="/mypage?menu=약관" className="underline underline-offset-2">
