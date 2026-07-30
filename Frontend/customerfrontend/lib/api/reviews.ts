@@ -16,6 +16,7 @@ import { apiFetch, ApiError } from "./client";
 export interface Review {
   id: number;
   popupId: number;
+  nickname?: string; // [신규] 작성자 닉네임 - 없으면 프론트에서 "방문자"로 대체 표시
   rating: number; // 0.5 ~ 5.0
   content: string;
   imageUrls: string[];

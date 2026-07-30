@@ -22,7 +22,9 @@ export function ImageWithFallback({
 
   if (failed) {
     return (
-      <div className={`flex items-center justify-center bg-gray-100 text-gray-400 text-xs text-center px-1 ${className}`}>
+      <div
+        className={`flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 text-sm text-center px-1 ${className}`}
+      >
         이미지를
         <br />
         불러올 수 없어요

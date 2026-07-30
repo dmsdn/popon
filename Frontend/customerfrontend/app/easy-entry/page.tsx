@@ -49,7 +49,7 @@ export default function EasyEntryListPage() {
   return (
     <main className="min-h-screen flex flex-col w-full pb-16 mobile:pb-0 mobile:max-w-[1000px] mobile:mx-auto">
       <div className="flex-1">
-      <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100">
+      <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100 dark:border-gray-800">
         <button
           type="button"
           onClick={() => router.back()}
@@ -76,7 +76,7 @@ export default function EasyEntryListPage() {
                 href={`/popup/${item.id}`}
                 className="flex items-center gap-4 py-4 border-b border-gray-50"
               >
-                <div className="w-24 h-24 flex-none rounded-lg bg-gray-100 overflow-hidden flex items-center justify-center text-xs text-gray-400">
+                <div className="w-24 h-24 flex-none rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden flex items-center justify-center text-sm text-gray-400">
                   {item.imageUrl ? (
                     <ImageWithFallback src={item.imageUrl} className="w-full h-full object-cover" />
                   ) : (
@@ -87,7 +87,7 @@ export default function EasyEntryListPage() {
                   <p className="text-base font-medium truncate">{item.name}</p>
                   {item.location && <p className="text-sm text-gray-400">{item.location}</p>}
                 </div>
-                <span className="text-xs text-gray-500 flex-none">현재 {count}명</span>
+                <span className="text-sm text-gray-500 flex-none">웨이팅 {count}팀</span>
               </Link>
             ))}
           </div>

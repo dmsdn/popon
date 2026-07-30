@@ -52,10 +52,10 @@ export function PopularRankingSection() {
             key={k}
             type="button"
             onClick={() => setKeyword(k)}
-            className={`text-xs px-3 py-1.5 rounded-full border ${
+            className={`text-sm px-3 py-1.5 rounded-full border ${
               keyword === k
-                ? "border-gray-900 text-gray-900 font-medium"
-                : "border-gray-200 text-gray-500"
+                ? "border-gray-900 text-gray-900 dark:text-white font-medium"
+                : "border-gray-200 dark:border-gray-800 text-gray-500"
             }`}
           >
             {k}

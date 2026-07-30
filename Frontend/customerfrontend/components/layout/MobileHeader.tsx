@@ -29,9 +29,8 @@ export function MobileHeader({
     return (
       <header className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800">
         <button type="button" onClick={() => router.back()} aria-label="뒤로가기" className="text-gray-500">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/Icon/back_arrow.svg" alt="" width={20} height={20} />
         </button>
         <SearchInput
           autoFocus={!initialQuery && !disableAutoFocus}
@@ -49,10 +48,10 @@ export function MobileHeader({
       </Link>
       <div className="flex items-center gap-4">
         <Link href="/search" aria-label="검색">
-          <Image src="/icon/Bar_Search.svg" alt="검색" width={20} height={20} />
+          <Image src="/Icon/Bar_Search.svg" alt="검색" width={20} height={20} />
         </Link>
         <Link href="/notifications" aria-label="알림">
-          <Image src="/icon/notification_on.svg" alt="알림" width={20} height={20} />
+          <Image src="/Icon/notification_on.svg" alt="알림" width={20} height={20} />
         </Link>
       </div>
     </header>

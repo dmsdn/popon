@@ -49,23 +49,23 @@ export default function ReservationsPage() {
         <section>
           <h2 className="text-base font-semibold mb-3">웨이팅</h2>
           {waiting ? (
-            <div className="border border-gray-200 rounded-xl p-5">
+            <div className="border border-gray-200 dark:border-gray-800 rounded-xl p-5">
               <div className="flex items-start gap-4 mobile:gap-6">
-                <div className="w-20 h-20 mobile:w-24 mobile:h-24 flex-none bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs">
+                <div className="w-20 h-20 mobile:w-24 mobile:h-24 flex-none bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-sm">
                   이미지
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-semibold mb-1">{waiting.popupName}</p>
-                  <p className="text-xs text-gray-500 mb-1">
+                  <p className="text-sm text-gray-500 mb-1">
                     {waiting.location} {waiting.partySize}명 {waiting.registeredAt} 등록
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-sm text-gray-500">
                     앞 {waiting.aheadCount}팀 | 예상 대기시간 약 {waiting.estimatedMinutes}분
                   </p>
                 </div>
                 <div className="text-right flex-none">
                   <span className="text-3xl font-bold">{waiting.myOrder}</span>
-                  <span className="text-xs text-gray-500 ml-0.5">번째</span>
+                  <span className="text-sm text-gray-500 ml-0.5">번째</span>
                 </div>
               </div>
 
@@ -73,7 +73,7 @@ export default function ReservationsPage() {
                 <button
                   type="button"
                   onClick={handleCancelWaiting}
-                  className="flex-1 rounded-full py-3 text-sm font-medium bg-gray-100 text-gray-700"
+                  className="flex-1 rounded-full py-3 text-sm font-medium bg-gray-100 text-gray-700 dark:text-gray-300"
                 >
                   웨이팅 취소
                 </button>
@@ -87,7 +87,7 @@ export default function ReservationsPage() {
               </div>
             </div>
           ) : (
-            <p className="text-sm text-gray-400 py-8 text-center border border-gray-100 rounded-xl">
+            <p className="text-sm text-gray-400 py-8 text-center border border-gray-100 dark:border-gray-800 rounded-xl">
               진행 중인 웨이팅이 없어요.
             </p>
           )}
@@ -96,20 +96,20 @@ export default function ReservationsPage() {
         <section>
           <h2 className="text-base font-semibold mb-3">예약</h2>
           {mockReservations.length === 0 ? (
-            <p className="text-sm text-gray-400 py-8 text-center border border-gray-100 rounded-xl">
+            <p className="text-sm text-gray-400 py-8 text-center border border-gray-100 dark:border-gray-800 rounded-xl">
               예약 내역이 없어요.
             </p>
           ) : (
             <div className="flex flex-col gap-3">
               {mockReservations.map((r) => (
-                <div key={r.id} className="border border-gray-200 rounded-xl p-5 flex items-center gap-4 mobile:gap-6">
-                  <div className="w-20 h-20 mobile:w-24 mobile:h-24 flex-none bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs">
+                <div key={r.id} className="border border-gray-200 dark:border-gray-800 rounded-xl p-5 flex items-center gap-4 mobile:gap-6">
+                  <div className="w-20 h-20 mobile:w-24 mobile:h-24 flex-none bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-sm">
                     이미지
                   </div>
                   <div>
-                    <span className="inline-block text-xs text-gray-500 mb-1">{r.dDay}</span>
+                    <span className="inline-block text-sm text-gray-500 mb-1">{r.dDay}</span>
                     <p className="text-sm font-semibold mb-1">{r.popupName}</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-sm text-gray-500">
                       {r.date} {r.time} {r.partySize}명
                     </p>
                   </div>

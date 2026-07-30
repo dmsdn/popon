@@ -24,24 +24,24 @@ export function Header({ initialQuery = "" }: { initialQuery?: string }) {
           }
         }}
       >
-        <SearchInput initialQuery={initialQuery} />
+        <SearchInput initialQuery={initialQuery} onFocusChange={setIsSearchOpen} />
 
         {isSearchOpen && (
-          <div className="absolute top-full left-0 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-lg z-50">
-            <RecentSearches />
-            <SuggestedKeywords />
+          <div className="absolute top-full left-0 mt-2 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg z-50">
+            <RecentSearches onNavigate={() => setIsSearchOpen(false)} />
+            <SuggestedKeywords onNavigate={() => setIsSearchOpen(false)} />
           </div>
         )}
       </div>
 
       <Link href="/mypage?menu=예약 / 웨이팅" aria-label="예약/웨이팅">
-        <Image src="/icon/Bar_Calender.svg" alt="예약/웨이팅" width={24} height={24} />
+        <Image src="/Icon/Bar_Calender.svg" alt="예약/웨이팅" width={24} height={24} className="dark:invert" />
       </Link>
       <Link href="/notifications" aria-label="알림">
-        <Image src="/icon/notification_on.svg" alt="알림" width={24} height={24} />
+        <Image src="/Icon/notification_on.svg" alt="알림" width={24} height={24} className="dark:invert" />
       </Link>
       <Link href="/more" aria-label="더보기">
-        <Image src="/icon/Bar_Other.svg" alt="더보기" width={24} height={24} />
+        <Image src="/Icon/Bar_Other.svg" alt="더보기" width={24} height={24} className="dark:invert" />
       </Link>
       <Link href={isLoggedIn ? "/mypage" : "/login"} aria-label="마이페이지">
         {isLoggedIn && customer?.profileImage ? (
@@ -54,7 +54,7 @@ export function Header({ initialQuery = "" }: { initialQuery?: string }) {
             className="rounded-full object-cover"
           />
         ) : (
-          <Image src="/icon/Bar_User.svg" alt="마이페이지" width={24} height={24} />
+          <Image src="/Icon/Bar_User.svg" alt="마이페이지" width={24} height={24} className="dark:invert" />
         )}
       </Link>
     </header>

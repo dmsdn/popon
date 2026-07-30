@@ -36,7 +36,7 @@ export function BottomTabBar() {
     <nav className="fixed bottom-0 left-0 right-0 flex justify-around border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-[#101010] py-2">
       {tabs.map(({ base, label, href }) => {
         const active = isActive(href);
-        const icon = active ? `/icon/${base}_active.svg` : `/icon/${base}_inactive.svg`;
+        const icon = active ? `/Icon/${base}_active.svg` : `/Icon/${base}_inactive.svg`;
         return (
           <Link key={label} href={href} aria-label={label} className="flex flex-col items-center gap-1 p-2">
             <Image
@@ -44,9 +44,10 @@ export function BottomTabBar() {
               alt={label}
               width={24}
               height={24}
+              className="dark:invert"
               onError={(e) => {
                 // _active 파일이 아직 없으면 조용히 _inactive로 대체 (깨진 이미지 방지)
-                (e.currentTarget as HTMLImageElement).src = `/icon/${base}_inactive.svg`;
+                (e.currentTarget as HTMLImageElement).src = `/Icon/${base}_inactive.svg`;
               }}
             />
           </Link>
@@ -66,12 +67,13 @@ export function BottomTabBar() {
           <img src={customer.profileImage} alt="" width={24} height={24} className="rounded-full object-cover" />
         ) : (
           <Image
-            src={isActive("/mypage") ? "/icon/Bar_User_active.svg" : "/icon/Bar_User_inactive.svg"}
+            src={isActive("/mypage") ? "/Icon/Bar_User_active.svg" : "/Icon/Bar_User_inactive.svg"}
             alt="마이"
             width={24}
             height={24}
+            className="dark:invert"
             onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src = "/icon/Bar_User_inactive.svg";
+              (e.currentTarget as HTMLImageElement).src = "/Icon/Bar_User_inactive.svg";
             }}
           />
         )}

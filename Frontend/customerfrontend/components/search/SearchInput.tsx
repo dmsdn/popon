@@ -38,11 +38,11 @@ export function SearchInput({
     <div className="relative flex-1">
       {isTyping && (
         <Image
-          src="/icon/Bar_Search.svg"
+          src="/Icon/Bar_Search.svg"
           alt=""
           width={16}
           height={16}
-          className="absolute left-3 top-1/2 -translate-y-1/2"
+          className="absolute left-3 top-1/2 -translate-y-1/2 dark:invert"
         />
       )}
 
@@ -60,7 +60,7 @@ export function SearchInput({
         placeholder="검색해보세요"
         autoFocus={autoFocus}
         enterKeyHint="search"
-        className={`w-full border border-gray-200 rounded-full py-2 text-sm placeholder:text-gray-400 ${
+        className={`w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-800 rounded-full py-2 text-sm placeholder:text-gray-400 ${
           isTyping ? "pl-9 pr-9" : "pl-4 pr-10"
         }`}
       />
@@ -81,7 +81,7 @@ export function SearchInput({
           onClick={handleSearch}
           className="absolute right-3 top-1/2 -translate-y-1/2"
         >
-          <Image src="/icon/Bar_Search.svg" alt="" width={16} height={16} />
+          <Image src="/Icon/Bar_Search.svg" alt="" width={16} height={16} className="dark:invert" />
         </button>
       )}
     </div>

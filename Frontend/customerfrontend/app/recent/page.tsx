@@ -45,7 +45,7 @@ export default function RecentListPage() {
   return (
     <main className="min-h-screen flex flex-col w-full pb-16 mobile:pb-0 mobile:max-w-[1000px] mobile:mx-auto">
       <div className="flex-1">
-      <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100">
+      <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100 dark:border-gray-800">
         <button
           type="button"
           onClick={() => router.back()}
@@ -67,7 +67,7 @@ export default function RecentListPage() {
           <div className="grid grid-cols-2 mobile:grid-cols-4 gap-4">
             {items.map((item) => (
               <Link key={item.id} href={`/popup/${item.id}`} className="flex flex-col gap-2">
-                <div className="h-[160px] rounded-md bg-gray-100 overflow-hidden flex items-center justify-center text-xs text-gray-400">
+                <div className="h-[160px] rounded-md bg-gray-100 dark:bg-gray-800 overflow-hidden flex items-center justify-center text-sm text-gray-400">
                   {item.imageUrl ? (
                     <ImageWithFallback src={item.imageUrl} className="w-full h-full object-cover" />
                   ) : (
@@ -76,7 +76,7 @@ export default function RecentListPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium truncate">{item.name}</p>
-                  {item.location && <p className="text-xs text-gray-400">{item.location}</p>}
+                  {item.location && <p className="text-sm text-gray-400">{item.location}</p>}
                 </div>
               </Link>
             ))}
