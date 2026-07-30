@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
 import { getToken, setToken, clearToken } from "@/lib/api/client";
 import { getMyInfo, type CustomerInfo } from "@/lib/api/customer";
+import { resetWishlistStore } from "@/lib/wishlistStore";
 
 interface AuthContextValue {
   isLoggedIn: boolean;
@@ -112,7 +113,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const info = await getMyInfo();
-      setCustomer(info);
+      // [신규] 로그아웃 없이 다른 계정으로 바로 로그인되는 경우를 대비한 안전장치 -
+      // 새로 불러온 계정 id가 이전과 다르면 찜 목록 캐시도 같이 비워서, 이전 계정의
+      // 찜 목록이 새 계정 화면에 잘못 남아있지 않게 해요.
+      setCustomer((prev) => {
+        if (prev && prev.id !== info.id) resetWishlistStore();
+        return info;
+      });
     } catch (err) {
       console.error("내 정보 조회 실패", err);
       if (process.env.NODE_ENV === "development") {
@@ -136,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearToken();
     writeMockCustomer(null);
     setCustomer(null);
+    resetWishlistStore();
   };
 
   const loginAsTestUser = () => {
@@ -143,6 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const next = readMockCustomer() ?? DEFAULT_MOCK_CUSTOMER;
     writeMockCustomer(next);
     setCustomer(next);
+    resetWishlistStore();
   };
 
   const updateMockCustomer = (patch: Partial<CustomerInfo>) => {
