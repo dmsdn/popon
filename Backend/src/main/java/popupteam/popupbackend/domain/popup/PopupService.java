@@ -31,6 +31,7 @@ public class PopupService {
     private final popupteam.popupbackend.domain.consumer.KeywordRepository keywordRepository;
     private final popupteam.popupbackend.common.image.ImageProcessingService imageProcessingService;
     private final PopupSnsLinkRepository popupSnsLinkRepository;
+    private final PopupOperatingHoursRepository popupOperatingHoursRepository;
 
 
     public PopupResponse create(Long businessId, PopupCreateRequest request) {
@@ -78,8 +79,9 @@ public class PopupService {
         savePopupKeywords(saved.getId(), request.getKeywordIds());
         List<PopupSnsLinkResponse> snsLinks =
                 replaceSnsLinks(saved, request.getSnsLinks());
+        List<OperatingHoursResponse> operatingHours = saveOperatingHours(saved.getId(), request.getOperatingHours());
 
-        return PopupResponse.from(saved, hashtags, getPopupKeywordNames(saved.getId()), snsLinks);
+        return PopupResponse.from(saved, hashtags, getPopupKeywordNames(saved.getId()), snsLinks, operatingHours);
     }
 
     // 해시태그 저장 공용 로직: 기존 거 지우고 새 목록으로 덮어씀 (null이면 손 안 대고 기존 값 그대로 반환)
@@ -96,6 +98,29 @@ public class PopupService {
             if (tag == null || tag.isBlank()) continue;
             popupHashtagRepository.save(new PopupHashtag(popupId, tag.trim(), order++));
             saved.add(tag.trim());
+        }
+        return saved;
+    }
+
+    // 요일별 운영시간 저장 공용 로직: 기존 거 지우고 새 목록으로 덮어씀 (null이면 손 안 대고 기존 값 그대로 반환)
+    private List<OperatingHoursResponse> saveOperatingHours(Long popupId, List<OperatingHoursRequest> hours) {
+        if (hours == null) {
+            return popupOperatingHoursRepository.findByPopupIdOrderByDayOfWeek(popupId).stream()
+                    .map(OperatingHoursResponse::from)
+                    .toList();
+        }
+        popupOperatingHoursRepository.deleteByPopupId(popupId);
+        List<OperatingHoursResponse> saved = new java.util.ArrayList<>();
+        for (OperatingHoursRequest h : hours) {
+            if (h.getDayOfWeek() == null || h.getDayOfWeek().isBlank()) continue;
+            PopupOperatingHours entity = new PopupOperatingHours();
+            entity.setPopup(popupRepository.getReferenceById(popupId));
+            entity.setDayOfWeek(java.time.DayOfWeek.valueOf(h.getDayOfWeek()));
+            entity.setClosed(h.isClosed());
+            entity.setOpenTime(h.isClosed() ? null : h.getOpenTime());
+            entity.setCloseTime(h.isClosed() ? null : h.getCloseTime());
+            PopupOperatingHours savedEntity = popupOperatingHoursRepository.save(entity);
+            saved.add(OperatingHoursResponse.from(savedEntity));
         }
         return saved;
     }
@@ -125,8 +150,12 @@ public class PopupService {
         List<String> detailImages = popupImageRepository.findByPopupIdAndTypeOrderBySortOrder(id, PopupImageType.DETAIL)
                 .stream().map(PopupImage::getImageUrl).toList();
         List<PopupSnsLinkResponse> snsLinks = getSnsLinks(id);
+        List<OperatingHoursResponse> operatingHours = popupOperatingHoursRepository
+                .findByPopupIdOrderByDayOfWeek(id).stream()
+                .map(OperatingHoursResponse::from)
+                .toList();
         return PopupResponse.from(popup, hashtags, avgRating, reviewCount,
-                getPopupKeywordNames(id), snsLinks, thumbnailImages, detailImages);
+                getPopupKeywordNames(id), snsLinks, thumbnailImages, detailImages, operatingHours);
     }
 
     public PopupResponse update(Long id, Long businessId, PopupUpdateRequest request) {
@@ -200,7 +229,9 @@ public class PopupService {
             snsLinks = getSnsLinks(id);
         }
 
-        return PopupResponse.from(saved, hashtags, getPopupKeywordNames(id), snsLinks);
+        List<OperatingHoursResponse> operatingHours = saveOperatingHours(id, request.getOperatingHours());
+
+        return PopupResponse.from(saved, hashtags, getPopupKeywordNames(id), snsLinks, operatingHours);
     }
 
     public void delete(Long id, Long businessId) {
@@ -222,6 +253,7 @@ public class PopupService {
         popupImageRepository.deleteAll(popupImageRepository.findByPopupIdOrderBySortOrder(id));
         popupHashtagRepository.deleteByPopupId(id);
         popupSnsLinkRepository.deleteByPopup_Id(id);
+        popupOperatingHoursRepository.deleteByPopupId(id);
 
         popupRepository.delete(popup);
     }
@@ -569,6 +601,5 @@ public class PopupService {
                 .map(PopupSnsLinkResponse::from)
                 .toList();
     }
-
 
 }
