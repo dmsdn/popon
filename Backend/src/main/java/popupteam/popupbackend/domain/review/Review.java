@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -29,6 +30,10 @@ public class Review {
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
+
+    // 실제로 다녀간 날짜 (프론트가 예약 체크인/웨이팅 입장 기록에서 계산해서 보냄, 기록 없으면 null)
+    @Column(name = "visit_date")
+    private LocalDate visitDate;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

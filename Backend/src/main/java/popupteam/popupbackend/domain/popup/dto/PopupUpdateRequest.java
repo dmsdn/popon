@@ -33,5 +33,7 @@ public class PopupUpdateRequest {
     // 빈 배열이면 기존 링크 전체 삭제
     // 값이 있으면 전달받은 목록으로 교체
     private List<PopupSnsLinkRequest> snsLinks;
+    // null이면 기존 값 유지, 값이 있으면(빈 배열 포함) 전체 교체
+    private List<OperatingHoursRequest> operatingHours;
 
 }
