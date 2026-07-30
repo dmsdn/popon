@@ -105,7 +105,7 @@ export default function PopupList() {
           <h1 className="text-lg font-semibold">팝업 조회/수정</h1>
           <p className="text-xs text-muted-foreground mt-0.5">등록한 팝업의 게시 상태를 확인하고 수정합니다.</p>
         </div>
-        <Link to="/seller/popups/new" className="text-xs px-4 py-2 rounded-sm bg-accent text-white hover:bg-accent/90">+ 새 팝업 등록</Link>
+        <Link to="/seller/popups/new" className="text-xs px-4 py-2 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90">+ 새 팝업 등록</Link>
       </div>
 
       {!user && (
@@ -115,7 +115,7 @@ export default function PopupList() {
       )}
 
       {/* 상태 필터 + 검색 */}
-      <div className="bg-white border border-border rounded-sm p-3 flex flex-wrap items-center gap-2">
+      <div className="bg-card border border-border rounded-sm p-3 flex flex-wrap items-center gap-2">
         {FILTERS.map((f) => {
           const count = f === "전체" ? popups.length : popups.filter((p) => p.status === f).length;
           return (
@@ -123,7 +123,7 @@ export default function PopupList() {
               key={f}
               onClick={() => setFilter(f)}
               className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                filter === f ? "bg-foreground text-white border-foreground" : "border-border text-muted-foreground hover:border-foreground"
+                filter === f ? "bg-foreground text-primary-foreground border-foreground" : "border-border text-muted-foreground hover:border-foreground"
               }`}
             >
               {f === "전체" ? "전체" : STATUS_LABEL[f]} {count}
@@ -134,7 +134,7 @@ export default function PopupList() {
         <button
           onClick={() => setCatOpen((v) => !v)}
           className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border transition-colors ${
-            catFilter ? "bg-accent text-white border-accent" : "border-border text-muted-foreground hover:border-foreground"
+            catFilter ? "bg-accent text-accent-foreground border-accent" : "border-border text-muted-foreground hover:border-foreground"
           }`}
         >
           <SlidersHorizontal size={11} /> 카테고리{catFilter ? `: ${catFilter}` : ""}
@@ -146,7 +146,7 @@ export default function PopupList() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="팝업명·브랜드 검색"
-            className="pl-8 pr-3 py-1.5 text-xs border border-border rounded-sm w-52 bg-white focus:outline-none focus:border-accent"
+            className="pl-8 pr-3 py-1.5 text-xs border border-border rounded-sm w-52 bg-card focus:outline-none focus:border-accent"
           />
         </div>
 
@@ -156,7 +156,7 @@ export default function PopupList() {
             <button
               onClick={() => setCatFilter(null)}
               className={`text-[11px] px-2.5 py-1 rounded-full border ${
-                catFilter === null ? "bg-foreground text-white border-foreground" : "border-border text-muted-foreground hover:border-foreground"
+                catFilter === null ? "bg-foreground text-primary-foreground border-foreground" : "border-border text-muted-foreground hover:border-foreground"
               }`}
             >
               전체
@@ -166,7 +166,7 @@ export default function PopupList() {
                 key={k.id}
                 onClick={() => setCatFilter(catFilter === k.name ? null : k.name)}
                 className={`text-[11px] px-2.5 py-1 rounded-full border ${
-                  catFilter === k.name ? "bg-accent text-white border-accent" : "border-border text-muted-foreground hover:border-accent"
+                  catFilter === k.name ? "bg-accent text-accent-foreground border-accent" : "border-border text-muted-foreground hover:border-accent"
                 }`}
               >
                 {k.name}
@@ -184,7 +184,7 @@ export default function PopupList() {
       )}
 
       {/* 목록 테이블 */}
-      <div className="bg-white border border-border rounded-sm overflow-x-auto">
+      <div className="bg-card border border-border rounded-sm overflow-x-auto">
         <table className="w-full text-[13px] min-w-[860px]">
           <thead>
             <tr className="border-b border-border bg-secondary/60 text-xs text-muted-foreground">
@@ -247,7 +247,7 @@ export default function PopupList() {
                           <button
                             onClick={() => setOpenAdminEditId(adminEditOpen ? null : p.id)}
                             className={`inline-flex items-center gap-0.5 text-[11px] px-2 py-0.5 rounded-full border transition-colors ${
-                              adminEditOpen ? "bg-accent text-white border-accent" : "border-accent/40 text-accent hover:bg-accent/5"
+                              adminEditOpen ? "bg-accent text-accent-foreground border-accent" : "border-accent/40 text-accent hover:bg-accent/5"
                             }`}
                           >
                             <ShieldAlert size={10} /> 관리자 수정 {adminEditOpen ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
@@ -295,7 +295,7 @@ export default function PopupList() {
                       <td colSpan={9} className="px-6 py-4">
                         <div className="max-w-2xl flex flex-col gap-3">
                           {answeredInqs.map((iq) => (
-                            <div key={iq.id} className="bg-white border border-emerald-200 rounded-sm p-4">
+                            <div key={iq.id} className="bg-card border border-emerald-200 rounded-sm p-4">
                               <div className="text-[13px] font-semibold mb-1">{iq.title}</div>
                               <div className="text-[12px] text-muted-foreground whitespace-pre-wrap mb-2.5">{iq.content}</div>
                               <div className="bg-emerald-50 border border-emerald-200 rounded-sm p-3">
@@ -318,7 +318,7 @@ export default function PopupList() {
                   {adminEditOpen && meta.editNote && (
                     <tr className="bg-secondary/30">
                       <td colSpan={9} className="px-6 py-4">
-                        <div className="max-w-2xl bg-white border border-accent/30 rounded-sm p-4">
+                        <div className="max-w-2xl bg-card border border-accent/30 rounded-sm p-4">
                           <div className="flex items-center gap-1.5 text-xs font-semibold text-accent mb-2">
                             <ShieldAlert size={12} /> 관리자 수정사항 및 사유
                             {meta.editDate && <span className="font-normal text-muted-foreground">· {meta.editDate}</span>}

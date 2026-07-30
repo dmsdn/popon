@@ -110,7 +110,7 @@ export default function AdminContracts() {
       )}
 
       {!loading && (
-        <div className="bg-white border border-border rounded-sm overflow-x-auto">
+        <div className="bg-card border border-border rounded-sm overflow-x-auto">
           <table className="w-full text-[13px] min-w-[860px]">
             <thead>
               <tr className="border-b border-border bg-secondary/60 text-xs text-muted-foreground">
@@ -148,7 +148,7 @@ export default function AdminContracts() {
                                     i < idx
                                       ? "bg-secondary text-muted-foreground border-border"
                                       : i === idx
-                                        ? "bg-accent text-white border-accent font-medium"
+                                        ? "bg-accent text-accent-foreground border-accent font-medium"
                                         : "border-border text-muted-foreground/40"
                                   }`}
                                 >
@@ -166,7 +166,7 @@ export default function AdminContracts() {
                           {!contract ? (
                             <button
                               onClick={() => { setOpenId(open ? null : popup.id); setForm({ amount: "", memo: "" }); }}
-                              className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-sm bg-accent text-white hover:bg-accent/90"
+                              className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90"
                             >
                               <FileSignature size={11} /> 계약 등록
                             </button>
@@ -205,7 +205,7 @@ export default function AdminContracts() {
                     {open && (
                       <tr className="bg-secondary/30">
                         <td colSpan={6} className="px-6 py-4">
-                          <div className="max-w-xl bg-white border border-border rounded-sm p-4 flex flex-col gap-3">
+                          <div className="max-w-xl bg-card border border-border rounded-sm p-4 flex flex-col gap-3">
                             <div className="text-xs font-semibold">
                               {contract ? "계약금 수정" : "계약 등록"} — {popup.title}
                               <span className="font-normal text-muted-foreground ml-2">
@@ -219,7 +219,7 @@ export default function AdminContracts() {
                                   value={form.amount}
                                   onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))}
                                   placeholder="예: 13500000"
-                                  className="px-2 py-1.5 text-xs border border-border rounded-sm bg-white w-40 text-right"
+                                  className="px-2 py-1.5 text-xs border border-border rounded-sm bg-card w-40 text-right"
                                   style={{ fontFamily: "'DM Mono', monospace" }}
                                 />
                               </label>
@@ -229,13 +229,13 @@ export default function AdminContracts() {
                                   value={form.memo}
                                   onChange={(e) => setForm((p) => ({ ...p, memo: e.target.value }))}
                                   placeholder="예: 대관료 18일분 + 전기·통신 포함"
-                                  className="px-2 py-1.5 text-xs border border-border rounded-sm bg-white"
+                                  className="px-2 py-1.5 text-xs border border-border rounded-sm bg-card"
                                 />
                               </label>
                               <button
                                 onClick={() => submitContract(popup.id)}
                                 disabled={actingId === popup.id}
-                                className="text-xs px-4 py-2 rounded-sm bg-foreground text-white hover:bg-foreground/90 disabled:opacity-50"
+                                className="text-xs px-4 py-2 rounded-sm bg-foreground text-primary-foreground hover:bg-foreground/90 disabled:opacity-50"
                               >
                                 {actingId === popup.id ? "저장 중…" : "저장"}
                               </button>
