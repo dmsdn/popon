@@ -51,7 +51,7 @@ export default function AdminNotices() {
     }
   };
 
-  const inputCls = "w-full px-3 py-2 text-[13px] border border-border rounded-sm bg-white focus:outline-none focus:border-accent";
+  const inputCls = "w-full px-3 py-2 text-[13px] border border-border rounded-sm bg-card focus:outline-none focus:border-accent";
 
   return (
     <div className="flex flex-col gap-4 max-w-4xl">
@@ -69,7 +69,7 @@ export default function AdminNotices() {
         </div>
       )}
 
-      <div className="bg-white border border-border rounded-sm p-5 flex flex-col gap-4">
+      <div className="bg-card border border-border rounded-sm p-5 flex flex-col gap-4">
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium mb-1.5">받는 주최자 *</label>
@@ -109,14 +109,14 @@ export default function AdminNotices() {
           <button
             onClick={send}
             disabled={sending || businessId === ""}
-            className="flex items-center gap-1.5 text-xs px-5 py-2.5 rounded-sm bg-accent text-white hover:bg-accent/90 font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 text-xs px-5 py-2.5 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90 font-medium disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {sending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />} 발송
           </button>
         </div>
       </div>
 
-      <div className="bg-white border border-border rounded-sm">
+      <div className="bg-card border border-border rounded-sm">
         <div className="px-4 py-3 border-b border-border text-sm font-semibold flex items-center gap-2">
           <Megaphone size={14} className="text-muted-foreground" /> 발송 이력
           <span className="text-xs font-normal text-muted-foreground">— 이번 접속에서 보낸 공지 (전체 이력 조회 API는 백엔드 구성 후 연동)</span>

@@ -1,11 +1,13 @@
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, Navigate } from "react-router";
 
 // ── 주최자 정보제공 UI (팝업온 소개 사이트) ──
 import InfoRoot from "./info/InfoRoot";
 import Home from "./info/pages/Home";
-import ContentRegister from "./info/pages/ContentRegister";
-import WaitingManagement from "./info/pages/WaitingManagement";
+// 7/30 — 팝업콘텐츠 등록(ContentRegister) + 예약·웨이팅 통합관리(WaitingManagement)를
+// 한 페이지(/manage)로 병합. 구 경로는 아래에서 리다이렉트.
+import PopupManage from "./info/pages/PopupManage";
 import Login from "./info/pages/Login";
+import Signup from "./info/pages/Signup"; // 7/30 — /login에서 URL 분리
 
 // ── 주최자 팝업등록 콘솔 (판매자센터, 쿠팡 윙 스타일) ──
 import SellerRoot from "./seller/SellerRoot";
@@ -19,6 +21,7 @@ import Performance from "./seller/pages/Performance";
 import Notices from "./seller/pages/Notices";
 import MyPage from "./seller/pages/MyPage";
 import Inquiries from "./seller/pages/Inquiries";
+import AdminNoticeInbox from "./seller/pages/AdminNoticeInbox"; // 7/30 — 관리자가 보낸 공지 확인
 // 소비자→주최자 문의(CustomerInquiries)는 7/29 기능 탈락 확정으로 삭제됨
 
 // ── 현장 웨이팅 비회원 접수 (QR 진입 공개 페이지) ──
@@ -34,9 +37,12 @@ export const router = createBrowserRouter([
     Component: InfoRoot,
     children: [
       { index: true, Component: Home },
-      { path: "content-register", Component: ContentRegister },
-      { path: "waiting-management", Component: WaitingManagement },
+      { path: "manage", Component: PopupManage },
+      // 구 경로 호환 — 북마크·외부 링크 대비 (등록은 상단, 웨이팅은 #waiting 앵커로)
+      { path: "content-register", element: <Navigate to="/manage#register" replace /> },
+      { path: "waiting-management", element: <Navigate to="/manage#waiting" replace /> },
       { path: "login", Component: Login },
+      { path: "signup", Component: Signup },
     ],
   },
 
@@ -59,6 +65,8 @@ export const router = createBrowserRouter([
       // 마이페이지 — 상단바 계정 영역에서 진입 (7/25 피드백)
       { path: "mypage", Component: MyPage },
       { path: "inquiries", Component: Inquiries },
+      // 관리자가 보낸 공지 확인 — 지원 그룹 (7/30)
+      { path: "admin-notices", Component: AdminNoticeInbox },
       // customer-inquiries(소비자 문의)는 7/29 기능 탈락 확정으로 삭제됨
     ],
   },

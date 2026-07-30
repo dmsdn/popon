@@ -79,14 +79,14 @@ function filterJpegs(files: File[]): { ok: File[]; rejected: string[] } {
 // inputCls(=w-full 포함)에 " w-36"을 덧붙이면 둘 다 width 유틸이라 CSS 파일 순서로 승자가 갈리는데,
 // 실제로 w-full이 이겨서 SNS 셀렉트가 행을 다 차지하고 옆 URL 칸이 26px로 찌그러졌다 (7/29).
 const inputBase =
-  "px-3 py-2 text-[13px] border border-border rounded-sm bg-white focus:outline-none focus:border-accent placeholder:text-muted-foreground/60";
+  "px-3 py-2 text-[13px] border border-border rounded-sm bg-card focus:outline-none focus:border-accent placeholder:text-muted-foreground/60";
 const inputCls = `w-full ${inputBase}`;
 const labelCls = "block text-xs font-medium mb-1.5";
 const Req = () => <span className="text-red-500 ml-0.5">*</span>;
 
 function Section({ id, title, desc, children }: { id: string; title: string; desc: string; children: React.ReactNode }) {
   return (
-    <section id={id} className="bg-white border border-border rounded-sm">
+    <section id={id} className="bg-card border border-border rounded-sm">
       <div className="px-5 py-4 border-b border-border">
         <h2 className="text-sm font-semibold">{title}</h2>
         <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
@@ -112,7 +112,7 @@ function ExistingImage({ img, removed, onRemove, onUndo }: {
         type="button"
         onClick={removed ? onUndo : onRemove}
         title={removed ? "삭제 취소" : "이 이미지 제거"}
-        className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-white/90 border border-border flex items-center justify-center hover:bg-white"
+        className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-white/90 border border-border flex items-center justify-center hover:bg-card"
       >
         {removed ? <RotateCcw size={10} /> : <X size={11} />}
       </button>
@@ -490,7 +490,7 @@ export default function PopupRegister() {
 
   if (submitted) {
     return (
-      <div className="max-w-xl mx-auto mt-16 bg-white border border-border rounded-sm p-10 text-center">
+      <div className="max-w-xl mx-auto mt-16 bg-card border border-border rounded-sm p-10 text-center">
         <CheckCircle2 size={40} className="mx-auto text-emerald-500 mb-4" />
         <h1 className="text-lg font-semibold mb-2">{isRejected ? "재심사 요청이 접수되었습니다" : "승인 요청이 접수되었습니다"}</h1>
         <p className="text-sm text-muted-foreground leading-relaxed mb-6">
@@ -500,7 +500,7 @@ export default function PopupRegister() {
         {slotProgress && (
           <p className="text-xs text-emerald-600 mb-6 -mt-3">{slotProgress} — 「예약 슬롯·명단」에서 확인하세요.</p>
         )}
-        <button onClick={() => navigate("/seller/popups")} className="text-xs px-5 py-2.5 rounded-sm bg-accent text-white hover:bg-accent/90">
+        <button onClick={() => navigate("/seller/popups")} className="text-xs px-5 py-2.5 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90">
           게시 상태 확인하기
         </button>
       </div>
@@ -510,7 +510,7 @@ export default function PopupRegister() {
   return (
     <div className="flex gap-5 items-start">
       {/* 좌측 섹션 내비게이션 */}
-      <nav className="hidden xl:flex flex-col w-44 shrink-0 sticky top-20 bg-white border border-border rounded-sm py-2">
+      <nav className="hidden xl:flex flex-col w-44 shrink-0 sticky top-20 bg-card border border-border rounded-sm py-2">
         {SECTIONS.map(({ id, icon: Icon, label }) => (
           <a key={id} href={`#${id}`} className="flex items-center gap-2 px-4 py-2 text-xs text-muted-foreground hover:text-accent hover:bg-accent/5">
             <Icon size={13} /> {label}
@@ -591,7 +591,7 @@ export default function PopupRegister() {
                       disabled={full}
                       className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
                         selected
-                          ? "bg-accent text-white border-accent"
+                          ? "bg-accent text-accent-foreground border-accent"
                           : full
                             ? "border-border text-muted-foreground/40 cursor-not-allowed"
                             : "border-border text-muted-foreground hover:border-accent"
@@ -727,7 +727,7 @@ export default function PopupRegister() {
                     type="button"
                     onClick={runFallbackSearch}
                     disabled={fallbackBusy}
-                    className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-sm bg-accent text-white hover:bg-accent/90 disabled:opacity-50 shrink-0"
+                    className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-50 shrink-0"
                   >
                     {fallbackBusy ? <Loader2 size={13} className="animate-spin" /> : <Search size={13} />} 검색
                   </button>
@@ -741,7 +741,7 @@ export default function PopupRegister() {
                   </button>
                 </div>
                 {fallbackList.length > 0 && (
-                  <ul className="max-h-44 overflow-y-auto divide-y divide-border bg-white border border-border rounded-sm">
+                  <ul className="max-h-44 overflow-y-auto divide-y divide-border bg-card border border-border rounded-sm">
                     {fallbackList.map((c, i) => (
                       <li key={`${c.lat},${c.lng},${i}`}>
                         <button
@@ -891,7 +891,7 @@ export default function PopupRegister() {
               <div className="flex flex-col gap-1.5 mt-2">
                 {snsLinks.map((l, i) => (
                   <div key={`${l.platform}-${l.url}-${i}`} className="flex items-center gap-2 text-xs bg-secondary px-3 py-2 rounded-sm">
-                    <span className="text-[11px] px-2 py-0.5 rounded-full border border-border bg-white shrink-0">
+                    <span className="text-[11px] px-2 py-0.5 rounded-full border border-border bg-card shrink-0">
                       {SNS_PLATFORMS.find((p) => p.code === l.platform)?.label ?? l.platform}
                     </span>
                     <span className="truncate">{l.url}</span>
@@ -1021,7 +1021,7 @@ export default function PopupRegister() {
               <div className="flex flex-col gap-1.5 mt-2">
                 {detailImages.map((f, i) => (
                   <div key={`${f.name}-${i}`} className="flex items-center gap-2 text-xs bg-secondary px-3 py-2 rounded-sm">
-                    <span className="w-5 h-5 rounded-sm bg-white border border-border flex items-center justify-center text-[10px] font-semibold shrink-0" style={{ fontFamily: "'DM Mono', monospace" }}>{i + 1}</span>
+                    <span className="w-5 h-5 rounded-sm bg-card border border-border flex items-center justify-center text-[10px] font-semibold shrink-0" style={{ fontFamily: "'DM Mono', monospace" }}>{i + 1}</span>
                     <ImageIcon size={13} /> <span className="truncate">{f.name}</span>
                     <span className="text-muted-foreground shrink-0">({(f.size / 1024 / 1024).toFixed(1)}MB)</span>
                     <button type="button" onClick={() => setDetailImages(detailImages.filter((_, j) => j !== i))} className="ml-auto text-muted-foreground hover:text-foreground shrink-0">
@@ -1035,7 +1035,7 @@ export default function PopupRegister() {
         </Section>
 
         {/* 하단 액션 바 */}
-        <div className="sticky bottom-0 bg-white border border-border rounded-sm px-5 py-3 flex items-center justify-between shadow-[0_-4px_12px_rgba(0,0,0,0.04)]">
+        <div className="sticky bottom-0 bg-card border border-border rounded-sm px-5 py-3 flex items-center justify-between shadow-[0_-4px_12px_rgba(0,0,0,0.04)]">
           <p className="text-[11px] text-muted-foreground hidden sm:block">임시저장 시 「팝업 조회/수정」에서 이어서 작성할 수 있습니다.</p>
           <div className="flex gap-2 ml-auto">
             <button type="button" onClick={() => navigate("/seller/popups")} className="text-xs px-4 py-2.5 border border-border rounded-sm hover:bg-secondary">
@@ -1045,7 +1045,7 @@ export default function PopupRegister() {
               type="button"
               disabled={submitting}
               onClick={handleSubmit}
-              className="text-xs px-6 py-2.5 rounded-sm bg-accent text-white hover:bg-accent/90 font-medium disabled:opacity-50"
+              className="text-xs px-6 py-2.5 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90 font-medium disabled:opacity-50"
             >
               {submitting ? "전송 중…" : isRejected ? "재등록 (재심사 요청)" : editId ? "수정 저장" : "승인 요청 (게시 신청)"}
             </button>

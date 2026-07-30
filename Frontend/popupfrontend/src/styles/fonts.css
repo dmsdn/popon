@@ -1,1 +1,32 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+/* ── 나눔스퀘어라운드 (7/30) — 5174 안내 페이지(/, /manage, /login, /signup) 전용 ──
+   Naver 공식 웹폰트 CDN. 원본 CSS는 무게별로 패밀리명이 갈라져 있어
+   (NanumSquareRound / ...B / ...EB) Tailwind의 font-bold·font-extrabold가 먹지 않는다.
+   → 하나의 패밀리에 font-weight 400/700/800으로 다시 선언해 유틸리티 클래스와 맞물리게 한다.
+   적용 스코프는 InfoRoot 래퍼 한 곳 — 주최자센터(/seller/*)와 관리자 콘솔(5175)은
+   기존 Noto 계열을 그대로 쓴다. */
+@font-face {
+  font-family: 'NanumSquareRound';
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url('https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareRound/NanumSquareRoundR.woff2') format('woff2'),
+       url('https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareRound/NanumSquareRoundR.woff') format('woff');
+}
+@font-face {
+  font-family: 'NanumSquareRound';
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url('https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareRound/NanumSquareRoundB.woff2') format('woff2'),
+       url('https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareRound/NanumSquareRoundB.woff') format('woff');
+}
+@font-face {
+  font-family: 'NanumSquareRound';
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+  src: url('https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareRound/NanumSquareRoundEB.woff2') format('woff2'),
+       url('https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareRound/NanumSquareRoundEB.woff') format('woff');
+}

@@ -164,7 +164,7 @@ export default function AdminPopups() {
       </div>
 
       {/* 상태 필터 + 검색 */}
-      <div className="bg-white border border-border rounded-sm p-3 flex flex-wrap items-center gap-2">
+      <div className="bg-card border border-border rounded-sm p-3 flex flex-wrap items-center gap-2">
         {FILTERS.map((f) => {
           const count = f === "전체" ? popups.length : popups.filter((p) => p.status === f).length;
           return (
@@ -172,7 +172,7 @@ export default function AdminPopups() {
               key={f}
               onClick={() => setFilter(f)}
               className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                filter === f ? "bg-foreground text-white border-foreground" : "border-border text-muted-foreground hover:border-foreground"
+                filter === f ? "bg-foreground text-primary-foreground border-foreground" : "border-border text-muted-foreground hover:border-foreground"
               }`}
             >
               {f === "전체" ? "전체" : STATUS_LABEL[f]} {count}
@@ -183,7 +183,7 @@ export default function AdminPopups() {
         <button
           onClick={() => setCatOpen((v) => !v)}
           className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border transition-colors ${
-            catFilter ? "bg-accent text-white border-accent" : "border-border text-muted-foreground hover:border-foreground"
+            catFilter ? "bg-accent text-accent-foreground border-accent" : "border-border text-muted-foreground hover:border-foreground"
           }`}
         >
           <SlidersHorizontal size={11} /> 카테고리{catFilter ? `: ${catFilter}` : ""}
@@ -195,7 +195,7 @@ export default function AdminPopups() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="팝업명·브랜드·주소 검색"
-            className="pl-8 pr-3 py-1.5 text-xs border border-border rounded-sm w-56 bg-white focus:outline-none focus:border-accent"
+            className="pl-8 pr-3 py-1.5 text-xs border border-border rounded-sm w-56 bg-card focus:outline-none focus:border-accent"
           />
         </div>
 
@@ -205,7 +205,7 @@ export default function AdminPopups() {
             <button
               onClick={() => setCatFilter(null)}
               className={`text-[11px] px-2.5 py-1 rounded-full border ${
-                catFilter === null ? "bg-foreground text-white border-foreground" : "border-border text-muted-foreground hover:border-foreground"
+                catFilter === null ? "bg-foreground text-primary-foreground border-foreground" : "border-border text-muted-foreground hover:border-foreground"
               }`}
             >
               전체
@@ -215,7 +215,7 @@ export default function AdminPopups() {
                 key={k.id}
                 onClick={() => setCatFilter(catFilter === k.name ? null : k.name)}
                 className={`text-[11px] px-2.5 py-1 rounded-full border ${
-                  catFilter === k.name ? "bg-accent text-white border-accent" : "border-border text-muted-foreground hover:border-accent"
+                  catFilter === k.name ? "bg-accent text-accent-foreground border-accent" : "border-border text-muted-foreground hover:border-accent"
                 }`}
               >
                 {k.name}
@@ -228,7 +228,7 @@ export default function AdminPopups() {
       {error && <div className="bg-red-50 border border-red-200 rounded-sm px-4 py-3 text-xs text-red-600">{error}</div>}
 
       {/* 목록 테이블 */}
-      <div className="bg-white border border-border rounded-sm overflow-x-auto">
+      <div className="bg-card border border-border rounded-sm overflow-x-auto">
         <table className="w-full text-[13px] min-w-[960px]">
           <thead>
             <tr className="border-b border-border bg-secondary/60 text-xs text-muted-foreground">
@@ -341,7 +341,7 @@ export default function AdminPopups() {
                     <tr key={`review-${p.id}`} className="bg-secondary/30">
                       <td colSpan={8} className="px-6 py-4">
                         <div className="flex flex-col gap-3 max-w-3xl">
-                          <div className="bg-white border border-border rounded-sm p-3">
+                          <div className="bg-card border border-border rounded-sm p-3">
                             <div className="text-[11px] text-muted-foreground mb-1">소개글</div>
                             <div className="text-[13px] whitespace-pre-wrap">{p.description || "(소개글 없음)"}</div>
                           </div>
@@ -357,14 +357,14 @@ export default function AdminPopups() {
                                 value={reason}
                                 onChange={(e) => setReason(e.target.value)}
                                 placeholder="예: 대표 이미지 화질 기준 미달"
-                                className="w-full px-3 py-2 text-[13px] border border-border rounded-sm bg-white focus:outline-none focus:border-accent"
+                                className="w-full px-3 py-2 text-[13px] border border-border rounded-sm bg-card focus:outline-none focus:border-accent"
                               />
                             </div>
                             <div className="flex gap-2 shrink-0">
                               <button
                                 onClick={() => decide(p, "reject")}
                                 disabled={actingId === p.id}
-                                className="flex items-center gap-1.5 text-xs px-4 py-2.5 rounded-sm border border-red-300 text-red-500 hover:bg-red-50 disabled:opacity-50 bg-white"
+                                className="flex items-center gap-1.5 text-xs px-4 py-2.5 rounded-sm border border-red-300 text-red-500 hover:bg-red-50 disabled:opacity-50 bg-card"
                               >
                                 {actingId === p.id ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />} 반려
                               </button>

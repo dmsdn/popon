@@ -173,7 +173,7 @@ export default function AdminPopupDetail() {
 
       {/* 심사 카드 — 대기·반려 상태에서만 */}
       {reviewable && (
-        <div className="bg-white border border-accent/40 rounded-sm p-4 flex flex-col gap-3">
+        <div className="bg-card border border-accent/40 rounded-sm p-4 flex flex-col gap-3">
           <div className="flex items-center gap-1.5 text-sm font-semibold">
             <ShieldCheck size={14} className="text-accent" /> 심사 {popup.status === "REJECTED" && <span className="text-xs font-normal text-muted-foreground">(반려된 팝업 재심사)</span>}
           </div>
@@ -187,14 +187,14 @@ export default function AdminPopupDetail() {
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 placeholder="예: 대표 이미지 화질 기준 미달"
-                className="w-full px-3 py-2 text-[13px] border border-border rounded-sm bg-white focus:outline-none focus:border-accent"
+                className="w-full px-3 py-2 text-[13px] border border-border rounded-sm bg-card focus:outline-none focus:border-accent"
               />
             </div>
             <div className="flex gap-2 shrink-0">
               <button
                 onClick={() => decide("reject")}
                 disabled={acting}
-                className="flex items-center gap-1.5 text-xs px-4 py-2.5 rounded-sm border border-red-300 text-red-500 hover:bg-red-50 disabled:opacity-50 bg-white"
+                className="flex items-center gap-1.5 text-xs px-4 py-2.5 rounded-sm border border-red-300 text-red-500 hover:bg-red-50 disabled:opacity-50 bg-card"
               >
                 {acting ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />} 반려
               </button>
@@ -216,7 +216,7 @@ export default function AdminPopupDetail() {
       )}
 
       {/* 핵심 정보 */}
-      <div className="bg-white border border-border rounded-sm p-5 grid sm:grid-cols-2 gap-x-6 gap-y-4 text-[13px]">
+      <div className="bg-card border border-border rounded-sm p-5 grid sm:grid-cols-2 gap-x-6 gap-y-4 text-[13px]">
         <div className="flex items-start gap-2.5">
           <Building2 size={15} className="text-muted-foreground shrink-0 mt-0.5" />
           <div>
@@ -262,7 +262,7 @@ export default function AdminPopupDetail() {
 
       {/* 등록 이미지 — 7/29 심사에 필요한 실제 이미지 확인 (썸네일·상세, 클릭 시 확대) */}
       {((popup.thumbnailImages?.length ?? 0) > 0 || (popup.detailImages?.length ?? 0) > 0) && (
-        <div className="bg-white border border-border rounded-sm">
+        <div className="bg-card border border-border rounded-sm">
           <div className="px-5 py-3 border-b border-border text-sm font-semibold">
             등록 이미지
             <span className="text-xs font-normal text-muted-foreground ml-2">
@@ -293,13 +293,13 @@ export default function AdminPopupDetail() {
       )}
 
       {/* 소개글 */}
-      <div className="bg-white border border-border rounded-sm">
+      <div className="bg-card border border-border rounded-sm">
         <div className="px-5 py-3 border-b border-border text-sm font-semibold">소개글</div>
         <p className="p-5 text-[13px] leading-relaxed whitespace-pre-wrap">{popup.description || "(소개글 없음)"}</p>
       </div>
 
       {/* 예약·웨이팅 이벤트 로그 (7/29) — 자동 기록이라 수는 많고 볼 일은 드물어 접힌 채로 시작 */}
-      <div className="bg-white border border-border rounded-sm">
+      <div className="bg-card border border-border rounded-sm">
         <button
           onClick={() => setLogOpen((v) => !v)}
           className="w-full px-5 py-3 flex items-center justify-between text-sm font-semibold hover:bg-secondary/40"

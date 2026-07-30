@@ -1,444 +1,481 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+// 5174 랜딩 (7/30 리뉴얼)
+// 상단바 메뉴는 InfoRoot 그대로 유지. 본문 구성:
+//   ① 히어로 배너+하단 탭 스트립
+//   ② 주최자용 서비스 소개 — "여기는 소비자 앱이 아니라 주최자 사이트"임을 알리는 구간
+//   ③ 추천 팝업 ④ 신규 팝업 ⑤ 해시태그 필터+검색이 달린 전체 팝업 그리드
+//   ⑥ 주최자 가입 CTA
+// 카드·배너는 전부 실제 팝업 DB(공개 API)에서 오고, 클릭하면 소비자 서비스(5173)의
+// 상세페이지로 넘어간다. 목업 섹션(성공사례 CASES·요금제 PLANS·통계 SERVICES)은 7/30에 제거.
+import {useEffect, useMemo, useState} from "react";
+import {useNavigate} from "react-router";
 import {
-  CheckCircle, ArrowRight, MapPin, Calendar, Users, TrendingUp, Shield, Headphones,
-  Store, CalendarClock,
+    ArrowRight, Search, Store, CalendarClock, ChevronRight, CheckCircle,
+    BarChart3, BellRing,
 } from "lucide-react";
-import { useAuth } from "../../context/AuthContext";
-import { getPopups, Popup } from "../../lib/api";
+import {useAuth} from "../../context/AuthContext";
+import {getPopups, getPopupImages, getKeywords, Popup, IdName} from "../../lib/api";
 
-// 2번째 섹션: 핵심 기능 2종 요약 카드 (좌: 팝업콘텐츠 등록 / 우: 예약·웨이팅 통합관리)
-const CORE_FEATURES = [
-  {
-    icon: Store,
-    label: "Popup Contents",
-    title: "팝업콘텐츠 등록",
-    desc: "팝업 정보·이미지를 등록하면 관리자 심사를 거쳐 소비자 서비스에 바로 게시됩니다. 주소는 지도 좌표로 자동 변환되어 탐색 지도에 노출돼요.",
-    points: ["팝업 정보·이미지 등록 폼", "심사/게시 상태 실시간 확인", "게시 즉시 소비자 앱 노출"],
-    to: "/content-register",
-    cta: "팝업콘텐츠 등록 안내",
-  },
-  {
-    icon: CalendarClock,
-    label: "Reservation & Waiting",
-    title: "예약·웨이팅 통합관리",
-    desc: "사전예약·현장 예약·비회원 예약을 하나의 시스템으로 받고, 실시간 대기열 현황과 재고 데이터까지 한 화면에서 관리합니다.",
-    points: ["사전·현장·비회원 예약 통합", "실시간 대기열 관제·호출", "슬롯 정원·재고 데이터 관리"],
-    to: "/waiting-management",
-    cta: "예약·웨이팅 통합관리 안내",
-  },
+// ② 주최자용 서비스 요약 — 소비자 앱과의 차별점을 첫 스크롤에서 보여주는 구간.
+// 구 랜딩의 CORE_FEATURES를 되살리고 /manage 앵커로 연결한다 (7/30 병합 반영).
+const ORGANIZER_FEATURES = [
+    {
+        icon: Store,
+        label: "Popup Contents",
+        title: "팝업콘텐츠 등록",
+        desc: "팝업 정보·이미지를 등록하면 관리자 심사를 거쳐 소비자 서비스에 바로 게시됩니다. 주소는 지도 좌표로 자동 변환되어 탐색 지도에 노출돼요.",
+        points: ["팝업 정보·이미지 등록 폼", "심사/게시 상태 실시간 확인", "게시 즉시 소비자 앱 노출"],
+        to: "/manage#register",
+        cta: "팝업콘텐츠 등록 안내",
+    },
+    {
+        icon: CalendarClock,
+        label: "Reservation & Waiting",
+        title: "예약·웨이팅 통합관리",
+        desc: "사전예약·현장 예약·비회원 예약을 하나의 시스템으로 받고, 실시간 대기열 현황과 방문 데이터까지 한 화면에서 관리합니다.",
+        points: ["사전·현장·비회원 예약 통합", "실시간 대기열 관제·호출", "슬롯 정원·방문 데이터 집계"],
+        to: "/manage#waiting",
+        cta: "예약·웨이팅 통합관리 안내",
+    },
 ];
 
-const SERVICES = [
-  {
-    icon: MapPin,
-    title: "프리미엄 공간 네트워크",
-    desc: "서울·수도권 주요 상권 300여 곳의 검증된 팝업 공간을 단일 플랫폼에서 탐색하고 예약할 수 있습니다.",
-    stat: "300+",
-    statLabel: "파트너 공간",
-  },
-  {
-    icon: Calendar,
-    title: "일정 관리 대시보드",
-    desc: "예약부터 철수까지 전 일정을 시각화된 캘린더로 관리하고, 팀원과 실시간으로 공유하세요.",
-    stat: "100%",
-    statLabel: "실시간 동기화",
-  },
-  {
-    icon: Users,
-    title: "전담 매니저 배정",
-    desc: "등록 완료 후 24시간 이내에 전담 플랫폼 매니저가 배정되어 첫 팝업 오픈까지 동행합니다.",
-    stat: "24h",
-    statLabel: "매니저 배정",
-  },
-  {
-    icon: TrendingUp,
-    title: "데이터 기반 인사이트",
-    desc: "방문객 트래픽, 매출 추이, 브랜드 노출 지표를 자동 집계해 다음 팝업 전략 수립에 활용하세요.",
-    stat: "15+",
-    statLabel: "핵심 분석 지표",
-  },
-  {
-    icon: Shield,
-    title: "계약·보험 원스톱",
-    desc: "공간 임대 계약서 작성과 단기 영업 보험 가입을 플랫폼 내에서 완결할 수 있습니다.",
-    stat: "3일",
-    statLabel: "계약 완료 기간",
-  },
-  {
-    icon: Headphones,
-    title: "운영 중 긴급 지원",
-    desc: "팝업 운영 기간 동안 시설 트러블·민원 대응을 위한 긴급 콜센터를 24시간 운영합니다.",
-    stat: "24/7",
-    statLabel: "긴급 대응",
-  },
+// 주최자만 쓰는 기능들 — 소비자 앱에는 없는 것들로 골라 차별점을 분명히 한다
+const ORGANIZER_EXTRAS = [
+    {icon: BarChart3, title: "방문자 통계", desc: "연령·성별·기간별 방문 추이와 예약 전환율"},
+    {icon: BellRing, title: "긴급 공지 발송", desc: "운영 중 변경사항을 예약자에게 즉시 알림"},
+    {icon: CheckCircle, title: "QR 입장 체크인", desc: "현장에서 QR 스캔으로 입장 확인·노쇼 처리"},
 ];
 
-const CASES = [
-  {
-    brand: "MINU Studio",
-    category: "패션 액세서리",
-    location: "성수동 S-Factory",
-    duration: "7일",
-    visitors: "4,200명",
-    img: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&h=400&fit=crop&auto=format",
-    quote: "플랫폼 없이는 성수동 핫스팟에 자리 잡는 것 자체가 불가능했을 거예요.",
-  },
-  {
-    brand: "Botanica Seoul",
-    category: "라이프스타일",
-    location: "홍대 복합문화공간",
-    duration: "14일",
-    visitors: "9,800명",
-    img: "https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=600&h=400&fit=crop&auto=format",
-    quote: "매니저님이 계약부터 철수까지 전 과정을 옆에서 도와주셨어요.",
-  },
-  {
-    brand: "Gravure Archive",
-    category: "아트 프린트",
-    location: "강남 플래그십 빌딩",
-    duration: "5일",
-    visitors: "2,600명",
-    img: "https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=600&h=400&fit=crop&auto=format",
-    quote: "데이터 리포트 덕분에 다음 팝업 기획이 훨씬 쉬워졌습니다.",
-  },
-];
+// 소비자 프론트(customerfrontend) — 카드 클릭 시 이 앱의 상세페이지로 보낸다
+const CONSUMER_URL = "http://localhost:5173";
+const detailUrl = (id: number) => `${CONSUMER_URL}/popup/${id}`;
 
-const PLANS = [
-  {
-    name: "스타터",
-    price: "무료",
-    priceNote: "첫 1건 한정",
-    features: ["공간 탐색 무제한", "전담 매니저 1회 배정", "기본 운영 리포트", "이메일 지원"],
-    cta: "무료로 시작",
-    highlight: false,
-  },
-  {
-    name: "그로스",
-    price: "월 89,000원",
-    priceNote: "연 결제 시 20% 할인",
-    features: ["공간 탐색 무제한", "전담 매니저 상시 배정", "고급 분석 대시보드", "계약·보험 원스톱", "24/7 긴급 지원", "월간 인사이트 리포트"],
-    cta: "그로스 시작",
-    highlight: true,
-  },
-  {
-    name: "엔터프라이즈",
-    price: "별도 협의",
-    priceNote: "팀 규모에 맞춤 구성",
-    features: ["그로스 전체 포함", "복수 팀 계정 관리", "API 연동", "전용 온보딩 교육", "전략 컨설팅 세션"],
-    cta: "문의하기",
-    highlight: false,
-  },
-];
+// 소비자 노출 가능한 상태만 (PENDING·REJECTED·SUSPENDED는 공개 화면에 내보내지 않는다)
+const PUBLIC_STATUSES = new Set(["OPEN", "BEFOR", "CLOSED"]);
+
+const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
+    OPEN: {label: "진행중", cls: "bg-accent text-accent-foreground"},
+    BEFOR: {label: "오픈예정", cls: "bg-accent/20 text-accent border border-accent/40"},
+    CLOSED: {label: "종료", cls: "bg-muted text-muted-foreground"},
+};
+
+const period = (p: Popup) =>
+    p.startDate && p.endDate
+        ? `${p.startDate.slice(5, 10).replace("-", ".")} ~ ${p.endDate.slice(5, 10).replace("-", ".")}`
+        : "";
+
+const categoryOf = (p: Popup) => p.keywordNames?.[0] ?? p.hashtags?.[0] ?? "";
 
 export default function Home() {
-  const navigate = useNavigate();
-  const { user } = useAuth();
+    const navigate = useNavigate();
+    const {user} = useAuth();
 
-  // 실제 진행중·오픈예정 팝업 (7/29 — 목업 성공사례를 실데이터 쇼케이스로 교체).
-  // 공개 API라 로그인 불필요. 실패하거나 비어 있으면 기존 목업(CASES)으로 폴백해 랜딩이 깨져 보이지 않게 한다.
-  const [livePopups, setLivePopups] = useState<Popup[]>([]);
-  useEffect(() => {
-    getPopups()
-      .then((all) => {
-        const visible = all.filter((p) => p.status === "OPEN" || p.status === "BEFOR");
-        // 진행중 먼저, 그 안에서는 최신 등록순
-        visible.sort((a, b) =>
-          a.status === b.status
-            ? (b.createdAt ?? "").localeCompare(a.createdAt ?? "")
-            : a.status === "OPEN" ? -1 : 1,
-        );
-        setLivePopups(visible.slice(0, 6));
-      })
-      .catch(() => {});
-  }, []);
-  const period = (p: Popup) =>
-    p.startDate && p.endDate ? `${p.startDate.slice(5, 10).replace("-", ".")} ~ ${p.endDate.slice(5, 10).replace("-", ".")}` : "";
+    const [popups, setPopups] = useState<Popup[]>([]);
+    const [images, setImages] = useState<Record<number, string>>({}); // popupId → 대표 썸네일 URL
+    const [keywords, setKeywords] = useState<IdName[]>([]);
 
-  // 주최자 등록은 회원가입 3단계 플로우에 통합됨
-  const handleOrganizerBtn = () => {
-    if (user) navigate("/seller");
-    else navigate("/login", { state: { tab: "signup" } });
-  };
+    // 전체 팝업 그리드의 필터 상태 (해시태그 칩 + 팝업명 검색)
+    const [chip, setChip] = useState("전체");
+    const [query, setQuery] = useState("");
 
-  return (
-    <main>
-      {/* ── HERO ────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10 pt-20 pb-24 lg:pt-28 lg:pb-32 grid lg:grid-cols-2 gap-16 items-center">
-          <div>
-            <div
-              className="inline-flex items-center gap-2 text-xs font-medium tracking-widest uppercase text-accent mb-8 border border-accent/30 rounded-sm px-3 py-1.5"
-              style={{ fontFamily: "'DM Mono', monospace" }}
-            >
-              팝업스토어 중개 플랫폼
-            </div>
-            <h1
-              className="text-4xl lg:text-6xl font-semibold leading-tight tracking-tight mb-6"
-              style={{ fontFamily: "'Noto Serif KR', serif", lineHeight: "1.2" }}
-            >
-              팝업스토어,<br />
-              이제 플랫폼으로<br />
-              <span className="text-accent">더 쉽게.</span>
-            </h1>
-            <p className="text-base lg:text-lg text-muted-foreground leading-relaxed mb-10 max-w-md">
-              공간 탐색부터 계약, 운영 지원, 데이터 분석까지 — 팝업온은 팝업스토어 주최자에게 필요한 모든 것을 한 곳에서 제공합니다.
-            </p>
-            <div className="flex flex-wrap gap-4">
-              <button
-                onClick={handleOrganizerBtn}
-                className="inline-flex items-center gap-2 bg-foreground text-primary-foreground px-6 py-3 rounded-sm text-sm font-medium hover:bg-accent transition-colors duration-200"
-              >
-                주최자로 등록하기
-                <ArrowRight size={16} />
-              </button>
-            </div>
-            <div className="mt-12 flex gap-8">
-              {[
-                { value: "300+", label: "파트너 공간" },
-                { value: "1,200+", label: "등록 주최자" },
-                { value: "98%", label: "재이용률" },
-              ].map(({ value, label }) => (
-                <div key={label}>
-                  <div className="text-2xl font-bold text-accent" style={{ fontFamily: "'DM Mono', monospace" }}>{value}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
+    // 히어로 배너에서 지금 보여주는 팝업 인덱스
+    const [heroIdx, setHeroIdx] = useState(0);
 
-          <div className="relative hidden lg:block">
-            <div className="relative rounded-sm overflow-hidden aspect-[4/3] bg-muted">
-              <img
-                src="https://images.unsplash.com/photo-1604328698692-f76ea9498e76?w=900&h=700&fit=crop&auto=format"
-                alt="팝업스토어 내부 전경"
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-foreground/40 to-transparent" />
-            </div>
-            <div className="absolute -bottom-6 -left-8 bg-card border border-border rounded-sm p-4 shadow-lg w-52">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-2 h-2 rounded-full bg-green-500" />
-                <span className="text-xs text-muted-foreground" style={{ fontFamily: "'DM Mono', monospace" }}>실시간 예약 현황</span>
-              </div>
-              <div className="text-sm font-semibold">성수동 S-Factory</div>
-              <div className="text-xs text-accent font-medium mt-0.5">2025.08.14 — 08.21 확정</div>
-            </div>
-          </div>
-        </div>
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-border" />
-      </section>
+    useEffect(() => {
+        let cancelled = false;
+        getKeywords().then((k) => {
+            if (!cancelled) setKeywords(k);
+        }).catch(() => {
+        });
+        getPopups()
+            .then(async (all) => {
+                if (cancelled) return;
+                const visible = all.filter((p) => PUBLIC_STATUSES.has(p.status));
+                // 진행중 → 오픈예정 → 종료, 같은 상태 안에서는 최신 등록순
+                const order: Record<string, number> = {OPEN: 0, BEFOR: 1, CLOSED: 2};
+                visible.sort((a, b) =>
+                    order[a.status] !== order[b.status]
+                        ? order[a.status] - order[b.status]
+                        : (b.createdAt ?? "").localeCompare(a.createdAt ?? ""),
+                );
+                setPopups(visible);
 
-      {/* ── CORE FEATURES (팝업콘텐츠 등록 / 예약·웨이팅 통합관리) ── */}
-      <section className="py-24 lg:py-28 bg-secondary">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10">
-          <div className="mb-14">
-            <div className="text-xs font-medium tracking-widest uppercase text-muted-foreground mb-4" style={{ fontFamily: "'DM Mono', monospace" }}>Core Features</div>
-            <h2 className="text-3xl lg:text-5xl font-semibold leading-tight" style={{ fontFamily: "'Noto Serif KR', serif" }}>
-              팝업 운영의 시작과 현장,<br />두 가지 도구로 해결하세요
-            </h2>
-          </div>
-          <div className="grid md:grid-cols-2 gap-6">
-            {CORE_FEATURES.map(({ icon: Icon, label, title, desc, points, to, cta }) => (
-              <div key={title} className="bg-card border border-border rounded-sm p-8 lg:p-10 flex flex-col hover:border-accent/40 transition-colors duration-300">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="w-11 h-11 rounded-sm bg-accent/10 flex items-center justify-center">
-                    <Icon size={20} className="text-accent" />
-                  </div>
-                  <span className="text-xs font-medium tracking-widest uppercase text-muted-foreground" style={{ fontFamily: "'DM Mono', monospace" }}>{label}</span>
-                </div>
-                <h3 className="text-xl lg:text-2xl font-semibold mb-3" style={{ fontFamily: "'Noto Serif KR', serif" }}>{title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-6">{desc}</p>
-                <ul className="flex flex-col gap-2.5 mb-8 flex-1">
-                  {points.map((p) => (
-                    <li key={p} className="flex items-start gap-2 text-sm">
-                      <CheckCircle size={14} className="shrink-0 mt-0.5 text-accent" />
-                      <span className="text-muted-foreground">{p}</span>
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  onClick={() => navigate(to)}
-                  className="inline-flex items-center justify-center gap-2 w-full py-3 rounded-sm text-sm font-medium border border-foreground hover:bg-foreground hover:text-primary-foreground transition-colors duration-200"
-                >
-                  {cta}
-                  <ArrowRight size={15} />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+                // 대표 이미지 — 팝업별 개별 API라 부분 실패를 허용하며 병렬로 (목록 응답엔 이미지가 안 실려 온다)
+                const targets = visible.slice(0, 24);
+                const pairs = await Promise.all(
+                    targets.map((p) =>
+                        getPopupImages(p.id, "THUMBNAIL")
+                            .then((imgs) => [p.id, imgs[0]?.imageUrl] as const)
+                            .catch(() => [p.id, undefined] as const),
+                    ),
+                );
+                if (cancelled) return;
+                const map: Record<number, string> = {};
+                for (const [id, url] of pairs) if (url) map[id] = url;
+                setImages(map);
+            })
+            .catch(() => {
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
-      {/* ── SERVICES ────────────────────────────────────────── */}
-      <section className="py-24 lg:py-32">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10">
-          <div className="mb-16 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
-            <div>
-              <div className="text-xs font-medium tracking-widest uppercase text-muted-foreground mb-4" style={{ fontFamily: "'DM Mono', monospace" }}>Platform Services</div>
-              <h2 className="text-3xl lg:text-5xl font-semibold leading-tight" style={{ fontFamily: "'Noto Serif KR', serif" }}>
-                주최자를 위한<br />6가지 핵심 서비스
-              </h2>
-            </div>
-            <p className="text-muted-foreground max-w-sm text-sm leading-relaxed lg:text-right">
-              팝업온의 전담 매니저가 처음부터 끝까지 함께합니다. 브랜드의 스토리를 공간으로 만드는 일, 우리가 도와드립니다.
-            </p>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-px bg-border">
-            {SERVICES.map(({ icon: Icon, title, desc, stat, statLabel }) => (
-              <div key={title} className="bg-card p-8 group hover:bg-secondary transition-colors duration-200">
-                <div className="flex items-start justify-between mb-6">
-                  <div className="w-10 h-10 rounded-sm bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                    <Icon size={18} className="text-accent" />
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xl font-bold text-accent" style={{ fontFamily: "'DM Mono', monospace" }}>{stat}</div>
-                    <div className="text-xs text-muted-foreground">{statLabel}</div>
-                  </div>
-                </div>
-                <h3 className="text-base font-semibold mb-2">{title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+    // 히어로 = 이미지가 있는 진행중·오픈예정 팝업 최대 5개 (상단 배너 + 하단 탭)
+    const heroes = useMemo(
+        () => popups.filter((p) => p.status !== "CLOSED" && images[p.id]).slice(0, 5),
+        [popups, images],
+    );
 
-      {/* ── CASES / LIVE ─────────────────────────────────────── */}
-      {/* 7/29 — 실제 팝업 DB가 있으면 그걸 쇼케이스로, 없으면(백엔드 다운 등) 기존 목업 폴백 */}
-      <section className="py-24 lg:py-32 bg-secondary">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10">
-          <div className="mb-16">
-            <div className="text-xs font-medium tracking-widest uppercase text-muted-foreground mb-4" style={{ fontFamily: "'DM Mono', monospace" }}>
-              {livePopups.length ? "Now on PopupOn" : "Success Stories"}
-            </div>
-            <h2 className="text-3xl lg:text-5xl font-semibold leading-tight" style={{ fontFamily: "'Noto Serif KR', serif" }}>
-              {livePopups.length ? <>지금 팝업온에서<br />열리고 있는 팝업</> : <>팝업온과 함께한<br />브랜드 이야기</>}
-            </h2>
-          </div>
-          {livePopups.length > 0 && (
-            <div className="grid md:grid-cols-3 gap-6">
-              {livePopups.map((p) => (
-                <div key={p.id} className="group overflow-hidden rounded-sm border border-border bg-card hover:border-accent/40 transition-colors duration-300">
-                  <div className="aspect-[16/10] overflow-hidden bg-muted flex items-center justify-center">
-                    {p.thumbnailImages?.[0] ? (
-                      <img src={p.thumbnailImages[0]} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    ) : (
-                      <Store size={28} className="text-muted-foreground/40" />
+    // 5초마다 자동 전환. 탭 클릭 시 해당 배너로 점프.
+    useEffect(() => {
+        if (heroes.length < 2) return;
+        const t = setInterval(() => setHeroIdx((i) => (i + 1) % heroes.length), 5000);
+        return () => clearInterval(t);
+    }, [heroes.length]);
+    const hero = heroes[Math.min(heroIdx, Math.max(heroes.length - 1, 0))];
+
+    // 추천 팝업 = 진행중 앞쪽 8개 (가로 스크롤 카드)
+    const recommended = useMemo(() => popups.filter((p) => p.status === "OPEN").slice(0, 8), [popups]);
+
+    // 신규 팝업 = 최근 등록 2개 (와이드 카드)
+    const newest = useMemo(
+        () => [...popups].sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "")).slice(0, 2),
+        [popups],
+    );
+
+    // 전체 팝업 그리드 — 칩(상태·카테고리) + 검색어 필터
+    const chips = useMemo(() => {
+        const cats = keywords.map((k) => k.name);
+        return ["전체", "진행중", "오픈예정", "종료", ...cats];
+    }, [keywords]);
+
+    const filtered = useMemo(() => {
+        return popups.filter((p) => {
+            if (chip === "진행중" && p.status !== "OPEN") return false;
+            if (chip === "오픈예정" && p.status !== "BEFOR") return false;
+            if (chip === "종료" && p.status !== "CLOSED") return false;
+            if (!["전체", "진행중", "오픈예정", "종료"].includes(chip)) {
+                const tags = [...(p.keywordNames ?? []), ...(p.hashtags ?? [])];
+                if (!tags.includes(chip)) return false;
+            }
+            if (query) {
+                const q = query.toLowerCase();
+                if (!p.title.toLowerCase().includes(q) && !p.companyName.toLowerCase().includes(q)) return false;
+            }
+            return true;
+        });
+    }, [popups, chip, query]);
+
+    return (
+        <main className="bg-background">
+            {/* ── ① 히어로 배너 + 하단 탭 스트립 ───────────────────────────── */}
+            {hero ? (
+                <section className="bg-background">
+                    <a href={detailUrl(hero.id)} target="_blank" rel="noopener noreferrer"
+                       className="block relative group">
+                        <div className="h-[340px] lg:h-[440px] overflow-hidden">
+                            <img
+                                src={images[hero.id]}
+                                alt={hero.title}
+                                className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-[1.01] transition-all duration-500"
+                            />
+                        </div>
+                        {/* 좌측 텍스트 오버레이 */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/20 to-transparent">
+                            <div className="max-w-7xl mx-auto px-6 lg:px-10 h-full flex flex-col justify-center gap-3">
+                                <span className="text-xs tracking-widest text-white/70">{hero.companyName}</span>
+                                <h1 className="text-3xl lg:text-5xl font-extrabold text-white max-w-xl leading-tight"
+                                    style={{fontFamily: "'NanumSquareRound', sans-serif"}}>
+                                    {hero.title}
+                                </h1>
+                                <p className="text-sm text-white/80">{period(hero)}{hero.location ? ` · ${hero.location}` : ""}</p>
+                                <span
+                                    className="mt-2 inline-flex items-center gap-1.5 text-sm text-accent-foreground bg-accent/90 backdrop-blur px-4 py-2 rounded-sm w-fit group-hover:bg-accent transition-colors">
+                  지금 바로 확인하기 <ChevronRight size={15}/>
+                </span>
+                            </div>
+                        </div>
+                    </a>
+
+                    {/* 하단 탭 스트립 — 배너 후보 목록. 활성 탭만 밝게 */}
+                    {heroes.length > 1 && (
+                        <div className="grid" style={{gridTemplateColumns: `repeat(${heroes.length}, minmax(0, 1fr))`}}>
+                            {heroes.map((p, i) => (
+                                <button
+                                    key={p.id}
+                                    onClick={() => setHeroIdx(i)}
+                                    className={`text-left px-5 py-4 border-r border-white/5 last:border-r-0 transition-colors ${
+                                        i === heroIdx ? "bg-white/15" : "bg-white/[0.03] hover:bg-white/10"
+                                    }`}
+                                >
+                                    <span className="block text-[11px] text-white/50 mb-1">{p.companyName}</span>
+                                    <span
+                                        className={`block text-sm truncate ${i === heroIdx ? "text-white font-semibold" : "text-white/70"}`}>
+                    {p.title}
+                  </span>
+                                </button>
+                            ))}
+                        </div>
                     )}
-                  </div>
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs text-accent font-medium" style={{ fontFamily: "'DM Mono', monospace" }}>
-                        {p.keywordNames?.[0] ?? p.companyName}
-                      </span>
-                      <span className={`text-[11px] px-2 py-0.5 rounded-full border ${p.status === "OPEN" ? "bg-emerald-50 text-emerald-600 border-emerald-200" : "bg-amber-50 text-amber-600 border-amber-200"}`}>
-                        {p.status === "OPEN" ? "진행중" : "오픈예정"}
-                      </span>
+                </section>
+            ) : (
+                /* 팝업·이미지가 아직 없으면 기존 소개형 히어로로 폴백 — 랜딩이 비어 보이지 않게 */
+                <section className="bg-card text-foreground">
+                    <div className="max-w-7xl mx-auto px-6 lg:px-10 py-24 lg:py-32">
+                        <h1 className="text-3xl lg:text-5xl font-extrabold leading-tight mb-4"
+                            style={{fontFamily: "'NanumSquareRound', sans-serif"}}>
+                            브랜드 팝업의 시작과 끝,<br/>팝업온에서
+                        </h1>
+                        <p className="text-muted-foreground text-sm lg:text-base mb-8">
+                            팝업 등록부터 예약·웨이팅 관제까지. 지금 진행 중인 팝업이 등록되면 이 자리에 소개됩니다.
+                        </p>
+                        <button onClick={() => (user ? navigate("/seller") : navigate("/signup"))}
+                                className="inline-flex items-center gap-2 bg-accent text-accent-foreground text-sm px-6 py-3 rounded-sm hover:bg-accent/90 transition-colors">
+                            주최자로 시작하기 <ArrowRight size={15}/>
+                        </button>
                     </div>
-                    <h3 className="font-semibold text-base mb-1 truncate">{p.title}</h3>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
-                      <MapPin size={11} />
-                      <span className="truncate">{p.regionName ?? p.location ?? "장소 미정"}</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Calendar size={11} />
-                      <span style={{ fontFamily: "'DM Mono', monospace" }}>{period(p)}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          {livePopups.length === 0 && (
-          <div className="grid md:grid-cols-3 gap-6">
-            {CASES.map(({ brand, category, location, duration, visitors, img, quote }) => (
-              <div key={brand} className="group overflow-hidden rounded-sm border border-border bg-card hover:border-accent/40 transition-colors duration-300">
-                <div className="aspect-[16/10] overflow-hidden bg-muted">
-                  <img src={img} alt={brand} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                </div>
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-accent font-medium" style={{ fontFamily: "'DM Mono', monospace" }}>{category}</span>
-                    <span className="text-xs text-muted-foreground" style={{ fontFamily: "'DM Mono', monospace" }}>{duration}</span>
-                  </div>
-                  <h3 className="font-semibold text-base mb-1">{brand}</h3>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground mb-4">
-                    <MapPin size={11} />
-                    <span>{location}</span>
-                  </div>
-                  <div className="flex items-center gap-2 mb-5 p-3 bg-secondary rounded-sm">
-                    <Users size={13} className="text-accent shrink-0" />
-                    <span className="text-sm font-semibold">{visitors}</span>
-                    <span className="text-xs text-muted-foreground">방문객</span>
-                  </div>
-                  <blockquote className="text-sm text-muted-foreground leading-relaxed border-l-2 border-accent/40 pl-3 italic">
-                    "{quote}"
-                  </blockquote>
-                </div>
-              </div>
-            ))}
-          </div>
-          )}
-        </div>
-      </section>
+                </section>
+            )}
 
-      {/* ── PLANS ────────────────────────────────────────────── */}
-      <section className="py-24 lg:py-32">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10">
-          <div className="mb-16 text-center">
-            <div className="text-xs font-medium tracking-widest uppercase text-muted-foreground mb-4" style={{ fontFamily: "'DM Mono', monospace" }}>Pricing Plans</div>
-            <h2 className="text-3xl lg:text-5xl font-semibold leading-tight" style={{ fontFamily: "'Noto Serif KR', serif" }}>
-              브랜드 규모에 맞는<br />요금제를 선택하세요
-            </h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {PLANS.map(({ name, price, priceNote, features, cta, highlight }) => (
-              <div
-                key={name}
-                className={`rounded-sm p-8 border flex flex-col ${highlight ? "bg-foreground text-primary-foreground border-foreground" : "bg-card border-border"}`}
-              >
-                <div className="mb-6">
-                  <div className={`text-xs font-medium tracking-widest uppercase mb-3 ${highlight ? "text-accent" : "text-muted-foreground"}`} style={{ fontFamily: "'DM Mono', monospace" }}>{name}</div>
-                  <div className="text-2xl font-bold" style={{ fontFamily: "'DM Mono', monospace" }}>{price}</div>
-                  <div className={`text-xs mt-1 ${highlight ? "text-white/50" : "text-muted-foreground"}`}>{priceNote}</div>
-                </div>
-                <ul className="flex flex-col gap-3 mb-8 flex-1">
-                  {features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm">
-                      <CheckCircle size={14} className="shrink-0 mt-0.5 text-accent" />
-                      <span className={highlight ? "text-white/80" : "text-muted-foreground"}>{f}</span>
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  onClick={handleOrganizerBtn}
-                  className={`w-full py-3 rounded-sm text-sm font-medium transition-colors duration-200 ${highlight ? "bg-accent text-white hover:bg-accent/90" : "border border-foreground hover:bg-foreground hover:text-primary-foreground"}`}
-                >
-                  {cta}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+            {/* ── ② 주최자용 서비스 소개 ─────────────────────────────────
+          히어로와 팝업 카드 사이에 둔다. 이 자리가 없으면 소비자 앱과 구분이 안 돼
+          "팝업 구경하는 사이트"로 읽힌다. 여기가 주최자를 위한 사이트라는 걸 먼저 알린다. */}
+            <section className="border-y border-border bg-card">
+                <div className="max-w-7xl mx-auto px-6 lg:px-10 py-16 lg:py-20">
+                    <div className="max-w-2xl mb-12">
+                        <div
+                            className="inline-flex items-center gap-2 text-[11px] font-bold tracking-widest text-accent border border-accent/40 rounded-sm px-3 py-1.5 mb-5"
+                            style={{fontFamily: "'DM Mono', monospace"}}>
+                            FOR ORGANIZERS
+                        </div>
+                        <h2 className="text-2xl lg:text-4xl font-extrabold leading-tight mb-4"
+                            style={{fontFamily: "'NanumSquareRound', sans-serif"}}>
+                            팝업온은 <span className="text-accent">브랜드</span>를 위한 플랫폼입니다
+                        </h2>
+                    </div>
 
-      {/* ── CTA BANNER ───────────────────────────────────────── */}
-      <section className="py-20 bg-foreground text-primary-foreground">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10 text-center">
-          <h2 className="text-3xl lg:text-4xl font-semibold mb-4" style={{ fontFamily: "'Noto Serif KR', serif" }}>
-            지금 주최자로 등록하고<br />첫 팝업을 시작하세요
-          </h2>
-          <p className="text-white/60 text-sm mb-8">1영업일 이내 검토 · 24시간 내 전담 매니저 배정</p>
-          <button
-            onClick={handleOrganizerBtn}
-            className="inline-flex items-center gap-2 bg-accent text-white px-8 py-4 rounded-sm text-sm font-medium hover:bg-accent/90 transition-colors duration-200"
-          >
-            {user ? "주최자센터 바로가기" : "주최자 회원가입 하기"}
-            <ArrowRight size={16} />
-          </button>
-        </div>
-      </section>
-    </main>
-  );
+                    {/* 핵심 기능 2종 — 구 랜딩의 요약 카드를 되살려 /manage 앵커로 연결 */}
+                    <div className="grid md:grid-cols-2 gap-5 mb-10">
+                        {ORGANIZER_FEATURES.map(({icon: Icon, label, title, desc, points, to, cta}) => (
+                            <div key={title}
+                                 className="border border-border rounded-md p-7 hover:border-accent/50 transition-colors flex flex-col">
+                                <div className="flex items-center gap-3 mb-5">
+                                    <div className="w-10 h-10 rounded-sm bg-accent/10 flex items-center justify-center">
+                                        <Icon size={18} className="text-accent"/>
+                                    </div>
+                                    <span className="text-[10px] tracking-widest text-muted-foreground"
+                                          style={{fontFamily: "'DM Mono', monospace"}}>{label}</span>
+                                </div>
+                                <h3 className="text-lg font-extrabold mb-2"
+                                    style={{fontFamily: "'NanumSquareRound', sans-serif"}}>{title}</h3>
+                                <p className="text-sm text-muted-foreground leading-relaxed mb-5">{desc}</p>
+                                <ul className="flex flex-col gap-2 mb-6">
+                                    {points.map((p) => (
+                                        <li key={p} className="flex items-start gap-2 text-sm">
+                                            <CheckCircle size={14} className="shrink-0 mt-0.5 text-accent"/>
+                                            <span className="text-muted-foreground">{p}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                                <button onClick={() => navigate(to)}
+                                        className="mt-auto text-sm text-accent hover:brightness-125 inline-flex items-center gap-1 self-start">
+                                    {cta} <ArrowRight size={14}/>
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* 소비자 앱에는 없는 기능들 — 차별점을 한 줄씩 */}
+                    <div className="grid sm:grid-cols-3 gap-5 py-8 border-y border-border">
+                        {ORGANIZER_EXTRAS.map(({icon: Icon, title, desc}) => (
+                            <div key={title} className="flex gap-3">
+                                <Icon size={17} className="shrink-0 mt-0.5 text-accent"/>
+                                <div>
+                                    <p className="text-sm font-bold mb-0.5">{title}</p>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">{desc}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* 가입 CTA — 7/30에 페이지 맨 아래에서 이 자리로 옮겼다.
+              팝업 카드를 스크롤하기 전에 "여기서 올릴 수도 있다"를 먼저 알린다. */}
+                    <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-5">
+                        <div>
+                            <h3 className="text-lg lg:text-xl font-extrabold mb-1"
+                                style={{fontFamily: "'NanumSquareRound', sans-serif"}}>
+                                내 브랜드 팝업도 여기에 올리고 싶다면
+                            </h3>
+                            <p className="text-sm text-muted-foreground">사업자 인증 후 바로 등록할 수 있습니다. 게시 전 관리자 심사를 거칩니다.</p>
+                        </div>
+                        <button
+                            onClick={() => (user ? navigate("/seller") : navigate("/signup"))}
+                            className="inline-flex items-center gap-2 bg-accent text-accent-foreground text-sm font-bold px-6 py-3 rounded-sm hover:bg-accent/90 transition-colors shrink-0"
+                        >
+                            {user ? "주최자센터 가기" : "주최자로 시작하기"} <ArrowRight size={15}/>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            {/* ── ③ 추천 팝업 (해시태그 라벨 + 가로 카드 + 우측 바로가기) ── */}
+            <section className="max-w-7xl mx-auto px-6 lg:px-10 py-14">
+                <h2 className="text-2xl font-extrabold mb-1" style={{fontFamily: "'NanumSquareRound', sans-serif"}}>추천
+                    팝업</h2>
+                <div className="flex items-start justify-between gap-8 mb-5">
+                    <p className="text-sm font-bold text-accent">#지금 진행 중인</p>
+                    {/* 우측 바로가기 — 핵심 기능 안내로 바로 진입 */}
+                    <div className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
+                        {/* 7/30 — 두 안내 페이지가 /manage로 병합됨. 앵커로 각 파트에 바로 진입 */}
+                        <button onClick={() => navigate("/manage#register")}
+                                className="flex items-center gap-1.5 hover:text-foreground"><Store size={14}/> 팝업콘텐츠 등록
+                        </button>
+                        <button onClick={() => navigate("/manage#waiting")}
+                                className="flex items-center gap-1.5 hover:text-foreground"><CalendarClock
+                            size={14}/> 예약·웨이팅 통합관리
+                        </button>
+                    </div>
+                </div>
+
+                {recommended.length > 0 ? (
+                    <div className="flex gap-4 overflow-x-auto pb-2 snap-x">
+                        {recommended.map((p) => (
+                            <a
+                                key={p.id}
+                                href={detailUrl(p.id)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-none w-[170px] snap-start group"
+                            >
+                                <div className="relative aspect-[3/4] rounded-md overflow-hidden bg-muted">
+                                    {images[p.id] ? (
+                                        <img src={images[p.id]} alt={p.title}
+                                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"/>
+                                    ) : (
+                                        <div
+                                            className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">이미지
+                                            준비중</div>
+                                    )}
+                                    <span
+                                        className="absolute bottom-2 left-2 text-[10px] font-bold bg-accent text-accent-foreground px-2 py-0.5 rounded-full">추천</span>
+                                </div>
+                                <p className="mt-2 text-sm font-medium truncate">{p.title}</p>
+                                <p className="text-xs text-muted-foreground truncate">{categoryOf(p) || p.companyName}</p>
+                            </a>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="text-sm text-muted-foreground py-8">지금 진행 중인 팝업이 없습니다. 곧 새로운 팝업으로 찾아뵐게요.</p>
+                )}
+            </section>
+
+            {/* ── ④ 신규 팝업 (NEW 배지 와이드 카드) ───────────────────────── */}
+            {newest.length > 0 && (
+                <section className="max-w-7xl mx-auto px-6 lg:px-10 pb-14">
+                    <h2 className="text-2xl font-extrabold mb-5"
+                        style={{fontFamily: "'NanumSquareRound', sans-serif"}}>신규 팝업</h2>
+                    <div className="grid md:grid-cols-2 gap-4">
+                        {newest.map((p) => (
+                            <a
+                                key={p.id}
+                                href={detailUrl(p.id)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="relative flex h-[150px] rounded-md overflow-hidden bg-gradient-to-r from-accent to-accent/70 text-accent-foreground group"
+                            >
+                                <div className="flex-1 p-5 flex flex-col justify-between">
+                                    <div>
+                                        <span
+                                            className="inline-block text-[10px] font-bold bg-background/25 backdrop-blur px-2 py-0.5 rounded-full mb-2">NEW</span>
+                                        <p className="font-semibold truncate">{p.title}</p>
+                                        <p className="text-xs text-accent-foreground/70 mt-0.5">{categoryOf(p) || p.companyName}</p>
+                                    </div>
+                                    <p className="text-xs text-accent-foreground/80">{period(p)} · 지금 바로 확인해 보세요!</p>
+                                </div>
+                                {images[p.id] && (
+                                    <img src={images[p.id]} alt=""
+                                         className="w-[45%] object-cover group-hover:scale-105 transition-transform duration-300"/>
+                                )}
+                            </a>
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            {/* ── ⑤ 전체 팝업 (칩 필터 + 검색 + 그리드) ─────────────────────── */}
+            <section className="max-w-7xl mx-auto px-6 lg:px-10 pb-20">
+                <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
+                    <h2 className="text-2xl font-extrabold" style={{fontFamily: "'NanumSquareRound', sans-serif"}}>
+                        전체 팝업 <span className="text-base text-muted-foreground font-normal">{filtered.length}</span>
+                    </h2>
+                    <div className="relative">
+                        <input
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            placeholder="팝업명 검색"
+                            className="w-56 pl-3 pr-9 py-2 text-sm border-b border-border bg-transparent focus:outline-none focus:border-foreground"
+                        />
+                        <Search size={15} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"/>
+                    </div>
+                </div>
+
+                {/* 해시태그 칩 — 상태 4종 + 카테고리(keyword 마스터) */}
+                <div className="bg-card rounded-md border border-border px-5 py-4 mb-6 flex flex-wrap gap-x-5 gap-y-2">
+                    {chips.map((c) => (
+                        <button
+                            key={c}
+                            onClick={() => setChip(c)}
+                            className={`text-sm transition-colors ${
+                                chip === c ? "bg-accent text-accent-foreground px-3 py-0.5 rounded-full" : "text-muted-foreground hover:text-foreground"
+                            }`}
+                        >
+                            #{c}
+                        </button>
+                    ))}
+                </div>
+
+                {filtered.length > 0 ? (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {filtered.map((p) => {
+                            const badge = STATUS_BADGE[p.status];
+                            return (
+                                <a
+                                    key={p.id}
+                                    href={detailUrl(p.id)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="bg-card rounded-md overflow-hidden border border-border hover:shadow-lg transition-shadow group"
+                                >
+                                    <div className="relative aspect-[16/10] bg-muted overflow-hidden">
+                                        {images[p.id] ? (
+                                            <img src={images[p.id]} alt={p.title}
+                                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"/>
+                                        ) : (
+                                            <div
+                                                className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">이미지
+                                                준비중</div>
+                                        )}
+                                    </div>
+                                    <div className="p-4">
+                                        <p className="font-semibold text-sm truncate">{p.title}</p>
+                                        <p className="text-xs text-muted-foreground mt-0.5 truncate">{categoryOf(p) || p.companyName}</p>
+                                        <div className="flex items-center justify-between mt-3">
+                                            {badge && <span
+                                                className={`text-[10px] font-bold px-2 py-0.5 rounded ${badge.cls}`}>{badge.label}</span>}
+                                            <span className="text-[11px] text-muted-foreground">{period(p)}</span>
+                                        </div>
+                                    </div>
+                                </a>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <p className="text-sm text-muted-foreground py-10 text-center">조건에 맞는 팝업이 없습니다.</p>
+                )}
+            </section>
+
+            {/* 하단 CTA는 7/30에 ②(주최자 소개) 구간으로 올렸다 — 팝업 카드를 보기 '전에'
+          이 사이트의 성격을 알리는 것이 목적이라, 맨 아래에 두면 늦다. */}
+        </main>
+    );
 }
