@@ -38,7 +38,8 @@ export interface PopupDetail {
   // [신규] popup_hashtag 테이블 기반 실제 태그 목록. 백엔드에 진짜 카테고리 컬럼이
   // 없어서 지금까지 검색/홈 카테고리 필터가 팝업 이름 텍스트 매칭으로 흉내만 냈는데,
   // 이제 이걸로 정확하게 필터링할 수 있어요.
-  hashtags: string[];
+  hashtags: string[]; // 주최측이 직접 입력한 해시태그
+  keywordNames: string[]; // [신규] 표준 카테고리 이름들 (예: ["패션", "라이프스타일"])
   // [신규] popup_sns_link 테이블 - PopupResponse에 직접 실려서 와요(별도 API 호출 불필요).
   snsLinks: SnsLink[];
   // [신규] 백엔드가 DB 전체 후기 기준으로 미리 계산해서 내려주는 평균 평점/후기 수.
@@ -124,6 +125,7 @@ function buildMockPopupDetails(): PopupDetail[] {
       queueMode: null,
       maxPartySizePerTeam: null,
       hashtags: item.category ? [item.category] : [],
+      keywordNames: item.category ? [item.category] : [],
       snsLinks: [],
       avgRating: null,
       reviewCount: 0,

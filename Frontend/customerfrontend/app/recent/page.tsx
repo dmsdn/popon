@@ -10,6 +10,7 @@ import { toPopupItem } from "@/lib/utils/popupMapper";
 import { getRecentlyViewedIds } from "@/lib/recentlyViewed";
 import type { PopupItem } from "@/data/mockPopups";
 import { LoadingState, EmptyState } from "@/components/ui/EmptyState";
+import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 
 // 이 브라우저에서 실제로 들어가봤던 팝업 상세페이지 기록 기준이에요 (lib/recentlyViewed.ts).
 // 로그인 계정 기준 서버 저장이 아니라 브라우저 기준이라, 다른 기기에서는 안 보여요.
@@ -42,7 +43,8 @@ export default function RecentListPage() {
   }, []);
 
   return (
-    <main className="pb-16 mobile:pb-0 mobile:max-w-[1000px] mobile:mx-auto">
+    <main className="min-h-screen flex flex-col pb-16 mobile:pb-0 mobile:max-w-[1000px] mobile:mx-auto">
+      <div className="flex-1">
       <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100">
         <button
           type="button"
@@ -65,8 +67,12 @@ export default function RecentListPage() {
           <div className="grid grid-cols-2 mobile:grid-cols-4 gap-4">
             {items.map((item) => (
               <Link key={item.id} href={`/popup/${item.id}`} className="flex flex-col gap-2">
-                <div className="h-[160px] rounded-md bg-gray-100 flex items-center justify-center text-xs text-gray-400">
-                  이미지
+                <div className="h-[160px] rounded-md bg-gray-100 overflow-hidden flex items-center justify-center text-xs text-gray-400">
+                  {item.imageUrl ? (
+                    <ImageWithFallback src={item.imageUrl} className="w-full h-full object-cover" />
+                  ) : (
+                    "이미지"
+                  )}
                 </div>
                 <div>
                   <p className="text-sm font-medium truncate">{item.name}</p>
@@ -76,6 +82,8 @@ export default function RecentListPage() {
             ))}
           </div>
         )}
+      </div>
+
       </div>
 
       <Footer />

@@ -59,7 +59,8 @@ export default function MorePage() {
   const sortedRegions = sortByPreferred(allRegions, (r) => myRegionIds.includes(r.id));
 
   return (
-    <main className="w-full mobile:max-w-[1000px] mobile:mx-auto pb-16 mobile:pb-0">
+    <main className="min-h-screen flex flex-col w-full mobile:max-w-[1000px] mobile:mx-auto pb-16 mobile:pb-0">
+      <div className="flex-1">
       <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100">
         <button
           type="button"
@@ -146,6 +147,8 @@ export default function MorePage() {
           ))}
         </nav>
       </section>
+
+      </div>
 
       <Footer />
     </main>

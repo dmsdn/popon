@@ -36,15 +36,13 @@ export function StarRatingInput({
             onMouseEnter={() => setHoverValue(star)}
             className="p-0.5"
           >
-            <svg
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={filled ? "/Icon/star_active.svg" : "/Icon/star_inactive.svg"}
+              alt=""
               width={size}
               height={size}
-              viewBox="0 0 24 24"
-              fill={filled ? "#ef4444" : "#d1d5db"}
-              className="transition-colors"
-            >
-              <path d="M12 2.5l2.9 6.6 7.1.7-5.4 4.8 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.8l7.1-.7z" />
-            </svg>
+            />
           </button>
         );
       })}
