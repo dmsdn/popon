@@ -49,6 +49,7 @@ public class ReviewController {
         review.setPopupId(request.getPopupId());
         review.setRating(request.getRating());
         review.setContent(request.getContent());
+        review.setVisitDate(request.getVisitDate());
 
         Review saved;
         try {

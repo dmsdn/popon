@@ -3,10 +3,7 @@ package popupteam.popupbackend.domain.review.dto;
 import popupteam.popupbackend.domain.review.Review;
 import lombok.Getter;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import popupteam.popupbackend.domain.review.Review;
-import lombok.Getter;
-import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -19,6 +16,7 @@ public class ReviewResponse {
     private final List<String> imageUrls;
     private final long likeCount;
     private final boolean likedByMe;
+    private final LocalDate visitDate;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
@@ -31,6 +29,7 @@ public class ReviewResponse {
         this.imageUrls = imageUrls;
         this.likeCount = likeCount;
         this.likedByMe = likedByMe;
+        this.visitDate = review.getVisitDate();
         this.createdAt = review.getCreatedAt();
         this.updatedAt = review.getUpdatedAt();
     }
