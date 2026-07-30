@@ -15,4 +15,7 @@ public interface PopupWishlistRepository extends JpaRepository<PopupWishlist, Po
    // 인기 팝업 랭킹 계산용 - 팝업별 찜 개수를 한 번에 집계
    @Query("SELECT w.popupId, COUNT(w) FROM PopupWishlist w GROUP BY w.popupId")
    List<Object[]> countAllGroupByPopupId();
+
+   // 특정 팝업 하나의 찜 개수 (팝업 상세페이지 "찜 N명" 표시용)
+   long countByPopupId(Long popupId);
 }
