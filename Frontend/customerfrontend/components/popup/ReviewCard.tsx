@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ReviewItem } from "@/data/mockPopups";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 import { StarRatingDisplay } from "@/components/ui/StarRatingDisplay";
 import { ReportReviewModal } from "@/components/popup/ReportReviewModal";
-import { likeReview, unlikeReview } from "@/lib/api/reviews";
+import { likeReview, unlikeReview, deleteReview } from "@/lib/api/reviews";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { useRouter } from "next/navigation";
 import { saveRedirectTarget } from "@/lib/postLoginRedirect";
 
 const CONTENT_PREVIEW_LENGTH = 60;
@@ -15,13 +15,16 @@ const CONTENT_PREVIEW_LENGTH = 60;
 export function ReviewCard({
   review,
   onImageClick,
+  onDelete,
 }: {
   review: ReviewItem;
   onImageClick?: (photoIndex: number) => void;
+  onDelete?: (reviewId: number) => void;
 }) {
-  const { id, reviewId, nickname, content, date, rating, photos } = review;
+  const { id, reviewId, popupId, nickname, content, date, rating, photos, isMine } = review;
   const [expanded, setExpanded] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   // [신규] 추천 버튼 - API(likeReview/unlikeReview)는 이미 있었는데 화면에 버튼 자체가 없었어요.
   const [liked, setLiked] = useState(review.likedByMe ?? false);
   const [likeCount, setLikeCount] = useState(review.likeCount ?? 0);
@@ -55,6 +58,27 @@ export function ReviewCard({
       setLikeBusy(false);
     }
   };
+
+  // [신규] 내가 쓴 후기 수정 - 후기 작성 화면을 "수정 모드"로 재사용해요.
+  const handleEdit = () => {
+    router.push(`/popup/${popupId}/review?editId=${reviewId}`);
+  };
+
+  // [신규] 내가 쓴 후기 삭제
+  const handleDelete = async () => {
+    if (!confirm("이 후기를 삭제할까요?")) return;
+    setDeleting(true);
+    try {
+      await deleteReview(reviewId);
+      onDelete?.(reviewId);
+    } catch (err) {
+      console.error("후기 삭제 실패", err);
+      alert("삭제에 실패했어요. 잠시 후 다시 시도해주세요.");
+      setDeleting(false);
+    }
+  };
+
+  if (deleting) return null;
 
   return (
     <div className="border-b border-gray-100 py-5">
@@ -90,10 +114,21 @@ export function ReviewCard({
           </svg>
           추천{likeCount > 0 ? ` ${likeCount}` : ""}
         </button>
-        {/* [신규] 후기 신고 버튼 - 백엔드 API는 있었는데 프론트에 진입점이 없었어요 */}
-        <button type="button" onClick={() => setShowReport(true)} className="text-xs text-gray-300">
-          신고
-        </button>
+        {/* [신규] 내가 쓴 후기면 수정/삭제, 남의 후기면 신고 버튼을 보여줘요. */}
+        {isMine ? (
+          <>
+            <button type="button" onClick={handleEdit} className="text-xs text-gray-300">
+              수정
+            </button>
+            <button type="button" onClick={handleDelete} className="text-xs text-gray-300">
+              삭제
+            </button>
+          </>
+        ) : (
+          <button type="button" onClick={() => setShowReport(true)} className="text-xs text-gray-300">
+            신고
+          </button>
+        )}
       </div>
       {showReport && <ReportReviewModal reviewId={reviewId} onClose={() => setShowReport(false)} />}
 

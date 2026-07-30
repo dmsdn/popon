@@ -37,11 +37,11 @@ export function HeartButton({ popupId, className = "" }: { popupId: number; clas
         }
         toggleWishlist(popupId);
       }}
-      className={`flex items-center justify-center rounded-full bg-black/40 w-8 h-8 ${className}`}
+      className={`flex items-center justify-center rounded-full bg-white/90 shadow-sm ${className}`}
     >
       {/* [수정] 직접 그린 SVG 대신 팀에서 주신 실제 하트 아이콘으로 교체
           (heart.svg = 빨간 채움/찜함, heart_N.svg = 회색/기본) */}
-      <Image src={active ? "/Icon/heart.svg" : "/Icon/heart_N.svg"} alt="" width={24} height={24} />
+      <Image src={active ? "/Icon/heart.svg" : "/Icon/heart_N.svg"} alt="" width={16} height={16} />
     </button>
   );
 }

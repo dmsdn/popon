@@ -137,7 +137,7 @@ export default function SearchPage({
                 href="/map"
                 className="flex items-center gap-1 text-xs text-gray-600 border border-gray-200 rounded-full px-2.5 py-1"
               >
-                <img src="/icon/pin.svg" alt="" width={13} height={13} className="text-gray-500"  />
+                <img src="/icons/pin.svg" alt="" width={13} height={13} className="text-gray-500"  />
                 지도로 보기
               </Link>
             </div>
@@ -166,7 +166,7 @@ export default function SearchPage({
             className="flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-4 mx-4 mobile:mx-0 mb-4"
           >
             <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center flex-none">
-              <img src="/icon/pin.svg" alt="" className="text-gray-500" width={18} height={18}  />
+              <img src="/icons/pin.svg" alt="" className="text-gray-500" width={18} height={18}  />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold">지도로 팝업 찾기</p>
