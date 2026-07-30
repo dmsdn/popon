@@ -30,13 +30,13 @@ public class SecurityConfig {
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/popups/*/slots").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/reservations/popup/**").authenticated()
-                        .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/reservations/*/cancel").permitAll()   // === 수정: 소비자 본인취소는 컨트롤러 안에서 customerId로 권한 체크함 ===
-                        .requestMatchers("/api/reservations/**").permitAll()
-                        .requestMatchers("/api/admin/auth/**").permitAll()
+                        // === 순서 중요: 구체적인 규칙(checkin/no-show/qr)이 아래의 넓은 permitAll보다 반드시 먼저 와야 함 ===
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/reservations/checkin/qr").authenticated()
                         .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/reservations/*/checkin").authenticated()
                         .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/reservations/*/no-show").authenticated()
+                        .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/reservations/*/cancel").permitAll()   // 소비자 본인취소는 컨트롤러 안에서 customerId로 권한 체크함
                         .requestMatchers("/api/reservations/**").permitAll()
+                        .requestMatchers("/api/admin/auth/**").permitAll()
                         .requestMatchers("/api/cs/**").permitAll()   // 참가자용, 팀 예약 API와 동일한 정책
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/reports").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/visits/log").permitAll()   // === 추가 ===
@@ -54,6 +54,8 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/geocode").permitAll()   // === 추가: 팝업 등록폼 지도 미리보기용 주소->좌표 변환 ===
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/announcements").permitAll()   // === 추가: 공지사항 조회, 비로그인 403 수정 ===
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/banners").permitAll()   // === 추가: 배너 조회, 비로그인 403 수정 ===
+                        .requestMatchers("/api/notices/my/**").permitAll()   // === 추가: 소비자 알림함, 소유권 확인은 서비스 로직에서 처리 ===
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/popups/*/click").permitAll()   // === 추가: 비회원도 인기순위 집계용 클릭 로그 남겨야 함 ===
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
