@@ -5,8 +5,14 @@ import {
   getAdminAnnouncements, createAnnouncement, deleteAnnouncement, Announcement,
 } from "../../lib/api";
 
-// 배너·콘텐츠 관리 — 7/28 실연동 (banner·announcement 백엔드는 7/27 jsw 신설)
+// 배너·공지 관리 — 7/28 실연동 (banner·announcement 백엔드는 7/27 jsw 신설)
 // 배너: 소비자 홈 상단 캐러셀 / 공지 배너: 소비자 홈 공지줄
+//
+// 관리자가 '소비자에게 알리는' 창구는 이 화면의 공지 배너다 (announcement 테이블).
+// 관리자 → 소비자 개별 공지 발송 API는 없고, 만들지 않는다 —
+// 소비자 대상 안내는 전원이 보는 공지 배너로, 팝업별 안내는 주최자가
+// 자기 예약자에게 보내는 긴급공지(POST /api/popups/{id}/notices)로 나뉘어 있다.
+// 「주최자 공지 발송」(/admin/notices)은 주최자 1명에게 보내는 별개 화면.
 
 const fmtDate = (iso: string | null) => (iso ? iso.slice(0, 10) : "-");
 
@@ -130,8 +136,10 @@ export default function ContentManage() {
   return (
     <div className="flex flex-col gap-4 max-w-5xl">
       <div>
-        <h1 className="text-lg font-semibold">배너·콘텐츠 관리</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">소비자 서비스 홈의 메인 배너와 공지 배너 노출을 관리합니다.</p>
+        <h1 className="text-lg font-semibold">배너·공지 관리</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          소비자 서비스 홈의 메인 배너와 공지 배너 노출을 관리합니다. 소비자에게 알릴 내용은 공지 배너로 게시됩니다.
+        </p>
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 rounded-sm px-4 py-3 text-xs text-red-600">{error}</div>}
