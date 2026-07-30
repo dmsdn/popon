@@ -41,5 +41,7 @@ public interface WaitingQueueRepository extends JpaRepository<WaitingQueue, Long
 
     // 같은 계정의 동일 팝업 중복 웨이팅 방지용 - 이미 대기중/호출됨 상태인 웨이팅이 있는지 확인
     boolean existsByPopupIdAndCustomerIdAndStatusIn(Long popupId, Long customerId, List<WaitingStatus> statuses);
+    // 후기 작성 가능 여부 확인용 - 이 소비자가 이 팝업에 실제로 입장(ENTERED)한 웨이팅 기록이 있는지
+    boolean existsByPopupIdAndCustomerIdAndStatus(Long popupId, Long customerId, WaitingStatus status);
 
 }
