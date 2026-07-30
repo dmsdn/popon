@@ -9,11 +9,11 @@ import { useAuth } from "@/lib/auth/AuthContext";
 
 export function Header({ initialQuery = "" }: { initialQuery?: string }) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, customer } = useAuth();
 
   return (
-    <header className="flex items-center gap-4 px-4 py-3 border-b border-gray-100">
-      <Link href="/" className="font-bold text-lg flex-none">팝업</Link>
+    <header className="flex items-center gap-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+      <Link href="/" className="font-bold text-lg flex-none text-point">팝업</Link>
 
       <div
         className="relative flex-1"
@@ -44,12 +44,18 @@ export function Header({ initialQuery = "" }: { initialQuery?: string }) {
         <Image src="/icon/Bar_Other.svg" alt="더보기" width={24} height={24} />
       </Link>
       <Link href={isLoggedIn ? "/mypage" : "/login"} aria-label="마이페이지">
-        <Image
-          src={isLoggedIn ? "/icon/loginuser.svg" : "/icon/Bar_User.svg"}
-          alt="마이페이지"
-          width={24}
-          height={24}
-        />
+        {isLoggedIn && customer?.profileImage ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={customer.profileImage}
+            alt="마이페이지"
+            width={24}
+            height={24}
+            className="rounded-full object-cover"
+          />
+        ) : (
+          <Image src="/icon/Bar_User.svg" alt="마이페이지" width={24} height={24} />
+        )}
       </Link>
     </header>
   );

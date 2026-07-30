@@ -21,10 +21,7 @@ export function StickyActionBar({
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-100">
       <div className="w-full mobile:max-w-[1000px] mobile:mx-auto flex items-center gap-3 px-4 mobile:px-8 py-3">
-        <HeartButton
-          popupId={popupId}
-          className="w-11 h-11 flex-none border border-gray-200 bg-white"
-        />
+        <HeartButton popupId={popupId} className="w-11 h-11 flex-none" />
         <button
           type="button"
           onClick={onReserve}
@@ -35,7 +32,7 @@ export function StickyActionBar({
         <button
           type="button"
           onClick={onWaiting}
-          className="flex-1 rounded-full py-3 text-sm font-medium bg-gray-900 text-white"
+          className="flex-1 rounded-full py-3 text-sm font-medium bg-point text-gray-900"
         >
           {waitingTeams !== null && waitingTeams > 0 ? `웨이팅 · ${waitingTeams}팀 대기중` : "웨이팅"}
         </button>
