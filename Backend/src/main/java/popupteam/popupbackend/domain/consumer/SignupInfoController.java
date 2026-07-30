@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * 카카오/구글은 전화번호를 안 줘서, 첫 로그인 직후 프론트가 "회원정보 입력" 화면으로
@@ -20,6 +21,10 @@ import java.util.Map;
 @RequestMapping("/api/customer/signup-info")
 @RequiredArgsConstructor
 public class SignupInfoController {
+
+    // 이메일 형식 검증 — CustomerController·프론트 회원가입 폼과 같은 규칙.
+    private static final Pattern EMAIL_PATTERN =
+            Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$");
 
     private final CustomerAccountRepository customerRepository;
     private final JwtUtil jwtUtil;
