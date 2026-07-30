@@ -17,13 +17,14 @@ public class ReviewResponse {
     private final BigDecimal rating;
     private final String content;
     private final List<String> imageUrls;
+    private final String nickname;
     private final long likeCount;
     private final boolean likedByMe;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
     // Entity를 받아서 DTO로 변환하는 생성자
-    public ReviewResponse(Review review, List<String> imageUrls, long likeCount, boolean likedByMe) {
+    public ReviewResponse(Review review, List<String> imageUrls, long likeCount, boolean likedByMe, String nickname) {
         this.id = review.getId();
         this.popupId = review.getPopupId();
         this.rating = review.getRating();
@@ -31,6 +32,7 @@ public class ReviewResponse {
         this.imageUrls = imageUrls;
         this.likeCount = likeCount;
         this.likedByMe = likedByMe;
+        this.nickname = nickname;
         this.createdAt = review.getCreatedAt();
         this.updatedAt = review.getUpdatedAt();
     }
