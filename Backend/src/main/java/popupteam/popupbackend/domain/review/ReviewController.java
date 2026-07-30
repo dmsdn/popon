@@ -9,6 +9,10 @@ import popupteam.popupbackend.domain.review.ReviewImageRepository;
 import popupteam.popupbackend.domain.review.ReviewLikeRepository;
 import popupteam.popupbackend.domain.review.ReviewRepository;
 import popupteam.popupbackend.domain.consumer.auth.JwtUtil;
+import popupteam.popupbackend.domain.reservation.ReservationRepository;
+import popupteam.popupbackend.domain.reservation.EntryStatus;
+import popupteam.popupbackend.domain.waiting.WaitingQueueRepository;
+import popupteam.popupbackend.domain.waiting.WaitingStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +37,8 @@ public class ReviewController {
     private final ReviewImageRepository reviewImageRepository;
     private final ReviewLikeRepository reviewLikeRepository;
     private final JwtUtil jwtUtil;
+    private final ReservationRepository reservationRepository;
+    private final WaitingQueueRepository waitingQueueRepository;
 
     // 리뷰 작성
     @PostMapping
@@ -43,6 +49,15 @@ public class ReviewController {
         Long customerId = extractCustomerId(authHeader);
         validateRating(request.getRating());
         validateImageCount(request.getImageUrls());
+
+        boolean visited = reservationRepository.existsByPopup_IdAndCustomer_IdAndEntryStatus(
+                request.getPopupId(), customerId, EntryStatus.CHECKED_IN)
+                || waitingQueueRepository.existsByPopupIdAndCustomerIdAndStatus(
+                request.getPopupId(), customerId, WaitingStatus.ENTERED);
+
+        if (!visited) {
+            throw new IllegalArgumentException("실제로 방문(체크인/입장)한 팝업에만 후기를 작성할 수 있어요.");
+        }
 
         Review review = new Review();
         review.setCustomerId(customerId);
@@ -55,7 +70,7 @@ public class ReviewController {
         try {
             saved = reviewRepository.save(review);
         } catch (DataIntegrityViolationException e) {
-            throw new IllegalStateException("이미 이 팝업에 리뷰를 작성하셨어요.");
+            throw new IllegalArgumentException("이미 이 팝업에 리뷰를 작성하셨어요.");
         }
 
         List<String> savedImageUrls = saveImages(saved.getId(), request.getImageUrls());
@@ -124,7 +139,7 @@ public class ReviewController {
         boolean likedByMe = (customerId != null) && reviewLikeRepository
                 .findByReviewIdAndCustomerId(review.getId(), customerId)
                 .isPresent();
-        return new ReviewResponse(review, imageUrls, likeCount, likedByMe);
+        return new ReviewResponse(review, imageUrls, likeCount, likedByMe, true);
     }
 
     // 리뷰 수정
