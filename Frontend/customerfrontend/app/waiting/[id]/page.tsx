@@ -103,7 +103,7 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
 
   return (
     <main className="min-h-screen flex flex-col w-full mobile:max-w-[1000px] mobile:mx-auto pb-16 mobile:pb-0">
-      <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100">
+      <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100 dark:border-gray-800">
         <button type="button" onClick={() => router.back()} aria-label="뒤로가기" className="text-lg text-gray-500">
           ‹
         </button>
@@ -112,7 +112,7 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
 
       <div className="px-4 mobile:px-8 py-6 flex flex-col gap-8">
         <Link href={`/popup/${popup.id}`} className="flex items-center gap-4">
-          <div className="w-24 h-24 flex-none bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-xs">
+          <div className="w-24 h-24 flex-none bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-sm">
             {popup.thumbnailImages?.[0] ? (
               <ImageWithFallback src={popup.thumbnailImages[0]} className="w-full h-full object-cover" />
             ) : (
@@ -120,22 +120,22 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
             )}
           </div>
           <div>
-            <span className="inline-block text-xs text-gray-500 mb-1">{waitingStatusLabel(waiting.status)}</span>
+            <span className="inline-block text-sm text-gray-500 mb-1">{waitingStatusLabel(waiting.status)}</span>
             <p className="text-sm font-semibold">{popup.title}</p>
-            <p className="text-xs text-gray-400 mt-0.5">팝업 페이지 보기 ›</p>
+            <p className="text-sm text-gray-400 mt-0.5">팝업 페이지 보기 ›</p>
           </div>
         </Link>
 
-        <section className="border border-gray-200 rounded-xl p-5">
+        <section className="border border-gray-200 dark:border-gray-800 rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="text-xs text-gray-500 mb-1">내 순번</p>
+              <p className="text-sm text-gray-500 mb-1">내 순번</p>
               <p className="text-3xl font-bold">
                 {waiting.teamNumber}
                 <span className="text-sm font-normal text-gray-500 ml-0.5">번째</span>
               </p>
             </div>
-            <div className="text-right text-xs text-gray-500">
+            <div className="text-right text-sm text-gray-500">
               <p>앞 {waiting.teamsAhead}팀</p>
               {estimatedMinutes !== null && <p>예상 대기 약 {estimatedMinutes}분</p>}
             </div>
@@ -148,7 +148,7 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
         {/* [신규] 입장 전(대기중/호출됨)이면 QR을 보여줘요. 입장 완료/취소된
             건은 더 이상 쓸 일이 없으니 숨겨요. */}
         {(waiting.status === "WAITING" || waiting.status === "CALLED") && (
-          <section className="border border-gray-200 rounded-xl p-5 flex flex-col items-center">
+          <section className="border border-gray-200 dark:border-gray-800 rounded-xl p-5 flex flex-col items-center">
             <p className="text-sm font-semibold mb-3">입장 QR</p>
             <QRCodeDisplay qrToken={waiting.qrToken} />
           </section>
@@ -158,13 +158,13 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
           <h2 className="text-sm font-semibold mb-2">이용 안내</h2>
           <ul className="flex flex-col gap-2">
             {POLICY.map((text) => (
-              <li key={text} className="text-xs text-gray-500 leading-relaxed">· {text}</li>
+              <li key={text} className="text-sm text-gray-500 leading-relaxed">· {text}</li>
             ))}
           </ul>
         </section>
 
         {isActive && (
-          <button type="button" onClick={handleCancel} className="w-full rounded-full py-3 text-sm font-medium bg-gray-100 text-gray-700">
+          <button type="button" onClick={handleCancel} className="w-full rounded-full py-3 text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
             웨이팅 취소
           </button>
         )}
@@ -180,8 +180,8 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between py-2 border-t border-gray-50 first:border-t-0 first:pt-0">
-      <span className="text-xs text-gray-400">{label}</span>
-      <span className="text-sm text-gray-700">{value}</span>
+      <span className="text-sm text-gray-400">{label}</span>
+      <span className="text-sm text-gray-700 dark:text-gray-300">{value}</span>
     </div>
   );
 }

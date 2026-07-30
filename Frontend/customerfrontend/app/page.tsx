@@ -11,7 +11,6 @@ import { CategoryIconList } from "@/components/home/CategoryIconList";
 import { NearbyHotPlacesSection } from "@/components/home/NearbyHotPlacesSection";
 import { NearbyRegionPopupSection } from "@/components/home/NearbyRegionPopupSection";
 import { MapSearchEntry } from "@/components/home/MapSearchEntry";
-import { NoticeBar } from "@/components/home/NoticeBar";
 import { PopupSection } from "@/components/home/PopupSection";
 import { PopularRankingSection } from "@/components/home/PopularRankingSection";
 import { ReviewSection } from "@/components/home/ReviewSection";
@@ -86,9 +85,7 @@ export default function Home() {
           )
         ).then((results) => {
           if (cancelled) return;
-          const valid = results.filter(
-            (r): r is { item: PopupItem; status: PopupLiveStatus; imageUrl: string | null } => r !== null
-          );
+          const valid = results.filter((r): r is NonNullable<typeof r> => r !== null);
           valid.sort((a, b) => b.status.congestionRate - a.status.congestionRate);
           setCongestionItems(valid);
         });
@@ -147,7 +144,7 @@ export default function Home() {
     return myRegionIds.map((id) => nameById.get(id)).filter((n): n is string => !!n);
   }, [allRegions, myRegionIds]);
   const easyEntryPopupItems = useMemo(
-    () => easyEntryItems.map(({ item, count }) => ({ ...item, badge: `현재 ${count}명` })),
+    () => easyEntryItems.map(({ item, count }) => ({ ...item, badge: `웨이팅 ${count}팀` })),
     [easyEntryItems]
   );
   const preferredCategories = useMemo(() => {
@@ -182,7 +179,6 @@ export default function Home() {
       <PromoCarousel />
       <MapSearchEntry />
       <CategoryIconList />
-      <NoticeBar />
       <NearbyRegionPopupSection />
       <NearbyHotPlacesSection />
 
@@ -219,12 +215,12 @@ export default function Home() {
               <Link
                 key={item.id}
                 href={`/popup/${item.id}`}
-                className="flex-none w-[140px] border border-gray-100 rounded-lg overflow-hidden"
+                className="flex-none w-[140px] border border-gray-100 dark:border-gray-800 rounded-lg overflow-hidden"
               >
                 {imageUrl ? (
                   <ImageWithFallback src={imageUrl} className="w-full aspect-[4/3] object-cover" />
                 ) : (
-                  <div className="w-full aspect-[4/3] bg-gray-100 flex items-center justify-center text-xs text-gray-400">
+                  <div className="w-full aspect-[4/3] bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-sm text-gray-400">
                     이미지
                   </div>
                 )}
@@ -239,7 +235,35 @@ export default function Home() {
       )}
 
       {easyEntryPopupItems.length > 0 && (
-        <PopupSection title="지금 입장하기 좋은 팝업" items={easyEntryPopupItems} moreHref="/easy-entry" />
+        <section className="mb-14 mobile:mb-16 px-4 mobile:px-8">
+          <div className="flex items-center justify-between mb-3 mobile:mb-4">
+            <h3 className="text-base mobile:text-lg font-semibold">지금 입장하기 좋은 팝업</h3>
+            <Link href="/easy-entry" className="text-sm text-gray-400">
+              더보기
+            </Link>
+          </div>
+          <HorizontalCarousel>
+            {easyEntryPopupItems.map((item) => (
+              <Link
+                key={item.id}
+                href={`/popup/${item.id}`}
+                className="flex-none w-[140px] border border-gray-100 dark:border-gray-800 rounded-lg overflow-hidden"
+              >
+                {item.imageUrl ? (
+                  <ImageWithFallback src={item.imageUrl} className="w-full aspect-[4/3] object-cover" />
+                ) : (
+                  <div className="w-full aspect-[4/3] bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-sm text-gray-400">
+                    이미지
+                  </div>
+                )}
+                <div className="p-3">
+                  <p className="text-sm font-medium truncate mb-1">{item.name}</p>
+                  <p className="text-sm text-gray-500">{item.badge}</p>
+                </div>
+              </Link>
+            ))}
+          </HorizontalCarousel>
+        </section>
       )}
 
       <PopupSection

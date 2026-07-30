@@ -17,7 +17,7 @@ export function ThemeToggle() {
         isDark ? "bg-point justify-end" : "bg-gray-200 justify-start"
       }`}
     >
-      <span className="w-5 h-5 rounded-full bg-white shadow-sm" />
+      <span className="w-5 h-5 rounded-full bg-white dark:bg-gray-900 shadow-sm" />
     </button>
   );
 }

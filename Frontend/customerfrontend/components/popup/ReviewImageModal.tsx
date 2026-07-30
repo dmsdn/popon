@@ -89,7 +89,7 @@ export function ReviewImageModal({
   return createPortal(
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 select-none" onClick={onClose}>
       <div
-        className="bg-white rounded-2xl overflow-hidden max-w-[500px] w-full max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden max-w-[500px] w-full max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div
@@ -143,7 +143,7 @@ export function ReviewImageModal({
             </button>
           )}
           {photos.length > 1 && (
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[11px] text-white bg-black/40 rounded-full px-2 py-0.5">
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-sm text-white bg-black/40 rounded-full px-2 py-0.5">
               {photoIndex + 1} / {photos.length}
             </div>
           )}
@@ -153,7 +153,7 @@ export function ReviewImageModal({
         <div className="p-5">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium text-gray-600">
+              <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium text-gray-600 dark:text-gray-400">
                 {review.nickname.charAt(0)}
               </div>
               <div>
@@ -161,11 +161,11 @@ export function ReviewImageModal({
                 <p className="text-sm text-gray-400">{review.date}</p>
               </div>
             </div>
-            <span className="flex items-center gap-1 text-base font-medium text-gray-700">
+            <span className="flex items-center gap-1 text-base font-medium text-gray-700 dark:text-gray-300">
               <StarRatingDisplay rating={review.rating} size={16} /> {review.rating} / 5
             </span>
           </div>
-          <p className="text-base text-gray-700 leading-relaxed">{review.content}</p>
+          <p className="text-base text-gray-700 dark:text-gray-300 leading-relaxed">{review.content}</p>
         </div>
       </div>
     </div>,

@@ -33,10 +33,10 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
       ) : (
         <>
           <h1 className="text-lg font-bold mb-2">{notice.title}</h1>
-          <p className="text-xs text-gray-400 mb-6">
+          <p className="text-sm text-gray-400 mb-6">
             {new Date(notice.createdAt).toLocaleDateString("ko-KR")}
           </p>
-          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line">
             {notice.content}
           </p>
         </>

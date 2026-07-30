@@ -94,7 +94,7 @@ export default function PreferencesPage() {
                 className={`px-4 py-2 rounded-full text-sm border ${
                   selectedRegions.includes(r.id)
                     ? "bg-gray-900 text-white border-gray-900"
-                    : "border-gray-200 text-gray-600"
+                    : "border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400"
                 }`}
               >
                 {r.name}
@@ -116,7 +116,7 @@ export default function PreferencesPage() {
                 className={`px-4 py-2 rounded-full text-sm border ${
                   selectedKeywords.includes(kw.id)
                     ? "bg-gray-900 text-white border-gray-900"
-                    : "border-gray-200 text-gray-600"
+                    : "border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400"
                 }`}
               >
                 {kw.name}

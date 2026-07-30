@@ -4,10 +4,13 @@ import { use, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Footer } from "@/components/layout/Footer";
+import { Header } from "@/components/layout/Header";
+import { BottomTabBar } from "@/components/layout/BottomTabBar";
 import { StickyActionBar } from "@/components/popup/StickyActionBar";
 import { ReviewCard } from "@/components/popup/ReviewCard";
 import { PlaceCard } from "@/components/popup/PlaceCard";
 import { PopupSnsLinks } from "@/components/popup/PopupSnsLinks";
+import { OperatingHoursSection } from "@/components/popup/OperatingHoursSection";
 import { ReviewImageModal } from "@/components/popup/ReviewImageModal";
 import { SimpleMarkdown } from "@/components/ui/SimpleMarkdown";
 import { HorizontalCarousel } from "@/components/ui/HorizontalCarousel";
@@ -297,7 +300,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
       reviewId: r.id,
       popupId: String(popup.id),
       popupName: popup.title,
-      nickname: "방문자",
+      nickname: r.nickname ?? "방문자",
       content: r.content,
       date: toDisplayDate(r.createdAt),
       rating: r.rating,
@@ -320,8 +323,13 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
 
   return (
     <main className="min-h-screen flex flex-col w-full mobile:max-w-[1000px] mobile:mx-auto pb-24">
+      {/* [신규] 웹 버전에서는 다른 페이지처럼 상단바를 보여줘요 (모바일은 자체
+          뒤로가기 줄을 그대로 써요, 상단바 대신 하단바를 살려요). */}
+      <div className="hidden mobile:block">
+        <Header />
+      </div>
       <div className="flex-1">
-      <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100">
+      <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100 dark:border-gray-800">
         <button
           type="button"
           onClick={() => router.back()}
@@ -335,7 +343,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
       {/* [수정] 대표 이미지 - 여백 없이 화면 꽉 채우도록 padding 있는 컨테이너 밖으로
           뺐어요. 높이는 450px 고정, 가운데 정렬(object-center)로 잘려요.
           찜 버튼은 하단바에 이미 있어서 여기서는 뺐어요. */}
-      <div className="relative w-full h-[450px] bg-gray-100 overflow-hidden">
+      <div className="relative w-full h-[450px] bg-gray-100 dark:bg-gray-900 overflow-hidden">
         {images.length > 0 ? (
           <ImageWithFallback src={images[0].imageUrl} className="w-full h-full object-contain" />
         ) : (
@@ -346,27 +354,28 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <div className="px-4 mobile:px-8 py-6">
-        {/* [수정] 브랜드명을 브랜드 상세페이지로 연결 - 이전엔 텍스트만 있고 링크가 없었어요 */}
-        <Link href={`/brand/${popup.businessId}`} className="text-xs text-gray-400 mb-2 inline-block">
-          {popup.companyName} ›
-        </Link>
-
-        {/* 제목 + 평점 */}
-        <div className="flex items-start justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <StatusBadge status={toPopupItem(popup).status} />
-            <h1 className="text-xl font-bold">{popup.title}</h1>
-          </div>
-          {averageRating !== null && (
+        {/* [수정] 별점을 팝업 제목 줄에서 브랜드명 줄로 옮겼어요 - 모바일에서
+            제목이 길면 별점이랑 같이 있을 때 줄바꿈이 이상하게 됐었어요.
+            오른쪽에 고정으로 둬요. */}
+        <div className="flex items-center justify-between mb-2">
+          <Link href={`/brand/${popup.businessId}`} className="text-sm text-gray-400 inline-block">
+            {popup.companyName} ›
+          </Link>
+          {averageRating != null && (
             <span className="flex items-center gap-1 text-sm text-gray-500 flex-none">
-              <StarRatingDisplay rating={averageRating} size={13} /> {averageRating.toFixed(1)}/5
+              <StarRatingDisplay rating={Number(averageRating)} size={16} /> {Number(averageRating).toFixed(1)}/5
             </span>
           )}
         </div>
 
-        <p className="text-sm text-gray-500 mb-1">
+        {/* 제목 - 폰트 굵기 한 단계 얇게(bold→semibold) */}
+        <h1 className="text-3xl font-semibold mb-2">{popup.title}</h1>
+
+        {/* [수정] "진행중" 표시를 제목 옆에서 날짜 옆으로 옮겼어요. */}
+        <p className="flex items-center gap-2 text-sm text-gray-500 mb-1">
           {new Date(popup.startDate).toLocaleDateString("ko-KR")} ~{" "}
           {new Date(popup.endDate).toLocaleDateString("ko-KR")}
+          <StatusBadge status={toPopupItem(popup).status} />
         </p>
 
         {/* [수정] 상세주소가 "태그"로 잘못 들어가 있었어요 - 날짜 밑으로 옮기고,
@@ -392,58 +401,63 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         {(popup.regionName || (popup.keywordNames ?? []).length > 0 || (popup.hashtags ?? []).length > 0) && (
           <div className="flex flex-wrap gap-2 mb-6">
             {popup.regionName && (
-              <span className="text-xs border border-gray-200 rounded-full px-3 py-1 text-gray-600">
+              <span className="text-sm border border-gray-200 dark:border-gray-800 rounded-full px-3 py-1 text-gray-600 dark:text-gray-400">
                 #{popup.regionName}
               </span>
             )}
             {(popup.keywordNames ?? []).map((name) => (
-              <span key={name} className="text-xs border border-gray-200 rounded-full px-3 py-1 text-gray-600">
+              <span key={name} className="text-sm border border-gray-200 dark:border-gray-800 rounded-full px-3 py-1 text-gray-600 dark:text-gray-400">
                 #{name}
               </span>
             ))}
             {(popup.hashtags ?? []).map((tag) => (
-              <span key={tag} className="text-xs border border-gray-200 rounded-full px-3 py-1 text-gray-600">
+              <span key={tag} className="text-sm border border-gray-200 dark:border-gray-800 rounded-full px-3 py-1 text-gray-600 dark:text-gray-400">
                 #{tag}
               </span>
             ))}
           </div>
         )}
 
-        {/* [수정] 사전 예약 / 웨이팅 박스 제거 - 실시간 혼잡도 표시로 교체.
-            사전예약·웨이팅 기능 자체는 하단 고정 액션바(StickyActionBar)에 그대로 남아있어요. */}
-        <div className="mb-8">
+        {/* [수정] 실시간 혼잡도 + 예상 대기시간을 하나의 카드로 합쳤어요. 브랜드
+            문의하기 버튼도 여기 같이 넣었어요 - 기존 1:1 문의(마이페이지)를
+            재사용하되, 어떤 팝업/브랜드에 대한 문의인지 제목에 미리 채워서
+            보내요. */}
+        <div className="border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-4 mb-8 flex flex-col gap-4">
           {liveStatus ? (
             <LiveCongestionPanel status={liveStatus} />
           ) : (
-            <div className="border border-gray-200 rounded-lg px-4 py-4 text-sm text-gray-400">
-              혼잡도 불러오는 중...
+            <p className="text-sm text-gray-400">혼잡도 불러오는 중...</p>
+          )}
+
+          {waitTime && (
+            <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
+              <p className="text-sm font-semibold mb-1">예상 대기시간</p>
+              {waitTime.reservationMode === "FREE" && waitTime.freeModeResult ? (
+                <p className="text-sm text-gray-400">
+                  지금 방문하면 약 {Math.round(waitTime.freeModeResult.estimatedWaitMinutes)}분 대기 예상
+                  (현재 {waitTime.freeModeResult.reservedCount}/{waitTime.freeModeResult.capacity}명)
+                </p>
+              ) : waitTime.slots && waitTime.slots.length > 0 ? (
+                <p className="text-sm text-gray-400">
+                  가장 빠른 시간대({waitTime.slots[0].startTime.slice(0, 5)}) 기준 약{" "}
+                  {Math.round(waitTime.slots[0].estimatedWaitMinutes)}분 대기 예상
+                </p>
+              ) : (
+                <p className="text-sm text-gray-400">예약 가능한 시간대가 없어요.</p>
+              )}
+              {queueCount !== null && (
+                <p className="text-sm text-gray-400 mt-1">현재 대기·체류 중인 인원 총 {queueCount}명</p>
+              )}
             </div>
           )}
-        </div>
 
-        {/* [신규] 예상 대기시간 - "지금 가면 대략 N분 대기" */}
-        {waitTime && (
-          <div className="border border-gray-200 rounded-lg px-4 py-4 mb-8">
-            <p className="text-sm font-semibold mb-1">예상 대기시간</p>
-            {waitTime.reservationMode === "FREE" && waitTime.freeModeResult ? (
-              <p className="text-xs text-gray-400">
-                지금 방문하면 약 {Math.round(waitTime.freeModeResult.estimatedWaitMinutes)}분 대기 예상
-                (현재 {waitTime.freeModeResult.reservedCount}/{waitTime.freeModeResult.capacity}명)
-              </p>
-            ) : waitTime.slots && waitTime.slots.length > 0 ? (
-              <p className="text-xs text-gray-400">
-                가장 빠른 시간대({waitTime.slots[0].startTime.slice(0, 5)}) 기준 약{" "}
-                {Math.round(waitTime.slots[0].estimatedWaitMinutes)}분 대기 예상
-              </p>
-            ) : (
-              <p className="text-xs text-gray-400">예약 가능한 시간대가 없어요.</p>
-            )}
-            {/* 사전예약자+현장웨이팅자를 합친 실제 총 대기/체류 인원 */}
-            {queueCount !== null && (
-              <p className="text-xs text-gray-400 mt-1">현재 대기·체류 중인 인원 총 {queueCount}명</p>
-            )}
-          </div>
-        )}
+          <Link
+            href={`/mypage?menu=1:1 문의&prefillTitle=${encodeURIComponent(`[${popup.companyName}] ${popup.title} 관련 문의`)}`}
+            className="w-full text-center text-sm font-medium border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-full py-2.5"
+          >
+            문의하기
+          </Link>
+        </div>
 
         {showReservation && (
           <ReservationModal
@@ -547,7 +561,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         )}
 
         {/* 탭 */}
-        <div className="flex border-b border-gray-100 mb-6">
+        <div className="flex border-b border-gray-100 dark:border-gray-800 mb-6">
           {TABS.map((tab) => (
             <button
               key={tab}
@@ -569,11 +583,8 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
             {/* [신규] SNS/홈페이지 - popup_sns_link, 정보 탭 맨 위에 배치 */}
             <PopupSnsLinks links={popup.snsLinks} />
 
-            {/* [수정] "공지사항"/"혜택"이 실제 데이터 없이 고정 문구만 보여주던
-                자리표시자였어서 없앴어요. 요청하신 "운영시간 안내"를 여기 넣으려고
-                했는데, 백엔드 Popup 테이블에 요일별 운영시간을 저장하는 필드 자체가
-                없어요(시작일/종료일만 있고, "매일 몇 시~몇 시" 같은 정보가 없어요) -
-                이 데이터가 추가되면 바로 이 자리에 넣을 수 있어요. */}
+            {/* [수정] 백엔드에 요일별 운영시간 데이터가 새로 생겨서 연결했어요. */}
+            <OperatingHoursSection hours={popup.operatingHours} />
 
             <section>
               <h2 className="text-sm font-semibold mb-2">소개</h2>
@@ -582,7 +593,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
 
             <section>
               <h2 className="text-sm font-semibold mb-2">이용 정보</h2>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 정원 {popup.capacity}명 · 평균 체험 시간 {popup.avgExperienceMinutes}분
                 {popup.areaSqm ? ` · ${popup.areaSqm}㎡` : ""}
               </p>
@@ -609,13 +620,13 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                   </div>
 
                   {!detailImagesExpanded && (
-                    <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-b from-transparent to-white pointer-events-none" />
+                    <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-b from-transparent to-white dark:to-[#101010] pointer-events-none" />
                   )}
 
                   <button
                     type="button"
                     onClick={() => setDetailImagesExpanded((prev) => !prev)}
-                    className={`w-full text-center text-xs font-medium text-gray-600 py-2 ${
+                    className={`w-full text-center text-sm font-medium text-gray-600 dark:text-white py-2 ${
                       detailImagesExpanded ? "" : "relative -mt-8"
                     }`}
                   >
@@ -632,16 +643,22 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         {activeTab === "후기" && (
           <section>
             {isLoggedIn && (
-              <div className="flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-3 mb-5">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/icon/Name=camera.svg" alt="" width={28} height={28} className="flex-none opacity-70" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">다녀오셨나요?</p>
-                  <p className="text-xs text-gray-400">별점을 눌러 바로 후기를 남겨보세요</p>
+              <div className="flex flex-col items-center mb-6">
+                {/* [수정] 카메라 아이콘 빼고, 말풍선 모양으로 만들어서 아래 별점 쪽으로
+                    꼬리가 이어지게 했어요. */}
+                <div className="relative bg-gray-100 dark:bg-gray-800 rounded-2xl px-5 py-3">
+                  <p className="text-base font-medium text-center">
+                    다녀오셨나요? 방문하신 후기를 남겨주세요
+                  </p>
+                  <div className="absolute left-1/2 -translate-x-1/2 -bottom-2 w-4 h-4 bg-gray-100 dark:bg-gray-800 rotate-45" />
                 </div>
-                {/* [수정] "후기 작성" 텍스트 버튼 대신 별점을 여기서 바로 누를 수 있게
-                    했어요 - 누른 별점이 그대로 반영된 채로 작성 화면으로 넘어가요. */}
-                <StarRatingInput value={0} onChange={(v) => router.push(`/popup/${id}/review?rating=${v}`)} size={20} />
+                <div className="mt-5">
+                  <StarRatingInput
+                    value={0}
+                    onChange={(v) => router.push(`/popup/${id}/review?rating=${v}`)}
+                    size={48}
+                  />
+                </div>
               </div>
             )}
 
@@ -653,7 +670,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                       key={sort}
                       type="button"
                       onClick={() => setReviewSort(sort)}
-                      className={`text-xs px-3 py-1.5 rounded-full ${
+                      className={`text-sm px-3 py-1.5 rounded-full ${
                         reviewSort === sort ? "bg-gray-900 text-white" : "text-gray-500"
                       }`}
                     >
@@ -661,12 +678,12 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                     </button>
                   ))}
                 </div>
-                <label className="flex items-center gap-1.5 text-xs text-gray-500">
+                <label className="flex items-center gap-1.5 text-sm text-gray-500">
                   <input
                     type="checkbox"
                     checked={photoOnly}
                     onChange={(e) => setPhotoOnly(e.target.checked)}
-                    className="w-3.5 h-3.5"
+                    className="w-3.5 h-3.5 accent-point"
                   />
                   사진 리뷰만
                 </label>
@@ -730,36 +747,43 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
 
       <Footer />
 
+      <div className="block mobile:hidden">
+        <BottomTabBar />
+      </div>
+
       <StickyActionBar
         popupId={popup.id}
+        popupStatus={toPopupItem(popup).status}
+        queueMode={popup.queueMode}
         waitingTeams={waitingTeams}
+        wishlistCount={popup.wishlistCount}
         onReserve={() => {
           // [수정] 이전엔 로그인 여부 확인 없이 바로 모달이 열려서, 폼을 다 채운 뒤에야
           // (제출 시점에) 로그인하라고 튕겨서 입력한 내용이 다 날아갔어요. 버튼을
           // 누르는 즉시 확인하도록 앞으로 옮겼어요.
           if (!customer) {
-            saveRedirectTarget(`/popup/${id}`);
-            router.push("/login");
-            return;
-          }
-          // [수정] SLOT 모드 팝업인데 slots가 비어있으면(아직 시간대가 하나도 등록 안 됨),
-          // 모달이 자유입력(FREE) UI로 잘못 보여지면서 결국 slotId 없이 제출돼서
-          // "slotId를 입력해주세요" 에러가 나는 문제가 있었어요. 슬롯이 실제로 없는
-          // 경우엔 애초에 예약할 수 없는 상태라, 모달을 열지 않고 바로 안내해요.
-          if (popup.reservationMode === "SLOT" && slots.length === 0) {
-            alert("아직 예약 가능한 시간대가 등록되지 않았어요. 잠시 후 다시 시도해주세요.");
-            return;
-          }
-          setShowReservation(true);
-        }}
-        onWaiting={() => {
-          if (!customer) {
-            saveRedirectTarget(`/popup/${id}`);
-            router.push("/login");
-            return;
-          }
-          setShowWaiting(true);
-        }}
+          saveRedirectTarget(`/popup/${id}`);
+          router.push("/login");
+          return;
+        }
+        // [수정] SLOT 모드 팝업인데 slots가 비어있으면(아직 시간대가 하나도 등록 안 됨),
+        // 모달이 자유입력(FREE) UI로 잘못 보여지면서 결국 slotId 없이 제출돼서
+        // "slotId를 입력해주세요" 에러가 나는 문제가 있었어요. 슬롯이 실제로 없는
+        // 경우엔 애초에 예약할 수 없는 상태라, 모달을 열지 않고 바로 안내해요.
+        if (popup.reservationMode === "SLOT" && slots.length === 0) {
+          alert("아직 예약 가능한 시간대가 등록되지 않았어요. 잠시 후 다시 시도해주세요.");
+          return;
+        }
+        setShowReservation(true);
+      }}
+      onWaiting={() => {
+        if (!customer) {
+          saveRedirectTarget(`/popup/${id}`);
+          router.push("/login");
+          return;
+        }
+        setShowWaiting(true);
+      }}
       />
     </main>
   );

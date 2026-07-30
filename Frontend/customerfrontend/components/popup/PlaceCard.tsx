@@ -32,7 +32,7 @@ export function PlaceCard({
       {imageUrl ? (
         <ImageWithFallback src={imageUrl} className="w-full aspect-[4/3] rounded-lg mb-2 object-cover" />
       ) : (
-        <div className="w-full aspect-[4/3] bg-gray-100 rounded-lg mb-2 flex items-center justify-center text-xs text-gray-400">
+        <div className="w-full aspect-[4/3] bg-gray-100 dark:bg-gray-800 rounded-lg mb-2 flex items-center justify-center text-sm text-gray-400 dark:text-gray-500">
           이미지
         </div>
       )}
