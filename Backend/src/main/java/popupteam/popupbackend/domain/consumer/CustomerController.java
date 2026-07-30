@@ -10,11 +10,14 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/api/customer/me")
 @RequiredArgsConstructor
 public class CustomerController {
+
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
     private final CustomerAccountRepository customerRepository;
     private final JwtUtil jwtUtil;

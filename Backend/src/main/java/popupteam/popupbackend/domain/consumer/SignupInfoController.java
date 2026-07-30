@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * 카카오/구글은 전화번호를 안 줘서, 첫 로그인 직후 프론트가 "회원정보 입력" 화면으로
@@ -20,6 +21,8 @@ import java.util.Map;
 @RequestMapping("/api/customer/signup-info")
 @RequiredArgsConstructor
 public class SignupInfoController {
+
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
     private final CustomerAccountRepository customerRepository;
     private final JwtUtil jwtUtil;
@@ -50,7 +53,7 @@ public class SignupInfoController {
 
     @PostMapping
     public Map<String, Object> submit(@RequestHeader("Authorization") String authHeader,
-                                       @RequestBody SignupInfoRequest request) {
+                                      @RequestBody SignupInfoRequest request) {
         if (request.phone == null || request.phone.isBlank()) {
             throw new IllegalArgumentException("전화번호는 필수예요.");
         }
@@ -96,8 +99,11 @@ public class SignupInfoController {
             customer.setNickname(request.nickname);
         }
         customer.setPhone(request.phone);
-        if (request.email != null && !request.email.isBlank() && !EMAIL_PATTERN.matcher(request.email).matches()) {
+        if (request.email != null && !request.email.isBlank()) {
+            if (!EMAIL_PATTERN.matcher(request.email).matches()) {
                 throw new IllegalArgumentException("이메일 형식이 올바르지 않아요.");
+            }
+            customer.setEmail(request.email.trim());
         }
         if (request.birthDate != null && !request.birthDate.isBlank()) {
             try {

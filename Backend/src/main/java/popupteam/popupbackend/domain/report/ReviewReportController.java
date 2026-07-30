@@ -38,10 +38,17 @@ public class ReviewReportController {
         return ResponseEntity.ok(reviewReportService.getAll(status));
     }
 
-    // 관리자: 신고 처리완료 처리
-    @PatchMapping("/api/admin/reports/{id}/process")
-    public ResponseEntity<?> process(@PathVariable Long id, Authentication authentication) {
+    // 관리자: 반려 - 신고가 부적절하다고 판단, 후기는 그대로 둠
+    @PatchMapping("/api/admin/reports/{id}/reject")
+    public ResponseEntity<?> reject(@PathVariable Long id, Authentication authentication) {
         requireAdmin(authentication);
-        return ResponseEntity.ok(reviewReportService.process(id, authentication.getName()));
+        return ResponseEntity.ok(reviewReportService.reject(id, authentication.getName()));
+    }
+
+    // 관리자: 후기 가리기 - 신고 수용, 후기 내용을 마스킹 처리 (작성자에게 알림 발송)
+    @PatchMapping("/api/admin/reports/{id}/hide-review")
+    public ResponseEntity<?> hideReview(@PathVariable Long id, Authentication authentication) {
+        requireAdmin(authentication);
+        return ResponseEntity.ok(reviewReportService.hideReview(id, authentication.getName()));
     }
 }
