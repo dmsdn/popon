@@ -7,11 +7,11 @@
 
 export function EmptyState({
   message,
-  icon = "/icons/pin.svg",
+  icon = null,
   className = "",
 }: {
   message: string;
-  icon?: string | null; // null을 넘기면 아이콘 없이 텍스트만 보여요
+  icon?: string | null; // 기본값 null - 아이콘 없이 문구만 보여요. 필요하면 경로를 넘겨서 켤 수 있어요.
   className?: string;
 }) {
   return (

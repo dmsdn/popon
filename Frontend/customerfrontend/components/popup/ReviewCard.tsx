@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ReviewItem } from "@/data/mockPopups";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 import { StarRatingDisplay } from "@/components/ui/StarRatingDisplay";
 import { ReportReviewModal } from "@/components/popup/ReportReviewModal";
-import { likeReview, unlikeReview } from "@/lib/api/reviews";
+import { likeReview, unlikeReview, deleteReview } from "@/lib/api/reviews";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { useRouter } from "next/navigation";
 import { saveRedirectTarget } from "@/lib/postLoginRedirect";
 
 const CONTENT_PREVIEW_LENGTH = 60;
@@ -15,14 +15,16 @@ const CONTENT_PREVIEW_LENGTH = 60;
 export function ReviewCard({
   review,
   onImageClick,
+  onDelete,
 }: {
   review: ReviewItem;
   onImageClick?: (photoIndex: number) => void;
+  onDelete?: (reviewId: number) => void;
 }) {
-  const { id, reviewId, nickname, content, date, rating, photos } = review;
+  const { id, reviewId, popupId, nickname, content, date, rating, photos, isMine } = review;
   const [expanded, setExpanded] = useState(false);
   const [showReport, setShowReport] = useState(false);
-  // [신규] 추천 버튼 - API(likeReview/unlikeReview)는 이미 있었는데 화면에 버튼 자체가 없었어요.
+  const [deleting, setDeleting] = useState(false);
   const [liked, setLiked] = useState(review.likedByMe ?? false);
   const [likeCount, setLikeCount] = useState(review.likeCount ?? 0);
   const [likeBusy, setLikeBusy] = useState(false);
@@ -32,6 +34,8 @@ export function ReviewCard({
   const isLong = content.length > CONTENT_PREVIEW_LENGTH;
 
   const handleToggleLike = async () => {
+    // [신규] 내가 쓴 후기는 스스로 추천할 수 없게 막아요.
+    if (isMine) return;
     if (!isLoggedIn) {
       saveRedirectTarget(window.location.pathname);
       router.push("/login");
@@ -40,7 +44,6 @@ export function ReviewCard({
     if (likeBusy) return;
     setLikeBusy(true);
     const nextLiked = !liked;
-    // 낙관적으로 먼저 화면부터 바꾸고, 실패하면 되돌려요.
     setLiked(nextLiked);
     setLikeCount((c) => c + (nextLiked ? 1 : -1));
     try {
@@ -56,46 +59,64 @@ export function ReviewCard({
     }
   };
 
+  const handleEdit = () => {
+    router.push(`/popup/${popupId}/review?editId=${reviewId}`);
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("이 후기를 삭제할까요?")) return;
+    setDeleting(true);
+    try {
+      await deleteReview(reviewId);
+      onDelete?.(reviewId);
+    } catch (err) {
+      console.error("후기 삭제 실패", err);
+      alert("삭제에 실패했어요. 잠시 후 다시 시도해주세요.");
+      setDeleting(false);
+    }
+  };
+
+  if (deleting) return null;
+
   return (
     <div className="border-b border-gray-100 py-5">
-      <div className="flex items-center gap-2.5 mb-3">
-        <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600 flex-none">
-          {nickname.charAt(0)}
+      {/* [수정] 수정/삭제 버튼을 오른쪽 위(닉네임/별점 줄)로 옮기고 크기를 키웠어요. */}
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600 flex-none">
+            {nickname.charAt(0)}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium truncate">{nickname}</p>
+            <p className="text-xs text-gray-400">{date}</p>
+          </div>
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{nickname}</p>
-          <p className="text-xs text-gray-400">{date}</p>
+        <div className="flex flex-col items-end gap-1.5 flex-none">
+          {/* [수정] 별점이 너무 작다는 피드백 - 12→16으로 키웠어요. */}
+          <span className="flex items-center gap-1 text-sm font-medium text-gray-700">
+            <StarRatingDisplay rating={rating} size={16} /> {rating}
+          </span>
+          {isMine && (
+            <div className="flex items-center gap-2.5">
+              <button type="button" onClick={handleEdit} className="text-xs font-medium text-gray-500">
+                수정
+              </button>
+              <button type="button" onClick={handleDelete} className="text-xs font-medium text-gray-500">
+                삭제
+              </button>
+            </div>
+          )}
         </div>
-        <span className="flex items-center gap-1 text-xs font-medium text-gray-700 flex-none">
-          <StarRatingDisplay rating={rating} size={12} /> {rating}
-        </span>
       </div>
 
       <p className={`text-sm text-gray-700 leading-relaxed ${!expanded && isLong ? "line-clamp-2" : ""}`}>
         {content}
       </p>
-      <div className="flex items-center gap-3 mt-1">
-        {isLong && (
-          <button type="button" onClick={() => setExpanded((prev) => !prev)} className="text-xs text-gray-400">
-            {expanded ? "접기" : "더보기"}
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={handleToggleLike}
-          className={`flex items-center gap-1 text-xs ${liked ? "text-gray-900 font-medium" : "text-gray-400"}`}
-        >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill={liked ? "#111827" : "none"} stroke="currentColor" strokeWidth="2">
-            <path d="M7 10v11M2 10h4a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H2v-11ZM7 10l4.5-8a2 2 0 0 1 3.5 1.4V9h4.8a2 2 0 0 1 1.98 2.3l-1.2 8A2 2 0 0 1 18.6 21H7" />
-          </svg>
-          추천{likeCount > 0 ? ` ${likeCount}` : ""}
+      {isLong && (
+        <button type="button" onClick={() => setExpanded((prev) => !prev)} className="text-xs text-gray-400 mt-1">
+          {expanded ? "접기" : "더보기"}
         </button>
-        {/* [신규] 후기 신고 버튼 - 백엔드 API는 있었는데 프론트에 진입점이 없었어요 */}
-        <button type="button" onClick={() => setShowReport(true)} className="text-xs text-gray-300">
-          신고
-        </button>
-      </div>
-      {showReport && <ReportReviewModal reviewId={reviewId} onClose={() => setShowReport(false)} />}
+      )}
 
       {photos && photos.length > 0 && (
         <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-hide">
@@ -109,13 +130,35 @@ export function ReviewCard({
               {photo.startsWith("http") || photo.startsWith("/") ? (
                 <ImageWithFallback src={photo} className="w-full h-full object-cover" />
               ) : (
-                // mock 데이터(실제 URL이 아닌 "p1" 같은 자리표시자)일 때만 회색 박스로 대체
                 "사진"
               )}
             </button>
           ))}
         </div>
       )}
+
+      {/* [수정] 추천/신고 버튼을 사진 아래로 옮기고 크기를 키웠어요. */}
+      <div className="flex items-center gap-4 mt-3">
+        <button
+          type="button"
+          onClick={handleToggleLike}
+          disabled={isMine}
+          className={`flex items-center gap-1.5 text-sm ${
+            isMine ? "text-gray-300 cursor-default" : liked ? "text-gray-900 font-medium" : "text-gray-500"
+          }`}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill={liked && !isMine ? "#111827" : "none"} stroke="currentColor" strokeWidth="2">
+            <path d="M7 10v11M2 10h4a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H2v-11ZM7 10l4.5-8a2 2 0 0 1 3.5 1.4V9h4.8a2 2 0 0 1 1.98 2.3l-1.2 8A2 2 0 0 1 18.6 21H7" />
+          </svg>
+          추천{likeCount > 0 ? ` ${likeCount}` : ""}
+        </button>
+        {!isMine && (
+          <button type="button" onClick={() => setShowReport(true)} className="text-sm text-gray-400">
+            신고
+          </button>
+        )}
+      </div>
+      {showReport && <ReportReviewModal reviewId={reviewId} onClose={() => setShowReport(false)} />}
     </div>
   );
 }
