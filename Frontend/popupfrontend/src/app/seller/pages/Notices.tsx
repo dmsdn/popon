@@ -76,7 +76,7 @@ export default function Notices() {
     }
   };
 
-  const inputCls = "w-full px-3 py-2 text-[13px] border border-border rounded-sm bg-white focus:outline-none focus:border-accent";
+  const inputCls = "w-full px-3 py-2 text-[13px] border border-border rounded-sm bg-card focus:outline-none focus:border-accent";
 
   return (
     <div className="flex flex-col gap-4 max-w-4xl">
@@ -92,7 +92,7 @@ export default function Notices() {
         </div>
       )}
 
-      <div className="bg-white border border-border rounded-sm p-5 flex flex-col gap-4">
+      <div className="bg-card border border-border rounded-sm p-5 flex flex-col gap-4">
         <div>
           <label className="block text-xs font-medium mb-1.5">발송 대상 *</label>
           <div className="flex flex-wrap gap-2">
@@ -133,14 +133,14 @@ export default function Notices() {
           <button
             onClick={send}
             disabled={sending || !popupId}
-            className="flex items-center gap-1.5 text-xs px-5 py-2.5 rounded-sm bg-accent text-white hover:bg-accent/90 font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 text-xs px-5 py-2.5 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90 font-medium disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {sending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />} 즉시 발송
           </button>
         </div>
       </div>
 
-      <div className="bg-white border border-border rounded-sm">
+      <div className="bg-card border border-border rounded-sm">
         <div className="px-4 py-3 border-b border-border text-sm font-semibold flex items-center gap-2">
           <Megaphone size={14} className="text-muted-foreground" /> 발송 이력
           {selectedTitle && <span className="text-xs font-normal text-muted-foreground">— {selectedTitle}</span>}

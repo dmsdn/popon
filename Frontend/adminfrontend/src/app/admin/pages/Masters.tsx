@@ -116,7 +116,7 @@ export default function Masters() {
         ))}
       </div>
 
-      <div className="bg-white border border-border rounded-sm">
+      <div className="bg-card border border-border rounded-sm">
         <div className="px-4 py-3 border-b border-border bg-secondary/40 flex items-center gap-2">
           <input
             ref={inputRef}
@@ -124,12 +124,12 @@ export default function Masters() {
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && add()}
             placeholder={isRegion ? "추가할 지역 이름 (예: 성수)" : "추가할 카테고리 이름 (예: 라이프스타일)"}
-            className="flex-1 min-w-0 px-3 py-1.5 text-xs border border-border rounded-sm bg-white focus:outline-none focus:border-accent"
+            className="flex-1 min-w-0 px-3 py-1.5 text-xs border border-border rounded-sm bg-card focus:outline-none focus:border-accent"
           />
           <button
             onClick={add}
             disabled={busy === "add" || !newName.trim()}
-            className="flex items-center gap-1.5 text-xs px-4 py-1.5 rounded-sm bg-accent text-white hover:bg-accent/90 disabled:opacity-40 shrink-0"
+            className="flex items-center gap-1.5 text-xs px-4 py-1.5 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-40 shrink-0"
           >
             {busy === "add" ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} 추가
           </button>

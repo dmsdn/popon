@@ -117,18 +117,18 @@ export default function CS() {
   const pendingRep = reports.filter((c) => c.status === "PENDING").length;
 
   return (
-    <div className="flex flex-col gap-4 max-w-4xl">
+    <div className="flex flex-col gap-6 max-w-4xl">
       <div>
         <h1 className="text-lg font-semibold">문의 및 신고관리</h1>
         <p className="text-xs text-muted-foreground mt-0.5">소비자 CS와 주최자 문의를 접수·답변합니다.</p>
       </div>
 
-      <div className="flex items-start gap-2.5 bg-blue-50 border border-blue-200 rounded-sm px-4 py-3">
+      {/*<div className="flex items-start gap-2.5 bg-blue-50 border border-blue-200 rounded-sm px-4 py-3">
         <Info size={14} className="text-blue-500 shrink-0 mt-0.5" />
         <div className="text-xs text-blue-800 leading-relaxed">
           문의 접수·답변, 후기 신고 목록·처리까지 실데이터 연동 완료. 소비자가 리뷰를 신고하는 버튼은 소비자 프론트에 구현 필요(POST /api/reports).
         </div>
-      </div>
+      </div>*/}
 
       {/* 탭 */}
       <div className="flex gap-1 border-b border-border">
@@ -156,12 +156,12 @@ export default function CS() {
       {tab === "report" && (
         <div className="flex flex-col gap-2.5">
           {!loading && reports.length === 0 && !error && (
-            <div className="bg-white border border-border rounded-sm px-4 py-10 text-center text-xs text-muted-foreground">
+            <div className="bg-card border border-border rounded-sm px-4 py-10 text-center text-xs text-muted-foreground">
               접수된 신고가 없습니다.
             </div>
           )}
           {reports.map((r) => (
-            <div key={r.id} className="bg-white border border-border rounded-sm px-4 py-3.5 flex items-start gap-3">
+            <div key={r.id} className="bg-card border border-border rounded-sm px-4 py-3.5 flex items-start gap-3">
               <span className={`shrink-0 text-[11px] px-2 py-0.5 rounded-full border mt-0.5 ${STATUS_BADGE[r.status]}`}>
                 {r.status === "PENDING" ? "처리 대기" : "처리 완료"}
               </span>
@@ -181,7 +181,7 @@ export default function CS() {
                 <button
                   onClick={() => handleProcess(r)}
                   disabled={savingId === r.id}
-                  className="shrink-0 flex items-center gap-1.5 text-xs px-4 py-2 rounded-sm bg-accent text-white hover:bg-accent/90 disabled:opacity-50"
+                  className="shrink-0 flex items-center gap-1.5 text-xs px-4 py-2 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-50"
                 >
                   {savingId === r.id ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />} 처리완료
                 </button>
@@ -194,7 +194,7 @@ export default function CS() {
       {tab === "cs" && (
       <div className="flex flex-col gap-2.5">
         {!loading && rows.length === 0 && !error && (
-          <div className="bg-white border border-border rounded-sm px-4 py-10 text-center text-xs text-muted-foreground">
+          <div className="bg-card border border-border rounded-sm px-4 py-10 text-center text-xs text-muted-foreground">
             접수된 문의가 없습니다.
           </div>
         )}
@@ -202,7 +202,7 @@ export default function CS() {
           const from = "customerNickname" in r ? `소비자 · ${r.customerNickname}` : `주최자 · ${(r as InquiryItem).companyName}`;
           const open = openId === r.id;
           return (
-            <div key={r.id} className="bg-white border border-border rounded-sm">
+            <div key={r.id} className="bg-card border border-border rounded-sm">
               <button className="w-full px-4 py-3.5 flex items-center gap-3 text-left" onClick={() => { setOpenId(open ? null : r.id); setAnswer(""); }}>
                 <span className={`shrink-0 text-[11px] px-2 py-0.5 rounded-full border ${STATUS_BADGE[r.status]}`}>{STATUS_LABEL[r.status]}</span>
                 <div className="flex-1 min-w-0">
@@ -238,7 +238,7 @@ export default function CS() {
                       <button
                         onClick={() => submitAnswer(r.id)}
                         disabled={savingId === r.id}
-                        className="shrink-0 flex items-center justify-center gap-1.5 text-xs px-5 py-2.5 rounded-sm bg-accent text-white hover:bg-accent/90 disabled:opacity-50"
+                        className="shrink-0 flex items-center justify-center gap-1.5 text-xs px-5 py-2.5 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-50"
                       >
                         {savingId === r.id ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />} 답변 등록
                       </button>
@@ -256,7 +256,7 @@ export default function CS() {
       {tab === "inquiry" && (
       <div className="flex flex-col gap-2.5">
         {!loading && inqThreads.length === 0 && !error && (
-          <div className="bg-white border border-border rounded-sm px-4 py-10 text-center text-xs text-muted-foreground">
+          <div className="bg-card border border-border rounded-sm px-4 py-10 text-center text-xs text-muted-foreground">
             접수된 문의가 없습니다.
           </div>
         )}
@@ -264,7 +264,7 @@ export default function CS() {
           const open = openId === th.root.id;
           const hasPending = th.items.some((i) => i.status === "PENDING");
           return (
-            <div key={th.root.id} className="bg-white border border-border rounded-sm">
+            <div key={th.root.id} className="bg-card border border-border rounded-sm">
               <button className="w-full px-4 py-3.5 flex items-center gap-3 text-left" onClick={() => { setOpenId(open ? null : th.root.id); setAnswer(""); }}>
                 <span className={`shrink-0 text-[11px] px-2 py-0.5 rounded-full border ${hasPending ? STATUS_BADGE.PENDING : STATUS_BADGE.ANSWERED}`}>
                   {hasPending ? "답변 대기" : "답변 완료"}
@@ -311,7 +311,7 @@ export default function CS() {
                           <button
                             onClick={() => submitAnswer(item.id)}
                             disabled={savingId === item.id}
-                            className="shrink-0 flex items-center justify-center gap-1.5 text-xs px-5 py-2.5 rounded-sm bg-accent text-white hover:bg-accent/90 disabled:opacity-50"
+                            className="shrink-0 flex items-center justify-center gap-1.5 text-xs px-5 py-2.5 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-50"
                           >
                             {savingId === item.id ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />} 답변 등록
                           </button>

@@ -404,7 +404,7 @@ export default function WaitingControl() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-lg font-semibold">대기열·인원 관제</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -415,7 +415,7 @@ export default function WaitingControl() {
           <select
             value={popupId ?? ""}
             onChange={(e) => setPopupId(Number(e.target.value))}
-            className="px-3 py-2 text-[13px] border border-border rounded-sm bg-white focus:outline-none focus:border-accent"
+            className="px-3 py-2 text-[13px] border border-border rounded-sm bg-card focus:outline-none focus:border-accent"
           >
             {popups.map((p) => (
               <option key={p.id} value={p.id}>{p.title}</option>
@@ -424,17 +424,17 @@ export default function WaitingControl() {
         )}
       </div>
 
-      <div className="flex items-start gap-2.5 bg-blue-50 border border-blue-200 rounded-sm px-4 py-3">
+      {/*<div className="flex items-start gap-2.5 bg-blue-50 border border-blue-200 rounded-sm px-4 py-3">
         <Info size={14} className="text-blue-500 shrink-0 mt-0.5" />
         <div className="text-xs text-blue-800 leading-relaxed">
           통합 대기열(사전예약 자동 편입)·웨이팅 접수/입장/취소·QR 체크인·<strong>퇴장 처리·체류 인원·운영 방식(queueMode)</strong>까지 전부 <strong>백엔드 실연동</strong>.
           (7/24 이전 등록 팝업의 운영 방식만 로컬 기록 폴백)
         </div>
-      </div>
+      </div>*/}
 
       {error && <div className="bg-red-50 border border-red-200 rounded-sm px-4 py-3 text-xs text-red-600">{error}</div>}
       {popups.length === 0 && !error && (
-        <div className="bg-white border border-border rounded-sm px-4 py-10 text-center text-xs text-muted-foreground">
+        <div className="bg-card border border-border rounded-sm px-4 py-10 text-center text-xs text-muted-foreground">
           등록된 팝업이 없습니다. <Link to="/seller/popups/new" className="text-accent underline underline-offset-2">팝업을 먼저 등록</Link>해 주세요.
         </div>
       )}
@@ -442,7 +442,7 @@ export default function WaitingControl() {
       {selected && (
         <>
           {/* ── 운영 방식 (팝업 등록/수정에서 확정 — 여기서는 표시만) ── */}
-          <div className="bg-white border border-border rounded-sm p-4">
+          <div className="bg-card border border-border rounded-sm p-4">
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-sm font-semibold">운영 방식</span>
               <div className="flex gap-1">
@@ -450,7 +450,7 @@ export default function WaitingControl() {
                   <span
                     key={m}
                     className={`text-xs px-3 py-1.5 rounded-full border ${
-                      mode === m ? "bg-foreground text-white border-foreground font-medium" : "border-border text-muted-foreground/50"
+                      mode === m ? "bg-foreground text-primary-foreground border-foreground font-medium" : "border-border text-muted-foreground/50"
                     }`}
                   >
                     {MODE_LABEL[m]}
@@ -467,7 +467,7 @@ export default function WaitingControl() {
 
           {/* ── 현재 체류 인원 (퇴장 처리만 가능) ── */}
           <div className="grid lg:grid-cols-3 gap-3">
-            <div className="bg-white border border-border rounded-sm p-5 lg:col-span-2">
+            <div className="bg-card border border-border rounded-sm p-5 lg:col-span-2">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm font-semibold">현재 체류 인원</span>
                 {/*{level && <span className={`text-sm font-bold ${levelColor}`}>{level}</span>}*/}
@@ -501,7 +501,7 @@ export default function WaitingControl() {
               </div>
             </div>
 
-            <div className="bg-white border border-border rounded-sm p-5 flex flex-col">
+            <div className="bg-card border border-border rounded-sm p-5 flex flex-col">
               <div className="text-sm font-semibold mb-3">대기 현황</div>
               <div className="text-3xl font-semibold">
                 {filteredRows.filter((r) => !r.enteredAt && !r.noShow).length}
@@ -524,13 +524,13 @@ export default function WaitingControl() {
           </div>
 
           {/* ── QR 입장 처리: 카메라 스캔 (통합 체크인) ── */}
-          <div className="bg-white border border-border rounded-sm p-4 flex flex-wrap items-center gap-3">
+          <div className="bg-card border border-border rounded-sm p-4 flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-1.5 text-sm font-semibold">
               <QrCode size={15} className="text-accent" /> QR 입장 처리
             </div>
             <button
               onClick={() => setScanOpen(true)}
-              className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-sm bg-accent text-white hover:bg-accent/90"
+              className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90"
             >
               <Camera size={13} /> QR코드 읽기
             </button>
@@ -543,7 +543,7 @@ export default function WaitingControl() {
           </div>
 
           {/* ── 현장 대기열 (서버 통합 보드 · 슬롯별 보기) ── */}
-          <div className="bg-white border border-border rounded-sm overflow-x-auto">
+          <div className="bg-card border border-border rounded-sm overflow-x-auto">
             <div className="px-4 py-3 border-b border-border flex flex-wrap items-center gap-2">
               <span className="text-sm font-semibold mr-2">현장 대기열</span>
               {/* 오늘 슬롯만 노출, 기본 선택 = 지금 시각의 슬롯 ("전체 슬롯" 옵션 삭제 — 7/25 피드백) */}
@@ -551,7 +551,7 @@ export default function WaitingControl() {
                 <select
                   value={slotFilter != null ? String(slotFilter) : ""}
                   onChange={(e) => setSlotFilter(e.target.value ? Number(e.target.value) : null)}
-                  className="text-[12px] px-2.5 py-1.5 border border-border rounded-sm bg-white focus:outline-none focus:border-accent"
+                  className="text-[12px] px-2.5 py-1.5 border border-border rounded-sm bg-card focus:outline-none focus:border-accent"
                   style={{ fontFamily: "'DM Mono', monospace" }}
                 >
                   {todaySlots.map((s) => (
@@ -587,7 +587,7 @@ export default function WaitingControl() {
                   <input
                     required value={addForm.name}
                     onChange={(e) => setAddForm((p) => ({ ...p, name: e.target.value }))}
-                    className="px-2 py-1.5 text-xs border border-border rounded-sm bg-white w-28"
+                    className="px-2 py-1.5 text-xs border border-border rounded-sm bg-card w-28"
                   />
                 </label>
                 <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
@@ -595,7 +595,7 @@ export default function WaitingControl() {
                   <input
                     required value={addForm.phone} placeholder="010-0000-0000"
                     onChange={(e) => setAddForm((p) => ({ ...p, phone: e.target.value }))}
-                    className="px-2 py-1.5 text-xs border border-border rounded-sm bg-white w-32"
+                    className="px-2 py-1.5 text-xs border border-border rounded-sm bg-card w-32"
                   />
                 </label>
                 <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
@@ -603,7 +603,7 @@ export default function WaitingControl() {
                   <input
                     required type="email" value={addForm.email}
                     onChange={(e) => setAddForm((p) => ({ ...p, email: e.target.value }))}
-                    className="px-2 py-1.5 text-xs border border-border rounded-sm bg-white w-44"
+                    className="px-2 py-1.5 text-xs border border-border rounded-sm bg-card w-44"
                   />
                 </label>
                 <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
@@ -611,10 +611,10 @@ export default function WaitingControl() {
                   <input
                     type="number" min={1} value={addForm.partySize}
                     onChange={(e) => setAddForm((p) => ({ ...p, partySize: Number(e.target.value) }))}
-                    className="w-16 px-2 py-1.5 text-xs border border-border rounded-sm bg-white text-right"
+                    className="w-16 px-2 py-1.5 text-xs border border-border rounded-sm bg-card text-right"
                   />
                 </label>
-                <button type="submit" disabled={adding} className="text-xs px-4 py-2 rounded-sm bg-foreground text-white hover:bg-foreground/90 disabled:opacity-50">
+                <button type="submit" disabled={adding} className="text-xs px-4 py-2 rounded-sm bg-foreground text-primary-foreground hover:bg-foreground/90 disabled:opacity-50">
                   {adding ? "추가 중…" : "추가"}
                 </button>
               </form>
@@ -705,8 +705,8 @@ export default function WaitingControl() {
           {/* ── 하단: 현장 비치용 QR 2종 ── */}
           {mode !== "RESERVATION" && (
             <div className="grid md:grid-cols-2 gap-3">
-              <div className="bg-white border border-border rounded-sm p-5 flex gap-4">
-                <div className="border border-border rounded-sm p-2 bg-white shrink-0">
+              <div className="bg-card border border-border rounded-sm p-5 flex gap-4">
+                <div className="border border-border rounded-sm p-2 bg-card shrink-0">
                   <QRCodeSVG value={CONSUMER_SIGNUP_URL} size={110} />
                 </div>
                 <div>
@@ -722,8 +722,8 @@ export default function WaitingControl() {
                   </p>
                 </div>
               </div>
-              <div className="bg-white border border-border rounded-sm p-5 flex gap-4">
-                <div className="border border-border rounded-sm p-2 bg-white shrink-0">
+              <div className="bg-card border border-border rounded-sm p-5 flex gap-4">
+                <div className="border border-border rounded-sm p-2 bg-card shrink-0">
                   <QRCodeSVG value={`${window.location.origin}/walkin?popup=${selected.id}`} size={110} />
                 </div>
                 <div>
@@ -747,7 +747,7 @@ export default function WaitingControl() {
       {scanOpen && (
         <>
           <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setScanOpen(false)} />
-          <div className="fixed inset-x-0 top-[10vh] mx-auto w-[min(420px,92vw)] bg-white border border-border rounded-sm shadow-xl z-50 p-4">
+          <div className="fixed inset-x-0 top-[10vh] mx-auto w-[min(420px,92vw)] bg-card border border-border rounded-sm shadow-xl z-50 p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-1.5 text-sm font-semibold">
                 <Camera size={15} className="text-accent" /> 입장 QR 스캔
@@ -781,7 +781,7 @@ export default function WaitingControl() {
                     className="flex-1 px-3 py-2 text-[13px] border border-border rounded-sm focus:outline-none focus:border-accent"
                     style={{ fontFamily: "'DM Mono', monospace" }}
                   />
-                  <button type="submit" className="text-xs px-3 py-2 rounded-sm bg-accent text-white">처리</button>
+                  <button type="submit" className="text-xs px-3 py-2 rounded-sm bg-accent text-accent-foreground">처리</button>
                 </form>
               </div>
             )}

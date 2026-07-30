@@ -9,7 +9,7 @@ import { getMeta, setMeta, today } from "../../lib/adminPopupMeta";
 //   팝업 내용의 DB 실반영은 관리자용 수정 API(PUT /api/admin/popups/{id}) 백엔드 구성 후 연동.
 
 const inputCls =
-  "w-full px-3 py-2.5 text-[13px] border border-border rounded-sm bg-white focus:outline-none focus:border-accent";
+  "w-full px-3 py-2.5 text-[13px] border border-border rounded-sm bg-card focus:outline-none focus:border-accent";
 
 const toLocalInput = (iso: string | null) => (iso ? iso.slice(0, 16) : "");
 
@@ -76,14 +76,14 @@ export default function AdminPopupEdit() {
 
   if (done) {
     return (
-      <div className="max-w-xl bg-white border border-border rounded-sm p-8 text-center">
+      <div className="max-w-xl bg-card border border-border rounded-sm p-8 text-center">
         <CheckCircle2 size={36} className="mx-auto text-emerald-500 mb-3" />
         <div className="text-base font-semibold mb-1.5">수정이 완료되었습니다</div>
         <p className="text-xs text-muted-foreground leading-relaxed mb-5">
           수정사항 및 사유가 주최자센터(팝업 조회/수정)에 표시됩니다.<br />
           팝업 내용의 실제 반영은 관리자용 수정 API 백엔드 구성 후 적용됩니다.
         </p>
-        <button onClick={() => navigate("/admin/popups")} className="text-xs px-5 py-2.5 rounded-sm bg-foreground text-white hover:bg-foreground/90">
+        <button onClick={() => navigate("/admin/popups")} className="text-xs px-5 py-2.5 rounded-sm bg-foreground text-primary-foreground hover:bg-foreground/90">
           팝업 관리로 돌아가기
         </button>
       </div>
@@ -112,7 +112,7 @@ export default function AdminPopupEdit() {
         </div>
       </div>
 
-      <form onSubmit={submit} className="bg-white border border-border rounded-sm p-6 flex flex-col gap-4">
+      <form onSubmit={submit} className="bg-card border border-border rounded-sm p-6 flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
           <span className="text-xs font-medium text-muted-foreground">팝업명 *</span>
           <input required value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} className={inputCls} />
@@ -158,7 +158,7 @@ export default function AdminPopupEdit() {
             <button
               type="submit"
               disabled={saving}
-              className="shrink-0 flex items-center justify-center gap-1.5 text-xs px-6 py-3 rounded-sm bg-accent text-white hover:bg-accent/90 disabled:opacity-50"
+              className="shrink-0 flex items-center justify-center gap-1.5 text-xs px-6 py-3 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-50"
             >
               {saving ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />} 수정완료
             </button>

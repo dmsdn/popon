@@ -61,7 +61,7 @@ export default function AdminTerms() {
           <Loader2 size={14} className="inline animate-spin mr-1.5" /> 불러오는 중…
         </div>
       ) : terms && (
-        <div className="bg-white border border-border rounded-sm">
+        <div className="bg-card border border-border rounded-sm">
           <div className="px-5 py-3 border-b border-border flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-sm font-semibold">
               <FileText size={14} className="text-accent" /> 서비스 이용약관
@@ -76,7 +76,7 @@ export default function AdminTerms() {
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-3 py-2.5 text-[13px] border border-border rounded-sm bg-white focus:outline-none focus:border-accent"
+                className="w-full px-3 py-2.5 text-[13px] border border-border rounded-sm bg-card focus:outline-none focus:border-accent"
               />
             </div>
             <div>
@@ -85,7 +85,7 @@ export default function AdminTerms() {
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 rows={18}
-                className="w-full px-3 py-2.5 text-[13px] leading-relaxed border border-border rounded-sm bg-white focus:outline-none focus:border-accent resize-y"
+                className="w-full px-3 py-2.5 text-[13px] leading-relaxed border border-border rounded-sm bg-card focus:outline-none focus:border-accent resize-y"
               />
             </div>
             <div className="flex items-center justify-between gap-3">
@@ -98,7 +98,7 @@ export default function AdminTerms() {
                   onClick={save}
                   disabled={saving || !dirty}
                   title={dirty ? "" : "변경된 내용이 없습니다"}
-                  className="flex items-center gap-1.5 text-xs px-5 py-2.5 rounded-sm bg-accent text-white hover:bg-accent/90 disabled:opacity-40"
+                  className="flex items-center gap-1.5 text-xs px-5 py-2.5 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-40"
                 >
                   {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />} 저장
                 </button>

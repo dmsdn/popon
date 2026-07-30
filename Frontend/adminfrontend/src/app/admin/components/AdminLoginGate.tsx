@@ -24,7 +24,7 @@ export default function AdminLoginGate({ onSuccess }: { onSuccess?: () => void }
   };
 
   return (
-    <div className="max-w-sm bg-white border border-border rounded-sm p-6">
+    <div className="max-w-sm bg-card border border-border rounded-sm p-6">
       <div className="flex items-center gap-2 mb-1">
         <ShieldCheck size={16} className="text-accent" />
         <span className="text-sm font-semibold">관리자 로그인</span>
@@ -51,7 +51,7 @@ export default function AdminLoginGate({ onSuccess }: { onSuccess?: () => void }
         <button
           type="submit"
           disabled={submitting}
-          className="flex items-center justify-center gap-1.5 py-2.5 text-xs rounded-sm bg-foreground text-white hover:bg-foreground/90 disabled:opacity-50"
+          className="flex items-center justify-center gap-1.5 py-2.5 text-xs rounded-sm bg-foreground text-primary-foreground hover:bg-foreground/90 disabled:opacity-50"
         >
           {submitting ? <Loader2 size={13} className="animate-spin" /> : <LogIn size={13} />} 로그인
         </button>
