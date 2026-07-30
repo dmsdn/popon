@@ -3,6 +3,7 @@ import { Outlet, NavLink, Link, useNavigate, useLocation, ScrollRestoration } fr
 import {
   LayoutDashboard, Store, PlusSquare, CalendarCheck, Users,
   BarChart3, Megaphone, Bell, ChevronDown, ExternalLink, LogOut, MessageSquare, X, UserRound,
+  Inbox,
 } from "lucide-react";
 import { useAuth, isLocalSessionExpired } from "../context/AuthContext";
 import { getMyPopups, getMyInquiries, getMyNoticeInbox, markNoticeRead, getToken, Popup, InquiryItem, NoticeInboxItem } from "../lib/api";
@@ -50,6 +51,9 @@ const MENU = [
   {
     group: "지원",
     items: [
+      // 7/30 — 관리자가 주최자에게 보낸 공지를 확인하는 화면. 상단바 벨은 최근 몇 건만
+      // 보여주므로, 전체 이력·분류 필터는 이 페이지가 담당한다.
+      { to: "/seller/admin-notices", icon: Inbox, label: "관리자 공지" },
       { to: "/seller/inquiries", icon: MessageSquare, label: "관리자에게 문의하기" }
     ],
   },
@@ -216,13 +220,13 @@ export default function SellerRoot() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-[#f4f5f7] text-foreground flex flex-col" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>
+    <div className="min-h-screen bg-background text-foreground flex flex-col" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>
       {/* ── 상단 바 ── */}
-      <header className="h-14 bg-white border-b border-border flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40">
+      <header className="h-14 bg-card border-b border-border flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40">
         <div className="flex items-center gap-3">
           <Link to="/seller" className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-sm bg-accent flex items-center justify-center">
-              <span className="text-white text-xs font-bold" style={{ fontFamily: "'DM Mono', monospace" }}>PO</span>
+              <span className="text-accent-foreground text-xs font-bold" style={{ fontFamily: "'DM Mono', monospace" }}>PO</span>
             </div>
             <span className="font-semibold text-sm tracking-tight">팝업온 <span className="text-accent">주최자센터</span></span>
           </Link>
@@ -240,7 +244,7 @@ export default function SellerRoot() {
           >
             <Bell size={17} />
             {unseenNotifs.length > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 px-0.5 rounded-full bg-accent text-white text-[9px] flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 px-0.5 rounded-full bg-accent text-accent-foreground text-[9px] flex items-center justify-center">
                 {unseenNotifs.length > 9 ? "9+" : unseenNotifs.length}
               </span>
             )}
@@ -262,7 +266,7 @@ export default function SellerRoot() {
               <>
                 {/* 바깥 클릭 시 닫힘 */}
                 <div className="fixed inset-0 z-40" onClick={() => setAccountOpen(false)} />
-                <div className="absolute right-0 top-full mt-2 w-40 bg-white border border-border rounded-sm shadow-lg z-50 py-1">
+                <div className="absolute right-0 top-full mt-2 w-40 bg-card border border-border rounded-sm shadow-lg z-50 py-1">
                   <Link
                     to="/seller/mypage"
                     onClick={() => setAccountOpen(false)}
@@ -287,7 +291,7 @@ export default function SellerRoot() {
 
       <div className="flex flex-1">
         {/* ── 좌측 사이드바 ── */}
-        <aside className="hidden lg:flex w-56 shrink-0 bg-white border-r border-border flex-col py-4 sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto">
+        <aside className="hidden lg:flex w-56 shrink-0 bg-card border-r border-border flex-col py-4 sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto">
           {MENU.map(({ group, items }) => (
             <div key={group} className="mb-4">
               <div className="px-5 mb-1.5 text-[11px] font-medium text-muted-foreground tracking-wide">{group}</div>
@@ -307,7 +311,7 @@ export default function SellerRoot() {
                   <Icon size={15} />
                   {label}
                   {(badgeCounts[to] ?? 0) > 0 && (
-                    <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-white text-[10px] font-semibold flex items-center justify-center">
+                    <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-accent-foreground text-[10px] font-semibold flex items-center justify-center">
                       {badgeCounts[to] > 99 ? "99+" : badgeCounts[to]}
                     </span>
                   )}
@@ -324,7 +328,10 @@ export default function SellerRoot() {
         </aside>
 
         {/* ── 콘텐츠 ── */}
-        <main className="flex-1 min-w-0 p-4 lg:p-6">
+        {/* 7/30 — 일하는 화면이라 내용 영역만 라이트(#F5F5F5). theme-light가 토큰을
+            다시 선언하므로 안쪽 bg-card·text-foreground가 전부 라이트로 뒤집힌다.
+            상단바·좌측 메뉴는 이 밖에 있어 다크 유지. */}
+        <main className="theme-light bg-background text-foreground flex-1 min-w-0 p-4 lg:p-6">
           <ScrollRestoration />
           <Outlet />
         </main>
@@ -334,7 +341,7 @@ export default function SellerRoot() {
       {notifOpen && (
         <>
           <div className="fixed inset-0 bg-black/20 z-40" onClick={() => setNotifOpen(false)} />
-          <aside className="fixed inset-y-0 right-0 w-80 max-w-[85vw] bg-white border-l border-border shadow-xl z-50 flex flex-col">
+          <aside className="fixed inset-y-0 right-0 w-80 max-w-[85vw] bg-card border-l border-border shadow-xl z-50 flex flex-col">
             <div className="h-14 px-4 border-b border-border flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2 text-sm font-semibold">
                 <Bell size={15} className="text-accent" /> 새 알림

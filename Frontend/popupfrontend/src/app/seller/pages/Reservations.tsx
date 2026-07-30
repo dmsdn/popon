@@ -155,7 +155,7 @@ export default function Reservations() {
           <select
             value={popupId ?? ""}
             onChange={(e) => setPopupId(Number(e.target.value))}
-            className="px-3 py-2 text-[13px] border border-border rounded-sm bg-white focus:outline-none focus:border-accent"
+            className="px-3 py-2 text-[13px] border border-border rounded-sm bg-card focus:outline-none focus:border-accent"
           >
             {popups.map((p) => (
               <option key={p.id} value={p.id}>{p.title}</option>
@@ -165,7 +165,7 @@ export default function Reservations() {
       </div>
 
       {popups.length === 0 && !error && (
-        <div className="bg-white border border-border rounded-sm px-4 py-10 text-center text-xs text-muted-foreground">
+        <div className="bg-card border border-border rounded-sm px-4 py-10 text-center text-xs text-muted-foreground">
           등록된 팝업이 없습니다. <Link to="/seller/popups/new" className="text-accent underline underline-offset-2">팝업을 먼저 등록</Link>해 주세요.
         </div>
       )}
@@ -196,7 +196,7 @@ export default function Reservations() {
           )}
 
           {!loading && tab === "slots" && (
-            <div className="bg-white border border-border rounded-sm">
+            <div className="bg-card border border-border rounded-sm">
               <div className="px-4 py-3 border-b border-border flex flex-wrap items-center justify-between gap-2">
                 <span className="text-sm font-semibold">시간대별 예약 현황</span>
                 <span className="text-[11px] text-muted-foreground">
@@ -227,7 +227,7 @@ export default function Reservations() {
                           key={d}
                           onClick={() => setSlotDateFilter(d)}
                           className={`text-[11px] px-2.5 py-1 rounded-full border ${
-                            slotDateFilter === d ? "bg-foreground text-white border-foreground" : "border-border text-muted-foreground hover:border-foreground"
+                            slotDateFilter === d ? "bg-foreground text-primary-foreground border-foreground" : "border-border text-muted-foreground hover:border-foreground"
                           }`}
                           style={{ fontFamily: "'DM Mono', monospace" }}
                         >
@@ -270,7 +270,7 @@ export default function Reservations() {
           )}
 
           {!loading && tab === "roster" && (
-            <div className="bg-white border border-border rounded-sm overflow-x-auto">
+            <div className="bg-card border border-border rounded-sm overflow-x-auto">
               <div className="px-4 py-3 border-b border-border flex flex-wrap items-center justify-between gap-2">
                 <span className="text-sm font-semibold">예약자 {roster.length}건</span>
                 <span className="text-[11px] text-muted-foreground">

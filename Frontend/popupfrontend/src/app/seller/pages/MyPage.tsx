@@ -7,7 +7,7 @@ import { getMyInfo, updateMyInfo, changeMyPassword, uploadBusinessProfileImage, 
 // 브랜드 사진: POST /me/profile-image (multipart) — 서버가 500×500 JPEG으로 변환해 저장 (7/29 연동)
 
 const inputCls =
-  "w-full px-3 py-2.5 text-[13px] border border-border rounded-sm bg-white focus:outline-none focus:border-accent";
+  "w-full px-3 py-2.5 text-[13px] border border-border rounded-sm bg-card focus:outline-none focus:border-accent";
 const labelCls = "block text-xs font-medium mb-1.5";
 
 // 연락처 자동 하이픈 (표시용 — 전송 시 숫자만; 회원가입과 동일 규칙)
@@ -138,7 +138,7 @@ export default function MyPage() {
       </div>
 
       {/* 브랜드 프로필 */}
-      <div className="bg-white border border-border rounded-sm p-5 flex items-center gap-4">
+      <div className="bg-card border border-border rounded-sm p-5 flex items-center gap-4">
         <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center shrink-0 overflow-hidden">
           {info.profileImage ? (
             <img src={info.profileImage} alt="" className="w-full h-full object-cover" />
@@ -173,7 +173,7 @@ export default function MyPage() {
       </div>
 
       {/* 기본 정보 수정 */}
-      <form onSubmit={saveInfo} className="bg-white border border-border rounded-sm">
+      <form onSubmit={saveInfo} className="bg-card border border-border rounded-sm">
         <div className="px-5 py-3 border-b border-border flex items-center gap-1.5 text-sm font-semibold">
           <User size={14} className="text-accent" /> 기본 정보
         </div>
@@ -208,7 +208,7 @@ export default function MyPage() {
           </p>
           <div className="flex items-center justify-end gap-3">
             {savedMsg && <span className="text-xs text-emerald-600">{savedMsg}</span>}
-            <button type="submit" disabled={saving} className="flex items-center gap-1.5 text-xs px-5 py-2.5 rounded-sm bg-accent text-white hover:bg-accent/90 disabled:opacity-50">
+            <button type="submit" disabled={saving} className="flex items-center gap-1.5 text-xs px-5 py-2.5 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-50">
               {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />} 저장
             </button>
           </div>
@@ -216,7 +216,7 @@ export default function MyPage() {
       </form>
 
       {/* 비밀번호 변경 */}
-      <form onSubmit={savePassword} className="bg-white border border-border rounded-sm">
+      <form onSubmit={savePassword} className="bg-card border border-border rounded-sm">
         <div className="px-5 py-3 border-b border-border flex items-center gap-1.5 text-sm font-semibold">
           <KeyRound size={14} className="text-accent" /> 비밀번호 변경
         </div>
@@ -250,7 +250,7 @@ export default function MyPage() {
           </div>
           <div className="flex items-center justify-end gap-3">
             {pwMsg && <span className={`text-xs ${pwMsg.ok ? "text-emerald-600" : "text-red-500"}`}>{pwMsg.text}</span>}
-            <button type="submit" disabled={pwSaving} className="flex items-center gap-1.5 text-xs px-5 py-2.5 rounded-sm bg-foreground text-white hover:bg-foreground/90 disabled:opacity-50">
+            <button type="submit" disabled={pwSaving} className="flex items-center gap-1.5 text-xs px-5 py-2.5 rounded-sm bg-foreground text-primary-foreground hover:bg-foreground/90 disabled:opacity-50">
               {pwSaving ? <Loader2 size={13} className="animate-spin" /> : <KeyRound size={13} />} 변경
             </button>
           </div>
