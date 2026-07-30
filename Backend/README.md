@@ -5,13 +5,31 @@
 
 ## 실행
 
+빌드·실행에는 **JDK 21이 필수**다. build.gradle 툴체인이 21로 고정돼 있고, 배포 서버(EC2)의 JRE도 21이라
+다른 버전으로 빌드한 jar는 서버에서 아예 안 뜬다. IntelliJ로만 돌리면 내장 런타임 덕에 몰라도 됐지만,
+터미널 빌드(bootJar)는 JDK 21이 없으면 그 자리에서 실패한다 (7/30 실제 발생).
+
 ```
-JAVA_HOME="C:\Users\dlwjd\.jdks\openjdk-26.0.1" ./gradlew bootRun
+winget install --id EclipseAdoptium.Temurin.21.JDK --source winget
+```
+
+```
+# PowerShell
+$env:JAVA_HOME="C:\Program Files\Eclipse Adoptium\jdk-21.0.12.8-hotspot"; .\gradlew.bat bootRun
 ```
 
 - 포트: **8080 단일** (8081은 더 이상 없음)
 - DB: MySQL `popupdb` (application.yml — 로컬 설정은 application-example.yml 참고)
 - 카카오 로그인: 개발자 콘솔 Redirect URI가 `http://localhost:8080/login/oauth2/code/kakao`로 등록되어 있어야 함
+
+## 배포 (7/30~)
+
+EC2 `3.35.218.209:8080`에 systemd 서비스(`popupon`)로 상시 구동 중이다. 배포 관리는 ljk 담당.
+
+- 재배포: 로컬에서 `gradlew bootJar -x test` → jar를 `/opt/popupon/popupon.jar`로 scp → `sudo systemctl restart popupon`
+- 서버 설정은 jar 밖 `/opt/popupon/config/application.yml` — 설정만 바꿀 땐 jar 재배포 불필요
+- 서버에서는 `app.dev-login.enabled=false` (8080이 공개라 dev-login은 무인증 토큰 발급기가 됨 — 켜지 말 것)
+- 소셜 로그인은 `http://3.35.218.209.nip.io:8080` 도메인 경유 (구글이 리디렉션 URI에 IP를 안 받아서)
 
 ## 패키지 구조 (도메인 기준)
 
