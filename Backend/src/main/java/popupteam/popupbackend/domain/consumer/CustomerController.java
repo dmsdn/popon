@@ -10,11 +10,17 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/api/customer/me")
 @RequiredArgsConstructor
 public class CustomerController {
+
+    // 이메일 형식 검증 — 프론트(customerfrontend·popupfrontend의 회원가입 폼)와 동일한 규칙으로 맞춘다.
+    // 앞뒤 공백/골뱅이 없는 로컬파트 + 도메인 + 최소 2자 TLD.
+    private static final Pattern EMAIL_PATTERN =
+            Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$");
 
     private final CustomerAccountRepository customerRepository;
     private final JwtUtil jwtUtil;
