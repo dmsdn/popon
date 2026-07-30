@@ -53,7 +53,11 @@ public class CustomerController {
             customer.setPhone(request.getPhone());
         }
         if (request.getEmail() != null && !request.getEmail().isBlank()) {
-            customer.setEmail(request.getEmail().trim());
+            String email = request.getEmail().trim();
+            if (!EMAIL_PATTERN.matcher(email).matches()) {
+                throw new IllegalArgumentException("이메일 형식이 올바르지 않아요.");
+            }
+            customer.setEmail(email);
         }
 
         Customer saved = customerRepository.save(customer);
@@ -71,8 +75,20 @@ public class CustomerController {
     public Map<String, Object> withdraw(@RequestHeader("Authorization") String authHeader) {
         Customer customer = findCustomer(authHeader);
 
-        // [정책 변경] DB 정보는 그대로 보존. withdrawn 플래그만 세워서 비활성화.
+        // [정책 변경] 재가입 채번(providerId "_2" 등) 로직 때문에 provider/providerId/socialId는 남겨두되,
+        // 그 외 개인정보(닉네임/연락처/이메일/프로필사진/생년월일/성별)는 탈퇴 즉시 마스킹 처리.
         // 같은 소셜 계정으로 다시 로그인하면 이 row는 그대로 두고 새 계정(id_2 등)이 생성됨.
+        customer.setNickname("탈퇴한 회원");
+        customer.setPhone(null);
+        customer.setEmail(null);
+        customer.setProfileImage(null);
+        customer.setBirthDate(null);
+        customer.setGender(Customer.Gender.UNKNOWN);
+        customer.setMarketingAgreed(false);
+        customer.setLocationAgreed(false);
+        customer.setPopupNewsAgreed(false);
+        customer.setReservationWaitingAgreed(false);
+
         customer.setWithdrawn(true);
         customer.setWithdrawnAt(LocalDateTime.now());
 

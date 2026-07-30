@@ -96,8 +96,8 @@ public class SignupInfoController {
             customer.setNickname(request.nickname);
         }
         customer.setPhone(request.phone);
-        if (request.email != null && !request.email.isBlank()) {
-            customer.setEmail(request.email);
+        if (request.email != null && !request.email.isBlank() && !EMAIL_PATTERN.matcher(request.email).matches()) {
+                throw new IllegalArgumentException("이메일 형식이 올바르지 않아요.");
         }
         if (request.birthDate != null && !request.birthDate.isBlank()) {
             try {
