@@ -107,6 +107,18 @@ function Section({ id, title, desc, children }: { id: string; title: string; des
   );
 }
 
+// 임시저장은 localStorage에 JSON으로 들어가는데 File 객체는 직렬화되지 않아 이미지만 빠진다.
+// IndexedDB로 옮겨 담는 방법도 있지만 초안 하나에 최대 200MB(10MB × 20장)를 브라우저에 쌓게 되어 접었다.
+// 대신 두 업로드 칸 아래에 눈에 띄게 알려서, 이어서 작성할 때 사진이 없어진 걸 그제야 알게 되는 일을 막는다. (7/31)
+function DraftImageNotice() {
+  return (
+    <p className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-sm px-2.5 py-1.5">
+      <AlertTriangle size={12} className="shrink-0" />
+      이미지는 임시저장되지 않습니다 — 「승인 요청」을 눌러야 서버에 올라갑니다.
+    </p>
+  );
+}
+
 // 서버에 이미 올라가 있는 이미지 한 장 (수정 모드 전용).
 // X를 눌러도 그 자리에서 서버 요청을 보내지 않는다 — 표시만 바꿔두고 「수정 저장」을 눌러야 실제로 지운다.
 // 그래야 실수로 눌렀을 때 되돌릴 수 있고, 저장을 취소하면 아무 일도 일어나지 않는다.
@@ -962,6 +974,7 @@ export default function PopupRegister() {
               <Upload size={18} />
               {dragOver === "thumb" ? "여기에 놓으면 추가됩니다" : "클릭하거나 파일을 끌어다 놓으세요 (등록 완료 시 서버로 전송됩니다)"}
             </button>
+            {!editId && <DraftImageNotice />}
             {/* 이미 서버에 올라가 있는 썸네일 (수정 모드) */}
             {serverThumbs.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-2">
@@ -1169,6 +1182,7 @@ export default function PopupRegister() {
               <Upload size={15} />
               {dragOver === "detail" ? "여기에 놓으면 추가됩니다" : "클릭하거나 파일을 끌어다 놓으세요 (여러 장 가능)"}
             </button>
+            {!editId && <DraftImageNotice />}
             {/* 이미 서버에 올라가 있는 상세 이미지 (수정 모드) */}
             {serverDetails.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-2">
