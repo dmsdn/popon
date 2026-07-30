@@ -33,7 +33,10 @@ export interface PopupDetail {
   avgExperienceMinutes: number;
   latitude: number | null;
   longitude: number | null;
-  queueMode: string | null;
+  // [신규] "예약만"/"웨이팅만"/"둘 다" 중 이 팝업이 어떤 걸 지원하는지 - 웨이팅/예약
+  // 버튼을 보여줄지 말지 판단하는 핵심 필드예요. (기존에 string | null로 있던 걸
+  // 구체적인 유니온 타입으로 좁혔어요 - 중복 선언이라 에러가 났었어요.)
+  queueMode: "PRERESERVATION_ONLY" | "ONSITE_WAITING_ONLY" | "BOTH" | null;
   maxPartySizePerTeam: number | null;
   // [신규] popup_hashtag 테이블 기반 실제 태그 목록. 백엔드에 진짜 카테고리 컬럼이
   // 없어서 지금까지 검색/홈 카테고리 필터가 팝업 이름 텍스트 매칭으로 흉내만 냈는데,
@@ -51,6 +54,13 @@ export interface PopupDetail {
   // (검색/홈 등)에서 카드마다 이미지를 따로 조회할 필요 없이 바로 쓸 수 있어요.
   thumbnailImages: string[];
   detailImages: string[];
+  // [신규] 요일별 운영시간·휴무일 - 백엔드에 새로 생긴 필드예요.
+  operatingHours?: {
+    dayOfWeek: "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY";
+    openTime: string | null; // "HH:mm:ss" 형태
+    closeTime: string | null;
+    closed: boolean;
+  }[];
   wishlistCount?: number; // [신규] 찜한 수 - 백엔드 필드명이 다르면 알려주세요
 }
 

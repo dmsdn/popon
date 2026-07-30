@@ -8,9 +8,11 @@
 // 지원: # ## ### 제목, **굵게**, *기울임*, [글자](링크), - 목록, 줄바꿈/문단
 // 지원 안 함: 표, 코드블록, 중첩 목록 등 더 복잡한 문법 (필요하시면 추가해드릴게요)
 
+import type { ReactElement } from "react";
+
 function renderInline(text: string, keyPrefix: string) {
   // **굵게**, *기울임*, [글자](링크) 를 순서대로 처리
-  const parts: (string | JSX.Element)[] = [];
+  const parts: (string | ReactElement)[] = [];
   let remaining = text;
   let i = 0;
 
@@ -52,7 +54,7 @@ export function SimpleMarkdown({ text }: { text: string }) {
   if (!text) return null;
 
   const lines = text.split("\n");
-  const blocks: JSX.Element[] = [];
+  const blocks: ReactElement[] = [];
   let listBuffer: string[] = [];
 
   const flushList = (key: string) => {
