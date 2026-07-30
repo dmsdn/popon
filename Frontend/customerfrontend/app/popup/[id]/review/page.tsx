@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createReview, updateReview, getMyReviews } from "@/lib/api/reviews";
+import { createReview } from "@/lib/api/reviews";
 import { uploadFile } from "@/lib/api/upload";
 import { getPopup, getPopupImages, type PopupDetail } from "@/lib/api/popups";
 import { getMyReservations } from "@/lib/api/reservations";
@@ -29,23 +29,6 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
   const initialRating = Number(searchParams.get("rating")) || 0;
   const [rating, setRating] = useState(initialRating);
   const [content, setContent] = useState("");
-
-  // [신규] 후기 수정 모드 - /popup/{id}/review?editId=123 형태로 들어오면, 기존에
-  // 썼던 후기 내용(별점/글/사진)을 불러와서 미리 채워둬요. 제출할 때 새로 만들지
-  // (createReview) 않고 기존 걸 고치도록(updateReview) 분기해요.
-  const editId = searchParams.get("editId");
-  useEffect(() => {
-    if (!editId) return;
-    getMyReviews()
-      .then((reviews) => {
-        const target = reviews.find((r) => r.id === Number(editId));
-        if (!target) return;
-        setRating(target.rating);
-        setContent(target.content);
-        setImageUrls(target.imageUrls ?? []);
-      })
-      .catch((err) => console.error("수정할 후기 조회 실패", err));
-  }, [editId]);
   // [수정] "다녀간 날짜"를 직접 고르게 하던 걸 없앴어요. 이 팝업에 대해 내가 실제로
   // 체크인 완료했거나(예약 - entryStatus === "CHECKED_IN" / 예약일이 이미 지남) 입장
   // 완료한(웨이팅 - enteredAt) 기록이 있으면 그 중 가장 최근 날짜를 자동으로 채워서
@@ -183,23 +166,13 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
     setSubmitting(true);
     setError(null);
     try {
-      if (editId) {
-        await updateReview(Number(editId), {
-          popupId: popup.id,
-          rating,
-          content: content.trim(),
-          imageUrls,
-          visitDate: visitDate ?? undefined,
-        });
-      } else {
-        await createReview({
-          popupId: popup.id,
-          rating,
-          content: content.trim(),
-          imageUrls,
-          visitDate: visitDate ?? undefined,
-        });
-      }
+      await createReview({
+        popupId: popup.id,
+        rating,
+        content: content.trim(),
+        imageUrls,
+        visitDate: visitDate ?? undefined,
+      });
       // [수정] 등록 성공 후에는 back() 대신 replace()로 상세페이지의 후기탭
       // (?tab=review)으로 보냅니다.
       // - back()만 쓰면 상세페이지가 "정보" 탭인 채로 돌아가서, 방금 등록한 후기를
@@ -226,7 +199,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
         >
           ‹
         </button>
-        <h1 className="text-lg font-bold">{editId ? "후기 수정하기" : "후기 작성하기"}</h1>
+        <h1 className="text-lg font-bold">후기 작성하기</h1>
       </div>
 
       <div className="px-4 mobile:px-8 py-6 flex flex-col gap-6">
@@ -327,7 +300,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
           disabled={submitting || uploading}
           className="w-full rounded-full py-3.5 text-sm font-medium bg-gray-900 text-white disabled:opacity-60"
         >
-          {submitting ? "저장하는 중..." : editId ? "수정 완료" : "후기 등록하기"}
+          {submitting ? "등록하는 중..." : "후기 등록하기"}
         </button>
       </div>
 

@@ -2,7 +2,7 @@ import type { PopupItem } from "@/data/mockPopups";
 
 const STATUS_STYLE: Record<NonNullable<PopupItem["status"]>, string> = {
   예정: "bg-gray-100 text-gray-500",
-  진행중: "bg-gray-900 text-white",
+  진행중: "bg-gray-800 text-white font-light text-sm",
   종료: "bg-gray-100 text-gray-400",
 };
 
