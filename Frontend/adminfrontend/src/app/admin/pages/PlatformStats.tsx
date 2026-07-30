@@ -8,10 +8,12 @@ import {
   getAdminDashboard, AdminDashboard as Dashboard,
   getPopupRanking, PopupVisitorRanking,
   getRevenueTrend, RevenueTrend,
+  getPopups, type Popup,
 } from "../../lib/api";
 
 // 플랫폼 종합 성과 — 7/28 실데이터 연동
 // 방문자 랭킹(/api/admin/stats/popup-ranking) · 매출 추이(/api/admin/stats/revenue) · 요약(dashboard BFF)
+// 7/31 — 브랜드 재입점률 추가 (같은 사업자가 팝업을 2회 이상 연 비율 — 별도 API 없이 팝업 목록의 businessId로 집계)
 
 type Period = "DAILY30" | "MONTHLY12";
 
@@ -20,6 +22,7 @@ export default function PlatformStats() {
   const [dash, setDash] = useState<Dashboard | null>(null);
   const [ranking, setRanking] = useState<PopupVisitorRanking[]>([]);
   const [revenue, setRevenue] = useState<RevenueTrend[]>([]);
+  const [popups, setPopups] = useState<Popup[]>([]); // 재입점률 집계용 (7/31)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -29,7 +32,18 @@ export default function PlatformStats() {
       .then(([d, r]) => { setDash(d); setRanking(r); setError(""); })
       .catch((e) => setError(e instanceof Error ? e.message : "통계를 불러오지 못했습니다."))
       .finally(() => setLoading(false));
+    getPopups().then(setPopups).catch(() => {}); // 실패해도 재입점률 카드만 "—"로 남는다
   }, []);
+
+  // 브랜드 재입점률 = 팝업을 2회 이상 연 사업자 / 팝업을 1회 이상 연 사업자 (7/31)
+  // "다시 들어온 브랜드의 비율 = 플랫폼 만족도"라는 프레임. 재계약 데이터(ERP) 없이 지금 DB로 계산된다.
+  const popupsByBusiness = popups.reduce<Record<number, number>>((acc, p) => {
+    if (p.businessId != null) acc[p.businessId] = (acc[p.businessId] ?? 0) + 1;
+    return acc;
+  }, {});
+  const brandTotal = Object.keys(popupsByBusiness).length;
+  const brandReturning = Object.values(popupsByBusiness).filter((n) => n >= 2).length;
+  const rebookRate = brandTotal > 0 ? (brandReturning / brandTotal) * 100 : null;
 
   useEffect(() => {
     const [unit, amount] = period === "DAILY30" ? (["DAILY", 30] as const) : (["MONTHLY", 12] as const);
@@ -72,13 +86,19 @@ export default function PlatformStats() {
 
       {!loading && !error && (
         <>
-          {/* 요약 지표 — dashboard BFF + 랭킹·매출 합산 */}
-          <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+          {/* 요약 지표 — dashboard BFF + 랭킹·매출 합산 + 재입점률(팝업 목록 집계) */}
+          <div className="grid grid-cols-2 xl:grid-cols-5 gap-3">
             {[
               { label: "누적 체크인 방문", value: `${totalCheckin.toLocaleString()}명`, sub: `랭킹 집계 팝업 ${ranking.length}개` },
               { label: period === "DAILY30" ? "최근 30일 매출" : "최근 12개월 매출", value: `${(revenueSum / 10000).toLocaleString()}만원`, sub: "계약금 등록 기준" },
               { label: "게시중 / 심사 대기", value: dash ? `${dash.openPopupCount} / ${dash.pendingPopupCount}` : "—", sub: "팝업 현황" },
               { label: "누적 소비자 회원", value: dash ? `${dash.totalCustomerCount.toLocaleString()}명` : "—", sub: `활성 파트너 ${dash?.activePartnerCount ?? "—"}사` },
+              // 재입점률 (7/31) — 다시 팝업을 연 브랜드 비율. 두 번째 입점이 곧 플랫폼 만족의 증거
+              {
+                label: "브랜드 재입점률",
+                value: rebookRate === null ? "—" : `${rebookRate.toFixed(0)}%`,
+                sub: brandTotal > 0 ? `${brandTotal}사 중 ${brandReturning}사가 2회 이상 입점` : "입점 브랜드 없음",
+              },
             ].map((k) => (
               <div key={k.label} className="bg-card border border-border rounded-sm p-4">
                 <div className="text-xs text-muted-foreground mb-1.5">{k.label}</div>
