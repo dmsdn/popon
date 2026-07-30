@@ -44,4 +44,6 @@ public class PopupCreateRequest {
     private List<Long> keywordIds; // 표준 키워드 ID 목록 (선택)
 
     private List<PopupSnsLinkRequest> snsLinks; // 팝업과 함께 등록할 SNS/홈페이지 링크 목록
+
+    private List<OperatingHoursRequest> operatingHours; // 요일별 운영시간·휴무일 (7개, 선택입력)
 }
