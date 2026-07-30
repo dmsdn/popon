@@ -8,6 +8,8 @@ import { submitPreferences } from "@/lib/api/auth";
 import { getRegions, getMyRegions, saveMyRegions, type Region } from "@/lib/api/regions";
 import { formatPhoneInput, isValidPhone } from "@/lib/utils/formatPhone";
 import { BirthDatePicker } from "@/components/ui/BirthDatePicker";
+import { ImageCropModal } from "@/components/popup/ImageCropModal";
+import { uploadFile } from "@/lib/api/upload";
 
 export default function EditProfilePage() {
   const router = useRouter();
@@ -27,6 +29,12 @@ export default function EditProfilePage() {
   const [submitting, setSubmitting] = useState(false);
   const [nicknameError, setNicknameError] = useState<string | null>(null);
 
+  // [신규] 프로필 사진 수정 - 파일 선택 → 정사각형으로 자르기 → 업로드 → 저장
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!loading && !customer) {
       router.replace("/login");
@@ -43,6 +51,7 @@ export default function EditProfilePage() {
     setEmail(customer.email ?? "");
     setGender(customer.gender ?? "UNKNOWN");
     setBirthDate(customer.birthDate ?? "");
+    setProfileImage(customer.profileImage ?? null);
   }, [customer]);
 
   // [수정] "관심 카테고리"가 로컬 전용 목록을 쓰고 있어서, 회원가입 때 저장한 실제
@@ -79,6 +88,23 @@ export default function EditProfilePage() {
 
   const canSubmit = nickname.trim().length > 0 && isValidPhone(phone);
 
+  // [신규] 크롭 완료된 이미지를 업로드하고, 미리보기도 바로 바꿔줘요.
+  const handleCropConfirm = async (blob: Blob) => {
+    setCropFile(null);
+    setUploadingPhoto(true);
+    setPhotoError(null);
+    try {
+      const file = new File([blob], "profile.jpg", { type: blob.type || "image/jpeg" });
+      const result = await uploadFile(file);
+      setProfileImage(result.url);
+    } catch (err) {
+      console.error("프로필 사진 업로드 실패", err);
+      setPhotoError("사진 업로드에 실패했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   const handleSubmit = async () => {
     setNicknameError(null);
     // [수정] 전화번호가 선택값이었는데, 회원가입 때는 필수로 받으면서 여기선 안 받으면
@@ -97,6 +123,7 @@ export default function EditProfilePage() {
         email: email.trim() || undefined,
         gender,
         birthDate: birthDate || undefined,
+        profileImage: profileImage ?? undefined,
       });
       await submitPreferences(selectedKeywordIds);
       await saveMyRegions(selectedRegionIds);
@@ -124,15 +151,45 @@ export default function EditProfilePage() {
 
   return (
     <main className="w-full mobile:max-w-[600px] mobile:mx-auto min-h-screen flex flex-col px-6 py-10">
-      <button type="button" onClick={() => router.back()} className="text-sm text-gray-500 mb-6">
+      <button type="button" onClick={() => router.back()} className="self-start text-sm text-gray-500 mb-6">
         ‹ 뒤로
       </button>
 
       <h1 className="text-lg font-bold mb-8">내 정보 수정</h1>
 
+      {/* [신규] 프로필 사진 수정 - 눌러서 파일 선택하면 정사각형으로 자른 뒤 업로드돼요. */}
+      <div className="flex flex-col items-center mb-8">
+        <label className="relative w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-800 overflow-hidden cursor-pointer">
+          {profileImage && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={profileImage} alt="" className="w-full h-full object-cover" />
+          )}
+          {uploadingPhoto && (
+            <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-sm">
+              업로드 중...
+            </div>
+          )}
+          <span className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-gray-900 dark:bg-gray-700 border-2 border-white dark:border-gray-900 flex items-center justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/Icon/Name=camera.svg" alt="" width={14} height={14} className="invert" />
+          </span>
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) setCropFile(file);
+              e.target.value = ""; // 같은 파일 다시 선택해도 onChange가 또 뜨도록
+            }}
+          />
+        </label>
+        {photoError && <p className="text-sm text-red-500 mt-2">{photoError}</p>}
+      </div>
+
       <div className="flex flex-col gap-6">
         <label className="block">
-          <span className="block text-sm font-medium text-gray-700 mb-2">닉네임</span>
+          <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">닉네임</span>
           <input
             type="text"
             value={nickname}
@@ -140,15 +197,15 @@ export default function EditProfilePage() {
               setNickname(e.target.value);
               setNicknameError(null);
             }}
-            className={`w-full bg-gray-100 rounded-lg px-4 py-3 text-sm outline-none ${
+            className={`w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none ${
               nicknameError ? "ring-1 ring-red-400" : ""
             }`}
           />
-          {nicknameError && <p className="text-xs text-red-500 mt-1.5">{nicknameError}</p>}
+          {nicknameError && <p className="text-sm text-red-500 mt-1.5">{nicknameError}</p>}
         </label>
 
         <label className="block">
-          <span className="block text-sm font-medium text-gray-700 mb-2">
+          <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             전화번호 <span className="text-red-400">*</span>
           </span>
           <input
@@ -161,15 +218,15 @@ export default function EditProfilePage() {
             }}
             placeholder="010-0000-0000"
             maxLength={13}
-            className={`w-full bg-gray-100 rounded-lg px-4 py-3 text-sm outline-none ${
+            className={`w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none ${
               phoneError ? "ring-1 ring-red-400" : ""
             }`}
           />
-          {phoneError && <p className="text-xs text-red-500 mt-1.5">{phoneError}</p>}
+          {phoneError && <p className="text-sm text-red-500 mt-1.5">{phoneError}</p>}
         </label>
 
         <label className="block">
-          <span className="block text-sm font-medium text-gray-700 mb-2">
+          <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             이메일 <span className="text-gray-400 font-normal">(선택)</span>
           </span>
           <input
@@ -177,12 +234,12 @@ export default function EditProfilePage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="000@example.com"
-            className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm outline-none"
+            className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none"
           />
         </label>
 
         <div>
-          <span className="block text-sm font-medium text-gray-700 mb-2">성별</span>
+          <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">성별</span>
           <div className="flex gap-2">
             {([
               ["MALE", "남성"],
@@ -194,7 +251,7 @@ export default function EditProfilePage() {
                 type="button"
                 onClick={() => setGender(value)}
                 className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-3 text-sm border ${
-                  gender === value ? "border-gray-900 text-gray-900 font-medium" : "border-gray-200 text-gray-500"
+                  gender === value ? "border-gray-900 text-gray-900 dark:text-white font-medium" : "border-gray-200 dark:border-gray-800 text-gray-500"
                 }`}
               >
                 <span
@@ -211,11 +268,11 @@ export default function EditProfilePage() {
         </div>
 
         <div className="block">
-          <span className="block text-sm font-medium text-gray-700 mb-2">생년월일</span>
+          <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">생년월일</span>
           <button
             type="button"
             onClick={() => setShowBirthPicker(true)}
-            className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm text-left"
+            className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm text-left"
           >
             {birthDate || <span className="text-gray-400">생년월일을 선택해주세요</span>}
           </button>
@@ -225,7 +282,7 @@ export default function EditProfilePage() {
         )}
 
         <div>
-          <span className="block text-sm font-medium text-gray-700 mb-2">관심 카테고리</span>
+          <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">관심 카테고리</span>
           <div className="flex flex-wrap gap-2">
             {keywords.map((kw) => (
               <button
@@ -235,7 +292,7 @@ export default function EditProfilePage() {
                 className={`px-4 py-2 rounded-full text-sm border ${
                   selectedKeywordIds.includes(kw.id)
                     ? "bg-gray-900 text-white border-gray-900"
-                    : "border-gray-200 text-gray-600"
+                    : "border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400"
                 }`}
               >
                 {kw.name}
@@ -247,7 +304,7 @@ export default function EditProfilePage() {
         {/* [수정] 백엔드 region이 이제 동네 단위(성수/강남/홍대)라, 하드코딩 목록 대신
             실제 GET /api/regions로 받아온 목록을 씁니다. */}
         <div>
-          <span className="block text-sm font-medium text-gray-700 mb-2">관심 지역</span>
+          <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">관심 지역</span>
           <div className="flex flex-wrap gap-2">
             {regions.map((r) => (
               <button
@@ -257,7 +314,7 @@ export default function EditProfilePage() {
                 className={`px-4 py-2 rounded-full text-sm border ${
                   selectedRegionIds.includes(r.id)
                     ? "bg-gray-900 text-white border-gray-900"
-                    : "border-gray-200 text-gray-600"
+                    : "border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400"
                 }`}
               >
                 {r.name}
@@ -275,6 +332,10 @@ export default function EditProfilePage() {
           {submitting ? "저장하는 중..." : "저장하기"}
         </button>
       </div>
+
+      {cropFile && (
+        <ImageCropModal file={cropFile} onCancel={() => setCropFile(null)} onConfirm={handleCropConfirm} />
+      )}
     </main>
   );
 }

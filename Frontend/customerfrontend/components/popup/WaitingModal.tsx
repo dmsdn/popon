@@ -20,7 +20,7 @@ export function WaitingModal({ popupName, imageUrl, onClose, onSubmit }: Waiting
       onClick={onClose}
     >
       <div
-        className="w-full mobile:max-w-md bg-white rounded-t-2xl mobile:rounded-2xl px-6 pt-6 pb-8"
+        className="w-full mobile:max-w-md bg-white dark:bg-gray-900 rounded-t-2xl mobile:rounded-2xl px-6 pt-6 pb-8"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
@@ -30,7 +30,7 @@ export function WaitingModal({ popupName, imageUrl, onClose, onSubmit }: Waiting
           </button>
         </div>
 
-        <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-sm mb-8">
+        <div className="aspect-video bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-sm mb-8">
           {imageUrl ? (
             <ImageWithFallback src={imageUrl} className="w-full h-full object-cover" />
           ) : (
@@ -39,7 +39,7 @@ export function WaitingModal({ popupName, imageUrl, onClose, onSubmit }: Waiting
         </div>
 
         <div className="flex items-center justify-between mb-8">
-          <span className="text-sm font-medium text-gray-700">인원</span>
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">인원</span>
           <CountStepper value={count} onChange={setCount} />
         </div>
 

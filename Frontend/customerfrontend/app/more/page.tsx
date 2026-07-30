@@ -7,7 +7,6 @@ import { Footer } from "@/components/layout/Footer";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { getKeywords, getMyInterests, type Keyword } from "@/lib/api/customer";
 import { getRegions, getMyRegions, type Region } from "@/lib/api/regions";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 // 관심으로 설정해둔 것부터 위로 오게 정렬 (나머지는 원래 순서 유지)
 function sortByPreferred<T>(all: T[], isPreferred: (item: T) => boolean): T[] {
@@ -62,7 +61,7 @@ export default function MorePage() {
   return (
     <main className="min-h-screen flex flex-col w-full mobile:max-w-[1000px] mobile:mx-auto pb-16 mobile:pb-0">
       <div className="flex-1">
-      <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100">
+      <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100 dark:border-gray-800">
         <button
           type="button"
           onClick={() => router.back()}
@@ -74,14 +73,8 @@ export default function MorePage() {
         <h1 className="text-lg font-bold">더보기</h1>
       </div>
 
-      {/* [신규] 다크모드 토글 */}
-      <section className="px-4 mobile:px-8 py-4 border-b border-gray-100 flex items-center justify-between">
-        <span className="text-sm font-medium">다크모드</span>
-        <ThemeToggle />
-      </section>
-
       {/* 내 계정 정보 */}
-      <section className="px-4 mobile:px-8 py-6 border-b border-gray-100">
+      <section className="px-4 mobile:px-8 py-6 border-b border-gray-100 dark:border-gray-800">
         {isLoggedIn && customer ? (
           <Link href="/mypage" className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden flex-none">
@@ -92,7 +85,7 @@ export default function MorePage() {
             </div>
             <div>
               <p className="text-sm font-semibold">{customer.nickname} 님</p>
-              <p className="text-xs text-gray-400">내 계정 정보 보기 ›</p>
+              <p className="text-sm text-gray-400">내 계정 정보 보기 ›</p>
             </div>
           </Link>
         ) : (
@@ -107,21 +100,21 @@ export default function MorePage() {
 
       {/* 카테고리별 바로가기 - 관심 카테고리로 설정해둔 게 있으면 맨 위로 */}
       {sortedKeywords.length > 0 && (
-        <section className="px-4 mobile:px-8 py-2 border-b border-gray-100">
+        <section className="px-4 mobile:px-8 py-2 border-b border-gray-100 dark:border-gray-800">
           <h2 className="text-sm font-semibold mb-1 mt-4">카테고리별 바로가기</h2>
           <nav className="flex flex-col">
             {sortedKeywords.map((kw, i) => (
               <Link
                 key={kw.id}
                 href={`/search?q=${encodeURIComponent(kw.name)}`}
-                className={`flex items-center justify-between py-3.5 text-sm text-gray-700 ${
+                className={`flex items-center justify-between py-3.5 text-sm text-gray-700 dark:text-gray-300 ${
                   i < sortedKeywords.length - 1 ? "border-b border-gray-50" : ""
                 }`}
               >
                 <span className="flex items-center gap-1.5">
                   {kw.name}
                   {myKeywordIds.includes(kw.id) && (
-                    <span className="text-[10px] text-gray-400">관심</span>
+                    <span className="text-sm text-gray-400">관심</span>
                   )}
                 </span>
                 <span className="text-gray-300">›</span>
@@ -139,14 +132,14 @@ export default function MorePage() {
             <Link
               key={region.id}
               href={`/search?q=${encodeURIComponent(region.name)}`}
-              className={`flex items-center justify-between py-3.5 text-sm text-gray-700 ${
+              className={`flex items-center justify-between py-3.5 text-sm text-gray-700 dark:text-gray-300 ${
                 i < sortedRegions.length - 1 ? "border-b border-gray-50" : ""
               }`}
             >
               <span className="flex items-center gap-1.5">
                 {region.name}
                 {myRegionIds.includes(region.id) && (
-                  <span className="text-[10px] text-gray-400">관심</span>
+                  <span className="text-sm text-gray-400">관심</span>
                 )}
               </span>
               <span className="text-gray-300">›</span>

@@ -49,7 +49,7 @@ export function ReportReviewModal({ reviewId, onClose }: { reviewId: number; onC
   return createPortal(
     <div className="fixed inset-0 bg-black/40 flex items-end mobile:items-center justify-center z-50" onClick={onClose}>
       <div
-        className="w-full mobile:max-w-sm bg-white rounded-t-2xl mobile:rounded-2xl px-6 pt-6 pb-8"
+        className="w-full mobile:max-w-sm bg-white dark:bg-gray-900 rounded-t-2xl mobile:rounded-2xl px-6 pt-6 pb-8"
         onClick={(e) => e.stopPropagation()}
       >
         {done ? (
@@ -80,7 +80,7 @@ export function ReportReviewModal({ reviewId, onClose }: { reviewId: number; onC
                   type="button"
                   onClick={() => setReason(opt.value)}
                   className={`flex items-center gap-2 rounded-lg py-3 px-3 text-sm border text-left ${
-                    reason === opt.value ? "border-gray-900 text-gray-900 font-medium" : "border-gray-200 text-gray-600"
+                    reason === opt.value ? "border-gray-900 text-gray-900 dark:text-white font-medium" : "border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400"
                   }`}
                 >
                   <span
@@ -100,7 +100,7 @@ export function ReportReviewModal({ reviewId, onClose }: { reviewId: number; onC
               onChange={(e) => setDetail(e.target.value)}
               placeholder="상세 내용 (선택)"
               rows={3}
-              className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm outline-none resize-none mb-4"
+              className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none resize-none mb-4"
             />
 
             <button

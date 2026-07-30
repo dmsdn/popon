@@ -25,8 +25,8 @@ export function QRCodeDisplay({ qrToken, size = 200 }: { qrToken: string; size?:
   return (
     <div className="flex flex-col items-center">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt="입장용 QR 코드" width={size} height={size} className="rounded-lg border border-gray-100" />
-      <p className="text-xs text-gray-400 mt-2">직원에게 이 QR 코드를 보여주세요</p>
+      <img src={src} alt="입장용 QR 코드" width={size} height={size} className="rounded-lg border border-gray-100 dark:border-gray-800" />
+      <p className="text-sm text-gray-400 mt-2">직원에게 이 QR 코드를 보여주세요</p>
     </div>
   );
 }

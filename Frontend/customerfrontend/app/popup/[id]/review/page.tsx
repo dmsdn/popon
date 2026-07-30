@@ -218,7 +218,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
 
   return (
     <main className="min-h-screen flex flex-col w-full mobile:max-w-[1000px] mobile:mx-auto pb-16 mobile:pb-0">
-      <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100">
+      <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100 dark:border-gray-800">
         <button
           type="button"
           onClick={handleBack}
@@ -233,19 +233,19 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
       <div className="px-4 mobile:px-8 py-6 flex flex-col gap-6">
         {/* [수정] 팝업 제목 한 줄만 있던 걸, 대표 이미지 + 기간/장소까지 보이는
             카드로 바꿨어요 - 지금 어떤 팝업에 대한 후기를 쓰는지 더 명확하게 보여요. */}
-        <div className="flex items-center gap-3 border border-gray-200 rounded-xl p-3">
+        <div className="flex items-center gap-3 border border-gray-200 dark:border-gray-800 rounded-xl p-3">
           <div className="w-14 h-14 rounded-lg bg-gray-100 flex-none overflow-hidden">
             {mainImageUrl ? (
               <ImageWithFallback src={mainImageUrl} className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400">
+              <div className="w-full h-full flex items-center justify-center text-sm text-gray-400">
                 이미지
               </div>
             )}
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold truncate">{popup.title}</p>
-            <p className="text-xs text-gray-400 truncate">
+            <p className="text-sm text-gray-400 truncate">
               {new Date(popup.startDate).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })} -{" "}
               {new Date(popup.endDate).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}
               {popup.location ? ` · ${popup.location}` : ""}
@@ -254,33 +254,33 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
         </div>
 
         <div>
-          <span className="block text-sm font-medium text-gray-700 mb-2">별점</span>
+          <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">별점</span>
           <StarRatingInput value={rating} onChange={setRating} />
         </div>
 
         {visitDate && (
           <div className="block">
-            <span className="block text-sm font-medium text-gray-700 mb-2">다녀간 날짜</span>
-            <div className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm text-gray-700">
+            <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">다녀간 날짜</span>
+            <div className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
               {visitDate}
             </div>
-            <p className="text-xs text-gray-400 mt-1.5">예약/웨이팅 방문 기록에서 자동으로 채워졌어요.</p>
+            <p className="text-sm text-gray-400 mt-1.5">예약/웨이팅 방문 기록에서 자동으로 채워졌어요.</p>
           </div>
         )}
 
         <label className="block">
-          <span className="block text-sm font-medium text-gray-700 mb-2">후기 내용</span>
+          <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">후기 내용</span>
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             rows={6}
             placeholder="팝업에서의 경험을 남겨주세요."
-            className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm outline-none resize-none"
+            className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none resize-none"
           />
         </label>
 
         <div>
-          <span className="block text-sm font-medium text-gray-700 mb-2">
+          <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             사진 ({imageUrls.length}/{MAX_IMAGE_COUNT})
           </span>
           <div className="flex gap-2 flex-wrap">
@@ -291,7 +291,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
                 <button
                   type="button"
                   onClick={() => handleRemoveImage(url)}
-                  className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-gray-900 text-white text-xs flex items-center justify-center"
+                  className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-gray-900 text-white text-sm flex items-center justify-center"
                   aria-label="사진 삭제"
                 >
                   ×
@@ -300,7 +300,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
             ))}
             {imageUrls.length < MAX_IMAGE_COUNT && (
               <label
-                className={`w-28 h-28 rounded-lg border border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-xs ${
+                className={`w-28 h-28 rounded-lg border border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-sm ${
                   uploading ? "opacity-50" : "cursor-pointer"
                 }`}
               >

@@ -79,29 +79,29 @@ export function ReviewCard({
   if (deleting) return null;
 
   return (
-    <div className="border-b border-gray-100 py-5">
+    <div className="border-b border-gray-100 dark:border-gray-800 py-5">
       {/* [수정] 수정/삭제 버튼을 오른쪽 위(닉네임/별점 줄)로 옮기고 크기를 키웠어요. */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600 flex-none">
+          <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium text-gray-600 dark:text-gray-400 flex-none">
             {nickname.charAt(0)}
           </div>
           <div className="min-w-0">
             <p className="text-sm font-medium truncate">{nickname}</p>
-            <p className="text-xs text-gray-400">{date}</p>
+            <p className="text-sm text-gray-400">{date}</p>
           </div>
         </div>
         <div className="flex flex-col items-end gap-1.5 flex-none">
           {/* [수정] 별점이 너무 작다는 피드백 - 12→16으로 키웠어요. */}
-          <span className="flex items-center gap-1 text-sm font-medium text-gray-700">
+          <span className="flex items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300">
             <StarRatingDisplay rating={rating} size={16} /> {rating}
           </span>
           {isMine && (
             <div className="flex items-center gap-2.5">
-              <button type="button" onClick={handleEdit} className="text-xs font-medium text-gray-500">
+              <button type="button" onClick={handleEdit} className="text-sm font-medium text-gray-500">
                 수정
               </button>
-              <button type="button" onClick={handleDelete} className="text-xs font-medium text-gray-500">
+              <button type="button" onClick={handleDelete} className="text-sm font-medium text-gray-500">
                 삭제
               </button>
             </div>
@@ -109,11 +109,11 @@ export function ReviewCard({
         </div>
       </div>
 
-      <p className={`text-sm text-gray-700 leading-relaxed ${!expanded && isLong ? "line-clamp-2" : ""}`}>
+      <p className={`text-sm text-gray-700 dark:text-gray-300 leading-relaxed ${!expanded && isLong ? "line-clamp-2" : ""}`}>
         {content}
       </p>
       {isLong && (
-        <button type="button" onClick={() => setExpanded((prev) => !prev)} className="text-xs text-gray-400 mt-1">
+        <button type="button" onClick={() => setExpanded((prev) => !prev)} className="text-sm text-gray-400 mt-1">
           {expanded ? "접기" : "더보기"}
         </button>
       )}
@@ -125,7 +125,7 @@ export function ReviewCard({
               key={photo + i}
               type="button"
               onClick={() => onImageClick?.(i)}
-              className="w-40 h-40 flex-none bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-xs"
+              className="w-40 h-40 flex-none bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-sm"
             >
               {photo.startsWith("http") || photo.startsWith("/") ? (
                 <ImageWithFallback src={photo} className="w-full h-full object-cover" />
@@ -144,7 +144,7 @@ export function ReviewCard({
           onClick={handleToggleLike}
           disabled={isMine}
           className={`flex items-center gap-1.5 text-sm ${
-            isMine ? "text-gray-300 cursor-default" : liked ? "text-gray-900 font-medium" : "text-gray-500"
+            isMine ? "text-gray-300 cursor-default" : liked ? "text-gray-900 dark:text-white font-medium" : "text-gray-500"
           }`}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill={liked && !isMine ? "#111827" : "none"} stroke="currentColor" strokeWidth="2">

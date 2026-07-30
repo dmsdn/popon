@@ -106,9 +106,9 @@ export function ImageCropModal({
 
   return createPortal(
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-6">
-      <div className="bg-white rounded-xl p-5 w-full max-w-sm">
+      <div className="bg-white dark:bg-gray-900 rounded-xl p-5 w-full max-w-sm">
         <p className="text-base font-semibold mb-1">사진 위치 조정</p>
-        <p className="text-xs text-gray-400 mb-4">드래그해서 위치를 옮기고, 슬라이더로 확대/축소할 수 있어요.</p>
+        <p className="text-sm text-gray-400 mb-4">드래그해서 위치를 옮기고, 슬라이더로 확대/축소할 수 있어요.</p>
 
         <div
           className="relative mx-auto overflow-hidden rounded-lg bg-gray-100 touch-none select-none"
@@ -143,7 +143,7 @@ export function ImageCropModal({
         </div>
 
         <div className="flex items-center gap-3 mt-4">
-          <span className="text-xs text-gray-400 flex-none">축소</span>
+          <span className="text-sm text-gray-400 flex-none">축소</span>
           <input
             type="range"
             min={1}
@@ -153,14 +153,14 @@ export function ImageCropModal({
             onChange={(e) => handleZoomChange(Number(e.target.value))}
             className="flex-1"
           />
-          <span className="text-xs text-gray-400 flex-none">확대</span>
+          <span className="text-sm text-gray-400 flex-none">확대</span>
         </div>
 
         <div className="flex gap-2 mt-6">
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 rounded-full py-3 text-sm font-medium bg-gray-100 text-gray-700"
+            className="flex-1 rounded-full py-3 text-sm font-medium bg-gray-100 text-gray-700 dark:text-gray-300"
           >
             취소
           </button>

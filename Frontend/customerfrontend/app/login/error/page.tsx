@@ -27,7 +27,7 @@ function LoginErrorContent() {
       <p className="text-sm font-medium text-gray-800">{message}</p>
       <Link
         href="/login"
-        className="text-sm font-medium border border-gray-300 text-gray-700 rounded-full px-5 py-2.5"
+        className="text-sm font-medium border border-gray-300 text-gray-700 dark:text-gray-300 rounded-full px-5 py-2.5"
       >
         로그인 화면으로 돌아가기
       </Link>

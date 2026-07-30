@@ -40,7 +40,7 @@ function Segments({ label, size = "md" }: { label: PopupLiveStatus["congestionLa
  */
 export function LiveCongestionPanel({ status }: { status: PopupLiveStatus }) {
   return (
-    <div className="border border-gray-200 rounded-lg px-4 py-4">
+    <div className="border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-4">
       <div className="flex items-center justify-between mb-1">
         <p className="text-sm font-semibold">실시간 혼잡도</p>
         <div className="flex items-center gap-2">
@@ -50,7 +50,7 @@ export function LiveCongestionPanel({ status }: { status: PopupLiveStatus }) {
           </span>
         </div>
       </div>
-      <p className="text-xs text-gray-400">
+      <p className="text-sm text-gray-400">
         현재 {status.currentOccupancy}명 / 정원 {status.capacity}명 이용 중
       </p>
     </div>
@@ -64,7 +64,7 @@ export function LiveCongestionMini({ status }: { status: PopupLiveStatus }) {
   return (
     <div className="flex items-center gap-1.5">
       <Segments label={status.congestionLabel} size="sm" />
-      <span className={`text-[11px] font-semibold ${LABEL_COLOR[status.congestionLabel]}`}>
+      <span className={`text-sm font-semibold ${LABEL_COLOR[status.congestionLabel]}`}>
         {status.congestionLabel}
       </span>
     </div>

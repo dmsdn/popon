@@ -26,7 +26,7 @@ export function NoticeBar() {
       {/* 더보기 클릭 → 마이페이지의 공지사항 목록으로 이동 */}
       <Link
         href="/mypage?menu=공지사항"
-        className="text-gray-400 text-xs flex-none ml-3"
+        className="text-gray-400 text-sm flex-none ml-3"
       >
         더보기 ›
       </Link>

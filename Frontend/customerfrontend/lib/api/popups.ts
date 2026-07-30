@@ -51,6 +51,7 @@ export interface PopupDetail {
   // (검색/홈 등)에서 카드마다 이미지를 따로 조회할 필요 없이 바로 쓸 수 있어요.
   thumbnailImages: string[];
   detailImages: string[];
+  wishlistCount?: number; // [신규] 찜한 수 - 백엔드 필드명이 다르면 알려주세요
 }
 
 export interface SnsLink {

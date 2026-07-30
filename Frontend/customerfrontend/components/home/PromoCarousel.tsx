@@ -134,7 +134,7 @@ export function PromoCarousel() {
                   href={`/popup/${card.id}`}
                   className="flex-[0_0_100%] h-[300px] min-[600px]:flex-[0_0_600px] min-[600px]:h-[600px] min-[600px]:mr-4 min-[600px]:rounded-2xl overflow-hidden bg-gray-50 flex items-end p-4"
                 >
-                  <span className="text-sm mobile:text-base font-medium text-gray-700">
+                  <span className="text-sm mobile:text-base font-medium text-gray-700 dark:text-gray-300">
                     {card.name}
                   </span>
                 </Link>
@@ -148,7 +148,7 @@ export function PromoCarousel() {
             key={index}
             onClick={() => emblaApi?.scrollTo(index)}
             className={`transition-all duration-300 rounded-full ${
-              active === index ? "w-6 h-2 bg-black" : "w-2 h-2 bg-gray-300"
+              active === index ? "w-6 h-2 bg-point" : "w-2 h-2 bg-gray-400 dark:bg-gray-600"
             }`}
           />
         ))}

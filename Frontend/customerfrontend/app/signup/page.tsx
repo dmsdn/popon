@@ -161,7 +161,7 @@ function SignupPageInner() {
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-xl font-bold">회원정보 입력</h1>
         {provider && (
-          <span className="flex items-center gap-1.5 text-xs text-gray-500">
+          <span className="flex items-center gap-1.5 text-sm text-gray-500">
             {PROVIDER_LABEL[provider]}
             {provider === "KAKAO" ? (
               <span className="w-6 h-6 rounded-full bg-[#FEE500] flex items-center justify-center">💬</span>
@@ -176,7 +176,7 @@ function SignupPageInner() {
 
       <div className="flex flex-col gap-6">
         <label className="block">
-          <span className="block text-sm font-medium text-gray-700 mb-2">
+          <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             닉네임 <span className="text-gray-400">*</span>
           </span>
           <input
@@ -184,12 +184,12 @@ function SignupPageInner() {
             value={nickname}
             onChange={(e) => setNickname(e.target.value)}
             maxLength={20}
-            className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm outline-none"
+            className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none"
           />
         </label>
 
         <label className="block">
-          <span className="block text-sm font-medium text-gray-700 mb-2">
+          <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             전화번호 <span className="text-gray-400">*</span>
           </span>
           <input
@@ -199,12 +199,12 @@ function SignupPageInner() {
             onChange={(e) => setPhone(formatPhoneInput(e.target.value))}
             placeholder="010-0000-0000"
             maxLength={13}
-            className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm outline-none"
+            className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none"
           />
         </label>
 
         <label className="block">
-          <span className="block text-sm font-medium text-gray-700 mb-2">
+          <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             이메일 <span className="text-gray-400 font-normal">(선택)</span>
           </span>
           <input
@@ -212,18 +212,18 @@ function SignupPageInner() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="000@example.com"
-            className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm outline-none"
+            className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none"
           />
         </label>
 
         <div className="block">
-          <span className="block text-sm font-medium text-gray-700 mb-2">
+          <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             생년월일 <span className="text-gray-400 font-normal">(선택)</span>
           </span>
           <button
             type="button"
             onClick={() => setShowBirthPicker(true)}
-            className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm text-left"
+            className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm text-left"
           >
             {birthDate || <span className="text-gray-400">생년월일을 선택해주세요</span>}
           </button>
@@ -233,7 +233,7 @@ function SignupPageInner() {
         )}
 
         <div>
-          <span className="block text-sm font-medium text-gray-700 mb-2">
+          <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             성별 <span className="text-gray-400 font-normal">(선택)</span>
           </span>
           <div className="flex gap-2">
@@ -247,7 +247,7 @@ function SignupPageInner() {
                 type="button"
                 onClick={() => setGender(value)}
                 className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-3 text-sm border ${
-                  gender === value ? "border-gray-900 text-gray-900 font-medium" : "border-gray-200 text-gray-500"
+                  gender === value ? "border-gray-900 text-gray-900 dark:text-white font-medium" : "border-gray-200 dark:border-gray-800 text-gray-500"
                 }`}
               >
                 <span
@@ -265,18 +265,18 @@ function SignupPageInner() {
 
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="block text-sm font-medium text-gray-700">동의</span>
+            <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">동의</span>
             <button
               type="button"
               onClick={handleOpenTerms}
-              className="text-xs text-gray-400 underline underline-offset-2"
+              className="text-sm text-gray-400 underline underline-offset-2"
             >
               약관 더보기
             </button>
           </div>
           <div className="flex flex-col gap-3">
             {[...REQUIRED_TERMS, ...OPTIONAL_TERMS].map((term) => (
-              <label key={term.id} className="flex items-center gap-2 text-sm text-gray-700">
+              <label key={term.id} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                 <input
                   type="checkbox"
                   checked={!!agreedTerms[term.id]}
@@ -295,7 +295,7 @@ function SignupPageInner() {
             onClick={() => setShowTerms(false)}
           >
             <div
-              className="bg-white rounded-xl px-6 py-6 w-full max-w-md max-h-[70vh] overflow-y-auto"
+              className="bg-white dark:bg-gray-900 rounded-xl px-6 py-6 w-full max-w-md max-h-[70vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               {termsError ? (
@@ -305,7 +305,7 @@ function SignupPageInner() {
               ) : (
                 <>
                   <p className="text-base font-semibold mb-3">{terms.title}</p>
-                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap mb-6">
+                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap mb-6">
                     {terms.content}
                   </p>
                 </>
@@ -313,7 +313,7 @@ function SignupPageInner() {
               <button
                 type="button"
                 onClick={() => setShowTerms(false)}
-                className="w-full rounded-full py-3 text-sm font-medium bg-gray-100 text-gray-700"
+                className="w-full rounded-full py-3 text-sm font-medium bg-gray-100 text-gray-700 dark:text-gray-300"
               >
                 닫기
               </button>
@@ -325,7 +325,7 @@ function SignupPageInner() {
             있었어요 - 닉네임/전화번호도 같이 채워야 하는데 그게 눈에 잘 안 띄었던
             것 같아서, 정확히 뭐가 빠졌는지 바로 알려주는 안내를 넣었어요. */}
         {!canSubmit && !submitting && (
-          <p className="text-xs text-red-500 -mt-2">
+          <p className="text-sm text-red-500 -mt-2">
             {[
               nickname.trim().length === 0 && "닉네임",
               !isValidPhone(phone) && "전화번호",
@@ -341,7 +341,7 @@ function SignupPageInner() {
           type="button"
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="w-full rounded-full py-3.5 mt-4 text-sm font-medium bg-gray-100 text-gray-900 disabled:opacity-60 enabled:bg-gray-900 enabled:text-white"
+          className="w-full rounded-full py-3.5 mt-4 text-sm font-medium bg-gray-100 text-gray-900 dark:text-white disabled:opacity-60 enabled:bg-gray-900 enabled:text-white"
         >
           {submitting ? "저장하는 중..." : "동의하고 가입하기"}
         </button>
