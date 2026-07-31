@@ -101,7 +101,9 @@ function nextMockId(reviews: Review[]): number {
   return reviews.reduce((max, r) => Math.max(max, r.id), 0) + 1;
 }
 
-function validateRating(rating: number) {
+function validateRating(rating: number | undefined) {
+  // [수정] 방문 미인증 댓글은 rating 자체가 없어요 - 그 경우엔 검증을 건너뛰어요.
+  if (rating === undefined) return;
   if (rating < 0.5 || rating > 5) {
     throw new Error("별점은 0.5점에서 5점 사이여야 해요.");
   }
@@ -128,7 +130,7 @@ function mockCreateReview(payload: ReviewCreatePayload): Review {
   const review: Review = {
     id: nextMockId(reviews),
     popupId: payload.popupId,
-    rating: payload.rating,
+    rating: payload.rating ?? null,
     content: payload.content,
     imageUrls: payload.imageUrls ?? [],
     likeCount: 0,
@@ -164,7 +166,7 @@ function mockUpdateReview(id: number, payload: ReviewCreatePayload): Review {
 
   const updated: Review = {
     ...reviews[idx],
-    rating: payload.rating,
+    rating: payload.rating ?? null,
     content: payload.content,
     imageUrls: payload.imageUrls ?? [],
     visitDate: payload.visitDate ?? reviews[idx].visitDate,

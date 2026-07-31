@@ -202,7 +202,7 @@ export function getPopup(popupId: string | number) {
 export function getPopupWishlistCount(popupId: string | number) {
   return withMockFallback(
     () => apiFetch<{ wishlistCount: number }>(`/api/popups/${popupId}/wishlist-count`),
-    () => Promise.resolve({ wishlistCount: 0 })
+    () => ({ wishlistCount: 0 })
   );
 }
 
