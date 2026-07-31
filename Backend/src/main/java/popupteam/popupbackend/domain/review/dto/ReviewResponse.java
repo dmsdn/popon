@@ -18,6 +18,7 @@ public class ReviewResponse {
     private final long likeCount;
     private final boolean likedByMe;
     private final LocalDate visitDate;
+    private final boolean visited; // 방문자 댓글이면 true, 일반 댓글이면 false (프론트 구분용)
     private final boolean hidden;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
@@ -51,6 +52,7 @@ public class ReviewResponse {
         this.likeCount = likeCount;
         this.likedByMe = likedByMe;
         this.visitDate = review.getVisitDate();
+        this.visited = review.isVisited();
         this.hidden = review.isHidden();
         this.nickname = nickname;
         this.createdAt = review.getCreatedAt();
