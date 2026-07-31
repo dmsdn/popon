@@ -17,6 +17,15 @@ export function clearToken() {
   localStorage.removeItem("accessToken");
 }
 
+// [신규] 401이 오면 지금까지는 localStorage의 토큰만 지웠어요 - React 쪽
+// customer 상태, 찜 목록 캐시 등은 그대로 남아있어서 화면상으론 로그인된
+//것처럼 계속 보였어요. AuthContext가 앱 시작 시 이 콜백을 등록해두면,
+// apiFetch가 401을 받을 때마다 진짜 "전체 로그아웃"을 실행할 수 있어요.
+let onForceLogout: (() => void) | null = null;
+export function registerForceLogoutHandler(handler: () => void) {
+  onForceLogout = handler;
+}
+
 // [수정] 지금까지 에러를 그냥 Error(message)로만 던져서, mock 대체 로직(withMockFallback)이
 // "백엔드가 아예 안 떠있음"과 "백엔드는 정상인데 이 데이터가 없음(404 등)"을 구분할
 // 방법이 없었어요. 그래서 존재하지 않는 팝업 같은 정상적인 404까지도 mock 데이터로
@@ -60,6 +69,7 @@ export async function apiFetch<T>(
   if (!res.ok) {
     if (res.status === 401) {
       clearToken();
+      onForceLogout?.();
     }
     // 500 응답에 아무 message도 없는 건 지금까지 겪어본 바로는 대부분
     // "백엔드가 제대로 안 떠있거나 막 재시작 중"일 때 나오는 패턴이었어요.
