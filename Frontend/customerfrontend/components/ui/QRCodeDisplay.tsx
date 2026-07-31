@@ -9,17 +9,25 @@
 // 서비스(api.qrserver.com, 널리 쓰이는 무료 서비스)를 <img>로 불러오는 방식을
 // 썼어요. 오프라인/인터넷 안 되는 상황에서는 이미지가 안 뜨는 게 유일한 단점이에요.
 //
-// ⚠️ 백엔드가 문자로 보내는 QR 내용은 "https://your-domain.com/qr/{token}"인데
-// your-domain.com이 실제 배포 주소가 아니라 임시 placeholder예요. 여기서는 지금
-// 접속 중인 실제 주소(window.location.origin)를 써서 만들어요 - 그래서 문자로
-// 온 QR이랑 이 화면에 뜨는 QR이 당장은 다른 URL을 가리킬 수 있어요. 백엔드가
-// 실제 도메인으로 이 값을 설정하면 그때 맞춰지니, 백엔드 요청 목록에 있어요.
+// [해결됨 7/31] 위 ⚠️는 두 갈래로 정리됐어요.
+//   1) 백엔드 app.qr-base-url 이 배포 주소로 설정됐어요 (문자 링크가 실제로 열려요).
+//   2) 그 링크가 도착하는 /qr/{token} 페이지를 새로 만들었어요 (그전엔 404였어요).
+// 그리고 이 컴포넌트는 이제 주소가 아니라 토큰만 담아요 - 아래 주석 참고.
 
 export function QRCodeDisplay({ qrToken, size = 200 }: { qrToken: string; size?: number }) {
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const qrContent = `${origin}/qr/${qrToken}`;
+  // 7/31 — QR에 담는 값을 주소에서 **토큰 자체**로 바꿨다.
+  //
+  // 그전에는 `${window.location.origin}/qr/${qrToken}`을 담았는데, 이 컴포넌트가
+  // 서버에서 먼저 렌더되는 자리에 있어 **`window`가 없어 origin이 빈 문자열**이 됐다.
+  // 결과가 `/qr/{token}` — 어디도 가리키지 않는 반쪽짜리 주소였다.
+  //
+  // 애초에 이 QR을 읽는 것은 **주최자 화면의 스캐너**이고, 그쪽은 토큰으로 입장을 처리한다
+  // (checkinUnifiedQr). 주소를 담아 봐야 스캐너가 다시 토큰을 뽑아내야 할 뿐이다.
+  // 토큰만 담으면 SSR 문제도 사라지고 QR도 짧아져 스캔이 쉬워진다.
+  //
+  // 주최자 스캐너는 옛 형식(주소)도 계속 받아 준다 — 이미 발송된 문자·메일이 남아 있으므로.
   const src = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(
-    qrContent
+    qrToken
   )}`;
 
   return (

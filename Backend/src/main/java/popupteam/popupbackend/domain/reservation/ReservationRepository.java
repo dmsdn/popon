@@ -78,8 +78,9 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     List<Reservation> findByPopupIdAndStatus(Long popupId, ReservationStatus status);
 
     // 진짜 방문객(체크인 완료)의 연령 분포 통계용 - 예약만 하고 안 온 사람은 제외
+// 주의: birthDate가 NULL인 경우도 일부러 포함시킴 (미상 버킷으로 잡아서 성별 분포와 총 인원수를 맞추기 위함)
     @Query("SELECT r.customer.birthDate FROM Reservation r WHERE r.popup.id = :popupId " +
-            "AND r.entryStatus = 'CHECKED_IN' AND r.customer.birthDate IS NOT NULL")
+            "AND r.entryStatus = 'CHECKED_IN'")
     List<java.time.LocalDate> findBirthDatesOfCheckedInVisitors(@Param("popupId") Long popupId);
 
     // 진짜 방문객(체크인 완료)의 성별 분포 통계용
