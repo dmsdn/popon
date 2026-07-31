@@ -231,7 +231,7 @@ export default function MapPage() {
           type="button"
           onClick={() => setShowUpcoming((v) => !v)}
           className={`flex-none whitespace-nowrap text-base px-3 py-1.5 rounded-full border ${
-            showUpcoming ? "bg-gray-900 text-white border-gray-900" : "border-gray-300 text-gray-600 dark:text-gray-400"
+            showUpcoming ? "bg-gray-900 text-white border-gray-900" : "border-gray-300 dark:border-[#282B32] text-gray-600 dark:text-gray-400"
           }`}
         >
           운영예정 {showUpcoming ? "숨기기" : "함께 보기"}
