@@ -244,7 +244,7 @@ export default function AdminRoot() {
       {/* ── 우측 영역 ── */}
       <div className="flex-1 min-w-0 flex flex-col">
         <header className="h-14 bg-card border-b border-border flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40">
-          <div className="text-sm font-medium lg:hidden">팝업온 Admin</div>
+          <div className="text-sm font-medium lg:hidden">팝온[POP-ON] Admin</div>
           <div className="hidden lg:flex items-center gap-3 text-xs text-muted-foreground">
             <span>{todayLabel()}</span>
             {admin && times?.iat && (

@@ -1,6 +1,6 @@
 import { createBrowserRouter, Navigate } from "react-router";
 
-// ── 주최자 정보제공 UI (팝업온 소개 사이트) ──
+// ── 주최자 정보제공 UI (팝온 소개 사이트) ──
 import InfoRoot from "./info/InfoRoot";
 import Home from "./info/pages/Home";
 // 7/30 — 팝업콘텐츠 등록(ContentRegister) + 예약·웨이팅 통합관리(WaitingManagement)를

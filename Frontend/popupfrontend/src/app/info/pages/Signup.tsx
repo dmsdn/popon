@@ -319,7 +319,7 @@ export default function Signup() {
             <div className="flex items-start gap-3 p-4 rounded-sm bg-white/5 border border-white/10">
               <Building2 size={16} className="text-accent shrink-0 mt-0.5" />
               <p className={`text-xs leading-relaxed ${mutedText}`}>
-                팝업온 주최자는 <span className="text-foreground font-medium">사업자 인증</span>이 필요합니다. 입력한 번호는 국세청 사업자등록 상태조회로 진위를 확인합니다.
+                팝온 주최자는 <span className="text-foreground font-medium">사업자 인증</span>이 필요합니다. 입력한 번호는 국세청 사업자등록 상태조회로 진위를 확인합니다.
               </p>
             </div>
 
