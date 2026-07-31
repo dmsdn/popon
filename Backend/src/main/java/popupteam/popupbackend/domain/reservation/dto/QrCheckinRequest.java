@@ -1,6 +1,7 @@
 package popupteam.popupbackend.domain.reservation.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 
 @Getter
@@ -8,8 +9,8 @@ public class QrCheckinRequest {
     @NotBlank
     private String qrToken;
 
-    // 스캐너 화면에서 선택 중인 팝업 (7/31 추가).
-    // 주최자가 팝업을 여러 개 운영할 때 다른 팝업 손님의 QR을 여기서 찍어 버리는 것을 막는다.
-    // 필수로 두지 않은 이유: 프론트 배포 전 옛 클라이언트가 남아 있어도 종전대로 동작해야 하기 때문.
+    // 지금 스캔 중인 화면(현장)이 속한 팝업 ID - 같은 주최자 소유 팝업이라도
+    // QR이 다른 팝업 소속이면 거부하기 위한 필수 검증값
+    @NotNull
     private Long popupId;
 }
