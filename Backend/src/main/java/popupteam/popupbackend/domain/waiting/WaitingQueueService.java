@@ -152,10 +152,15 @@ public class WaitingQueueService {
     }
 
     // 통합 QR 체크인 (예약 QR / 현장웨이팅 QR 둘 다 시도)
-    public WaitingResponse enterByQr(String qrToken) {
+    // popupId = 스캐너 화면에서 선택 중인 팝업. 다른 팝업의 QR을 찍는 것을 막는다 (7/31).
+    // null이면(구버전 클라이언트) 검사하지 않는다.
+    public WaitingResponse enterByQr(String qrToken, Long popupId) {
         WaitingQueue w = waitingQueueRepository.findByQrToken(qrToken)
                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 QR 코드입니다."));
 
+        if (popupId != null && !popupId.equals(w.getPopup().getId())) {
+            throw new IllegalArgumentException("다른 팝업의 QR 코드입니다. 현재 선택한 팝업의 QR만 처리할 수 있습니다.");
+        }
         if (w.getStatus() == WaitingStatus.ENTERED) {
             throw new IllegalArgumentException("이미 입장 처리된 대기입니다.");
         }
