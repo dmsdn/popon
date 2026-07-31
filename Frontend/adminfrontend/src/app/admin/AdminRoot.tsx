@@ -7,6 +7,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { getToken, getPopups, getAdminCsList, getAdminInquiries, getAdminReports, Popup } from "../lib/api";
 import { loadSeen, saveSeen, unseenCount } from "../lib/navBadges";
+import Logo from "../components/Logo";
 
 const MENU = [
   { group: "모니터링", items: [
@@ -199,11 +200,9 @@ export default function AdminRoot() {
       {/* ── 좌측 다크 사이드바 ── */}
       <aside className="hidden lg:flex w-60 shrink-0 bg-[#191d24] text-white/80 flex-col sticky top-0 h-screen overflow-y-auto">
         <Link to="/admin" className="flex items-center gap-2 px-5 h-14 border-b border-white/10">
-          <div className="w-7 h-7 rounded-sm bg-accent flex items-center justify-center">
-            <span className="text-accent-foreground text-xs font-bold" style={{ fontFamily: "'DM Mono', monospace" }}>PO</span>
-          </div>
+          <Logo height={20} className="shrink-0" />
           <div className="leading-tight">
-            <div className="text-sm font-semibold text-white">팝온[POP-ON] Admin</div>
+            <div className="text-sm font-semibold text-white">Admin</div>
             <div className="text-[10px] text-white/40">Platform Operations</div>
           </div>
         </Link>
@@ -244,7 +243,7 @@ export default function AdminRoot() {
       {/* ── 우측 영역 ── */}
       <div className="flex-1 min-w-0 flex flex-col">
         <header className="h-14 bg-card border-b border-border flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40">
-          <div className="text-sm font-medium lg:hidden">팝업온 Admin</div>
+          <div className="flex items-center gap-1.5 lg:hidden"><Logo height={16} /><span className="text-sm font-medium">Admin</span></div>
           <div className="hidden lg:flex items-center gap-3 text-xs text-muted-foreground">
             <span>{todayLabel()}</span>
             {admin && times?.iat && (

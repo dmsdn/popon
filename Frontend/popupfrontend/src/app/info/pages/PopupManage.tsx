@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { getPopups, getPopupImages, Popup } from "../../lib/api";
+import Logo from "../../components/Logo";
 
 // ── 스크롤 리빌 — 화면에 들어오면 한 번만 페이드+슬라이드 업 ──
 function Reveal({ children, delay = 0, className = "" }: { children: React.ReactNode; delay?: number; className?: string }) {
@@ -52,10 +53,10 @@ const STEPS = [
   },
   {
     num: "02", icon: MapPin, title: "공간 및 위치 연결",
-    desc: "팝업온 파트너 공간 중 운영할 장소를 선택하거나 직접 주소를 입력합니다.",
+    desc: "팝온 파트너 공간 중 운영할 장소를 선택하거나 직접 주소를 입력합니다.",
     detail: [
       "파트너 공간을 선택하면 층별 도면, 시설 정보, 반입 규정이 자동으로 연동됩니다.",
-      "직접 주소 입력 시 주최자가 직접 계약한 공간에서 팝업온 플랫폼을 활용할 수 있습니다.",
+      "직접 주소 입력 시 주최자가 직접 계약한 공간에서 팝온 플랫폼을 활용할 수 있습니다.",
       "지도 핀 위치는 소비자용 서비스 페이지에 그대로 노출되므로 정확히 입력해 주세요.",
     ],
   },
@@ -83,7 +84,7 @@ const STEPS = [
     desc: "매일 운영 시간, 입장료, 사전 예약 필요 여부 등 방문자 정보를 설정합니다.",
     detail: [
       "요일별로 다른 운영 시간을 설정할 수 있습니다 (예: 평일 11-20시, 주말 10-21시).",
-      "사전 예약제 운영 시 팝업온의 예약 시스템과 연동하여 정원 관리가 가능합니다.",
+      "사전 예약제 운영 시 팝온의 예약 시스템과 연동하여 정원 관리가 가능합니다.",
       "입장료가 있는 경우 온라인 결제 연동을 별도 신청하시면 선매출도 가능합니다.",
     ],
   },
@@ -227,9 +228,7 @@ export default function PopupManage() {
         <div className="max-w-7xl mx-auto px-6 lg:px-10 pt-24 pb-16 lg:pt-32 lg:pb-20 grid lg:grid-cols-2 gap-14 items-center">
           <Reveal>
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-11 h-11 rounded-sm bg-accent flex items-center justify-center">
-                <span className="text-accent-foreground text-base font-bold" style={{ fontFamily: "'DM Mono', monospace" }}>PO</span>
-              </div>
+              <Logo height={30} className="shrink-0" />
               {/* 페이지의 유일한 h1 — 스크린 리더·검색엔진이 이 페이지의 주제로 읽는 제목 */}
               <h1 className="text-2xl font-extrabold text-foreground tracking-wide" style={{ fontFamily: "'NanumSquareRound', sans-serif" }}>팝업 통합 관리</h1>
             </div>

@@ -16,6 +16,16 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse(e.getMessage()));
     }
 
+    // 외부 의존 서비스를 지금 쓸 수 없어 처리를 못 한 경우 (7/31 신설).
+    // 사용자 입력이 잘못된 게 아니므로 400이 아니라 503이어야 한다 — 클라이언트가
+    // "다시 시도하면 될 수도 있다"를 상태 코드만으로 구분할 수 있게 한다.
+    // 첫 사례: 국세청 사업자등록 상태조회가 503으로 죽었을 때의 회원가입 차단.
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ErrorResponse> handleServiceUnavailable(IllegalStateException e) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(new ErrorResponse(e.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException e) {
         String message = e.getBindingResult().getFieldErrors().stream()

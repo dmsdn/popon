@@ -11,6 +11,12 @@ const BACKEND_ORIGIN = process.env.BACKEND_ORIGIN ?? "http://localhost:8080";
 console.log(`[next.config] 백엔드 프록시 대상: ${BACKEND_ORIGIN}`);
 
 const nextConfig: NextConfig = {
+  // 자체 호스팅 배포용 산출물 (7/31).
+  // 기본 빌드는 .next 전체가 700MB 넘고 서버에서 node_modules를 또 설치해야 한다.
+  // standalone은 실제로 쓰이는 파일만 추려 .next/standalone에 모으고 최소 server.js를 만들어 준다.
+  // 단, public/ 과 .next/static/ 은 CDN이 맡는다는 전제라 자동 복사되지 않는다 — 배포 스크립트에서 같이 옮길 것.
+  output: "standalone",
+
   async rewrites() {
     return [
       { source: "/api/:path*", destination: `${BACKEND_ORIGIN}/api/:path*` },
