@@ -25,6 +25,7 @@ public class WaitingQueueService {
     private final popupteam.popupbackend.common.notification.EmailNotificationService emailNotificationService;
     private final popupteam.popupbackend.common.notification.SmsNotificationService smsNotificationService;
     private final popupteam.popupbackend.domain.eventlog.TransactionEventLogService transactionEventLogService;
+    private final popupteam.popupbackend.domain.business.BusinessRepository businessRepository;
 
     @org.springframework.beans.factory.annotation.Value("${app.qr-base-url}")
     private String qrBaseUrl;
@@ -81,7 +82,6 @@ public class WaitingQueueService {
 
     // 패드 현황판: 현장웨이팅자만 (기존 방식 유지, 필요시 사용)
     public WaitingBoardResponse getBoard(Long popupId) {
-        // 이미 registeredAt 오름차순 정렬이므로, 리스트 인덱스가 곧 "내 앞 팀 수" (대기자별 COUNT 쿼리 불필요)
         List<WaitingQueue> waitingList = waitingQueueRepository
                 .findByPopupIdAndStatusOrderByRegisteredAtAsc(popupId, WaitingStatus.WAITING);
 
@@ -140,10 +140,26 @@ public class WaitingQueueService {
         return WaitingResponse.from(w, 0L);
     }
 
-    // 통합 QR 체크인 (예약 QR / 현장웨이팅 QR 둘 다 시도)
-    public WaitingResponse enterByQr(String qrToken) {
+    // 현장웨이팅 QR 체크인
+    // popupId: 지금 스캔 중인 화면(현장)이 속한 팝업 ID - 같은 주최자 소유 팝업이라도
+    // QR이 다른 팝업 소속이면 거부하기 위한 필수 검증값
+    public WaitingResponse enterByQr(String qrToken, Long popupId, String requesterEmail, boolean isAdmin) {
         WaitingQueue w = waitingQueueRepository.findByQrToken(qrToken)
                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 QR 코드입니다."));
+
+        // 1. 팝업 단위 검증 - 같은 주최자 소유 팝업이라도 "지금 스캔 중인 팝업"과 QR의 팝업이 다르면 무조건 거부
+        if (!w.getPopup().getId().equals(popupId)) {
+            throw new popupteam.popupbackend.common.exception.ForbiddenException("다른 팝업의 QR 코드는 사용할 수 없습니다.");
+        }
+
+        // 2. 소유권 검증 - 이 팝업이 실제로 요청자(주최자) 소유인지
+        if (!isAdmin) {
+            popupteam.popupbackend.domain.business.Business business = businessRepository.findByEmail(requesterEmail)
+                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사업자입니다."));
+            if (!w.getPopup().getBusiness().getId().equals(business.getId())) {
+                throw new popupteam.popupbackend.common.exception.ForbiddenException("본인이 등록한 팝업의 웨이팅만 처리할 수 있습니다.");
+            }
+        }
 
         if (w.getStatus() == WaitingStatus.ENTERED) {
             throw new IllegalArgumentException("이미 입장 처리된 대기입니다.");

@@ -86,7 +86,7 @@ public class ReservationController {
                                          @Valid @RequestBody QrCheckinRequest request) {
         String name = authentication.getName();
         boolean isAdmin = name != null && name.startsWith("admin:");
-        return ResponseEntity.ok(reservationService.checkinByQr(request.getQrToken(), name, isAdmin));
+        return ResponseEntity.ok(reservationService.checkinByQr(request.getQrToken(), request.getPopupId(), name, isAdmin));
     }
 
     // === 수동 입장확인 (QR 인식 안 될 때 대비) ===
