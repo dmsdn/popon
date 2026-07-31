@@ -146,11 +146,22 @@ export default function WaitingControl() {
 
   const selected = popups.find((p) => p.id === popupId) ?? null;
   const slotMap = useMemo(() => Object.fromEntries(slots.map((s) => [s.id, s])), [slots]);
-  // 예약 행의 소속 슬롯 역추적: 보드의 joinedAt(슬롯 시작시각) ↔ 슬롯 날짜+시작시각 매칭
-  const slotByStart = useMemo(
-    () => Object.fromEntries(slots.map((s) => [`${s.slotDate}T${s.startTime.slice(0, 5)}`, s])),
-    [slots],
-  );
+  // ⚠ 7/31 — 여기 있던 slotByStart 매칭을 걷어냈다.
+  //
+  // 「보드의 joinedAt(슬롯 시작시각) ↔ 슬롯 날짜+시작시각」으로 역추적하고 있었는데,
+  // **joinedAt은 슬롯 시작시각이 아니라 예약을 만든 시각이다.** 주석의 전제가 틀렸다.
+  //
+  //   슬롯 키   "2026-07-31T11:00"   (30분 단위로 딱 떨어짐)
+  //   joinedAt  "2026-07-31T15:05"   (사람이 예약을 누른 순간)
+  //
+  // 예약 시각이 슬롯 시작시각과 우연히 분 단위까지 같지 않으면 절대 안 맞는다.
+  // 그래서 **모든 예약의 slotId가 null이 됐고**, 슬롯을 고르면
+  // `row.slotId === slotFilter`가 전부 거짓이라 예약자가 한 명도 안 나왔다.
+  // 현장 웨이팅만 보인 이유는 그쪽이 슬롯 조건을 안 타기 때문이다.
+  //
+  // 통합 보드 응답에는 slotId가 없고 refId(예약 id)만 있다. 대신 예약 상세 목록
+  // (getPopupReservations)에 slotId가 실려 오므로, 시각을 맞춰 보는 대신
+  // **id로 정확히 잇는다.** 아래 rosterById를 그대로 쓴다.
   // 예약 상세(입장 시각 등)를 보드 행에 붙이기 위한 맵
   const rosterById = useMemo(() => Object.fromEntries(roster.map((r) => [r.id, r])), [roster]);
 
@@ -182,7 +193,9 @@ export default function WaitingControl() {
       .filter((e) => (mode === "WALKIN" ? e.source !== "RESERVATION" : true))
       .filter((e) => (mode === "RESERVATION" ? e.source !== "ONSITE_WAITING" : true))
       .map((e) => {
-        const slot = e.source === "RESERVATION" ? slotByStart[e.joinedAt?.slice(0, 16) ?? ""] : undefined;
+        // 예약 행은 refId(예약 id)로 상세를 찾아 그 slotId를 쓴다 (7/31).
+        // 시각 문자열로 맞춰 보던 옛 방식은 joinedAt이 예약 생성 시각이라 절대 안 맞았다.
+        const slotId = e.source === "RESERVATION" ? (rosterById[e.refId]?.slotId ?? null) : null;
         return {
           key: `${e.source}-${e.refId}`,
           source: e.source,
@@ -190,12 +203,12 @@ export default function WaitingControl() {
           name: e.displayName,
           contact: e.phoneNumber ?? "-",
           partySize: e.partySize,
-          slotId: slot?.id ?? null,
+          slotId,
           enteredAt: null,
           noShow: e.entryStatus === "NO_SHOW" || e.entryStatus === "CANCELLED",
         };
       });
-  }, [board, slotByStart, mode]);
+  }, [board, rosterById, mode]);
 
   // 현장 웨이팅은 "지금 대기 중"이므로 슬롯과 무관하게 항상 표시.
   // 슬롯 선택은 사전예약 편입분에만 적용 (7/25 피드백 — 수동 추가분이 특정 슬롯 뷰에서 사라지던 문제 해결)
@@ -325,8 +338,23 @@ export default function WaitingControl() {
     }
   };
 
-  const processQrValue = async (raw: string) => {
+  // 스캔·입력값에서 토큰만 뽑는다 (7/31).
+  //
+  // 손님이 보여 주는 QR에는 **토큰이 아니라 주소**가 들어 있다 —
+  // 소비자 앱의 QRCodeDisplay가 `{origin}/qr/{token}` 으로 만들고,
+  // 백엔드가 문자·메일로 보내는 안내도 같은 형식이다.
+  // 그런데 서버는 `findByQrToken(값)`으로 **토큰을 그대로** 찾는다.
+  // 스캔한 문자열을 그대로 보내면 URL 전체가 토큰으로 조회돼 항상 실패했다.
+  //
+  // 직원이 토큰만 손으로 입력하는 경우도 있으므로 **양쪽 다 받아** 준다.
+  const extractQrToken = (raw: string) => {
     const v = raw.trim();
+    const m = v.match(/\/qr\/([^/?#\s]+)/); // ".../qr/{token}" 형태면 뒤쪽만
+    return m ? m[1] : v;
+  };
+
+  const processQrValue = async (raw: string) => {
+    const v = extractQrToken(raw);
     if (!v || !popupId) return;
     try {
       // 통합 QR 체크인 — 예약·웨이팅 QR 모두 서버가 판별해 입장 처리·시각 기록
@@ -729,9 +757,6 @@ export default function WaitingControl() {
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">
                     이름·전화번호·이메일 입력 폼으로 연결됩니다. 제출하면 이 대기열에 자동 추가되고, 당일 대기번호와 입장 QR이 발급됩니다.
-                  </p>
-                  <p className="text-[11px] text-emerald-600 mt-1.5">
-                    백엔드 실연동 완료 — 메일·문자 발송은 발신 계정 설정 시 동작
                   </p>
                 </div>
               </div>
