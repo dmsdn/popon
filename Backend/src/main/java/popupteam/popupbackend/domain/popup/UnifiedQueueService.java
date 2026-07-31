@@ -111,8 +111,22 @@ public class UnifiedQueueService {
 
     }
 
+    // 스캐너가 지금 열어 둔 팝업과 QR의 팝업이 같은지 확인한다 (7/31 추가).
+    //
+    // 그전 검사는 「이 QR의 팝업 주인이 요청자인가」뿐이었다. 주최자가 팝업을 여러 개 운영하면
+    // 그 검사는 전부 통과하므로, A팝업 현장에서 B팝업 손님의 QR을 찍어도 입장 처리가 됐다.
+    // 명단이 어긋나고 정원 집계가 틀어지는 실사고라 팝업 일치까지 본다.
+    // scannerPopupId가 null이면(=popupId를 안 보내는 구버전 클라이언트) 검사하지 않는다.
+    private static void assertSamePopup(Long scannerPopupId, Long qrPopupId) {
+        if (scannerPopupId == null) return;
+        if (!scannerPopupId.equals(qrPopupId)) {
+            throw new IllegalArgumentException("다른 팝업의 QR 코드입니다. 현재 선택한 팝업의 QR만 처리할 수 있습니다.");
+        }
+    }
+
     // 통합 QR 체크인: 예약 QR 먼저 시도, 없으면 웨이팅 QR 시도
-    public UnifiedQueueEntryResponse checkinByQr(String qrToken, String requesterEmail, boolean isAdmin) {
+    // popupId = 스캐너 화면에서 선택 중인 팝업 (null이면 팝업 일치 검사 생략)
+    public UnifiedQueueEntryResponse checkinByQr(String qrToken, Long popupId, String requesterEmail, boolean isAdmin) {
         var reservationOpt = reservationRepository.findByQrToken(qrToken);
         if (reservationOpt.isPresent()) {
             var r = reservationOpt.get();
@@ -120,6 +134,7 @@ public class UnifiedQueueService {
             if (!isAdmin && !r.getPopup().getBusiness().getEmail().equals(requesterEmail)) {
                 throw new popupteam.popupbackend.common.exception.ForbiddenException("본인이 등록한 팝업의 예약만 처리할 수 있습니다.");
             }
+            assertSamePopup(popupId, r.getPopup().getId());
             if (r.getEntryStatus() == popupteam.popupbackend.domain.reservation.EntryStatus.CHECKED_IN) {
                 throw new IllegalArgumentException("이미 입장 처리된 예약입니다.");
             }
@@ -148,6 +163,7 @@ public class UnifiedQueueService {
             if (!isAdmin && !w.getPopup().getBusiness().getEmail().equals(requesterEmail)) {
                 throw new popupteam.popupbackend.common.exception.ForbiddenException("본인이 등록한 팝업의 웨이팅만 처리할 수 있습니다.");
             }
+            assertSamePopup(popupId, w.getPopup().getId());
             if (w.getStatus() == popupteam.popupbackend.domain.waiting.WaitingStatus.ENTERED) {
                 throw new IllegalArgumentException("이미 입장 처리된 웨이팅입니다.");
             }
@@ -174,7 +190,7 @@ public class UnifiedQueueService {
     }
 
     // 통합 QR 퇴장 처리: 예약 QR 먼저 시도, 없으면 웨이팅 QR 시도
-    public UnifiedQueueEntryResponse exitByQr(String qrToken, String requesterEmail, boolean isAdmin) {
+    public UnifiedQueueEntryResponse exitByQr(String qrToken, Long popupId, String requesterEmail, boolean isAdmin) {
         var reservationOpt = reservationRepository.findByQrToken(qrToken);
         if (reservationOpt.isPresent()) {
             var r = reservationOpt.get();
@@ -182,6 +198,7 @@ public class UnifiedQueueService {
             if (!isAdmin && !r.getPopup().getBusiness().getEmail().equals(requesterEmail)) {
                 throw new popupteam.popupbackend.common.exception.ForbiddenException("본인이 등록한 팝업의 예약만 처리할 수 있습니다.");
             }
+            assertSamePopup(popupId, r.getPopup().getId());
             if (r.getEntryStatus() != popupteam.popupbackend.domain.reservation.EntryStatus.CHECKED_IN) {
                 throw new IllegalArgumentException("입장 처리되지 않은 예약은 퇴장 처리할 수 없습니다.");
             }
@@ -208,6 +225,7 @@ public class UnifiedQueueService {
             if (!isAdmin && !w.getPopup().getBusiness().getEmail().equals(requesterEmail)) {
                 throw new popupteam.popupbackend.common.exception.ForbiddenException("본인이 등록한 팝업의 웨이팅만 처리할 수 있습니다.");
             }
+            assertSamePopup(popupId, w.getPopup().getId());
             if (w.getStatus() != popupteam.popupbackend.domain.waiting.WaitingStatus.ENTERED) {
                 throw new IllegalArgumentException("입장 처리되지 않은 웨이팅은 퇴장 처리할 수 없습니다.");
             }

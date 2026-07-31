@@ -72,11 +72,19 @@ public class WaitingQueueController {
 
     // 주최자/관리자: QR 스캔 입장확인 (현장웨이팅 QR 전용)
     @PostMapping("/api/waiting/checkin/qr")
+    // 7/31 — body에 popupId를 함께 받아 「지금 이 팝업의 QR인가」까지 확인한다.
     public ResponseEntity<?> checkinByQr(Authentication authentication,
-                                         @RequestBody java.util.Map<String, String> body) {
+                                         @RequestBody java.util.Map<String, Object> body) {
         requireStaff(authentication);
-        String qrToken = body.get("qrToken");
-        return ResponseEntity.ok(waitingQueueService.enterByQr(qrToken));
+        String qrToken = body.get("qrToken") == null ? null : String.valueOf(body.get("qrToken"));
+        Long popupId = null;
+        Object raw = body.get("popupId");
+        if (raw instanceof Number n) {
+            popupId = n.longValue();
+        } else if (raw != null) {
+            try { popupId = Long.parseLong(String.valueOf(raw).trim()); } catch (NumberFormatException ignored) { }
+        }
+        return ResponseEntity.ok(waitingQueueService.enterByQr(qrToken, popupId));
     }
 
     // 주최자/관리자: 수동 취소 (customerId 넘기면 소비자 본인취소 경로로 대신 처리)
