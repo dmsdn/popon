@@ -136,7 +136,6 @@ export default function WalkinPage() {
               <Info size={13} className="text-blue-500 shrink-0 mt-0.5" />
               <p className="text-[11px] text-blue-800 leading-relaxed">
                 입장 QR은 입력하신 이메일·전화번호로도 발송됩니다.
-                <br />(발송은 백엔드 메일·SMS 발신 계정 설정 시 동작 — 미설정이면 이 화면에서 확인)
               </p>
             </div>
           </div>

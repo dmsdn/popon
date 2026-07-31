@@ -3,7 +3,8 @@ import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
   CartesianGrid, Tooltip, BarChart, Bar,
 } from "recharts";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowUpRight } from "lucide-react";
+import { Link, useNavigate } from "react-router";
 import {
   getAdminDashboard, AdminDashboard as Dashboard,
   getPopupRanking, PopupVisitorRanking,
@@ -18,6 +19,7 @@ import {
 type Period = "DAILY30" | "MONTHLY12";
 
 export default function PlatformStats() {
+  const navigate = useNavigate();
   const [period, setPeriod] = useState<Period>("DAILY30");
   const [dash, setDash] = useState<Dashboard | null>(null);
   const [ranking, setRanking] = useState<PopupVisitorRanking[]>([]);
@@ -58,7 +60,9 @@ export default function PlatformStats() {
     period: period === "DAILY30" ? r.period.slice(5) : r.period, // 일별은 MM-DD
     amount: Math.round(Number(r.totalAmount) / 10000), // 만원 단위
   }));
-  const top5 = ranking.slice(0, 5).map((r) => ({ name: r.popupTitle, visitors: r.visitorCount }));
+  // 7/31 — 막대를 눌러도 상세로 가게 popupId를 함께 싣는다.
+  // 오른쪽 「랭킹 전체」만 클릭되고 왼쪽 차트는 안 되면 같은 팝업인데 동작이 갈려 혼란스럽다.
+  const top5 = ranking.slice(0, 5).map((r) => ({ name: r.popupTitle, visitors: r.visitorCount, popupId: r.popupId }));
 
   return (
     <div className="flex flex-col gap-4">
@@ -139,9 +143,13 @@ export default function PlatformStats() {
           </div>
 
           {/* 방문자 랭킹 */}
-          <div className="grid lg:grid-cols-2 gap-3 items-start">
+          {/* 7/31 — items-start를 뺐다. 그리드 기본값(stretch)이라 같은 줄 카드가
+              같은 높이로 늘어나 아래가 직사각형으로 맞는다.
+              items-start면 카드마다 내용 높이가 달라 아랫변이 들쭉날쭉했다(310 vs 412). */}
+          <div className="grid lg:grid-cols-2 gap-3">
             <div className="bg-card border border-border rounded-sm p-4">
-              <div className="text-sm font-semibold mb-4">팝업별 방문자 TOP 5 (누적 체크인)</div>
+              <div className="text-sm font-semibold mb-1">팝업별 방문자 TOP 5 (누적 체크인)</div>
+              <p className="text-[11px] text-muted-foreground mb-3">막대를 누르면 해당 팝업 상세로 이동합니다.</p>
               <div className="h-60">
                 {top5.length === 0 ? (
                   <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
@@ -153,7 +161,17 @@ export default function PlatformStats() {
                       <XAxis type="number" hide />
                       <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={110} axisLine={false} tickLine={false} />
                       <Tooltip contentStyle={{ fontSize: 12, borderRadius: 4 }} formatter={(v) => `${Number(v).toLocaleString()}명`} />
-                      <Bar dataKey="visitors" fill="#E85D3C" radius={[0, 3, 3, 0]} barSize={18} />
+                      <Bar
+                        dataKey="visitors"
+                        fill="#E85D3C"
+                        radius={[0, 3, 3, 0]}
+                        barSize={18}
+                        cursor="pointer"
+                        onClick={(d: { payload?: { popupId?: number } }) => {
+                          const id = d?.payload?.popupId;
+                          if (id) navigate(`/admin/popups/${id}`);
+                        }}
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -166,14 +184,21 @@ export default function PlatformStats() {
                 {ranking.length === 0 && (
                   <li className="px-4 py-8 text-center text-xs text-muted-foreground">체크인 데이터가 없습니다.</li>
                 )}
+                {/* 7/31 — 행 전체를 팝업 상세로 연결. 그전에는 이름이 보이는데 눌러도 아무 일이 없었다 */}
                 {ranking.slice(0, 8).map((r) => (
-                  <li key={r.popupId} className="px-4 py-3 flex items-center gap-3">
-                    <span className="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center text-xs font-semibold shrink-0" style={{ fontFamily: "'DM Mono', monospace" }}>{r.rank}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[13px] font-medium truncate">{r.popupTitle}</div>
-                      <div className="text-[11px] text-muted-foreground truncate">{r.companyName}</div>
-                    </div>
-                    <div className="text-[13px] font-semibold shrink-0">{r.visitorCount.toLocaleString()}명</div>
+                  <li key={r.popupId}>
+                    <Link
+                      to={`/admin/popups/${r.popupId}`}
+                      className="px-4 py-3 flex items-center gap-3 hover:bg-secondary/40 transition-colors"
+                    >
+                      <span className="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center text-xs font-semibold shrink-0" style={{ fontFamily: "'DM Mono', monospace" }}>{r.rank}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[13px] font-medium truncate">{r.popupTitle}</div>
+                        <div className="text-[11px] text-muted-foreground truncate">{r.companyName}</div>
+                      </div>
+                      <div className="text-[13px] font-semibold shrink-0">{r.visitorCount.toLocaleString()}명</div>
+                      <ArrowUpRight size={12} className="shrink-0 text-muted-foreground" />
+                    </Link>
                   </li>
                 ))}
               </ul>
