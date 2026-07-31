@@ -12,15 +12,15 @@ import {
 import {
   loadOpsMode, OpsMode,
 } from "../../lib/walkinQueue";
+import { CONSUMER_SIGNUP_URL } from "../../lib/siteUrls";
 
 // 대기열·인원 관제 — 예약·웨이팅 통합관리 (jsw waiting·unified queue 백엔드 실연동)
 // 실연동: 통합 대기열 보드(서버가 사전예약 자동 편입·정렬), 웨이팅 등록/입장/취소, 통합 QR 체크인, 예약 체크인/노쇼
 // 로컬로 남은 것: 운영 모드 저장 폴백(구 팝업 한정 — 신규는 서버 queueMode 사용), 입장 완료 웨이팅 목록
 // ※ 퇴장 처리는 POST /api/queue/exit/qr로 실연동돼 있다 (7/29 주석 정정 — 예전 문구가 낡아 있었음)
 
-const CONSUMER_URL = "http://localhost:5173"; // 소비자 플랫폼
+// 7/31 — lib/siteUrls.ts로 이동 (배포 시 localhost를 가리키던 문제)
 // 7/29 — 회원 웨이팅 QR은 소비자 회원가입으로 직행
-const CONSUMER_SIGNUP_URL = `${CONSUMER_URL}/signup`;
 // 비회원 웨이팅 QR은 자체 접수 폼(/walkin)으로 고정 (7/29 결정 — 구글폼 안 씀).
 // 자체 폼은 제출 즉시 대기열 등록 + 대기번호·입장 QR 발급까지 백엔드 실연동이 끝나 있어 구글폼보다 완결적이다.
 const NOSHOW_GRACE_MS = 5 * 60 * 1000; // 슬롯 종료 +5분 안에 미입장 → 노쇼 처리 대상
@@ -716,9 +716,6 @@ export default function WaitingControl() {
                   <p className="text-xs text-muted-foreground leading-relaxed">
                     소비자 플랫폼 <span className="font-medium text-foreground">회원가입 페이지</span>로 연결됩니다.
                     가입(소셜 로그인) 후 팝업 상세페이지에서 현장 웨이팅을 등록하면 이 대기열에 순서대로 추가됩니다.
-                  </p>
-                  <p className="text-[11px] text-amber-600 mt-1.5">
-                    등록 API는 준비됨(customerId 파라미터) — 상세페이지 웨이팅 버튼은 소비자 프론트(pew) 구현 후 동작
                   </p>
                 </div>
               </div>

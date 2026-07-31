@@ -1,37 +1,61 @@
-package popupteam.popupbackend.domain.review;
+package popupteam.popupbackend.domain.review.dto;
 
 import popupteam.popupbackend.domain.review.Review;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-
+import lombok.Getter;
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
-public interface ReviewRepository extends JpaRepository<Review, Long> {
+@Getter
+public class ReviewResponse {
+    private final Long id;
+    private final Long popupId;
+    private final BigDecimal rating;
+    private final String content;
+    private final List<String> imageUrls;
+    private final String nickname;
+    private final long likeCount;
+    private final boolean likedByMe;
+    private final LocalDate visitDate;
+    private final boolean visited; // 방문자 댓글이면 true, 일반 댓글이면 false (프론트 구분용)
+    private final boolean hidden;
+    private final LocalDateTime createdAt;
+    private final LocalDateTime updatedAt;
 
-    // 내가 쓴 리뷰 목록
-    List<Review> findByCustomerId(Long customerId);
+    // 7/30 머지 — jsw의 신고 숨김(maskIfHidden)과 jmy의 작성자 닉네임이 같은 생성자에서 만났다.
+    // 둘을 다 살리되, 기존 호출부가 깨지지 않게 오버로드 3개로 계단을 만들어 둔다.
 
-    // 특정 팝업스토어의 후기 목록 (최신순, 페이징)
-    Page<Review> findByPopupIdOrderByCreatedAtDesc(Long popupId, Pageable pageable);
+    // 작성자 본인이 보는 경우(내가 쓴 리뷰 목록, 작성/수정 직후 응답)는 실제 내용 그대로 보여줌
+    public ReviewResponse(Review review, List<String> imageUrls, long likeCount, boolean likedByMe) {
+        this(review, imageUrls, likeCount, likedByMe, false, null);
+    }
 
-    // 중복 작성 방지용 체크
-    boolean existsByCustomerIdAndPopupId(Long customerId, Long popupId);
+    // 닉네임만 필요한 경우 (마스킹 없음)
+    public ReviewResponse(Review review, List<String> imageUrls, long likeCount, boolean likedByMe, String nickname) {
+        this(review, imageUrls, likeCount, likedByMe, false, nickname);
+    }
 
-    // 특정 팝업스토어 후기 개수
-    long countByPopupId(Long popupId);
+    // maskIfHidden=true면 신고로 숨김 처리된 후기는 내용을 안내 문구로 대체 (다른 사람이 보는 목록/상세용)
+    public ReviewResponse(Review review, List<String> imageUrls, long likeCount, boolean likedByMe, boolean maskIfHidden) {
+        this(review, imageUrls, likeCount, likedByMe, maskIfHidden, null);
+    }
 
-    // 특정 팝업스토어 평균 별점
-    @Query("SELECT AVG(r.rating) FROM Review r WHERE r.popupId = :popupId")
-    BigDecimal findAverageRatingByPopupId(@Param("popupId") Long popupId);
-
-    // 인기 팝업 랭킹 계산용 - 팝업별 후기 개수를 한 번에 집계
-    @Query("SELECT r.popupId, COUNT(r) FROM Review r GROUP BY r.popupId")
-    List<Object[]> countAllGroupByPopupId();
-
-    // 홈 화면 "실시간 후기 모음"용 - 플랫폼 전체 최신 후기
-    Page<Review> findAllByOrderByCreatedAtDesc(Pageable pageable);
+    public ReviewResponse(Review review, List<String> imageUrls, long likeCount, boolean likedByMe,
+                          boolean maskIfHidden, String nickname) {
+        this.id = review.getId();
+        this.popupId = review.getPopupId();
+        this.rating = review.getRating();
+        boolean shouldMask = maskIfHidden && review.isHidden();
+        this.content = shouldMask ? "신고처리된 후기입니다." : review.getContent();
+        this.imageUrls = shouldMask ? List.of() : imageUrls;
+        this.likeCount = likeCount;
+        this.likedByMe = likedByMe;
+        this.visitDate = review.getVisitDate();
+        this.visited = review.isVisited();
+        this.hidden = review.isHidden();
+        this.nickname = nickname;
+        this.createdAt = review.getCreatedAt();
+        this.updatedAt = review.getUpdatedAt();
+    }
 }
