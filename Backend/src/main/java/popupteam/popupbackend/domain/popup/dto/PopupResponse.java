@@ -45,6 +45,7 @@ public class PopupResponse {
     private List<String> thumbnailImages;
     private List<String> detailImages;
     private List<OperatingHoursResponse> operatingHours; // 요일별 운영시간·휴무일
+    private String businessPhone; // 소비자가 상세페이지 > 1:1 문의에서 주최자 연락처 확인용
 
     public static PopupResponse from(Popup popup) {
         return from(popup, Collections.emptyList());
@@ -111,6 +112,11 @@ public class PopupResponse {
                 .businessProfileImage(
                         popup.getBusiness() != null
                                 ? popup.getBusiness().getProfileImage()
+                                : null
+                )
+                .businessPhone(
+                        popup.getBusiness() != null
+                                ? popup.getBusiness().getPhone()
                                 : null
                 )
                 .title(popup.getTitle())
