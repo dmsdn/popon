@@ -49,7 +49,7 @@ export function RecentSearches({ onNavigate }: { onNavigate?: () => void }) {
         {recent.map((keyword) => (
           <div
             key={keyword}
-            className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-b-0"
+            className="flex items-center justify-between py-2.5 border-b border-gray-50 dark:border-[#282B32] last:border-b-0"
           >
             <button
               type="button"

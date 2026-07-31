@@ -112,7 +112,7 @@ function RankingListInner() {
               <Link
                 key={item.id}
                 href={`/popup/${item.id}`}
-                className="flex items-center gap-4 py-4 border-b border-gray-50"
+                className="flex items-center gap-4 py-4 border-b border-gray-50 dark:border-[#282B32]"
               >
                 <span className="w-6 text-center text-sm font-bold text-gray-900 dark:text-white flex-none">
                   {index + 1}

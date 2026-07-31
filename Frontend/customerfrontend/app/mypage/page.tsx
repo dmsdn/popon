@@ -635,7 +635,7 @@ if (queryMenu !== syncedQueryMenu) {
 
           {activeMenu === "내 정보" && customer && (
             <div>
-              <div className="flex items-center gap-3 py-4 border-b border-gray-50">
+              <div className="flex items-center gap-3 py-4 border-b border-gray-50 dark:border-[#282B32]">
                 <div className="w-14 h-14 rounded-full bg-gray-200 overflow-hidden flex-none">
                   {customer.profileImage && (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -645,12 +645,12 @@ if (queryMenu !== syncedQueryMenu) {
                 <p className="text-sm font-medium">{customer.nickname} 님</p>
               </div>
 
-              <div className="flex items-center justify-between py-4 border-b border-gray-50">
+              <div className="flex items-center justify-between py-4 border-b border-gray-50 dark:border-[#282B32]">
                 <span className="text-sm text-gray-700 dark:text-gray-300">닉네임</span>
                 <span className="text-sm text-gray-500">{customer.nickname}</span>
               </div>
 
-              <div className="flex items-center justify-between py-4 border-b border-gray-50">
+              <div className="flex items-center justify-between py-4 border-b border-gray-50 dark:border-[#282B32]">
                 <span className="text-sm text-gray-700 dark:text-gray-300">연결된 로그인</span>
                 <span
                   className={`flex items-center gap-1.5 text-sm font-medium rounded-full px-3 py-1.5 ${
@@ -668,29 +668,29 @@ if (queryMenu !== syncedQueryMenu) {
                 </span>
               </div>
 
-              <div className="flex items-center justify-between py-4 border-b border-gray-50">
+              <div className="flex items-center justify-between py-4 border-b border-gray-50 dark:border-[#282B32]">
                 <span className="text-sm text-gray-700 dark:text-gray-300">전화번호</span>
                 <span className="text-sm text-gray-500">{customer.phone || "미입력"}</span>
               </div>
 
-              <div className="flex items-center justify-between py-4 border-b border-gray-50">
+              <div className="flex items-center justify-between py-4 border-b border-gray-50 dark:border-[#282B32]">
                 <span className="text-sm text-gray-700 dark:text-gray-300">이메일</span>
                 <span className="text-sm text-gray-500">{customer.email || "미입력"}</span>
               </div>
 
-              <div className="flex items-center justify-between py-4 border-b border-gray-50">
+              <div className="flex items-center justify-between py-4 border-b border-gray-50 dark:border-[#282B32]">
                 <span className="text-sm text-gray-700 dark:text-gray-300">성별</span>
                 <span className="text-sm text-gray-500">
                   {customer.gender === "MALE" ? "남성" : customer.gender === "FEMALE" ? "여성" : "미입력"}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between py-4 border-b border-gray-50">
+              <div className="flex items-center justify-between py-4 border-b border-gray-50 dark:border-[#282B32]">
                 <span className="text-sm text-gray-700 dark:text-gray-300">나이</span>
                 <span className="text-sm text-gray-500">{calculateAge(customer.birthDate)}</span>
               </div>
 
-              <div className="py-4 border-b border-gray-50">
+              <div className="py-4 border-b border-gray-50 dark:border-[#282B32]">
                 <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">관심 카테고리</p>
                 {preferredCategories.length === 0 ? (
                   <p className="text-sm text-gray-400">아직 선택한 관심 카테고리가 없어요.</p>
@@ -722,7 +722,7 @@ if (queryMenu !== syncedQueryMenu) {
 
               <Link
                 href="/mypage/edit"
-                className="block w-full text-center border border-gray-300 rounded-full py-3 text-sm font-medium mt-6"
+                className="block w-full text-center border border-gray-300 dark:border-[#282B32] rounded-full py-3 text-sm font-medium mt-6"
               >
                 수정하기
               </Link>
@@ -779,13 +779,13 @@ if (queryMenu !== syncedQueryMenu) {
                         <div className="flex items-center gap-2">
                           <Link
                             href={`/popup/${popupId}?action=waiting`}
-                            className="flex-1 text-center text-sm font-medium border border-gray-300 text-gray-700 dark:text-gray-300 rounded-full py-2"
+                            className="flex-1 text-center text-sm font-medium border border-gray-300 dark:border-[#282B32] text-gray-700 dark:text-gray-300 rounded-full py-2"
                           >
                             웨이팅하기
                           </Link>
                           <Link
                             href={`/popup/${popupId}?action=reservation`}
-                            className="flex-1 text-center text-sm font-medium border border-gray-300 text-gray-700 dark:text-gray-300 rounded-full py-2"
+                            className="flex-1 text-center text-sm font-medium border border-gray-300 dark:border-[#282B32] text-gray-700 dark:text-gray-300 rounded-full py-2"
                           >
                             예약하기
                           </Link>
@@ -986,7 +986,7 @@ if (queryMenu !== syncedQueryMenu) {
 
           {activeMenu === "알림 설정" && (
             <div className="flex flex-col gap-1">
-              <div className="flex items-center justify-between py-4 border-b border-gray-50">
+              <div className="flex items-center justify-between py-4 border-b border-gray-50 dark:border-[#282B32]">
                 <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">전체</span>
                 <button
                   type="button"
@@ -1004,7 +1004,7 @@ if (queryMenu !== syncedQueryMenu) {
                 </button>
               </div>
               {notifSettings.map((item) => (
-                <div key={item.id} className="flex items-center justify-between py-4 border-b border-gray-50">
+                <div key={item.id} className="flex items-center justify-between py-4 border-b border-gray-50 dark:border-[#282B32]">
                   <span className="text-sm text-gray-700 dark:text-gray-300">{item.label}</span>
                   <button
                     type="button"
@@ -1030,7 +1030,7 @@ if (queryMenu !== syncedQueryMenu) {
           {/* [신규] 화면 설정 - 다크모드 토글을 여기로 옮겼어요. */}
           {activeMenu === "화면 설정" && (
             <div className="flex flex-col gap-1">
-              <div className="flex items-center justify-between py-4 border-b border-gray-50">
+              <div className="flex items-center justify-between py-4 border-b border-gray-50 dark:border-[#282B32]">
                 <span className="text-sm text-gray-700 dark:text-gray-300">다크모드</span>
                 <ThemeToggle />
               </div>
@@ -1048,7 +1048,7 @@ if (queryMenu !== syncedQueryMenu) {
                   <Link
                     key={notice.id}
                     href={`/notice/${notice.id}`}
-                    className="block py-4 border-b border-gray-50"
+                    className="block py-4 border-b border-gray-50 dark:border-[#282B32]"
                   >
                     <p className="text-sm text-gray-800">{notice.title}</p>
                     <p className="text-sm text-gray-400 mt-1">
@@ -1148,7 +1148,7 @@ if (queryMenu !== syncedQueryMenu) {
           {activeMenu === "Q&A" && (
             <div className="flex flex-col">
               {FAQS.map((faq, index) => (
-                <div key={faq.q} className="border-b border-gray-50">
+                <div key={faq.q} className="border-b border-gray-50 dark:border-[#282B32]">
                   <button
                     type="button"
                     onClick={() => setOpenFaq(openFaq === index ? null : index)}
