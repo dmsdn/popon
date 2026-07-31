@@ -207,17 +207,23 @@ public class ReservationService {
     }
 
     // QR 스캔으로 입장확인 (주최자/관리자)
-    // popupId = 스캐너 화면에서 선택 중인 팝업. null이면(구버전 클라이언트) 팝업 일치 검사를 생략한다 (7/31).
+    // popupId: 지금 스캔 중인 화면(현장)이 속한 팝업 ID - 같은 주최자 소유 팝업이라도
+    // QR이 다른 팝업 소속이면 거부하기 위한 필수 검증값
     public ReservationDetailResponse checkinByQr(String qrToken, Long popupId, String requesterEmail, boolean isAdmin) {
         Reservation reservation = reservationRepository.findByQrToken(qrToken)
                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 QR 코드입니다."));
 
+        validateQrCheckinPopup(reservation, popupId);
         validateCheckinPermission(reservation, requesterEmail, isAdmin);
-        // 소유자 검사(위)는 「내 팝업인가」만 본다 — 팝업이 여러 개면 전부 통과하므로 팝업 일치까지 확인한다.
-        if (popupId != null && !popupId.equals(reservation.getPopup().getId())) {
-            throw new IllegalArgumentException("다른 팝업의 QR 코드입니다. 현재 선택한 팝업의 QR만 처리할 수 있습니다.");
-        }
         return doCheckin(reservation, requesterEmail);
+    }
+
+    // 팝업 단위 검증 - QR 스캔 전용. 수동 체크인/노쇼 처리는 이미 특정 팝업의 예약 명단 화면에서
+    // reservationId로 선택해서 호출하는 구조라 팝업 혼동 위험이 없어 대상 아님
+    private void validateQrCheckinPopup(Reservation reservation, Long popupId) {
+        if (!reservation.getPopup().getId().equals(popupId)) {
+            throw new ForbiddenException("다른 팝업의 QR 코드는 사용할 수 없습니다.");
+        }
     }
 
     // 수동 입장확인 (QR 인식 안 될 때 대비)
