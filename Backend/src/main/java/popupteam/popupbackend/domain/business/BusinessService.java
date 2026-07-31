@@ -120,30 +120,50 @@ public class BusinessService {
     }
 
     // signup()과 미리보기용 checkBusinessNumber() 둘 다 이 로직 하나로 판단 - 기준이 어긋나지 않게
+    //
+    // 7/31 정책 변경: 확인되지 않으면 막는다(fail-closed).
+    // 그전에는 NOT_FOUND·CLOSED만 막고 SKIPPED_NO_KEY·ERROR는 통과시켰다. "지금 확인 못 하니 일단
+    // 보내주고 나중에 다시 본다"는 뜻이었는데, **그 '나중'이 없었다.** 여기가 마지막 관문이다.
+    // 실제로 국세청 API가 503으로 죽자(공공데이터포털 code=-5) 검증이 통째로 무력화돼
+    // 존재하지 않는 사업자등록번호로 가입이 됐다.
+    // 사업자 인증은 이 서비스의 신뢰 근거이므로, 확인할 수 없으면 통과시키지 않는다.
     private void validateBusinessNumberOrThrow(String businessNumber) {
         var checkResult = ntsBusinessCheckService.checkStatus(businessNumber);
-        if (checkResult == popupteam.popupbackend.common.nts.NtsBusinessCheckService.CheckResult.NOT_FOUND) {
-            throw new IllegalArgumentException("국세청에 등록되지 않은 사업자등록번호입니다.");
-        }
-        if (checkResult == popupteam.popupbackend.common.nts.NtsBusinessCheckService.CheckResult.CLOSED) {
-            throw new IllegalArgumentException("폐업 처리된 사업자등록번호입니다.");
+        switch (checkResult) {
+            case VALID -> { /* 통과 */ }
+            case NOT_FOUND -> throw new IllegalArgumentException("국세청에 등록되지 않은 사업자등록번호입니다.");
+            case CLOSED -> throw new IllegalArgumentException("폐업 처리된 사업자등록번호입니다.");
+            // 아래 둘은 "번호가 틀렸다"가 아니라 "우리가 확인하지 못했다"는 뜻이다.
+            // 사용자 잘못이 아니므로 문구를 구분해서, 다시 시도하면 된다는 것을 알린다.
+            case SKIPPED_NO_KEY, ERROR -> throw new IllegalStateException(
+                    "지금은 국세청 사업자등록 상태조회를 이용할 수 없어 가입을 진행할 수 없습니다. "
+                            + "잠시 후 다시 시도해 주세요.");
         }
     }
 
     // 회원가입 2단계 미리보기용 - 예외를 던지지 않고 결과를 그대로 반환 (프론트가 다음 단계 진행 여부를 결정)
+    // valid=false면 프론트가 「다음」을 막는다. 위 signup 검증과 **같은 기준**이어야 한다 —
+    // 여기서 통과시키고 최종 가입에서 막으면 3단계를 다 채운 뒤에야 반려된다.
     public java.util.Map<String, Object> checkBusinessNumber(String businessNumber) {
         var checkResult = ntsBusinessCheckService.checkStatus(businessNumber);
 
-        boolean valid = (checkResult != popupteam.popupbackend.common.nts.NtsBusinessCheckService.CheckResult.NOT_FOUND
-                && checkResult != popupteam.popupbackend.common.nts.NtsBusinessCheckService.CheckResult.CLOSED);
+        // 7/31 — VALID만 통과. 조회 실패(SKIPPED_NO_KEY·ERROR)도 false다.
+        boolean valid = checkResult == popupteam.popupbackend.common.nts.NtsBusinessCheckService.CheckResult.VALID;
 
         String message = switch (checkResult) {
             case NOT_FOUND -> "국세청에 등록되지 않은 사업자등록번호입니다.";
             case CLOSED -> "폐업 처리된 사업자등록번호입니다.";
             case VALID -> "정상적으로 확인된 사업자등록번호입니다.";
-            case SKIPPED_NO_KEY, ERROR -> "지금은 진위확인을 할 수 없어 형식만 확인했습니다. 최종 가입 시 다시 확인됩니다.";
+            case SKIPPED_NO_KEY, ERROR ->
+                    "지금은 국세청 사업자등록 상태조회를 이용할 수 없습니다. 잠시 후 다시 시도해 주세요.";
         };
 
-        return java.util.Map.of("valid", valid, "message", message);
+        // 조회 자체가 안 된 경우와 번호가 잘못된 경우는 사용자에게 다르게 안내해야 한다.
+        // 프론트가 문구를 다시 쓰지 않고 이 값으로 톤을 고르도록 플래그를 함께 준다.
+        boolean unavailable =
+                checkResult == popupteam.popupbackend.common.nts.NtsBusinessCheckService.CheckResult.SKIPPED_NO_KEY
+                        || checkResult == popupteam.popupbackend.common.nts.NtsBusinessCheckService.CheckResult.ERROR;
+
+        return java.util.Map.of("valid", valid, "message", message, "unavailable", unavailable);
     }
 }

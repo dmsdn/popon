@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Search, Loader2, Info, CheckCircle2, XCircle, ShieldCheck, PauseCircle, Pencil, ChevronUp, ChevronDown, SlidersHorizontal, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import { getPopups, approvePopup, rejectPopup, getKeywords, Popup, PopupStatusCode, ApiError, Region } from "../../lib/api";
-import { SUSPEND_MARKER, isSuspended } from "../../lib/adminPopupMeta";
+import { getPopups, approvePopup, rejectPopup, suspendPopup, resumePopup, getKeywords, Popup, PopupStatusCode, ApiError, Region } from "../../lib/api";
+// SUSPEND_MARKER는 더 이상 쓰지 않는다 (7/31 전용 API로 교체) — 다만 마커로 중지된 옛 데이터를
+// 읽어야 해서 isSuspended 안에는 폴백이 그대로 남아 있다.
+import { isSuspended } from "../../lib/adminPopupMeta";
 
 // 플랫폼 전체 팝업 관리 (심사·게시중지·수정 통합)
 // 심사·게시중지: 관리자 승인/반려/게시중지 API 실연동.
@@ -99,15 +101,19 @@ export default function AdminPopups() {
     }
   };
 
-  // 게시중지 ↔ 게시재개 (반려 API를 [게시중지] 마커와 함께 재사용 → 소비자 화면에서 즉시 숨김)
+  // 게시중지 ↔ 게시재개 (7/31 — 전용 API로 교체).
+  // 그전에는 reject를 재사용하며 사유 앞에 [게시중지] 마커를 붙였는데, DB에 REJECTED로 저장돼
+  // **게시중지한 팝업이 「반려」 필터에 뜨고 「게시중지」 필터는 늘 비어 있었다.**
+  // 이제 status가 SUSPENDED로 제대로 들어간다. 재개는 resume이 날짜를 보고 BEFOR/OPEN을 알아서 고른다
+  // (approve는 무조건 BEFOR로 만들어서, 이미 시작된 팝업이 「오픈예정」으로 되돌아가는 문제가 있었다).
   const toggleSuspend = async (p: Popup) => {
     const suspended = isSuspended(p.status, p.rejectReason);
     if (!window.confirm(suspended ? `「${p.title}」 게시를 재개할까요?` : `「${p.title}」 게시를 중지할까요? 소비자 화면에서 즉시 숨겨집니다.`)) return;
     setActingId(p.id);
     try {
       const updated = suspended
-        ? await approvePopup(p.id)
-        : await rejectPopup(p.id, `${SUSPEND_MARKER} 관리자에 의해 게시가 중지되었습니다.`);
+        ? await resumePopup(p.id)
+        : await suspendPopup(p.id, "관리자에 의해 게시가 중지되었습니다.");
       setPopups((prev) => prev.map((x) => (x.id === p.id ? updated : x)));
       // 상태 확정일은 서버 statusChangedAt이 기록
     } catch (e) {
@@ -131,7 +137,14 @@ export default function AdminPopups() {
   const rows = useMemo(() => {
     const filtered = popups.filter(
       (p) =>
-        (filter === "전체" || p.status === filter) &&
+        // 게시중지는 status로만 거르면 안 된다 (7/31).
+        // 마커 방식으로 중지된 옛 데이터는 status가 REJECTED라, 그냥 비교하면
+        // 「반려」 탭에 섞여 나오고 「게시중지」 탭은 비어 보인다. 배지와 같은 판별식을 쓴다.
+        (filter === "전체"
+          ? true
+          : filter === "SUSPENDED"
+            ? isSuspended(p.status, p.rejectReason)
+            : p.status === filter && !isSuspended(p.status, p.rejectReason)) &&
         (catFilter === null || (p.keywordNames ?? []).includes(catFilter)) &&
         (q === "" || p.title.includes(q) || p.companyName.includes(q) || (p.location ?? "").includes(q)),
     );
@@ -155,18 +168,16 @@ export default function AdminPopups() {
         </p>
       </div>
 
-      <div className="flex items-start gap-2.5 bg-blue-50 border border-blue-200 rounded-sm px-4 py-3">
-        <Info size={14} className="text-blue-500 shrink-0 mt-0.5" />
-        <div className="text-xs text-blue-800 leading-relaxed">
-          심사(승인/반려)·게시중지는 실데이터로 즉시 반영됩니다. <strong>수정</strong>은 수정사항·사유가 주최자에게
-          전달되며, 팝업 내용의 실제 반영은 관리자용 수정 API 백엔드 구성 후 연동됩니다.
-        </div>
-      </div>
-
       {/* 상태 필터 + 검색 */}
       <div className="bg-card border border-border rounded-sm p-3 flex flex-wrap items-center gap-2">
         {FILTERS.map((f) => {
-          const count = f === "전체" ? popups.length : popups.filter((p) => p.status === f).length;
+          // 탭 건수도 목록과 같은 규칙으로 세야 한다 — 안 그러면 "반려 3"인데 열면 2개만 나온다
+          const count =
+            f === "전체"
+              ? popups.length
+              : f === "SUSPENDED"
+                ? popups.filter((p) => isSuspended(p.status, p.rejectReason)).length
+                : popups.filter((p) => p.status === f && !isSuspended(p.status, p.rejectReason)).length;
           return (
             <button
               key={f}

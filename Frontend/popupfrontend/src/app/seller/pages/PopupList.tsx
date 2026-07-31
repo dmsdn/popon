@@ -95,7 +95,14 @@ export default function PopupList() {
   const rows = useMemo(() => {
     const filtered = popups.filter(
       (p) =>
-        (filter === "전체" || p.status === filter) &&
+        // 게시중지는 status로만 거르면 안 된다 (7/31 — 관리자 앱과 같은 규칙).
+        // 마커 방식으로 중지된 옛 데이터는 status가 REJECTED라, 그냥 비교하면
+        // 「반려」 탭에 섞여 나오고 「게시중지」 탭은 비어 보인다. 배지와 같은 판별식을 쓴다.
+        (filter === "전체"
+          ? true
+          : filter === "SUSPENDED"
+            ? isSuspended(p.status, p.rejectReason)
+            : p.status === filter && !isSuspended(p.status, p.rejectReason)) &&
         (catFilter === null || (p.keywordNames ?? []).includes(catFilter)) &&
         (q === "" || p.title.includes(q) || p.companyName.includes(q)),
     );
@@ -126,7 +133,13 @@ export default function PopupList() {
       {/* 상태 필터 + 검색 */}
       <div className="bg-card border border-border rounded-sm p-3 flex flex-wrap items-center gap-2">
         {FILTERS.map((f) => {
-          const count = f === "전체" ? popups.length : popups.filter((p) => p.status === f).length;
+          // 탭 건수도 목록과 같은 규칙으로 세야 한다 — 안 그러면 "반려 3"인데 열면 2개만 나온다
+          const count =
+            f === "전체"
+              ? popups.length
+              : f === "SUSPENDED"
+                ? popups.filter((p) => isSuspended(p.status, p.rejectReason)).length
+                : popups.filter((p) => p.status === f && !isSuspended(p.status, p.rejectReason)).length;
           return (
             <button
               key={f}
