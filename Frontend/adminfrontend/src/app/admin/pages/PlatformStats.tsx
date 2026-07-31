@@ -4,7 +4,7 @@ import {
   CartesianGrid, Tooltip, BarChart, Bar,
 } from "recharts";
 import { Loader2, ArrowUpRight } from "lucide-react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import {
   getAdminDashboard, AdminDashboard as Dashboard,
   getPopupRanking, PopupVisitorRanking,
@@ -19,6 +19,7 @@ import {
 type Period = "DAILY30" | "MONTHLY12";
 
 export default function PlatformStats() {
+  const navigate = useNavigate();
   const [period, setPeriod] = useState<Period>("DAILY30");
   const [dash, setDash] = useState<Dashboard | null>(null);
   const [ranking, setRanking] = useState<PopupVisitorRanking[]>([]);
@@ -59,7 +60,9 @@ export default function PlatformStats() {
     period: period === "DAILY30" ? r.period.slice(5) : r.period, // 일별은 MM-DD
     amount: Math.round(Number(r.totalAmount) / 10000), // 만원 단위
   }));
-  const top5 = ranking.slice(0, 5).map((r) => ({ name: r.popupTitle, visitors: r.visitorCount }));
+  // 7/31 — 막대를 눌러도 상세로 가게 popupId를 함께 싣는다.
+  // 오른쪽 「랭킹 전체」만 클릭되고 왼쪽 차트는 안 되면 같은 팝업인데 동작이 갈려 혼란스럽다.
+  const top5 = ranking.slice(0, 5).map((r) => ({ name: r.popupTitle, visitors: r.visitorCount, popupId: r.popupId }));
 
   return (
     <div className="flex flex-col gap-4">
@@ -145,7 +148,8 @@ export default function PlatformStats() {
               items-start면 카드마다 내용 높이가 달라 아랫변이 들쭉날쭉했다(310 vs 412). */}
           <div className="grid lg:grid-cols-2 gap-3">
             <div className="bg-card border border-border rounded-sm p-4">
-              <div className="text-sm font-semibold mb-4">팝업별 방문자 TOP 5 (누적 체크인)</div>
+              <div className="text-sm font-semibold mb-1">팝업별 방문자 TOP 5 (누적 체크인)</div>
+              <p className="text-[11px] text-muted-foreground mb-3">막대를 누르면 해당 팝업 상세로 이동합니다.</p>
               <div className="h-60">
                 {top5.length === 0 ? (
                   <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
@@ -157,7 +161,17 @@ export default function PlatformStats() {
                       <XAxis type="number" hide />
                       <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={110} axisLine={false} tickLine={false} />
                       <Tooltip contentStyle={{ fontSize: 12, borderRadius: 4 }} formatter={(v) => `${Number(v).toLocaleString()}명`} />
-                      <Bar dataKey="visitors" fill="#E85D3C" radius={[0, 3, 3, 0]} barSize={18} />
+                      <Bar
+                        dataKey="visitors"
+                        fill="#E85D3C"
+                        radius={[0, 3, 3, 0]}
+                        barSize={18}
+                        cursor="pointer"
+                        onClick={(d: { payload?: { popupId?: number } }) => {
+                          const id = d?.payload?.popupId;
+                          if (id) navigate(`/admin/popups/${id}`);
+                        }}
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
