@@ -154,7 +154,7 @@ public class PopupService {
                 .findByPopupIdOrderByDayOfWeek(id).stream()
                 .map(OperatingHoursResponse::from)
                 .toList();
-        return PopupResponse.from(popup, hashtags, avgRating, reviewCount,
+        return PopupResponse.fromDetail(popup, hashtags, avgRating, reviewCount,
                 getPopupKeywordNames(id), snsLinks, thumbnailImages, detailImages, operatingHours);
     }
 
