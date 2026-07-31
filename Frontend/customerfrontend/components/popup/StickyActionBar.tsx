@@ -15,6 +15,7 @@ export function StickyActionBar({
   hasSlots,
   waitingTeams,
   wishlistCount,
+  onWishlistToggle,
   onReserve,
   onWaiting,
 }: {
@@ -33,6 +34,7 @@ export function StickyActionBar({
   /** 현재 대기중인 팀 수. null이면 아직 못 불러온 상태(버튼엔 기본 라벨만 표시) */
   waitingTeams: number | null;
   wishlistCount?: number;
+  onWishlistToggle?: (nextActive: boolean) => void;
   onReserve: () => void;
   onWaiting: () => void;
 }) {
@@ -46,7 +48,7 @@ export function StickyActionBar({
     <div className="fixed bottom-14 mobile:bottom-0 left-0 right-0 z-40 bg-white dark:bg-[#282B32] border-t border-gray-100 dark:border-[#282B32]">
       <div className="w-full mobile:max-w-[1000px] mobile:mx-auto flex items-center gap-3 px-4 mobile:px-8 py-3">
         <div className="flex flex-col items-center flex-none">
-          <HeartButton popupId={popupId} className="w-11 h-11" />
+          <HeartButton popupId={popupId} className="w-11 h-11" onToggle={onWishlistToggle} />
           {typeof wishlistCount === "number" && (
             <span className="text-sm text-gray-400 -mt-1">{wishlistCount}</span>
           )}

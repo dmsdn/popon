@@ -56,6 +56,15 @@ export function ReservationModal({
   capacity,
   mode = "create",
 }: ReservationModalProps) {
+  // [신규] 모달이 열려있는 동안 배경 스크롤을 막아요.
+  useEffect(() => {
+    const original = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = original;
+    };
+  }, []);
+
   const today = useMemo(() => startOfDay(new Date()), []);
   const earliestSelectable = useMemo(
     () => (startOfDay(minDate) > today ? startOfDay(minDate) : today),

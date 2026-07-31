@@ -87,7 +87,6 @@ export default function BrandDetailPage({
           className="text-sm text-gray-500"
         >
           <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
-          <span>뒤로</span>
         </button>
       </div>
 

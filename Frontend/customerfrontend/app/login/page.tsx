@@ -30,7 +30,12 @@ export default function LoginPage() {
       {/* [수정] "웨이팅은 카카오로만 가능해요" 문구 제거 - 지금은 카카오가 아니어도
           웨이팅 가능해서 안 맞는 안내였어요. 그 자리엔 큰 로고를 두고, 버튼들은
           아래쪽으로 내렸어요. */}
-      <div className="flex-1 flex items-center justify-center px-6">
+      <div className="flex-1 flex flex-col items-center justify-center px-6 gap-4">
+        {/* [신규] 간편 가입 안내 말풍선 - 살짝 동동 뜨는 애니메이션을 넣었어요. */}
+        <div className="relative bg-gray-100 dark:bg-[#282B32] rounded-2xl px-5 py-3 animate-float">
+          <p className="text-sm font-medium text-center">간편 가입으로 서비스를 편리하게 이용해보세요</p>
+          <div className="absolute left-1/2 -translate-x-1/2 -bottom-2 w-4 h-4 bg-gray-100 dark:bg-[#282B32] rotate-45" />
+        </div>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/Icon/LOGO_Light.svg" alt="POP-ON" className="w-[220px] h-auto dark:hidden" />
         {/* eslint-disable-next-line @next/next/no-img-element */}

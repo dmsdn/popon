@@ -30,7 +30,7 @@ export function MobileHeader({
       <header className="flex items-center gap-3 h-14 px-4 border-b border-gray-100 dark:border-[#282B32]">
         <button type="button" onClick={() => router.back()} aria-label="뒤로가기" className="text-gray-500">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/Icon/back_arrow.svg" alt="" width={20} height={20} />
+          <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
         </button>
         <SearchInput
           autoFocus={!initialQuery && !disableAutoFocus}

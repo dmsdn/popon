@@ -143,6 +143,13 @@ export default function Home() {
     const nameById = new Map(allRegions.map((r) => [r.id, r.name]));
     return myRegionIds.map((id) => nameById.get(id)).filter((n): n is string => !!n);
   }, [allRegions, myRegionIds]);
+
+  // [신규] "내 관심 지역 팝업" 제목을 "OO에 이런 팝업이 열려요"로 바꾸면서, 관심
+  // 지역이 여러 개면 그 중 하나를 랜덤으로 골라 제목에 써요.
+  const featuredRegion = useMemo(() => {
+    if (preferredRegions.length === 0) return "";
+    return preferredRegions[Math.floor(Math.random() * preferredRegions.length)];
+  }, [preferredRegions]);
   const easyEntryPopupItems = useMemo(
     () => easyEntryItems.map(({ item, count }) => ({ ...item, badge: `웨이팅 ${count}팀` })),
     [easyEntryItems]
@@ -205,8 +212,8 @@ export default function Home() {
                     이미지
                   </div>
                 )}
-                <div className="p-3">
-                  <p className="text-sm font-medium truncate mb-1">{item.name}</p>
+                <div className="p-3 pt-3.5 pb-4 flex flex-col gap-2">
+                  <p className="text-sm font-medium truncate">{item.name}</p>
                   <LiveCongestionMini status={status} />
                 </div>
               </Link>
@@ -217,7 +224,7 @@ export default function Home() {
 
       {regionPopups.length > 0 && (
         <PopupSection
-          title="내 관심 지역 팝업"
+          title={`"${featuredRegion}"에 이런 팝업이 열려요`}
           items={regionPopups}
           moreHref={`/search?region=${encodeURIComponent(preferredRegions.join(","))}`}
         />
@@ -263,8 +270,8 @@ export default function Home() {
                     이미지
                   </div>
                 )}
-                <div className="p-3">
-                  <p className="text-sm font-medium truncate mb-1">{item.name}</p>
+                <div className="p-3 pt-3.5 pb-4 flex flex-col gap-2">
+                  <p className="text-sm font-medium truncate">{item.name}</p>
                   <p className="text-sm text-gray-500">{item.badge}</p>
                 </div>
               </Link>

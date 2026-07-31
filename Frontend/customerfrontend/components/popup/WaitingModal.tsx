@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CountStepper } from "./CountStepper";
 
 interface WaitingModalProps {
@@ -18,6 +18,16 @@ interface WaitingModalProps {
  */
 export function WaitingModal({ popupName, dateRange, location, onClose, onSubmit }: WaitingModalProps) {
   const [count, setCount] = useState(1);
+
+  // [신규] 모달이 열려있는 동안 뒤에 있는 팝업 상세 화면이 스크롤되던 문제 -
+  // body에 overflow: hidden을 걸어서 배경 스크롤을 막아요.
+  useEffect(() => {
+    const original = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = original;
+    };
+  }, []);
 
   return (
     <div

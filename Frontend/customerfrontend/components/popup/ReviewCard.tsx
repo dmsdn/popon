@@ -125,7 +125,7 @@ export function ReviewCard({
               key={photo + i}
               type="button"
               onClick={() => onImageClick?.(i)}
-              className="w-40 h-40 flex-none bg-gray-100 dark:bg-[#282B32] rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-sm"
+              className="w-[220px] h-[220px] flex-none bg-gray-100 dark:bg-[#282B32] rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-sm"
             >
               {photo.startsWith("http") || photo.startsWith("/") ? (
                 <ImageWithFallback src={photo} className="w-full h-full object-cover" />
