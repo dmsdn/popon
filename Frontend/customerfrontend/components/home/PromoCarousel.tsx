@@ -142,7 +142,7 @@ export function PromoCarousel() {
         </div>
       </div>
 
-      <div className="flex justify-center gap-2 mt-4">
+      <div className="flex justify-center gap-1 mt-3">
         {Array.from({ length: slideCount }).map((_, index) => (
           <button
             key={index}

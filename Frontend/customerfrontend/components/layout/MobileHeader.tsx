@@ -43,8 +43,9 @@ export function MobileHeader({
 
   return (
     <header className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-      <Link href="/" className="text-lg font-bold tracking-tight text-point">
-        팝업
+      <Link href="/">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/Icon/LOGO_Light.svg" alt="POP-ON" className="h-5 w-auto" />
       </Link>
       <div className="flex items-center gap-4">
         <Link href="/search" aria-label="검색">
