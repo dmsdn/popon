@@ -89,7 +89,7 @@ export function ReviewImageModal({
   return createPortal(
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 select-none" onClick={onClose}>
       <div
-        className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden max-w-[500px] w-full max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-[#282B32] rounded-2xl overflow-hidden max-w-[500px] w-full max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div
@@ -111,7 +111,7 @@ export function ReviewImageModal({
             type="button"
             onClick={onClose}
             aria-label="닫기"
-            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center text-sm"
+            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center text-base"
           >
             ✕
           </button>

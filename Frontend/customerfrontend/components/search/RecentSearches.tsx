@@ -40,7 +40,7 @@ export function RecentSearches({ onNavigate }: { onNavigate?: () => void }) {
     <div className="px-4 py-3">
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">최근 검색어</span>
-        <button onClick={handleClear} className="text-sm text-gray-400">
+        <button onClick={handleClear} className="text-base text-gray-400">
           비우기
         </button>
       </div>

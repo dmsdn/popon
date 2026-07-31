@@ -39,7 +39,7 @@ export function PopupSnsLinks({ links }: { links: SnsLink[] }) {
           href={link.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1.5 border border-gray-200 dark:border-gray-800 rounded-full pl-2 pr-3 py-1.5 text-sm text-gray-600 dark:text-gray-400"
+          className="flex items-center gap-1.5 border border-gray-200 dark:border-[#282B32] rounded-full pl-2 pr-3 py-1.5 text-sm text-gray-600 dark:text-gray-400"
         >
           <Image src={PLATFORM_ICON[link.platform]} alt="" width={14} height={14} />
           {link.displayName || PLATFORM_LABEL[link.platform]}

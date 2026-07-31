@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Footer } from "@/components/layout/Footer";
 import { BottomTabBar } from "@/components/layout/BottomTabBar";
-import { getPopup } from "@/lib/api/popups";
+import { getPopup, HIDDEN_STATUSES } from "@/lib/api/popups";
 import { toPopupItem } from "@/lib/utils/popupMapper";
 import { getRecentlyViewedIds } from "@/lib/recentlyViewed";
 import type { PopupItem } from "@/data/mockPopups";
@@ -26,7 +26,8 @@ export default function RecentListPage() {
     Promise.all(
       ids.map((id) =>
         getPopup(id)
-          .then(toPopupItem)
+          .then((detail) => (HIDDEN_STATUSES.has(detail.status) ? null : detail))
+          .then((detail) => (detail ? toPopupItem(detail) : null))
           .catch(() => null)
       )
     )
@@ -45,14 +46,14 @@ export default function RecentListPage() {
   return (
     <main className="min-h-screen flex flex-col w-full pb-16 mobile:pb-0 mobile:max-w-[1000px] mobile:mx-auto">
       <div className="flex-1">
-      <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100 dark:border-gray-800">
+      <div className="flex items-center gap-2 h-14 px-4 mobile:px-8 border-b border-gray-100 dark:border-[#282B32]">
         <button
           type="button"
           onClick={() => router.back()}
           aria-label="뒤로가기"
           className="text-lg text-gray-500"
         >
-          ‹
+          <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
         </button>
       </div>
 
@@ -67,7 +68,7 @@ export default function RecentListPage() {
           <div className="grid grid-cols-2 mobile:grid-cols-4 gap-4">
             {items.map((item) => (
               <Link key={item.id} href={`/popup/${item.id}`} className="flex flex-col gap-2">
-                <div className="h-[160px] rounded-md bg-gray-100 dark:bg-gray-800 overflow-hidden flex items-center justify-center text-sm text-gray-400">
+                <div className="h-[160px] rounded-md bg-gray-100 dark:bg-[#282B32] overflow-hidden flex items-center justify-center text-sm text-gray-400">
                   {item.imageUrl ? (
                     <ImageWithFallback src={item.imageUrl} className="w-full h-full object-cover" />
                   ) : (

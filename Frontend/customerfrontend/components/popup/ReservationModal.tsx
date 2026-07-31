@@ -6,6 +6,8 @@ import type { PopupSlot } from "@/lib/api/popups";
 
 interface ReservationModalProps {
   popupName: string;
+  dateRange?: string;
+  location?: string;
   onClose: () => void;
   onSubmit: (date: Date, count: number, slotId?: number, time?: string) => void;
   slots?: PopupSlot[];
@@ -44,6 +46,8 @@ function buildMonthCells(year: number, month: number): (number | null)[] {
 
 export function ReservationModal({
   popupName,
+  dateRange,
+  location,
   onClose,
   onSubmit,
   slots = [],
@@ -147,7 +151,7 @@ export function ReservationModal({
       onClick={onClose}
     >
       <div
-        className={`w-full bg-white dark:bg-gray-900 overflow-y-auto px-6 pt-6 pb-8 mobile:max-w-lg mobile:rounded-2xl mobile:max-h-[85vh] ${
+        className={`w-full bg-white dark:bg-[#282B32] overflow-y-auto px-6 pt-6 pb-8 mobile:max-w-lg mobile:rounded-2xl mobile:max-h-[85vh] ${
           expanded ? "h-full rounded-none" : "rounded-t-2xl max-h-[85vh]"
         }`}
         onClick={(e) => e.stopPropagation()}
@@ -158,6 +162,17 @@ export function ReservationModal({
             ✕
           </button>
         </div>
+
+        {/* [신규] 웨이팅 모달과 같은 팝업 정보 카드 */}
+        {(dateRange || location) && (
+          <div className="border border-gray-200 dark:border-[#282B32] rounded-lg px-4 py-3 mb-6">
+            <p className="text-sm text-gray-400">
+              {dateRange}
+              {dateRange && location && " · "}
+              {location}
+            </p>
+          </div>
+        )}
 
         <div className="flex items-center justify-between mb-2">
           <p className="text-sm font-medium text-gray-700 dark:text-gray-300">날짜</p>
@@ -264,10 +279,10 @@ export function ReservationModal({
                         onClick={() => setSelectedSlotId(slot.id)}
                         className={`rounded-lg py-2 text-sm border ${
                           isFull
-                            ? "border-gray-100 dark:border-gray-800 text-gray-300 line-through"
+                            ? "border-gray-100 dark:border-[#282B32] text-gray-300 line-through"
                             : isSelected
                             ? "bg-gray-900 text-white border-gray-900 font-medium"
-                            : "border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300"
+                            : "border-gray-200 dark:border-[#282B32] text-gray-700 dark:text-gray-300"
                         }`}
                       >
                         {formatTime(slot.startTime)}
@@ -291,10 +306,10 @@ export function ReservationModal({
                       onClick={() => setSelectedTime(time)}
                       className={`rounded-lg py-2 text-sm border ${
                         isPast
-                          ? "border-gray-100 dark:border-gray-800 text-gray-300 line-through"
+                          ? "border-gray-100 dark:border-[#282B32] text-gray-300 line-through"
                           : selectedTime === time
                           ? "bg-gray-900 text-white border-gray-900 font-medium"
-                          : "border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300"
+                          : "border-gray-200 dark:border-[#282B32] text-gray-700 dark:text-gray-300"
                       }`}
                     >
                       {time}
@@ -317,7 +332,7 @@ export function ReservationModal({
           type="button"
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="w-full rounded-full py-3.5 text-sm font-medium bg-gray-100 text-gray-900 dark:text-white disabled:opacity-60 enabled:bg-gray-900 enabled:text-white"
+          className="w-full rounded-full py-3.5 text-base font-medium bg-gray-100 text-gray-900 dark:text-white disabled:opacity-60 enabled:bg-gray-900 enabled:text-white"
         >
           {buttonLabel}
         </button>

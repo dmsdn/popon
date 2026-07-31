@@ -103,16 +103,16 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
 
   return (
     <main className="min-h-screen flex flex-col w-full mobile:max-w-[1000px] mobile:mx-auto pb-16 mobile:pb-0">
-      <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100 dark:border-gray-800">
+      <div className="flex items-center gap-2 h-14 px-4 mobile:px-8 border-b border-gray-100 dark:border-[#282B32]">
         <button type="button" onClick={() => router.back()} aria-label="뒤로가기" className="text-lg text-gray-500">
-          ‹
+          <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
         </button>
         <h1 className="text-lg font-bold">웨이팅 상세</h1>
       </div>
 
       <div className="px-4 mobile:px-8 py-6 flex flex-col gap-8">
         <Link href={`/popup/${popup.id}`} className="flex items-center gap-4">
-          <div className="w-24 h-24 flex-none bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-sm">
+          <div className="w-24 h-24 flex-none bg-gray-100 dark:bg-[#282B32] rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-sm">
             {popup.thumbnailImages?.[0] ? (
               <ImageWithFallback src={popup.thumbnailImages[0]} className="w-full h-full object-cover" />
             ) : (
@@ -126,7 +126,7 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
           </div>
         </Link>
 
-        <section className="border border-gray-200 dark:border-gray-800 rounded-xl p-5">
+        <section className="border border-gray-200 dark:border-[#282B32] rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-sm text-gray-500 mb-1">내 순번</p>
@@ -148,7 +148,7 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
         {/* [신규] 입장 전(대기중/호출됨)이면 QR을 보여줘요. 입장 완료/취소된
             건은 더 이상 쓸 일이 없으니 숨겨요. */}
         {(waiting.status === "WAITING" || waiting.status === "CALLED") && (
-          <section className="border border-gray-200 dark:border-gray-800 rounded-xl p-5 flex flex-col items-center">
+          <section className="border border-gray-200 dark:border-[#282B32] rounded-xl p-5 flex flex-col items-center">
             <p className="text-sm font-semibold mb-3">입장 QR</p>
             <QRCodeDisplay qrToken={waiting.qrToken} />
           </section>
@@ -164,12 +164,12 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
         </section>
 
         {isActive && (
-          <button type="button" onClick={handleCancel} className="w-full rounded-full py-3 text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+          <button type="button" onClick={handleCancel} className="w-full rounded-full py-3 text-base font-medium bg-gray-100 dark:bg-[#282B32] text-gray-700 dark:text-gray-300">
             웨이팅 취소
           </button>
         )}
 
-        <button type="button" onClick={handleShare} className="w-full rounded-full py-3 text-sm font-medium border border-gray-300">
+        <button type="button" onClick={handleShare} className="w-full rounded-full py-3 text-base font-medium border border-gray-300">
           함께 갈 친구에게 보내기
         </button>
       </div>

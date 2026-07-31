@@ -31,8 +31,8 @@ export function ReviewCard({
     <>
       <div className="flex-none w-[260px] flex flex-col gap-0">
         {/* 1. 팝업정보 카드 - 누르면 상세페이지로 바로 이동 */}
-        <Link href={`/popup/${popupId}`} className="flex items-start gap-2.5 bg-gray-50 dark:bg-gray-900 rounded-xl p-3">
-          <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex-none flex items-center justify-center text-sm text-gray-400">
+        <Link href={`/popup/${popupId}`} className="flex items-start gap-2.5 bg-gray-50 dark:bg-[#282B32] rounded-xl p-3">
+          <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-[#282B32] flex-none flex items-center justify-center text-sm text-gray-400">
             {popupName[0]}
           </div>
           <div className="min-w-0">
@@ -69,7 +69,7 @@ export function ReviewCard({
 
           {/* 3. 사진 카드 - 있을 때만 */}
           {photos && photos.length > 0 && (
-            <div className="h-[160px] rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-sm text-gray-400 overflow-hidden">
+            <div className="h-[160px] rounded-xl bg-gray-100 dark:bg-[#282B32] flex items-center justify-center text-sm text-gray-400 overflow-hidden">
               {photos[0].startsWith("http") || photos[0].startsWith("/") ? (
                 <ImageWithFallback src={photos[0]} className="w-full h-full object-cover" />
               ) : (

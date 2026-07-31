@@ -23,7 +23,7 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen flex flex-col">
       {/* 상단바 */}
-      <header className="flex items-center px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+      <header className="flex items-center h-14 px-4 border-b border-gray-100 dark:border-[#282B32]">
         <Link href="/" className="font-bold text-lg">팝업</Link>
       </header>
 
@@ -32,14 +32,16 @@ export default function LoginPage() {
           아래쪽으로 내렸어요. */}
       <div className="flex-1 flex items-center justify-center px-6">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/Icon/LOGO_Light.svg" alt="POP-ON" className="w-[220px] h-auto" />
+        <img src="/Icon/LOGO_Light.svg" alt="POP-ON" className="w-[220px] h-auto dark:hidden" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/Icon/LOGO_Dark.svg" alt="POP-ON" className="w-[220px] h-auto hidden dark:block" />
       </div>
 
       <div className="flex flex-col items-center px-6 pb-16 gap-3">
         <button
           type="button"
           onClick={redirectToKakaoLogin}
-          className="w-full max-w-sm rounded-full py-3.5 text-sm font-medium bg-[#FEE500]"
+          className="w-full max-w-sm rounded-full py-3.5 text-base font-medium bg-[#FEE500]"
         >
           카카오로 시작하기
         </button>
@@ -65,7 +67,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={handleTestLogin}
-              className="w-full max-w-sm rounded-full py-3.5 text-sm font-medium border border-dashed border-gray-300 text-gray-500 mt-2"
+              className="w-full max-w-sm rounded-full py-3.5 text-base font-medium border border-dashed border-gray-300 text-gray-500 mt-2"
             >
               [개발용] 테스트 계정으로 계속하기
             </button>

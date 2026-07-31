@@ -101,7 +101,7 @@ export function PromoCarousel() {
   if (slideCount === 0) return null;
 
   return (
-    <div className="mb-14 mobile:mb-16 min-[600px]:px-4">
+    <div className="mb-14 mobile:mb-16 min-[700px]:px-4">
       <div className="overflow-hidden" ref={emblaRef}>
         <div className="flex">
           {showRealBanners
@@ -117,7 +117,7 @@ export function PromoCarousel() {
                 // 600px 이상: 고정 600×600 정사각형으로 바뀌면서, 옆에 다음 배너가
                 // 살짝 보이도록 카드 사이 여백과 둥근 모서리를 살려요.
                 const sizeClass =
-                  "flex-[0_0_100%] h-[300px] min-[600px]:flex-[0_0_600px] min-[600px]:h-[600px] min-[600px]:mr-4 min-[600px]:rounded-2xl";
+                  "flex-[0_0_100%] h-[400px] min-[700px]:flex-[0_0_600px] min-[700px]:h-[600px] min-[700px]:mr-4 min-[700px]:rounded-2xl";
                 return href ? (
                   <Link key={banner.id} href={href} className={`${sizeClass} overflow-hidden bg-gray-50`}>
                     <ImageWithFallback src={banner.imageUrl} className="w-full h-full object-cover" />
@@ -132,7 +132,7 @@ export function PromoCarousel() {
                 <Link
                   key={card.id}
                   href={`/popup/${card.id}`}
-                  className="flex-[0_0_100%] h-[300px] min-[600px]:flex-[0_0_600px] min-[600px]:h-[600px] min-[600px]:mr-4 min-[600px]:rounded-2xl overflow-hidden bg-gray-50 flex items-end p-4"
+                  className="flex-[0_0_100%] h-[400px] min-[700px]:flex-[0_0_600px] min-[700px]:h-[600px] min-[700px]:mr-4 min-[700px]:rounded-2xl overflow-hidden bg-gray-50 flex items-end p-4"
                 >
                   <span className="text-sm mobile:text-base font-medium text-gray-700 dark:text-gray-300">
                     {card.name}
