@@ -224,7 +224,7 @@ export default function Home() {
                     <div className="max-w-7xl mx-auto px-6 lg:px-10 py-24 lg:py-32">
                         <h1 className="text-3xl lg:text-5xl font-extrabold leading-tight mb-4"
                             style={{fontFamily: "'NanumSquareRound', sans-serif"}}>
-                            브랜드 팝업의 시작과 끝,<br/>팝업온에서
+                            브랜드 팝업의 시작과 끝,<br/>팝온에서
                         </h1>
                         <p className="text-muted-foreground text-sm lg:text-base mb-8">
                             팝업 등록부터 예약·웨이팅 관제까지. 지금 진행 중인 팝업이 등록되면 이 자리에 소개됩니다.

@@ -57,7 +57,7 @@ export default function WalkinPage() {
           <div className="w-7 h-7 rounded-sm bg-accent flex items-center justify-center">
             <span className="text-accent-foreground text-xs font-bold" style={{ fontFamily: "'DM Mono', monospace" }}>PO</span>
           </div>
-          <span className="font-semibold text-sm">팝업온 현장 웨이팅</span>
+          <span className="font-semibold text-sm">팝온[POP-ON] 현장 웨이팅</span>
         </div>
 
         {loading && (
