@@ -101,13 +101,13 @@ export default function MorePage() {
       {/* 카테고리별 바로가기 - 관심 카테고리로 설정해둔 게 있으면 맨 위로 */}
       {sortedKeywords.length > 0 && (
         <section className="px-4 mobile:px-8 py-2 border-b border-gray-100 dark:border-[#282B32]">
-          <h2 className="text-sm font-semibold mb-1 mt-4">카테고리별 바로가기</h2>
+          <h2 className="text-sm font-semibold mb-1 mt-4 text-gray-400">카테고리별 바로가기</h2>
           <nav className="flex flex-col">
             {sortedKeywords.map((kw, i) => (
               <Link
                 key={kw.id}
                 href={`/search?q=${encodeURIComponent(kw.name)}`}
-                className={`flex items-center justify-between py-3.5 text-sm text-gray-700 dark:text-gray-300 ${
+                className={`flex items-center py-3.5 text-base text-gray-700 dark:text-gray-300 ${
                   i < sortedKeywords.length - 1 ? "border-b border-gray-50 dark:border-[#282B32]" : ""
                 }`}
               >
@@ -117,7 +117,6 @@ export default function MorePage() {
                     <span className="text-sm text-gray-400">관심</span>
                   )}
                 </span>
-                <span className="text-gray-300">›</span>
               </Link>
             ))}
           </nav>
@@ -126,13 +125,13 @@ export default function MorePage() {
 
       {/* 지역별 보기 - 관심 지역으로 설정해둔 게 있으면 맨 위로 */}
       <section className="px-4 mobile:px-8 py-2">
-        <h2 className="text-sm font-semibold mb-1 mt-4">지역별 보기</h2>
+        <h2 className="text-sm font-semibold mb-1 mt-4 text-gray-400">지역별 보기</h2>
         <nav className="flex flex-col">
           {sortedRegions.map((region, i) => (
             <Link
               key={region.id}
               href={`/search?q=${encodeURIComponent(region.name)}`}
-              className={`flex items-center justify-between py-3.5 text-sm text-gray-700 dark:text-gray-300 ${
+              className={`flex items-center py-3.5 text-base text-gray-700 dark:text-gray-300 ${
                 i < sortedRegions.length - 1 ? "border-b border-gray-50 dark:border-[#282B32]" : ""
               }`}
             >
@@ -142,7 +141,6 @@ export default function MorePage() {
                   <span className="text-sm text-gray-400">관심</span>
                 )}
               </span>
-              <span className="text-gray-300">›</span>
             </Link>
           ))}
         </nav>

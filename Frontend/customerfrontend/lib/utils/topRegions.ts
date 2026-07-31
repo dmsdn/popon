@@ -18,3 +18,21 @@ export function getTopRegions(openPopups: PopupItem[], count = 3): string[] {
     .slice(0, count)
     .map(([region]) => region);
 }
+
+// [신규] 검색창 "추천 키워드"용 - 지역과 카테고리를 한데 모아서, 지금 진행중인
+// 팝업이 가장 많은 순으로 상위 N개를 뽑아요. "더현대"처럼 특정 브랜드명이
+// 고정되어 있던 것도 이걸로 대체해요 - 실제로 활발한 지역/카테고리가 자동으로
+// 올라와요.
+export function getTopKeywords(openPopups: PopupItem[], count = 5): string[] {
+  const counts = new Map<string, number>();
+  for (const p of openPopups) {
+    if (p.location) counts.set(p.location, (counts.get(p.location) ?? 0) + 1);
+    for (const k of p.keywordNames ?? []) {
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, count)
+    .map(([keyword]) => keyword);
+}

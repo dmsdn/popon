@@ -17,7 +17,9 @@ export interface Review {
   id: number;
   popupId: number;
   nickname?: string; // [신규] 작성자 닉네임 - 없으면 프론트에서 "방문자"로 대체 표시
-  rating: number; // 0.5 ~ 5.0
+  // [수정] 백엔드가 "방문 인증된 사람=별점 있는 후기 / 방문 안 한 사람=별점 없는
+  // 댓글"로 구분하도록 바뀌었어요. rating이 null이면 방문 인증 없이 남긴 댓글이에요.
+  rating: number | null; // 0.5 ~ 5.0, 방문 미인증이면 null
   content: string;
   imageUrls: string[];
   likeCount: number;
@@ -29,7 +31,7 @@ export interface Review {
 
 export interface ReviewCreatePayload {
   popupId: number;
-  rating: number;
+  rating?: number; // [수정] 방문 미인증 댓글은 별점 없이 보낼 수 있어요 (백엔드가 자동으로 무시함)
   content: string;
   imageUrls?: string[]; // 최대 5장
   visitDate?: string; // "YYYY-MM-DD", 방문 기록에서 자동으로 채워진 값 (기록 없으면 생략)
@@ -99,7 +101,9 @@ function nextMockId(reviews: Review[]): number {
   return reviews.reduce((max, r) => Math.max(max, r.id), 0) + 1;
 }
 
-function validateRating(rating: number) {
+function validateRating(rating: number | undefined) {
+  // [수정] 방문 미인증 댓글은 rating 자체가 없어요 - 그 경우엔 검증을 건너뛰어요.
+  if (rating === undefined) return;
   if (rating < 0.5 || rating > 5) {
     throw new Error("별점은 0.5점에서 5점 사이여야 해요.");
   }
@@ -126,7 +130,7 @@ function mockCreateReview(payload: ReviewCreatePayload): Review {
   const review: Review = {
     id: nextMockId(reviews),
     popupId: payload.popupId,
-    rating: payload.rating,
+    rating: payload.rating ?? null,
     content: payload.content,
     imageUrls: payload.imageUrls ?? [],
     likeCount: 0,
@@ -162,7 +166,7 @@ function mockUpdateReview(id: number, payload: ReviewCreatePayload): Review {
 
   const updated: Review = {
     ...reviews[idx],
-    rating: payload.rating,
+    rating: payload.rating ?? null,
     content: payload.content,
     imageUrls: payload.imageUrls ?? [],
     visitDate: payload.visitDate ?? reviews[idx].visitDate,
