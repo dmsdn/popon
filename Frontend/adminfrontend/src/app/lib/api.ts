@@ -11,6 +11,21 @@ export class ApiError extends Error {
 
 const TOKEN_KEY = "accessToken";
 
+// 비로그인 방문자를 구분하는 임의 id (7/31).
+//
+// 원래 crypto.randomUUID()를 그냥 불렀는데, 이 함수는 **보안 컨텍스트(HTTPS 또는 localhost)에서만
+// 존재한다.** 평문 HTTP로 배포하는 순간 undefined가 되어 TypeError가 나고, logVisit()이 앱 최초
+// 마운트에서 호출되기 때문에 렌더가 통째로 죽어 화면이 새까맣게 나왔다.
+// 개발 중에는 localhost가 예외적으로 보안 컨텍스트라 아무도 눈치채지 못했다.
+//
+// 이 값은 방문자 추이 집계용 구분자일 뿐 보안에 쓰이지 않으므로, 없으면 난수로 대체한다.
+function randomId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `anon-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 // ── 플랫폼 방문 로그 (관리자 대시보드 방문자 추이 집계용) ──
 // 앱 최초 마운트 시 1회만 호출한다. 집계용 fire-and-forget이라 실패는 무시(콘솔만).
 // visitorKey: 관리자 "admin:{id}" / 주최자 "business:{id}" / 비로그인은 localStorage에 보관하는 UUID 재사용
@@ -31,7 +46,7 @@ export function logVisit() {
   if (!visitorKey) {
     let anon = localStorage.getItem("visitor_id");
     if (!anon) {
-      anon = crypto.randomUUID();
+      anon = randomId();
       localStorage.setItem("visitor_id", anon);
     }
     visitorKey = anon;
@@ -294,6 +309,22 @@ export function rejectPopup(id: number | string, reason: string) {
     method: "PUT",
     body: JSON.stringify({ reason }),
   });
+}
+
+// 게시중지 · 게시재개 (7/31 연동).
+// 그전에는 전용 API가 없다고 보고 reject를 재사용하면서 사유 앞에 [게시중지] 마커를 붙였는데,
+// 그러면 DB에 status=REJECTED로 저장돼 **게시중지한 팝업이 「반려」 필터에 뜨고 「게시중지」 필터는 늘 비었다.**
+// 백엔드에는 7/27부터 전용 API가 있었다 — status를 SUSPENDED로 바로 바꾼다.
+// suspend는 BEFOR·OPEN에서만 허용되고, resume은 날짜를 보고 원래 있어야 할 상태로 되돌린다.
+export function suspendPopup(id: number | string, reason: string) {
+  return request<Popup>(`/api/admin/popups/${id}/suspend`, {
+    method: "PUT",
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export function resumePopup(id: number | string) {
+  return request<Popup>(`/api/admin/popups/${id}/resume`, { method: "PUT" });
 }
 
 // ── 예약 슬롯 ──

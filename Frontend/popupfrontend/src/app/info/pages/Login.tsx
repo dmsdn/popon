@@ -141,7 +141,7 @@ export default function Login() {
 
           {/* ── 하단: 아직 계정이 없는 사람을 위한 회원가입 유도 ── */}
           <div className="mt-10 pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8">
-            <span className="text-sm text-foreground font-medium">팝업온이 처음이신가요?</span>
+            <span className="text-sm text-foreground font-medium">팝온이 처음이신가요?</span>
             <button
               onClick={() => navigate("/signup")}
               className="text-sm px-6 py-2.5 rounded-sm border border-accent/60 text-accent hover:bg-accent hover:text-accent-foreground transition-colors"

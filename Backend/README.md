@@ -1,4 +1,4 @@
-# 팝업온 통합 백엔드 (popupon-backend)
+# 팝온[POP-ON] 통합 백엔드 (popupon-backend)
 
 기존 `popupbackend`(8080, 주최자·관리자)와 `customerbackend`(8081, 소비자)를 **하나의 Spring Boot 앱**으로 통합한 백엔드.
 2026-07-22 팀 결정으로 도메인 패키지 통합안(구 unified-option2)을 채택. 통합 배경·대안 비교는 [UNIFICATION-README.md](UNIFICATION-README.md) 참고.

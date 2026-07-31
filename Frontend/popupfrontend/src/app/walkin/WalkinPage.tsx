@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router";
 import { QRCodeSVG } from "qrcode.react";
 import { Loader2, UserPlus, CheckCircle2, Info } from "lucide-react";
 import { getPopup, registerWaiting, Popup, WaitingItem } from "../lib/api";
+import Logo from "../components/Logo";
 
 // 비회원 현장 웨이팅 접수 폼 — 주최자센터 [대기열·인원 관제] 하단의 QR로 진입하는 공개 페이지.
 // 백엔드 실연동: POST /api/popups/{id}/waiting (permitAll) — 등록 즉시 당일 대기번호·입장 QR 발급,
@@ -54,10 +55,8 @@ export default function WalkinPage() {
     <div className="theme-light min-h-screen bg-background text-foreground flex items-center justify-center p-4" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>
       <div className="w-full max-w-md bg-card border border-border rounded-sm p-6">
         <div className="flex items-center gap-2 mb-1">
-          <div className="w-7 h-7 rounded-sm bg-accent flex items-center justify-center">
-            <span className="text-accent-foreground text-xs font-bold" style={{ fontFamily: "'DM Mono', monospace" }}>PO</span>
-          </div>
-          <span className="font-semibold text-sm">팝업온 현장 웨이팅</span>
+          <Logo height={20} className="shrink-0" />
+          <span className="font-semibold text-sm">현장 웨이팅</span>
         </div>
 
         {loading && (

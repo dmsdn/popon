@@ -2,9 +2,11 @@ import { Outlet, NavLink, useNavigate, ScrollRestoration } from "react-router";
 import { useEffect, useState } from "react";
 import { Menu, X, LogOut, User, Sun, Moon } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import Logo from "../components/Logo";
 
-const EXTERNAL_SERVICE_URL = "http://localhost:5173"; // 소비자 프론트엔드(customerfrontend) 루트
-const ADMIN_CONSOLE_URL = "http://localhost:5175/admin"; // 관리자 프론트엔드(adminfrontend) — 별도 앱으로 분리됨
+// 7/31 — 하드코딩된 localhost 주소를 lib/siteUrls.ts로 옮겼다.
+// 배포하면 이 링크들이 사용자 자기 PC를 가리켜 「서비스페이지」·푸터가 전부 죽었다.
+import { CONSUMER_URL as EXTERNAL_SERVICE_URL, ADMIN_CONSOLE_URL } from "../lib/siteUrls";
 
 // 안내 페이지(/, /manage, /login, /signup) 전용 다크·라이트 전환 (7/30).
 // theme.css의 .theme-light가 토큰을 다시 선언하므로 래퍼에 클래스만 붙이면 전체가 뒤집힌다.
@@ -63,10 +65,8 @@ export default function Root() {
         <div className="max-w-7xl mx-auto px-6 lg:px-10 flex items-center justify-between h-16">
           {/* Logo */}
           <NavLink to="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-sm bg-accent flex items-center justify-center">
-              <span className="text-accent-foreground text-xs font-bold leading-none" style={{ fontFamily: "'DM Mono', monospace" }}>PO</span>
-            </div>
-            <span className="text-base font-semibold tracking-tight" style={{ fontFamily: "'NanumSquareRound', sans-serif" }}>
+            <Logo height={22} />
+            <span className="sr-only">
               팝온[POP-ON]
             </span>
           </NavLink>
@@ -198,10 +198,7 @@ export default function Root() {
         <div className="max-w-7xl mx-auto px-6 lg:px-10 grid md:grid-cols-3 gap-8 items-start">
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-6 h-6 rounded-sm bg-accent flex items-center justify-center">
-                <span className="text-accent-foreground text-xs font-bold" style={{ fontFamily: "'DM Mono', monospace" }}>PO</span>
-              </div>
-              <span className="font-semibold text-sm" style={{ fontFamily: "'NanumSquareRound', sans-serif" }}>팝온[POP-ON]</span>
+              <Logo height={20} />
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
               팝업스토어 주최자와 공간을 연결하는<br />대한민국 No.1 팝업 중개 플랫폼
