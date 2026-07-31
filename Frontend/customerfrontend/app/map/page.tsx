@@ -251,7 +251,8 @@ export default function MapPage() {
               ✕
             </button>
             <Link href={`/popup/${selected.id}`} className="flex items-stretch gap-3 p-3">
-              <div className="w-20 h-20 flex-none rounded-lg overflow-hidden bg-gray-100">
+              {/* [수정] 이미지가 너무 작아서 80px → 112px로 키웠어요. */}
+              <div className="w-28 h-28 flex-none rounded-lg overflow-hidden bg-gray-100 dark:bg-[#282B32]">
                 {selectedImageUrl ? (
                   <ImageWithFallback src={selectedImageUrl} className="w-full h-full object-cover" />
                 ) : (
@@ -266,25 +267,30 @@ export default function MapPage() {
                   {selectedItem.location && (
                     <span className="text-base text-gray-500">{selectedItem.location}</span>
                   )}
-                  {/* [신규] 별점, 찜 개수 추가 */}
-                  {selectedItem.avgRating != null && (
-                    <span className="flex items-center gap-0.5 text-base text-gray-500">
-                      <StarRatingDisplay rating={Number(selectedItem.avgRating)} size={14} />
-                      {Number(selectedItem.avgRating).toFixed(1)}
-                    </span>
-                  )}
-                  {selectedWishlistCount !== null && (
-                    <span className="flex items-center gap-0.5 text-base text-gray-500">
-                      <img src="/Icon/heart.svg" alt="" width={14} height={14} />
-                      {selectedWishlistCount}
-                    </span>
-                  )}
                 </div>
                 <p className="text-base font-semibold truncate">{selected.title}</p>
+                {/* [수정] 별점/찜 개수를 상태·지역 줄에 끼워 넣지 않고, 이름 바로
+                    아래에 독립된 줄로 분리해서 눈에 잘 띄게 했어요. */}
+                {(selectedItem.avgRating != null || selectedWishlistCount !== null) && (
+                  <div className="flex items-center gap-3">
+                    {selectedItem.avgRating != null && (
+                      <span className="flex items-center gap-1 text-base text-gray-500">
+                        <StarRatingDisplay rating={Number(selectedItem.avgRating)} size={14} />
+                        {Number(selectedItem.avgRating).toFixed(1)}
+                      </span>
+                    )}
+                    {selectedWishlistCount !== null && (
+                      <span className="flex items-center gap-1 text-base text-gray-500">
+                        <img src="/Icon/heart.svg" alt="" width={14} height={14} />
+                        {selectedWishlistCount}
+                      </span>
+                    )}
+                  </div>
+                )}
                 {selectedItem.dateRange && (
                   <p className="text-base text-gray-400">{selectedItem.dateRange}</p>
                 )}
-                {/* [신규] 날짜 아래에 키워드 전체 표시 */}
+                {/* 날짜 아래에 키워드 전체 표시 */}
                 {(selected.keywordNames ?? []).length > 0 && (
                   <p className="text-base text-gray-400">{(selected.keywordNames ?? []).join(" · ")}</p>
                 )}
