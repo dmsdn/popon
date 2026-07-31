@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { getPopups, getPopupImages, Popup } from "../../lib/api";
+import Logo from "../../components/Logo";
 
 // ── 스크롤 리빌 — 화면에 들어오면 한 번만 페이드+슬라이드 업 ──
 function Reveal({ children, delay = 0, className = "" }: { children: React.ReactNode; delay?: number; className?: string }) {
@@ -227,9 +228,7 @@ export default function PopupManage() {
         <div className="max-w-7xl mx-auto px-6 lg:px-10 pt-24 pb-16 lg:pt-32 lg:pb-20 grid lg:grid-cols-2 gap-14 items-center">
           <Reveal>
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-11 h-11 rounded-sm bg-accent flex items-center justify-center">
-                <span className="text-accent-foreground text-base font-bold" style={{ fontFamily: "'DM Mono', monospace" }}>PO</span>
-              </div>
+              <Logo height={30} className="shrink-0" />
               {/* 페이지의 유일한 h1 — 스크린 리더·검색엔진이 이 페이지의 주제로 읽는 제목 */}
               <h1 className="text-2xl font-extrabold text-foreground tracking-wide" style={{ fontFamily: "'NanumSquareRound', sans-serif" }}>팝업 통합 관리</h1>
             </div>

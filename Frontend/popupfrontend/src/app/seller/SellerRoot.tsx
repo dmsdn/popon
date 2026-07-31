@@ -8,6 +8,7 @@ import {
 import { useAuth, isLocalSessionExpired } from "../context/AuthContext";
 import { getMyPopups, getMyInquiries, getMyNoticeInbox, markNoticeRead, getToken, Popup, InquiryItem, NoticeInboxItem } from "../lib/api";
 import { loadSeen, saveSeen, unseenCount } from "../lib/navBadges";
+import Logo from "../components/Logo";
 
 // JWT payload에서 만료(exp, 초 단위 epoch) 추출 — 세션 만료 감지용
 function decodeJwtExp(token: string): number | null {
@@ -225,10 +226,8 @@ export default function SellerRoot() {
       <header className="h-14 bg-card border-b border-border flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40">
         <div className="flex items-center gap-3">
           <Link to="/seller" className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-sm bg-accent flex items-center justify-center">
-              <span className="text-accent-foreground text-xs font-bold" style={{ fontFamily: "'DM Mono', monospace" }}>PO</span>
-            </div>
-            <span className="font-semibold text-sm tracking-tight">팝온[POP-ON] <span className="text-accent">주최자센터</span></span>
+            <Logo height={20} className="shrink-0" />
+            <span className="font-semibold text-sm tracking-tight text-accent">주최자센터</span>
           </Link>
           <span className="hidden md:inline-flex text-[11px] px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium">파트너 전용</span>
         </div>
