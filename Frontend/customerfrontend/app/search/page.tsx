@@ -277,7 +277,7 @@ export default function SearchPage({
 
 function SearchResultRow({ item }: { item: PopupItem }) {
   return (
-    <Link href={`/popup/${item.id}`} className="flex gap-4 py-4 border-b border-gray-50">
+    <Link href={`/popup/${item.id}`} className="flex gap-4 py-4 border-b border-gray-50 dark:border-[#282B32]">
       <div className="relative w-24 h-24 flex-none rounded-lg bg-gray-100 dark:bg-[#282B32] border border-gray-200 dark:border-[#282B32] overflow-hidden flex items-center justify-center text-sm text-gray-400">
         {item.imageUrl ? (
           <ImageWithFallback src={item.imageUrl} className="w-full h-full object-cover" />

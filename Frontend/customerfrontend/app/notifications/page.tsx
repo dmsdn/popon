@@ -103,7 +103,7 @@ export default function NotificationsPage() {
               key={item.id}
               type="button"
               onClick={() => !item.read && handleReadNotification(item.id)}
-              className={`flex items-start gap-3 py-4 border-b border-gray-50 text-left w-full ${
+              className={`flex items-start gap-3 py-4 border-b border-gray-50 dark:border-[#282B32] text-left w-full ${
                 item.read ? "" : "bg-gray-50/60"
               }`}
             >

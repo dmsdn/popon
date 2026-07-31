@@ -108,7 +108,7 @@ export default function MorePage() {
                 key={kw.id}
                 href={`/search?q=${encodeURIComponent(kw.name)}`}
                 className={`flex items-center justify-between py-3.5 text-sm text-gray-700 dark:text-gray-300 ${
-                  i < sortedKeywords.length - 1 ? "border-b border-gray-50" : ""
+                  i < sortedKeywords.length - 1 ? "border-b border-gray-50 dark:border-[#282B32]" : ""
                 }`}
               >
                 <span className="flex items-center gap-1.5">
@@ -133,7 +133,7 @@ export default function MorePage() {
               key={region.id}
               href={`/search?q=${encodeURIComponent(region.name)}`}
               className={`flex items-center justify-between py-3.5 text-sm text-gray-700 dark:text-gray-300 ${
-                i < sortedRegions.length - 1 ? "border-b border-gray-50" : ""
+                i < sortedRegions.length - 1 ? "border-b border-gray-50 dark:border-[#282B32]" : ""
               }`}
             >
               <span className="flex items-center gap-1.5">

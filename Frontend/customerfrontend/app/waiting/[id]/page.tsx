@@ -191,7 +191,7 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
           </button>
         )}
 
-        <button type="button" onClick={handleShare} className="w-full rounded-full py-3 text-base font-medium border border-gray-300">
+        <button type="button" onClick={handleShare} className="w-full rounded-full py-3 text-base font-medium border border-gray-300 dark:border-[#282B32]">
           함께 갈 친구에게 보내기
         </button>
       </div>
@@ -201,7 +201,7 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between py-2 border-t border-gray-50 first:border-t-0 first:pt-0">
+    <div className="flex items-center justify-between py-2 border-t border-gray-50 dark:border-[#282B32] first:border-t-0 first:pt-0">
       <span className="text-sm text-gray-400">{label}</span>
       <span className="text-sm text-gray-700 dark:text-gray-300">{value}</span>
     </div>

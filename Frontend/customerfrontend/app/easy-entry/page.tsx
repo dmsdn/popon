@@ -74,7 +74,7 @@ export default function EasyEntryListPage() {
               <Link
                 key={item.id}
                 href={`/popup/${item.id}`}
-                className="flex items-center gap-4 py-4 border-b border-gray-50"
+                className="flex items-center gap-4 py-4 border-b border-gray-50 dark:border-[#282B32]"
               >
                 <div className="w-24 h-24 flex-none rounded-lg bg-gray-100 dark:bg-[#282B32] overflow-hidden flex items-center justify-center text-sm text-gray-400">
                   {item.imageUrl ? (

@@ -85,7 +85,7 @@ export function ReportReviewModal({ reviewId, onClose }: { reviewId: number; onC
                 >
                   <span
                     className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center flex-none ${
-                      reason === opt.value ? "border-gray-900" : "border-gray-300"
+                      reason === opt.value ? "border-gray-900 dark:border-white" : "border-gray-300 dark:border-[#282B32]"
                     }`}
                   >
                     {reason === opt.value && <span className="w-2 h-2 rounded-full bg-gray-900" />}

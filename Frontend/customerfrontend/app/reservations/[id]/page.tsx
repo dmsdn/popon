@@ -193,7 +193,7 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
               <button
                 type="button"
                 onClick={() => setShowChange(true)}
-                className="flex-1 rounded-full py-3 text-sm font-medium border border-gray-300"
+                className="flex-1 rounded-full py-3 text-sm font-medium border border-gray-300 dark:border-[#282B32]"
               >
                 일정 변경
               </button>
@@ -209,7 +209,7 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
             <button
               type="button"
               onClick={handleShare}
-              className="w-full rounded-full py-3 text-base font-medium border border-gray-300"
+              className="w-full rounded-full py-3 text-base font-medium border border-gray-300 dark:border-[#282B32]"
             >
               함께 갈 친구에게 보내기
             </button>
