@@ -32,19 +32,27 @@ export function PopupSnsLinks({ links }: { links: SnsLink[] }) {
   const sorted = [...links].sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
-    <section className="flex flex-wrap gap-2 mb-5">
-      {sorted.map((link) => (
-        <a
-          key={link.id}
-          href={link.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1.5 border border-gray-200 dark:border-[#282B32] rounded-full pl-2 pr-3 py-1.5 text-sm text-gray-600 dark:text-gray-400"
-        >
-          <Image src={PLATFORM_ICON[link.platform]} alt="" width={14} height={14} />
-          {link.displayName || PLATFORM_LABEL[link.platform]}
-        </a>
-      ))}
+    <section>
+      {/* [수정] "이용 정보"/"상세 이미지"처럼 다른 섹션엔 다 이름이 있는데 여기만
+          없어서 구분이 안 됐어요. 이름 추가하고, 아이콘을 왼쪽 대신 오른쪽에
+          훨씬 크게 배치했어요. */}
+      <h2 className="text-sm font-semibold mb-2">SNS / 홈페이지</h2>
+      <div className="flex flex-col gap-1">
+        {sorted.map((link) => (
+          <a
+            key={link.id}
+            href={link.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between border-b border-gray-50 dark:border-[#17181a] py-3"
+          >
+            <span className="text-sm text-gray-700 dark:text-gray-300">
+              {link.displayName || PLATFORM_LABEL[link.platform]}
+            </span>
+            <Image src={PLATFORM_ICON[link.platform]} alt="" width={28} height={28} />
+          </a>
+        ))}
+      </div>
     </section>
   );
 }

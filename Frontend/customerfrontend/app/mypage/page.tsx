@@ -132,7 +132,10 @@ function MyPageContent() {
         uniqueIds.forEach((popupId) => {
           getPopup(popupId)
             .then((detail) => {
-              if (!cancelled) setPopupTitles((prev) => ({ ...prev, [popupId]: detail.title }));
+              if (!cancelled) {
+                setPopupTitles((prev) => ({ ...prev, [popupId]: detail.title }));
+                setReservationPopupImages((prev) => ({ ...prev, [popupId]: detail.thumbnailImages?.[0] }));
+              }
             })
             .catch(() => {
               /* 팝업이 삭제됐을 수도 있어요 - 제목 없이 표시 */
@@ -152,6 +155,8 @@ function MyPageContent() {
   // 찜 목록
   const wishlistIds = useSyncExternalStore(subscribeWishlist, getWishlistSnapshot, () => new Set<number>());
   const [wishlistPopups, setWishlistPopups] = useState<Record<number, PopupDetail>>({});
+  // [신규] "다녀간 팝업" 탭에서 후기를 누르면 크게 보여줄 모달 상태
+  const [openVisitedReview, setOpenVisitedReview] = useState<Extract<VisitedItem, { type: "review" }> | null>(null);
   // [신규] 게시중지(SUSPENDED)/승인대기/반려된 팝업은 찜·예약·웨이팅 목록에서도
   // 똑같이 숨겨요 - 게시중지되면 알림이 이미 가니까, 목록에는 안 보여도 괜찮다고
   // 하셨어요. 팝업을 조회할 때마다 여기 기록해두고, 세 목록 렌더링에서 공통으로 걸러내요.
@@ -365,6 +370,11 @@ if (queryMenu !== syncedQueryMenu) {
       setActiveMenu(queryMenu as MenuKey);
       setMobileView("detail");
     }
+  } else if (!queryMenu) {
+    // [신규] 뒤로가기 등으로 menu 쿼리파라미터가 사라지면(브라우저 히스토리를
+    // 실제로 되돌아온 경우) 목록 화면으로 돌아가요 - 이전엔 이 경우를 처리 안 해서
+    // 뒤로가기를 눌러도 눌렀던 탭이 계속 선택된 채로 남아있었어요.
+    setMobileView("list");
   }
 }
 
@@ -384,11 +394,13 @@ if (queryMenu !== syncedQueryMenu) {
       router.push("/login");
       return;
     }
-    setActiveMenu(menu);
-    setMobileView("detail");
+    // [수정] 로컬 state만 바꾸던 것에서 실제 URL(히스토리 엔트리)을 남기도록
+    // 바꿨어요 - 그래야 뒤로가기를 눌렀을 때 브라우저가 "이전 화면(목록)"으로
+    // 정확히 되돌아갈 수 있어요.
+    router.push(`/mypage?menu=${encodeURIComponent(menu)}`);
   };
 
-  const handleBackToList = () => setMobileView("list");
+  const handleBackToList = () => router.back();
 
   const handleConfirmLogout = () => {
     logout();
@@ -593,7 +605,7 @@ if (queryMenu !== syncedQueryMenu) {
                 type="button"
                 onClick={() => handleSelectMenu(menu)}
                 className={`w-full text-left px-4 mobile:px-6 py-3.5 text-sm ${
-                  activeMenu === menu ? "font-semibold text-gray-900 dark:text-white bg-gray-50" : "text-gray-700 dark:text-gray-300"
+                  activeMenu === menu ? "font-semibold text-gray-900 dark:text-white bg-gray-50 dark:bg-[#282B32]" : "text-gray-700 dark:text-gray-300"
                 }`}
               >
                 {menu}
@@ -736,9 +748,17 @@ if (queryMenu !== syncedQueryMenu) {
                   // (종료된 팝업은 등록해봤자 의미가 없으니까요).
                   const isActionable = p?.status === "OPEN" || p?.status === "BEFOR";
                   return (
-                    <div key={popupId} className="flex flex-col gap-3 border border-gray-200 dark:border-[#282B32] rounded-xl p-4">
+                    <div key={popupId} className="relative flex flex-col gap-3 border border-gray-200 dark:border-[#282B32] rounded-xl p-4">
+                      <button
+                        type="button"
+                        onClick={() => toggleWishlist(popupId)}
+                        aria-label="찜 해제"
+                        className="absolute top-3 right-3 text-gray-300"
+                      >
+                        ✕
+                      </button>
                       <div className="flex items-center gap-4">
-                        <Link href={`/popup/${popupId}`} className="flex items-center gap-4 flex-1 min-w-0">
+                        <Link href={`/popup/${popupId}`} className="flex items-center gap-4 flex-1 min-w-0 pr-6">
                           {/* [수정] 썸네일 크기를 16→24로 키웠어요(너무 작다는 피드백) */}
                           <div className="w-24 h-24 flex-none bg-gray-100 dark:bg-[#282B32] rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-sm">
                             {p?.thumbnailImages?.[0] ? (
@@ -752,14 +772,6 @@ if (queryMenu !== syncedQueryMenu) {
                             {p?.location && <p className="text-sm text-gray-400 mt-0.5">{p.location}</p>}
                           </div>
                         </Link>
-                        <button
-                          type="button"
-                          onClick={() => toggleWishlist(popupId)}
-                          aria-label="찜 해제"
-                          className="text-gray-300 flex-none"
-                        >
-                          ✕
-                        </button>
                       </div>
                       {/* [신규] 팝업마다 바로 웨이팅/예약할 수 있는 버튼 - 누르면 상세페이지로
                           가면서 해당 등록 화면이 바로 열려요. */}
@@ -884,46 +896,59 @@ if (queryMenu !== syncedQueryMenu) {
             ) : (
               <div className="flex flex-col gap-3">
                 {visitedItems.map((item) => (
-                  <div key={`${item.type}-${item.id}`} className="border border-gray-200 dark:border-[#282B32] rounded-xl p-4">
-                    <Link href={`/popup/${item.popupId}`} className="block">
-                      <div className="flex items-center justify-between mb-1">
+                  <div key={`${item.type}-${item.id}`} className="border border-gray-200 dark:border-[#282B32] rounded-xl overflow-hidden">
+                    {/* [신규] 팝업 카드 - 썸네일 + 이름, 누르면 팝업 상세페이지로 이동 */}
+                    <Link href={`/popup/${item.popupId}`} className="flex items-center gap-3 p-4 pb-3">
+                      <div className="w-16 h-16 flex-none bg-gray-100 dark:bg-[#282B32] rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-sm">
+                        {reservationPopupImages[item.popupId] ? (
+                          <ImageWithFallback src={reservationPopupImages[item.popupId]!} className="w-full h-full object-cover" />
+                        ) : (
+                          "이미지"
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
                           <span className="text-sm font-medium bg-gray-100 dark:bg-[#282B32] text-gray-500 rounded px-1.5 py-0.5">
                             {item.type === "review" ? "후기" : item.type === "reservation" ? "예약" : "웨이팅"}
                           </span>
                           <p className="text-sm font-semibold truncate">{item.title}</p>
                         </div>
-                        <span className="text-sm text-gray-400 flex-none ml-2">{toDisplayDate(item.date)}</span>
+                        <span className="text-sm text-gray-400">{toDisplayDate(item.date)}</span>
                       </div>
-                      {item.type === "review" && (
-                        <>
-                          <p className="flex items-center gap-1 text-sm text-gray-500 mb-1">
-                            <StarRatingDisplay rating={item.rating} size={12} /> {item.rating}
-                            {item.visitDate && (
-                              <span className="text-gray-400">· {item.visitDate} 다녀옴</span>
-                            )}
-                          </p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-2">{item.content}</p>
-                          {item.photos.length > 0 && (
-                            <div className="flex gap-1.5">
-                              {item.photos.slice(0, 4).map((photo) => (
-                                <ImageWithFallback
-                                  key={photo}
-                                  src={photo}
-                                  className="w-14 h-14 rounded-lg object-cover flex-none"
-                                />
-                              ))}
-                            </div>
-                          )}
-                        </>
-                      )}
-                      {item.type !== "review" && (
-                        <p className="text-sm text-gray-600 dark:text-gray-400">방문 완료 · 아직 후기를 남기지 않았어요</p>
-                      )}
                     </Link>
+
+                    {/* [수정] 후기 본문은 팝업 카드와 분리해서, 누르면 큰 화면으로
+                        내가 쓴 후기를 볼 수 있게 했어요. */}
+                    {item.type === "review" ? (
+                      <button
+                        type="button"
+                        onClick={() => setOpenVisitedReview(item)}
+                        className="block w-full text-left px-4 pb-3"
+                      >
+                        <p className="flex items-center gap-1 text-sm text-gray-500 mb-1">
+                          <StarRatingDisplay rating={item.rating} size={12} /> {item.rating}
+                          {item.visitDate && <span className="text-gray-400">· {item.visitDate} 다녀옴</span>}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-2">{item.content}</p>
+                        {item.photos.length > 0 && (
+                          <div className="flex gap-1.5">
+                            {item.photos.slice(0, 4).map((photo) => (
+                              <ImageWithFallback
+                                key={photo}
+                                src={photo}
+                                className="w-16 h-16 rounded-lg object-cover flex-none"
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </button>
+                    ) : (
+                      <p className="text-sm text-gray-600 dark:text-gray-400 px-4 pb-3">방문 완료 · 아직 후기를 남기지 않았어요</p>
+                    )}
+
                     {/* [신규] 후기에도 수정/삭제 버튼 + 추천받은 수를 보여줘요. */}
                     {item.type === "review" && (
-                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-50">
+                      <div className="flex items-center justify-between px-4 py-2.5 border-t border-gray-50 dark:border-[#17181a]">
                         <span className="text-sm text-gray-400">
                           추천 {item.likeCount > 0 ? item.likeCount : 0}
                         </span>
@@ -1188,6 +1213,53 @@ if (queryMenu !== syncedQueryMenu) {
               >
                 {withdrawing ? "처리 중..." : "탈퇴하기"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* [신규] "다녀간 팝업"에서 후기를 누르면 크게 보여주는 모달 */}
+      {openVisitedReview && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center px-6 z-50"
+          onClick={() => setOpenVisitedReview(null)}
+        >
+          <div
+            className="bg-white dark:bg-[#282B32] rounded-2xl w-full max-w-md max-h-[80vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-[#17181a]">
+              <p className="text-base font-bold truncate">{openVisitedReview.title}</p>
+              <button
+                type="button"
+                onClick={() => setOpenVisitedReview(null)}
+                aria-label="닫기"
+                className="text-gray-400 text-lg flex-none ml-3"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="overflow-y-auto px-5 py-4">
+              <p className="flex items-center gap-1.5 text-sm text-gray-500 mb-3">
+                <StarRatingDisplay rating={openVisitedReview.rating} size={16} /> {openVisitedReview.rating}
+                {openVisitedReview.visitDate && (
+                  <span className="text-gray-400">· {openVisitedReview.visitDate} 다녀옴</span>
+                )}
+              </p>
+              {openVisitedReview.photos.length > 0 && (
+                <div className="flex gap-2 overflow-x-auto mb-4">
+                  {openVisitedReview.photos.map((photo) => (
+                    <ImageWithFallback
+                      key={photo}
+                      src={photo}
+                      className="w-40 h-40 flex-none rounded-lg object-cover"
+                    />
+                  ))}
+                </div>
+              )}
+              <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                {openVisitedReview.content}
+              </p>
             </div>
           </div>
         </div>

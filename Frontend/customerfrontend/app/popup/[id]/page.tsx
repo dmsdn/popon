@@ -42,7 +42,6 @@ import { toPopupItem } from "@/lib/utils/popupMapper";
 import { recordPopupView } from "@/lib/recentlyViewed";
 import { saveRedirectTarget } from "@/lib/postLoginRedirect";
 import { toLocalDateString } from "@/lib/utils/formatLocalDate";
-import { StarRatingDisplay } from "@/components/ui/StarRatingDisplay";
 import { StarRatingInput } from "@/components/popup/StarRatingInput";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 import { type PopupItem, type ReviewItem } from "@/data/mockPopups";
@@ -388,8 +387,9 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
             {popup.companyName} ›
           </Link>
           {averageRating != null && (
-            <span className="flex items-center gap-1 text-sm text-gray-500 flex-none">
-              <StarRatingDisplay rating={Number(averageRating)} size={16} /> {Number(averageRating).toFixed(1)}/5
+            <span className="flex items-center gap-1.5 text-sm text-gray-500 flex-none">
+              <img src="/Icon/star_active.svg" alt="" width={20} height={20} />
+              {Number(averageRating).toFixed(1)}/5
             </span>
           )}
         </div>
@@ -419,7 +419,10 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
             </button>
 
             {showMapConfirm && (
-              <div className="absolute left-0 top-full mt-1.5 z-20 bg-white dark:bg-[#282B32] border border-gray-200 dark:border-[#282B32] rounded-lg shadow-md p-3 w-64">
+              <>
+                {/* [신규] 창 밖(배경)을 눌러도 닫히도록 투명 오버레이를 깔았어요. */}
+                <div className="fixed inset-0 z-10" onClick={() => setShowMapConfirm(false)} />
+                <div className="absolute left-0 top-full mt-1.5 z-20 bg-white dark:bg-[#282B32] border border-gray-200 dark:border-[#282B32] rounded-lg shadow-md p-3 w-64">
                 <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
                   "{popup.location}"으로 길찾기를 시작할까요?
                 </p>
@@ -442,7 +445,8 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                     길찾기
                   </button>
                 </div>
-              </div>
+                </div>
+              </>
             )}
           </div>
         )}
@@ -634,7 +638,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         </div>
 
         {activeTab === "정보" && (
-          <div className="flex flex-col gap-8">
+          <div className="flex flex-col divide-y divide-gray-100 dark:divide-[#282B32] [&>*:not(:first-child)]:pt-8">
             {/* [신규] SNS/홈페이지 - popup_sns_link, 정보 탭 맨 위에 배치 */}
             <PopupSnsLinks links={popup.snsLinks} />
 
@@ -717,25 +721,32 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
 
         {activeTab === "후기" && (
           <section>
-            {isLoggedIn && (
-              <div className="flex flex-col items-center mb-6">
-                {/* [수정] 카메라 아이콘 빼고, 말풍선 모양으로 만들어서 아래 별점 쪽으로
-                    꼬리가 이어지게 했어요. */}
-                <div className="relative bg-gray-100 dark:bg-[#282B32] rounded-2xl px-5 py-3">
-                  <p className="text-base font-medium text-center">
-                    다녀오셨나요? 방문하신 후기를 남겨주세요
-                  </p>
-                  <div className="absolute left-1/2 -translate-x-1/2 -bottom-2 w-4 h-4 bg-gray-100 dark:bg-[#282B32] rotate-45" />
-                </div>
-                <div className="mt-5">
-                  <StarRatingInput
-                    value={0}
-                    onChange={(v) => router.push(`/popup/${id}/review?rating=${v}`)}
-                    size={48}
-                  />
-                </div>
+            {/* [수정] 로그인 안 했을 때 카드 자체를 숨기던 것에서, 카드는 보여주되
+                별점을 누르면 후기 작성 대신 로그인 페이지로 보내는 방식으로 바꿨어요. */}
+            <div className="flex flex-col items-center mb-6">
+              {/* [수정] 카메라 아이콘 빼고, 말풍선 모양으로 만들어서 아래 별점 쪽으로
+                  꼬리가 이어지게 했어요. */}
+              <div className="relative bg-gray-100 dark:bg-[#282B32] rounded-2xl px-5 py-3 animate-float">
+                <p className="text-base font-medium text-center">
+                  다녀오셨나요? 방문하신 후기를 남겨주세요
+                </p>
+                <div className="absolute left-1/2 -translate-x-1/2 -bottom-2 w-4 h-4 bg-gray-100 dark:bg-[#282B32] rotate-45" />
               </div>
-            )}
+              <div className="mt-5">
+                <StarRatingInput
+                  value={0}
+                  onChange={(v) => {
+                    if (!customer) {
+                      saveRedirectTarget(`/popup/${id}`);
+                      router.push("/login");
+                      return;
+                    }
+                    router.push(`/popup/${id}/review?rating=${v}`);
+                  }}
+                  size={48}
+                />
+              </div>
+            </div>
 
             {relatedReviews.length > 0 && (
               <div className="flex items-center justify-between mb-4">
@@ -834,6 +845,9 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         hasSlots={slots.length > 0}
         waitingTeams={waitingTeams}
         wishlistCount={wishlistCount}
+        onWishlistToggle={(nextActive) => {
+          setWishlistCount((prev) => (prev === undefined ? prev : Math.max(0, prev + (nextActive ? 1 : -1))));
+        }}
         onReserve={() => {
           // [수정] 이전엔 로그인 여부 확인 없이 바로 모달이 열려서, 폼을 다 채운 뒤에야
           // (제출 시점에) 로그인하라고 튕겨서 입력한 내용이 다 날아갔어요. 버튼을

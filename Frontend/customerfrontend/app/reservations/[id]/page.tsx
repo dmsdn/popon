@@ -36,6 +36,18 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
   const [slots, setSlots] = useState<PopupSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [showQr, setShowQr] = useState(false);
+
+  // [신규] QR 모달이 열려있는 동안 입장(체크인) 처리가 됐는지 몇 초마다
+  // 확인해서, 처리되면 QR 대신 "입장 처리 완료" 안내로 자동 전환해요.
+  useEffect(() => {
+    if (!showQr || !customer || reservation?.entryStatus === "CHECKED_IN") return;
+    const interval = setInterval(() => {
+      getMyReservationById(customer.id, Number(id))
+        .then((r) => setReservation(r))
+        .catch((err) => console.error("입장 상태 확인 실패", err));
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [showQr, customer, id, reservation?.entryStatus]);
   const [showChange, setShowChange] = useState(false);
 
   useEffect(() => {
@@ -156,14 +168,6 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
           {popup.location && <Row label="위치" value={popup.location} />}
         </section>
 
-        {/* [신규] 취소되지 않았고 아직 입장 전이면 QR을 보여줘요. */}
-        {!isCancelled && reservation.entryStatus !== "CHECKED_IN" && (
-          <section className="border border-gray-200 dark:border-[#282B32] rounded-xl p-5 flex flex-col items-center">
-            <p className="text-sm font-semibold mb-3">입장 QR</p>
-            <QRCodeDisplay qrToken={reservation.qrToken} />
-          </section>
-        )}
-
         {!isCancelled && (
           <button
             type="button"
@@ -217,10 +221,21 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center px-6 z-50" onClick={() => setShowQr(false)}>
           <div className="bg-white dark:bg-[#282B32] rounded-xl px-6 py-8 w-full max-w-xs text-center" onClick={(e) => e.stopPropagation()}>
             <p className="text-sm font-medium mb-4">{popup.title}</p>
-            <div className="w-40 h-40 mx-auto bg-gray-100 dark:bg-[#282B32] rounded-lg flex items-center justify-center text-gray-400 text-sm mb-4">
-              QR 코드
-            </div>
-            <p className="text-sm text-gray-400 mb-6">입장 시 이 QR을 보여주세요.</p>
+            {reservation.entryStatus === "CHECKED_IN" ? (
+              <>
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-point/20 flex items-center justify-center text-point text-3xl">
+                  ✓
+                </div>
+                <p className="text-sm font-medium mb-6">입장 처리 됐어요. 즐거운 시간 보내세요!</p>
+              </>
+            ) : (
+              <>
+                <div className="flex justify-center mb-4">
+                  <QRCodeDisplay qrToken={reservation.qrToken} />
+                </div>
+                <p className="text-sm text-gray-400 mb-6">입장 시 이 QR을 보여주세요.</p>
+              </>
+            )}
             <button type="button" onClick={() => setShowQr(false)} className="w-full rounded-full py-3 text-sm font-medium bg-gray-100 dark:bg-[#282B32] text-gray-700 dark:text-gray-300">
               닫기
             </button>

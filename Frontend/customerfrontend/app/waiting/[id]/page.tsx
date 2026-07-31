@@ -26,6 +26,18 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
   const { customer, loading: authLoading } = useAuth();
 
   const [waiting, setWaiting] = useState<Waiting | null>(null);
+
+  // [신규] 대기중/호출됨 상태일 때 입장 처리가 됐는지 몇 초마다 확인해서,
+  // 처리되면 QR 대신 "입장 처리 완료" 안내로 자동 전환해요.
+  useEffect(() => {
+    if (!waiting || (waiting.status !== "WAITING" && waiting.status !== "CALLED")) return;
+    const interval = setInterval(() => {
+      getMyWaitingStatus(Number(id))
+        .then((w) => setWaiting(w))
+        .catch((err) => console.error("입장 상태 확인 실패", err));
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [waiting, id]);
   const [popup, setPopup] = useState<PopupDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -151,6 +163,16 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
           <section className="border border-gray-200 dark:border-[#282B32] rounded-xl p-5 flex flex-col items-center">
             <p className="text-sm font-semibold mb-3">입장 QR</p>
             <QRCodeDisplay qrToken={waiting.qrToken} />
+          </section>
+        )}
+
+        {/* [신규] 방금 입장 처리가 된 경우 QR 대신 완료 안내를 보여줘요. */}
+        {waiting.enteredAt && (
+          <section className="border border-gray-200 dark:border-[#282B32] rounded-xl p-5 flex flex-col items-center">
+            <div className="w-16 h-16 mb-3 rounded-full bg-point/20 flex items-center justify-center text-point text-3xl">
+              ✓
+            </div>
+            <p className="text-sm font-medium">입장 처리 됐어요. 즐거운 시간 보내세요!</p>
           </section>
         )}
 

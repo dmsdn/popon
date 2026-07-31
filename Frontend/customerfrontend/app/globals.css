@@ -74,23 +74,46 @@ body {
 }
 
 /* 세로 스크롤바 디자인 */
-.page-scrollbar::-webkit-scrollbar {
+/* [수정] .page-scrollbar 클래스에만 적용되던 스크롤바 스타일을 모든 스크롤
+   가능한 요소(모달 포함)에 적용되도록 전역으로 확장했어요. 위아래 화살표
+   버튼도 숨겼어요. */
+*::-webkit-scrollbar {
   width: 4px;
+  height: 4px;
 }
 
-.page-scrollbar::-webkit-scrollbar-track {
+*::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.page-scrollbar::-webkit-scrollbar-thumb {
+*::-webkit-scrollbar-thumb {
   background: #d1d5db;
   border-radius: 999px;
 }
 
-.page-scrollbar::-webkit-scrollbar-thumb:hover {
+*::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
 }
 
-.page-scrollbar {
+*::-webkit-scrollbar-button {
+  display: none;
+}
+
+* {
   scrollbar-width: thin;
+}
+
+/* [신규] 말풍선(로그인 화면 안내, 후기 작성 유도 카드)이 살짝 위아래로
+   동동 떠 보이게 하는 애니메이션이에요. */
+@keyframes gentle-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.animate-float {
+  animation: gentle-float 2.6s ease-in-out infinite;
 }
