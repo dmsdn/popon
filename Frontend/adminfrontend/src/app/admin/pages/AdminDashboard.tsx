@@ -110,7 +110,9 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-3 items-start">
+      {/* 7/31 — items-start 제거. 그리드 기본값(stretch)이라 같은 줄 카드가 같은 높이로
+          늘어나 아랫변이 직사각형으로 맞는다. 그전에는 내용 길이대로 높이가 달라 들쭉날쭉했다. */}
+      <div className="grid lg:grid-cols-3 gap-3">
         {/* 플랫폼 방문자 추이 (실데이터) */}
         <div className="bg-card border border-border rounded-sm p-4 lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
@@ -179,7 +181,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* 실시간 운영 지표 (7/31) — 이벤트 로그·신고·지역 마스터에서 집계 */}
-      <div className="grid lg:grid-cols-3 gap-3 items-start">
+      <div className="grid lg:grid-cols-3 gap-3">
         {/* 오늘 체크인 — 팝업 상세의 이벤트 로그(감사 원장)를 플랫폼 단위로 합산 */}
         <div className="bg-card border border-border rounded-sm p-4">
           <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
