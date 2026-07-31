@@ -106,7 +106,7 @@ export function ImageCropModal({
 
   return createPortal(
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-6">
-      <div className="bg-white dark:bg-gray-900 rounded-xl p-5 w-full max-w-sm">
+      <div className="bg-white dark:bg-[#282B32] rounded-xl p-5 w-full max-w-sm">
         <p className="text-base font-semibold mb-1">사진 위치 조정</p>
         <p className="text-sm text-gray-400 mb-4">드래그해서 위치를 옮기고, 슬라이더로 확대/축소할 수 있어요.</p>
 
@@ -160,7 +160,7 @@ export function ImageCropModal({
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 rounded-full py-3 text-sm font-medium bg-gray-100 text-gray-700 dark:text-gray-300"
+            className="flex-1 rounded-full py-3 text-base font-medium bg-gray-100 text-gray-700 dark:text-gray-300"
           >
             취소
           </button>
@@ -168,7 +168,7 @@ export function ImageCropModal({
             type="button"
             onClick={handleConfirm}
             disabled={processing || !imgUrl}
-            className="flex-1 rounded-full py-3 text-sm font-medium bg-gray-900 text-white disabled:opacity-50"
+            className="flex-1 rounded-full py-3 text-base font-medium bg-gray-900 text-white disabled:opacity-50"
           >
             {processing ? "처리 중..." : "확인"}
           </button>

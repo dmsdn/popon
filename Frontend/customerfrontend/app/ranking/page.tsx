@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Footer } from "@/components/layout/Footer";
 import { BottomTabBar } from "@/components/layout/BottomTabBar";
 import { searchPopups } from "@/lib/api/popups";
 import { toPopupItem } from "@/lib/utils/popupMapper";
+import { getTopRegions } from "@/lib/utils/topRegions";
 import type { PopupItem } from "@/data/mockPopups";
 import { LoadingState, EmptyState } from "@/components/ui/EmptyState";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
@@ -14,13 +15,38 @@ import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 // ⚠️ 방문자 수 기반 진짜 "인기순" 랭킹 API는 고객 화면에 아직 공개돼 있지 않아서
 // (관리자 전용 /api/admin/stats/popup-ranking만 존재), 지금은 선택한 지역의
 // 진행중인 팝업 목록을 순서대로 보여주고 있어요. 번호는 실제 순위가 아니에요.
-const KEYWORDS = ["전체", "성수", "여의도", "홍대"];
 
 export default function RankingListPage() {
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <RankingListInner />
+    </Suspense>
+  );
+}
+
+function RankingListInner() {
   const router = useRouter();
-  const [keyword, setKeyword] = useState(KEYWORDS[0]);
+  const searchParams = useSearchParams();
+  // [수정] 홈 화면 "인기 추천 팝업"에서 특정 지역으로 더보기를 눌렀을 때, 그
+  // 지역이 바로 선택된 채로 열리도록 URL의 region 파라미터를 읽어요.
+  const [keyword, setKeyword] = useState(searchParams.get("region") ?? "전체");
+  // [수정] 지역 목록도 성수/여의도/홍대 고정이 아니라, 지금 진행중인 팝업이
+  // 가장 많은 지역 3개로 동적으로 계산해요.
+  const [keywords, setKeywords] = useState<string[]>(["전체", keyword].filter((v, i, arr) => arr.indexOf(v) === i));
   const [items, setItems] = useState<PopupItem[]>([]);
   const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    searchPopups({ status: "OPEN" })
+      .then((list) => {
+        const allOpen = list.map(toPopupItem);
+        const top = getTopRegions(allOpen, 3);
+        // 현재 선택된 지역이 top3에 없으면(예: URL로 바로 들어온 경우) 목록에 끼워넣어요.
+        setKeywords(["전체", ...new Set([...top, ...(keyword !== "전체" ? [keyword] : [])])]);
+      })
+      .catch((err) => console.error("지역 랭킹 계산용 팝업 조회 실패", err));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,14 +70,14 @@ export default function RankingListPage() {
   return (
     <main className="min-h-screen flex flex-col w-full pb-16 mobile:pb-0 mobile:max-w-[1000px] mobile:mx-auto">
       <div className="flex-1">
-      <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100 dark:border-gray-800">
+      <div className="flex items-center gap-2 h-14 px-4 mobile:px-8 border-b border-gray-100 dark:border-[#282B32]">
         <button
           type="button"
           onClick={() => router.back()}
           aria-label="뒤로가기"
           className="text-lg text-gray-500"
         >
-          ‹
+          <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
         </button>
       </div>
 
@@ -60,7 +86,7 @@ export default function RankingListPage() {
 
         {/* 키워드(지역) 필터 - 상단 고정 */}
         <div className="flex gap-2 mb-5 overflow-x-auto scrollbar-hide">
-          {KEYWORDS.map((k) => (
+          {keywords.map((k) => (
             <button
               key={k}
               type="button"
@@ -68,7 +94,7 @@ export default function RankingListPage() {
               className={`flex-none text-sm px-3 py-1.5 rounded-full border ${
                 keyword === k
                   ? "border-gray-900 bg-gray-900 text-white font-medium"
-                  : "border-gray-200 dark:border-gray-800 text-gray-500"
+                  : "border-gray-200 dark:border-[#282B32] text-gray-500"
               }`}
             >
               {k}
@@ -91,7 +117,7 @@ export default function RankingListPage() {
                 <span className="w-6 text-center text-sm font-bold text-gray-900 dark:text-white flex-none">
                   {index + 1}
                 </span>
-                <div className="w-24 h-24 flex-none rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden flex items-center justify-center text-sm text-gray-400">
+                <div className="w-24 h-24 flex-none rounded-lg bg-gray-100 dark:bg-[#282B32] overflow-hidden flex items-center justify-center text-sm text-gray-400">
                   {item.imageUrl ? (
                     <ImageWithFallback src={item.imageUrl} className="w-full h-full object-cover" />
                   ) : (

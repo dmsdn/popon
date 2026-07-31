@@ -94,7 +94,7 @@ export default function PreferencesPage() {
                 className={`px-4 py-2 rounded-full text-sm border ${
                   selectedRegions.includes(r.id)
                     ? "bg-gray-900 text-white border-gray-900"
-                    : "border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400"
+                    : "border-gray-200 dark:border-[#282B32] text-gray-600 dark:text-gray-400"
                 }`}
               >
                 {r.name}
@@ -116,7 +116,7 @@ export default function PreferencesPage() {
                 className={`px-4 py-2 rounded-full text-sm border ${
                   selectedKeywords.includes(kw.id)
                     ? "bg-gray-900 text-white border-gray-900"
-                    : "border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400"
+                    : "border-gray-200 dark:border-[#282B32] text-gray-600 dark:text-gray-400"
                 }`}
               >
                 {kw.name}
@@ -126,7 +126,7 @@ export default function PreferencesPage() {
         </section>
       )}
 
-      <div className="mt-auto flex flex-col gap-3">
+      <div className="sticky bottom-0 -mx-6 px-6 pt-4 pb-6 mt-auto bg-white dark:bg-[#17181a] border-t border-gray-100 dark:border-[#282B32] flex flex-col gap-3">
         <button
           type="button"
           disabled={submitting || !hasAnySelection}
