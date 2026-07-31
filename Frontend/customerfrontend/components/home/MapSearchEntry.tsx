@@ -8,7 +8,7 @@ export function MapSearchEntry() {
     <div className="px-4 mobile:px-8 mb-14 mobile:mb-16">
       <Link
         href="/map"
-        className="flex items-center gap-3 border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-4"
+        className="flex items-center gap-3 border border-gray-200 dark:border-[#282B32] rounded-xl px-4 py-4"
       >
         <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-none">
           {/* eslint-disable-next-line @next/next/no-img-element */}

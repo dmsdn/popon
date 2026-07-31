@@ -158,7 +158,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
     setImageUrls((prev) => prev.filter((u) => u !== url));
   };
 
-  // [수정] 상단 ‹ 버튼도 제출 성공 시와 동일하게 back()을 씁니다.
+  // [수정] 상단 <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} /> 버튼도 제출 성공 시와 동일하게 back()을 씁니다.
   // 이전엔 <Link href={`/popup/${id}`}>라서 뒤로가기 버튼을 눌러도 "새 이동(push)"이
   // 일어났어요. 그러면 히스토리가 [..., 상세, 후기작성, 상세(새로 push)]가 되어,
   // 방금 뒤로가기로 나간 상세페이지에서 또 뒤로가기를 누르면 원래 오던 곳이 아니라
@@ -218,14 +218,14 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
 
   return (
     <main className="min-h-screen flex flex-col w-full mobile:max-w-[1000px] mobile:mx-auto pb-16 mobile:pb-0">
-      <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100 dark:border-gray-800">
+      <div className="flex items-center gap-2 h-14 px-4 mobile:px-8 border-b border-gray-100 dark:border-[#282B32]">
         <button
           type="button"
           onClick={handleBack}
           aria-label="뒤로가기"
           className="text-lg text-gray-500"
         >
-          ‹
+          <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
         </button>
         <h1 className="text-lg font-bold">{editId ? "후기 수정하기" : "후기 작성하기"}</h1>
       </div>
@@ -233,7 +233,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
       <div className="px-4 mobile:px-8 py-6 flex flex-col gap-6">
         {/* [수정] 팝업 제목 한 줄만 있던 걸, 대표 이미지 + 기간/장소까지 보이는
             카드로 바꿨어요 - 지금 어떤 팝업에 대한 후기를 쓰는지 더 명확하게 보여요. */}
-        <div className="flex items-center gap-3 border border-gray-200 dark:border-gray-800 rounded-xl p-3">
+        <div className="flex items-center gap-3 border border-gray-200 dark:border-[#282B32] rounded-xl p-3">
           <div className="w-14 h-14 rounded-lg bg-gray-100 flex-none overflow-hidden">
             {mainImageUrl ? (
               <ImageWithFallback src={mainImageUrl} className="w-full h-full object-cover" />
@@ -275,7 +275,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
             onChange={(e) => setContent(e.target.value)}
             rows={6}
             placeholder="팝업에서의 경험을 남겨주세요."
-            className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none resize-none"
+            className="w-full bg-gray-100 dark:bg-[#282B32] text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none resize-none"
           />
         </label>
 
@@ -326,7 +326,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
           type="button"
           onClick={handleSubmit}
           disabled={submitting || uploading}
-          className="w-full rounded-full py-3.5 text-sm font-medium bg-gray-900 text-white disabled:opacity-60"
+          className="w-full rounded-full py-3.5 text-base font-medium bg-gray-900 text-white disabled:opacity-60"
         >
           {submitting ? "저장하는 중..." : editId ? "수정 완료" : "후기 등록하기"}
         </button>

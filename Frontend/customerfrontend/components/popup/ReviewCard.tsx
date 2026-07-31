@@ -79,7 +79,7 @@ export function ReviewCard({
   if (deleting) return null;
 
   return (
-    <div className="border-b border-gray-100 dark:border-gray-800 py-5">
+    <div className="border-b border-gray-100 dark:border-[#282B32] py-5">
       {/* [수정] 수정/삭제 버튼을 오른쪽 위(닉네임/별점 줄)로 옮기고 크기를 키웠어요. */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2.5">
@@ -98,10 +98,10 @@ export function ReviewCard({
           </span>
           {isMine && (
             <div className="flex items-center gap-2.5">
-              <button type="button" onClick={handleEdit} className="text-sm font-medium text-gray-500">
+              <button type="button" onClick={handleEdit} className="text-base font-medium text-gray-500">
                 수정
               </button>
-              <button type="button" onClick={handleDelete} className="text-sm font-medium text-gray-500">
+              <button type="button" onClick={handleDelete} className="text-base font-medium text-gray-500">
                 삭제
               </button>
             </div>
@@ -125,7 +125,7 @@ export function ReviewCard({
               key={photo + i}
               type="button"
               onClick={() => onImageClick?.(i)}
-              className="w-40 h-40 flex-none bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-sm"
+              className="w-40 h-40 flex-none bg-gray-100 dark:bg-[#282B32] rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-sm"
             >
               {photo.startsWith("http") || photo.startsWith("/") ? (
                 <ImageWithFallback src={photo} className="w-full h-full object-cover" />

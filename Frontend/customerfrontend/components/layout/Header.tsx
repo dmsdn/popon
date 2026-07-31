@@ -12,10 +12,12 @@ export function Header({ initialQuery = "" }: { initialQuery?: string }) {
   const { isLoggedIn, customer } = useAuth();
 
   return (
-    <header className="flex items-center gap-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+    <header className="flex items-center gap-4 h-14 px-4 border-b border-gray-100 dark:border-[#282B32]">
       <Link href="/" className="flex-none">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/Icon/LOGO_Light.svg" alt="POP-ON" className="h-6 w-auto" />
+        <img src="/Icon/LOGO_Light.svg" alt="POP-ON" className="h-6 w-auto dark:hidden" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/Icon/LOGO_Dark.svg" alt="POP-ON" className="h-6 w-auto hidden dark:block" />
       </Link>
 
       <div
@@ -30,7 +32,7 @@ export function Header({ initialQuery = "" }: { initialQuery?: string }) {
         <SearchInput initialQuery={initialQuery} onFocusChange={setIsSearchOpen} />
 
         {isSearchOpen && (
-          <div className="absolute top-full left-0 mt-2 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg z-50">
+          <div className="absolute top-full left-0 mt-2 w-full bg-white dark:bg-[#282B32] border border-gray-200 dark:border-[#282B32] rounded-xl shadow-lg z-50">
             <RecentSearches onNavigate={() => setIsSearchOpen(false)} />
             <SuggestedKeywords onNavigate={() => setIsSearchOpen(false)} />
           </div>

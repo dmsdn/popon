@@ -11,6 +11,8 @@ export function StickyActionBar({
   popupId,
   popupStatus,
   queueMode,
+  reservationMode,
+  hasSlots,
   waitingTeams,
   wishlistCount,
   onReserve,
@@ -24,6 +26,10 @@ export function StickyActionBar({
   /** [신규] 이 팝업이 예약만/웨이팅만/둘 다 지원하는지 - 지원 안 하는 쪽은
       상태랑 무관하게 버튼 자체를 숨겨요. */
   queueMode?: "PRERESERVATION_ONLY" | "ONSITE_WAITING_ONLY" | "BOTH" | null;
+  /** [신규] SLOT 모드인데 등록된 시간대가 하나도 없으면 예약 버튼 자체를 숨겨요
+      (예전엔 버튼은 보이는데 눌렀을 때만 "아직 등록 안 됨" 알림이 떴어요). */
+  reservationMode?: "SLOT" | "FREE";
+  hasSlots?: boolean;
   /** 현재 대기중인 팀 수. null이면 아직 못 불러온 상태(버튼엔 기본 라벨만 표시) */
   waitingTeams: number | null;
   wishlistCount?: number;
@@ -31,12 +37,13 @@ export function StickyActionBar({
   onWaiting: () => void;
 }) {
   const supportsWaiting = queueMode === "ONSITE_WAITING_ONLY" || queueMode === "BOTH";
-  const supportsReservation = queueMode === "PRERESERVATION_ONLY" || queueMode === "BOTH";
+  const noSlotsYet = reservationMode === "SLOT" && !hasSlots;
+  const supportsReservation = (queueMode === "PRERESERVATION_ONLY" || queueMode === "BOTH") && !noSlotsYet;
   const waitingEnabled = supportsWaiting && popupStatus === "진행중";
   const reservationEnabled = supportsReservation && (popupStatus === "진행중" || popupStatus === "예정");
 
   return (
-    <div className="fixed bottom-14 mobile:bottom-0 left-0 right-0 z-40 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800">
+    <div className="fixed bottom-14 mobile:bottom-0 left-0 right-0 z-40 bg-white dark:bg-[#282B32] border-t border-gray-100 dark:border-[#282B32]">
       <div className="w-full mobile:max-w-[1000px] mobile:mx-auto flex items-center gap-3 px-4 mobile:px-8 py-3">
         <div className="flex flex-col items-center flex-none">
           <HeartButton popupId={popupId} className="w-11 h-11" />
@@ -49,7 +56,7 @@ export function StickyActionBar({
             type="button"
             onClick={onReserve}
             disabled={!reservationEnabled}
-            className="flex-1 rounded-full py-3 text-sm font-medium border border-gray-900 dark:border-gray-600 text-gray-900 dark:text-white disabled:opacity-40 disabled:border-gray-300 dark:disabled:border-gray-700"
+            className="flex-1 rounded-full py-3 text-base font-medium border border-gray-900 dark:border-gray-600 text-gray-900 dark:text-white disabled:opacity-40 disabled:border-gray-300 dark:disabled:border-gray-700"
           >
             {reservationEnabled ? "사전 예약" : "예약 준비중"}
           </button>
@@ -61,7 +68,7 @@ export function StickyActionBar({
             type="button"
             onClick={onWaiting}
             disabled={!waitingEnabled}
-            className="flex-1 rounded-full py-3 text-sm font-medium bg-point text-gray-900 dark:text-white disabled:opacity-40 disabled:bg-gray-300 dark:disabled:bg-gray-700"
+            className="flex-1 rounded-full py-3 text-base font-medium bg-point text-gray-900 dark:text-white disabled:opacity-40 disabled:bg-gray-300 dark:disabled:bg-gray-700"
           >
             {!waitingEnabled
               ? "웨이팅 준비중"

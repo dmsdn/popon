@@ -198,10 +198,10 @@ export default function MapPage() {
       <div ref={mapRef} className="w-full h-full" />
 
       {/* 상단 바 */}
-      <div className="absolute top-0 left-0 right-0 flex flex-col gap-2 px-4 py-3 bg-white/95 dark:bg-gray-900/95">
+      <div className="absolute top-0 left-0 right-0 flex flex-col gap-2 px-4 py-3 bg-white/95 dark:bg-[#282B32]/95">
         <div className="flex items-center justify-between">
           <button type="button" onClick={() => router.back()} aria-label="뒤로가기" className="text-lg text-gray-700 dark:text-gray-300">
-            ‹
+            <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
           </button>
           <button
             type="button"
@@ -218,14 +218,14 @@ export default function MapPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="팝업 이름으로 찾기"
-          className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-full px-4 py-2.5 text-sm outline-none"
+          className="w-full bg-gray-100 dark:bg-[#282B32] text-gray-900 dark:text-white rounded-full px-4 py-2.5 text-sm outline-none"
         />
       </div>
 
       {/* 선택된 팝업 카드 - 카드 전체를 누르면 상세페이지로 이동 */}
       {selected && selectedItem && (
         <div className="absolute bottom-4 left-4 right-4">
-          <div className="relative bg-white dark:bg-gray-900 rounded-xl shadow-lg overflow-hidden">
+          <div className="relative bg-white dark:bg-[#282B32] rounded-xl shadow-lg overflow-hidden">
             <button
               type="button"
               onClick={() => setSelected(null)}

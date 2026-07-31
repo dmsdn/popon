@@ -24,9 +24,10 @@ import {
   getPopupSlots,
   getPopupLiveStatus,
   getPopupWaitTime,
-  getSimilarPopups,
+  searchPopups,
   getQueueBoardCount,
   getPopupImages,
+  getPopupWishlistCount,
   type PopupDetail,
   type PopupSlot,
   type PopupLiveStatus,
@@ -97,6 +98,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   const [queueCount, setQueueCount] = useState<number | null>(null);
   const [images, setImages] = useState<PopupImage[]>([]);
   const [waitingTeams, setWaitingTeams] = useState<number | null>(null);
+  const [wishlistCount, setWishlistCount] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     let cancelled = false;
@@ -121,6 +123,13 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+
+    // [신규] 찜 개수는 별도 엔드포인트라 따로 조회해요.
+    getPopupWishlistCount(id)
+      .then((res) => {
+        if (!cancelled) setWishlistCount(res.wishlistCount);
+      })
+      .catch((err) => console.error("찜 개수 조회 실패", err));
 
     // 팝업 이미지 (주최자가 등록한 실제 이미지)
     getPopupImages(id)
@@ -247,15 +256,31 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     };
   }, [popup]);
 
-  // [수정] 해시태그/지역 겹침으로 점수를 매기던 클라이언트 로직을, 백엔드가 같은
-  // 방식으로 직접 계산해주는 GET /api/popups/{id}/similar로 교체했어요.
+  // [수정] 백엔드에 /api/popups/{id}/similar 엔드포인트가 실제로는 없어서 404가
+  // 나고 있었어요(전체 백엔드 코드를 다시 찾아봐도 "similar" 관련 코드 자체가
+  // 없었어요) - 원래 있던 해시태그/지역 겹침 점수 계산 방식으로 되돌렸어요.
   useEffect(() => {
     if (!popup) return;
     let cancelled = false;
 
-    getSimilarPopups(popup.id, 4)
+    searchPopups({ status: "OPEN" })
       .then((list) => {
-        if (!cancelled) setSimilar(list.map(toPopupItem));
+        if (cancelled) return;
+        const currentTags = new Set([...(popup.hashtags ?? []), ...(popup.keywordNames ?? [])]);
+        const scored = list
+          .filter((p) => p.id !== popup.id)
+          .map((p) => {
+            const tags = new Set([...(p.hashtags ?? []), ...(p.keywordNames ?? [])]);
+            let score = 0;
+            for (const t of tags) if (currentTags.has(t)) score += 1;
+            if (p.regionName && p.regionName === popup.regionName) score += 1;
+            return { popup: p, score };
+          })
+          .filter((s) => s.score > 0)
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 4)
+          .map((s) => s.popup);
+        setSimilar(scored.map(toPopupItem));
       })
       .catch((err) => console.error("비슷한 팝업 조회 실패", err));
 
@@ -330,21 +355,21 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         <Header />
       </div>
       <div className="flex-1">
-      <div className="flex items-center gap-2 px-4 mobile:px-8 py-4 border-b border-gray-100 dark:border-gray-800">
+      <div className="flex items-center gap-2 h-14 px-4 mobile:px-8 border-b border-gray-100 dark:border-[#282B32]">
         <button
           type="button"
           onClick={() => router.back()}
           aria-label="뒤로가기"
           className="text-lg text-gray-500"
         >
-          ‹
+          <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
         </button>
       </div>
 
       {/* [수정] 대표 이미지 - 여백 없이 화면 꽉 채우도록 padding 있는 컨테이너 밖으로
           뺐어요. 높이는 450px 고정, 가운데 정렬(object-center)로 잘려요.
           찜 버튼은 하단바에 이미 있어서 여기서는 뺐어요. */}
-      <div className="relative w-full h-[450px] bg-gray-100 dark:bg-gray-900 overflow-hidden">
+      <div className="relative w-full h-[450px] bg-gray-100 dark:bg-[#282B32] overflow-hidden">
         {images.length > 0 ? (
           <ImageWithFallback src={images[0].imageUrl} className="w-full h-full object-contain" />
         ) : (
@@ -394,7 +419,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
             </button>
 
             {showMapConfirm && (
-              <div className="absolute left-0 top-full mt-1.5 z-20 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-md p-3 w-64">
+              <div className="absolute left-0 top-full mt-1.5 z-20 bg-white dark:bg-[#282B32] border border-gray-200 dark:border-[#282B32] rounded-lg shadow-md p-3 w-64">
                 <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
                   "{popup.location}"으로 길찾기를 시작할까요?
                 </p>
@@ -402,7 +427,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                   <button
                     type="button"
                     onClick={() => setShowMapConfirm(false)}
-                    className="flex-1 text-sm text-gray-500 border border-gray-200 dark:border-gray-700 rounded-full py-2"
+                    className="flex-1 text-sm text-gray-500 border border-gray-200 dark:border-[#282B32] rounded-full py-2"
                   >
                     취소
                   </button>
@@ -428,17 +453,17 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         {(popup.regionName || (popup.keywordNames ?? []).length > 0 || (popup.hashtags ?? []).length > 0) && (
           <div className="flex flex-wrap gap-2 mb-6">
             {popup.regionName && (
-              <span className="text-sm border border-gray-200 dark:border-gray-800 rounded-full px-3 py-1 text-gray-600 dark:text-gray-400">
+              <span className="text-sm border border-gray-200 dark:border-[#282B32] rounded-full px-3 py-1 text-gray-600 dark:text-gray-400">
                 #{popup.regionName}
               </span>
             )}
             {(popup.keywordNames ?? []).map((name) => (
-              <span key={name} className="text-sm border border-gray-200 dark:border-gray-800 rounded-full px-3 py-1 text-gray-600 dark:text-gray-400">
+              <span key={name} className="text-sm border border-gray-200 dark:border-[#282B32] rounded-full px-3 py-1 text-gray-600 dark:text-gray-400">
                 #{name}
               </span>
             ))}
             {(popup.hashtags ?? []).map((tag) => (
-              <span key={tag} className="text-sm border border-gray-200 dark:border-gray-800 rounded-full px-3 py-1 text-gray-600 dark:text-gray-400">
+              <span key={tag} className="text-sm border border-gray-200 dark:border-[#282B32] rounded-full px-3 py-1 text-gray-600 dark:text-gray-400">
                 #{tag}
               </span>
             ))}
@@ -449,7 +474,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
             문의하기 버튼도 여기 같이 넣었어요 - 기존 1:1 문의(마이페이지)를
             재사용하되, 어떤 팝업/브랜드에 대한 문의인지 제목에 미리 채워서
             보내요. */}
-        <div className="border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-4 mb-8 flex flex-col gap-4">
+        <div className="border border-gray-200 dark:border-[#282B32] rounded-lg px-4 py-4 mb-8 flex flex-col gap-4">
           {liveStatus ? (
             <LiveCongestionPanel status={liveStatus} />
           ) : (
@@ -457,7 +482,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
           )}
 
           {waitTime && (
-            <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
+            <div className="pt-4 border-t border-gray-100 dark:border-[#282B32]">
               <p className="text-sm font-semibold mb-1">예상 대기시간</p>
               {waitTime.reservationMode === "FREE" && waitTime.freeModeResult ? (
                 <p className="text-sm text-gray-400">
@@ -480,7 +505,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
 
           <Link
             href={`/mypage?menu=1:1 문의&prefillTitle=${encodeURIComponent(`[${popup.companyName}] ${popup.title} 관련 문의`)}`}
-            className="w-full text-center text-sm font-medium border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-full py-2.5"
+            className="w-full text-center text-sm font-medium border border-gray-300 dark:border-[#282B32] text-gray-700 dark:text-gray-300 rounded-full py-2.5"
           >
             문의하기
           </Link>
@@ -489,6 +514,8 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         {showReservation && (
           <ReservationModal
   popupName={popup.title}
+  dateRange={`${new Date(popup.startDate).toLocaleDateString("ko-KR")} ~ ${new Date(popup.endDate).toLocaleDateString("ko-KR")}`}
+  location={popup.location ?? undefined}
   slots={slots}
   minDate={new Date(popup.startDate)}
   maxDate={new Date(popup.endDate)}
@@ -537,7 +564,8 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         {showWaiting && (
           <WaitingModal
             popupName={popup.title}
-            imageUrl={images[0]?.imageUrl}
+            dateRange={`${new Date(popup.startDate).toLocaleDateString("ko-KR")} ~ ${new Date(popup.endDate).toLocaleDateString("ko-KR")}`}
+            location={popup.location ?? undefined}
             onClose={() => setShowWaiting(false)}
             onSubmit={async (count) => {
               if (!customer) {
@@ -588,7 +616,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         )}
 
         {/* 탭 */}
-        <div className="flex border-b border-gray-100 dark:border-gray-800 mb-6">
+        <div className="flex border-b border-gray-100 dark:border-[#282B32] mb-6">
           {TABS.map((tab) => (
             <button
               key={tab}
@@ -626,6 +654,26 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
               </p>
             </section>
 
+            {/* [신규] "이용 정보" 아래에 좀 더 상세한 이용 안내사항을 넣었어요.
+                주최측이 남긴 안내(popup.notice)가 있으면 그걸 그대로 보여주고,
+                없으면 팝업스토어 방문 시 일반적으로 알아두면 좋은 기본 안내로
+                대체해요. */}
+            <section>
+              <h2 className="text-sm font-semibold mb-2">이용 안내사항</h2>
+              {popup.notice ? (
+                <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{popup.notice}</p>
+              ) : (
+                <ul className="text-sm text-gray-600 dark:text-gray-400 list-disc pl-4 flex flex-col gap-1.5">
+                  <li>입장 전 예약/웨이팅 확인용 QR코드를 미리 준비해주세요.</li>
+                  <li>현장 상황에 따라 입장이 지연되거나 순서가 조정될 수 있어요.</li>
+                  <li>대기 중 자리를 비우실 경우 순번이 밀리거나 취소될 수 있어요.</li>
+                  <li>예약 시간에 늦으면 예약이 자동으로 취소될 수 있어요.</li>
+                  <li>매장 내 음식물 반입, 촬영 등은 현장 안내를 따라주세요.</li>
+                  <li>운영 일정은 현장 사정에 따라 변경될 수 있어요.</li>
+                </ul>
+              )}
+            </section>
+
             <section>
               <h2 className="text-sm font-semibold mb-2">상세 이미지</h2>
               {/* [수정] 이미지를 16:9로 강제로 잘라내던 걸(object-cover) 없애고, 올린
@@ -647,7 +695,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                   </div>
 
                   {!detailImagesExpanded && (
-                    <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-b from-transparent to-white dark:to-[#101010] pointer-events-none" />
+                    <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-b from-transparent to-white dark:to-[#17181a] pointer-events-none" />
                   )}
 
                   <button
@@ -673,11 +721,11 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
               <div className="flex flex-col items-center mb-6">
                 {/* [수정] 카메라 아이콘 빼고, 말풍선 모양으로 만들어서 아래 별점 쪽으로
                     꼬리가 이어지게 했어요. */}
-                <div className="relative bg-gray-100 dark:bg-gray-800 rounded-2xl px-5 py-3">
+                <div className="relative bg-gray-100 dark:bg-[#282B32] rounded-2xl px-5 py-3">
                   <p className="text-base font-medium text-center">
                     다녀오셨나요? 방문하신 후기를 남겨주세요
                   </p>
-                  <div className="absolute left-1/2 -translate-x-1/2 -bottom-2 w-4 h-4 bg-gray-100 dark:bg-gray-800 rotate-45" />
+                  <div className="absolute left-1/2 -translate-x-1/2 -bottom-2 w-4 h-4 bg-gray-100 dark:bg-[#282B32] rotate-45" />
                 </div>
                 <div className="mt-5">
                   <StarRatingInput
@@ -782,8 +830,10 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         popupId={popup.id}
         popupStatus={toPopupItem(popup).status}
         queueMode={popup.queueMode}
+        reservationMode={popup.reservationMode}
+        hasSlots={slots.length > 0}
         waitingTeams={waitingTeams}
-        wishlistCount={popup.wishlistCount}
+        wishlistCount={wishlistCount}
         onReserve={() => {
           // [수정] 이전엔 로그인 여부 확인 없이 바로 모달이 열려서, 폼을 다 채운 뒤에야
           // (제출 시점에) 로그인하라고 튕겨서 입력한 내용이 다 날아갔어요. 버튼을

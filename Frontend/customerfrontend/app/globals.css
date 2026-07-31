@@ -19,11 +19,10 @@
   --foreground: #171717;
 }
 
-/* [수정] 요청하신 다크모드 배경색(#101010)으로 맞추고, prefers-color-scheme(OS 설정)
-   대신 .dark 클래스가 붙었을 때 적용되도록 바꿨어요. */
+/* [수정] 다크모드 배경/글자색을 지정된 값으로 통일했어요. */
 .dark {
-  --background: #101010;
-  --foreground: #ffffff;
+  --background: #17181a;
+  --foreground: #f2f8ff;
 }
 
 /* [신규] 페이지 이동 시(스크롤 없는 짧은 페이지 → 스크롤 생기는 긴 페이지) 세로
@@ -50,7 +49,7 @@ html {
   --breakpoint-mobile: 1000px;
   /* [신규] 포인트 컬러 - 로고/진행중 표시/주요 버튼에만 제한적으로 써요.
      text-point / bg-point / border-point 형태로 어디서든 쓸 수 있어요. */
-  --color-point: #8ade1b;
+  --color-point: #5bce41;
 }
 
 /* 4. body 통합 기본 스타일 (Pretendard 적용 및 Arial 제거) */

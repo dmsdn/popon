@@ -13,7 +13,7 @@ export function FilterChip({ options }: { options: string[] }) {
           className={`text-sm px-3 py-1.5 rounded-full border ${
             selected === opt
               ? "border-gray-800 text-gray-800 font-medium"
-              : "border-gray-200 dark:border-gray-800 text-gray-500"
+              : "border-gray-200 dark:border-[#282B32] text-gray-500"
           }`}
         >
           {opt}

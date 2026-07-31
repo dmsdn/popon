@@ -21,6 +21,7 @@ const STATUS_MAP: Record<PopupDetail["status"], PopupItem["status"]> = {
   BEFOR: "예정",
   OPEN: "진행중",
   CLOSED: "종료",
+  SUSPENDED: "종료",
 };
 
 export function toPopupItem(popup: PopupDetail): PopupItem {

@@ -23,7 +23,7 @@ export function SuggestedKeywords({ onNavigate }: { onNavigate?: () => void }) {
             key={keyword}
             type="button"
             onClick={() => handleClick(keyword)}
-            className="text-sm text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-800 rounded-full px-3 py-1.5"
+            className="text-sm text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-[#282B32] rounded-full px-3 py-1.5"
           >
             {keyword}
           </button>

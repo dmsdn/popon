@@ -86,13 +86,14 @@ export default function BrandDetailPage({
           onClick={() => router.back()}
           className="text-sm text-gray-500"
         >
-          ‹ 뒤로
+          <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
+          <span>뒤로</span>
         </button>
       </div>
 
       <div className="px-4 mobile:px-8 py-6">
         {/* 브랜드 로고 */}
-        <div className="w-24 h-24 rounded-md bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-800 mb-4" />
+        <div className="w-24 h-24 rounded-md bg-gray-100 dark:bg-[#282B32] border border-gray-200 dark:border-[#282B32] mb-4" />
 
         {/* 브랜드 이름 + 소개 + 찜 */}
         <div className="flex items-start justify-between mb-8">
@@ -111,7 +112,7 @@ export default function BrandDetailPage({
         </div>
 
         {/* 탭 */}
-        <div className="flex border-b border-gray-100 dark:border-gray-800 mb-2">
+        <div className="flex border-b border-gray-100 dark:border-[#282B32] mb-2">
           {TABS.map((tab) => (
             <button
               key={tab}
@@ -156,7 +157,7 @@ export default function BrandDetailPage({
 function BrandPopupRow({ item }: { item: PopupItem }) {
   return (
     <Link href={`/popup/${item.id}`} className="flex gap-4 py-4 border-b border-gray-50">
-      <div className="w-24 h-24 flex-none rounded-md bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-800 overflow-hidden flex items-center justify-center text-sm text-gray-400">
+      <div className="w-24 h-24 flex-none rounded-md bg-gray-100 dark:bg-[#282B32] border border-gray-200 dark:border-[#282B32] overflow-hidden flex items-center justify-center text-sm text-gray-400">
         {item.imageUrl ? <ImageWithFallback src={item.imageUrl} className="w-full h-full object-cover" /> : "이미지"}
       </div>
       <div className="flex flex-col justify-center">

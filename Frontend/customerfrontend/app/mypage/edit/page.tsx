@@ -152,7 +152,8 @@ export default function EditProfilePage() {
   return (
     <main className="w-full mobile:max-w-[600px] mobile:mx-auto min-h-screen flex flex-col px-6 py-10">
       <button type="button" onClick={() => router.back()} className="self-start text-sm text-gray-500 mb-6">
-        ‹ 뒤로
+        <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
+          <span>뒤로</span>
       </button>
 
       <h1 className="text-lg font-bold mb-8">내 정보 수정</h1>
@@ -162,7 +163,7 @@ export default function EditProfilePage() {
         {/* [수정] overflow-hidden이 바깥(label)에 있어서 카메라 버튼이 원 밖으로
             잘리고 있었어요 - 이미지를 감싸는 안쪽 div로 옮겼어요. */}
         <label className="relative w-24 h-24 cursor-pointer">
-          <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-800 overflow-hidden">
+          <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-[#282B32] overflow-hidden">
             {profileImage && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={profileImage} alt="" className="w-full h-full object-cover" />
@@ -173,7 +174,7 @@ export default function EditProfilePage() {
               </div>
             )}
           </div>
-          <span className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-gray-900 dark:bg-gray-700 border-2 border-white dark:border-gray-900 flex items-center justify-center">
+          <span className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-gray-900 dark:bg-[#282B32] border-2 border-white dark:border-[#282B32] flex items-center justify-center">
             <img src="/Icon/picture.svg" alt="" width={14} height={14} className="invert" />
           </span>
           <input
@@ -200,7 +201,7 @@ export default function EditProfilePage() {
               setNickname(e.target.value);
               setNicknameError(null);
             }}
-            className={`w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none ${
+            className={`w-full bg-gray-100 dark:bg-[#282B32] text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none ${
               nicknameError ? "ring-1 ring-red-400" : ""
             }`}
           />
@@ -221,7 +222,7 @@ export default function EditProfilePage() {
             }}
             placeholder="010-0000-0000"
             maxLength={13}
-            className={`w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none ${
+            className={`w-full bg-gray-100 dark:bg-[#282B32] text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none ${
               phoneError ? "ring-1 ring-red-400" : ""
             }`}
           />
@@ -237,7 +238,7 @@ export default function EditProfilePage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="000@example.com"
-            className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none"
+            className="w-full bg-gray-100 dark:bg-[#282B32] text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none"
           />
         </label>
 
@@ -254,7 +255,7 @@ export default function EditProfilePage() {
                 type="button"
                 onClick={() => setGender(value)}
                 className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-3 text-sm border ${
-                  gender === value ? "border-gray-900 text-gray-900 dark:text-white font-medium" : "border-gray-200 dark:border-gray-800 text-gray-500"
+                  gender === value ? "border-gray-900 text-gray-900 dark:text-white font-medium" : "border-gray-200 dark:border-[#282B32] text-gray-500"
                 }`}
               >
                 <span
@@ -275,7 +276,7 @@ export default function EditProfilePage() {
           <button
             type="button"
             onClick={() => setShowBirthPicker(true)}
-            className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm text-left"
+            className="w-full bg-gray-100 dark:bg-[#282B32] text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm text-left"
           >
             {birthDate || <span className="text-gray-400">생년월일을 선택해주세요</span>}
           </button>
@@ -295,7 +296,7 @@ export default function EditProfilePage() {
                 className={`px-4 py-2 rounded-full text-sm border ${
                   selectedKeywordIds.includes(kw.id)
                     ? "bg-gray-900 text-white border-gray-900"
-                    : "border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400"
+                    : "border-gray-200 dark:border-[#282B32] text-gray-600 dark:text-gray-400"
                 }`}
               >
                 {kw.name}
@@ -317,7 +318,7 @@ export default function EditProfilePage() {
                 className={`px-4 py-2 rounded-full text-sm border ${
                   selectedRegionIds.includes(r.id)
                     ? "bg-gray-900 text-white border-gray-900"
-                    : "border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400"
+                    : "border-gray-200 dark:border-[#282B32] text-gray-600 dark:text-gray-400"
                 }`}
               >
                 {r.name}
@@ -330,7 +331,7 @@ export default function EditProfilePage() {
           type="button"
           onClick={handleSubmit}
           disabled={submitting || !canSubmit}
-          className="w-full rounded-full py-3.5 text-sm font-medium bg-gray-900 text-white disabled:opacity-50 mt-4"
+          className="w-full rounded-full py-3.5 text-base font-medium bg-gray-900 text-white disabled:opacity-50 mt-4"
         >
           {submitting ? "저장하는 중..." : "저장하기"}
         </button>

@@ -49,7 +49,7 @@ export default function ReservationsPage() {
         <section>
           <h2 className="text-base font-semibold mb-3">웨이팅</h2>
           {waiting ? (
-            <div className="border border-gray-200 dark:border-gray-800 rounded-xl p-5">
+            <div className="border border-gray-200 dark:border-[#282B32] rounded-xl p-5">
               <div className="flex items-start gap-4 mobile:gap-6">
                 <div className="w-20 h-20 mobile:w-24 mobile:h-24 flex-none bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-sm">
                   이미지
@@ -73,21 +73,21 @@ export default function ReservationsPage() {
                 <button
                   type="button"
                   onClick={handleCancelWaiting}
-                  className="flex-1 rounded-full py-3 text-sm font-medium bg-gray-100 text-gray-700 dark:text-gray-300"
+                  className="flex-1 rounded-full py-3 text-base font-medium bg-gray-100 text-gray-700 dark:text-gray-300"
                 >
                   웨이팅 취소
                 </button>
                 <button
                   type="button"
                   onClick={handlePostponeWaiting}
-                  className="flex-1 rounded-full py-3 text-sm font-medium border border-gray-300"
+                  className="flex-1 rounded-full py-3 text-base font-medium border border-gray-300"
                 >
                   웨이팅 미루기
                 </button>
               </div>
             </div>
           ) : (
-            <p className="text-sm text-gray-400 py-8 text-center border border-gray-100 dark:border-gray-800 rounded-xl">
+            <p className="text-sm text-gray-400 py-8 text-center border border-gray-100 dark:border-[#282B32] rounded-xl">
               진행 중인 웨이팅이 없어요.
             </p>
           )}
@@ -96,13 +96,13 @@ export default function ReservationsPage() {
         <section>
           <h2 className="text-base font-semibold mb-3">예약</h2>
           {mockReservations.length === 0 ? (
-            <p className="text-sm text-gray-400 py-8 text-center border border-gray-100 dark:border-gray-800 rounded-xl">
+            <p className="text-sm text-gray-400 py-8 text-center border border-gray-100 dark:border-[#282B32] rounded-xl">
               예약 내역이 없어요.
             </p>
           ) : (
             <div className="flex flex-col gap-3">
               {mockReservations.map((r) => (
-                <div key={r.id} className="border border-gray-200 dark:border-gray-800 rounded-xl p-5 flex items-center gap-4 mobile:gap-6">
+                <div key={r.id} className="border border-gray-200 dark:border-[#282B32] rounded-xl p-5 flex items-center gap-4 mobile:gap-6">
                   <div className="w-20 h-20 mobile:w-24 mobile:h-24 flex-none bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-sm">
                     이미지
                   </div>

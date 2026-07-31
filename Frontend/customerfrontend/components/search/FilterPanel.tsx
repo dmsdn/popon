@@ -91,7 +91,7 @@ export function FilterPanel({
   return createPortal(
     <div className="fixed inset-0 bg-black/40 flex items-end mobile:items-center justify-center z-50" onClick={onClose}>
       <div
-        className="w-full mobile:max-w-md bg-white dark:bg-gray-900 rounded-t-2xl mobile:rounded-2xl max-h-[85vh] flex flex-col"
+        className="w-full mobile:max-w-md bg-white dark:bg-[#282B32] rounded-t-2xl mobile:rounded-2xl max-h-[85vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 pt-5">
@@ -103,7 +103,7 @@ export function FilterPanel({
               {selectedChips.map(({ group, value }) => (
                 <span
                   key={`${group}-${value}`}
-                  className="flex items-center gap-1 text-sm bg-gray-100 dark:bg-gray-800 rounded-full pl-3 pr-2 py-1.5"
+                  className="flex items-center gap-1 text-sm bg-gray-100 dark:bg-[#282B32] rounded-full pl-3 pr-2 py-1.5"
                 >
                   {value}
                   <button
@@ -120,7 +120,7 @@ export function FilterPanel({
           )}
 
           {/* 탭 */}
-          <div className="flex items-center gap-5 border-b border-gray-100 dark:border-gray-800">
+          <div className="flex items-center gap-5 border-b border-gray-100 dark:border-[#282B32]">
             {(["카테고리", "지역", "운영여부", "별점"] as FilterTab[]).map((t) => (
               <button
                 key={t}
@@ -201,11 +201,11 @@ export function FilterPanel({
         </div>
 
         {/* 하단 버튼 */}
-        <div className="flex items-center gap-2 p-5 border-t border-gray-100 dark:border-gray-800">
+        <div className="flex items-center gap-2 p-5 border-t border-gray-100 dark:border-[#282B32]">
           <button
             type="button"
             onClick={handleReset}
-            className="flex-none text-base font-medium border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-full px-5 py-3"
+            className="flex-none text-base font-medium border border-gray-300 dark:border-[#282B32] text-gray-700 dark:text-gray-300 rounded-full px-5 py-3"
           >
             초기화
           </button>

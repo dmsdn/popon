@@ -64,9 +64,9 @@ export default function NotificationsPage() {
         <Header />
       </div>
       <div className="block mobile:hidden">
-        <div className="flex items-center gap-2 px-4 py-4 border-b border-gray-100 dark:border-gray-800">
+        <div className="flex items-center gap-2 h-14 px-4 border-b border-gray-100 dark:border-[#282B32]">
           <button type="button" onClick={() => router.back()} aria-label="뒤로가기" className="text-lg text-gray-500">
-            ‹
+            <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
           </button>
           <h1 className="text-lg font-bold">알림</h1>
         </div>
@@ -77,7 +77,7 @@ export default function NotificationsPage() {
       </div>
 
       {/* 탭 - 실제로 눌러서 필터링됩니다 */}
-      <div className="flex gap-1 px-4 mobile:px-8 py-3 border-b border-gray-100 dark:border-gray-800 overflow-x-auto scrollbar-hide">
+      <div className="flex gap-1 px-4 mobile:px-8 py-3 border-b border-gray-100 dark:border-[#282B32] overflow-x-auto scrollbar-hide">
         {TABS.map((t) => (
           <button
             key={t}
