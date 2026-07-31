@@ -133,7 +133,7 @@ export default function SellerDashboard() {
               : loading ? " · 불러오는 중…" : " · 등록된 팝업 없음"}
           </p>
         </div>
-        <Link to="/seller/popups/new" className="text-xs px-4 py-2 rounded-sm bg-accent text-white hover:bg-accent/90">
+        <Link to="/seller/popups/new" className="text-xs px-4 py-2 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90">
           + 새 팝업 등록
         </Link>
       </div>
@@ -141,7 +141,7 @@ export default function SellerDashboard() {
       {/* KPI 카드 — 대표 팝업 기준 실데이터 */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
         {kpis.map(({ icon: Icon, label, value, diff }) => (
-          <div key={label} className="bg-white border border-border rounded-sm p-4">
+          <div key={label} className="bg-card border border-border rounded-sm p-4">
             <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2"><Icon size={13} /> {label}</div>
             <div className="text-xl font-semibold">{value}</div>
             <div className="text-[11px] text-muted-foreground mt-1">{diff}</div>
@@ -151,7 +151,7 @@ export default function SellerDashboard() {
 
       {/* 알림/처리 필요 */}
       <div className="grid lg:grid-cols-2 gap-3">
-        <div className="bg-white border border-border rounded-sm">
+        <div className="bg-card border border-border rounded-sm">
           <div className="px-4 py-3 border-b border-border flex items-center justify-between">
             <span className="text-sm font-semibold">처리가 필요한 항목</span>
           </div>
@@ -184,7 +184,7 @@ export default function SellerDashboard() {
         </div>
 
         {/* 내 팝업 현황 */}
-        <div className="bg-white border border-border rounded-sm">
+        <div className="bg-card border border-border rounded-sm">
           <div className="px-4 py-3 border-b border-border flex items-center justify-between">
             <span className="text-sm font-semibold">내 팝업 게시 상태</span>
             <Link to="/seller/popups" className="text-xs text-accent">전체 보기</Link>

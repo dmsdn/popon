@@ -30,6 +30,7 @@ export function toPopupItem(popup: PopupDetail): PopupItem {
     // [수정] 백엔드에 popup_hashtag 실 데이터가 생겨서, 이제 진짜 태그로 카테고리를 채워요.
     category: popup.hashtags?.[0],
     hashtags: popup.hashtags,
+    keywordNames: popup.keywordNames,
     regionId: popup.regionId,
     dateRange: `${formatDate(popup.startDate)} ~ ${formatDate(popup.endDate)}`,
     // [수정] regionName(동네 단위 정식 지역명)이 있으면 그걸 우선 쓰고, 없으면 기존
@@ -39,5 +40,6 @@ export function toPopupItem(popup: PopupDetail): PopupItem {
     // [신규] 백엔드가 이제 팝업 응답에 썸네일 이미지를 바로 실어줘서, 목록 카드에서
     // "이미지" 텍스트 placeholder 대신 진짜 이미지를 보여줄 수 있어요.
     imageUrl: popup.thumbnailImages?.[0],
+    avgRating: popup.avgRating,
   };
 }

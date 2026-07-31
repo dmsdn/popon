@@ -10,54 +10,66 @@ import { ReviewDetailModal } from "./ReviewDetailModal";
 
 /**
  * 홈 "실시간 후기 모음" 카드.
- * - 팝업 정보(아바타+이름) 영역: 누르면 바로 그 팝업 상세페이지로 이동
- * - 나머지 영역(후기 본문/사진 등): 누르면 후기를 크게 보는 모달이 뜸
- *   (모바일에선 하단시트, 웹에선 중앙 다이얼로그로 자동으로 다르게 보여요 - ReviewDetailModal 참고)
+ * [수정] 팝업정보 / 후기내용 / 사진, 세 부분을 각각 카드로 나눠서 서로 구분이
+ * 잘 되게 했어요(예전엔 다 붙어있어서 뭐가 뭔지 안 보인다는 피드백이 있었어요).
+ * 후기내용 카드엔 최소/최대 높이를 줘서 너무 짧거나 길어서 카드 크기가
+ * 들쭉날쭉하지 않게 했어요. 폰트도 한 단계씩 키웠어요.
  */
-export function ReviewCard(review: ReviewItem) {
+export function ReviewCard({
+  review,
+  allReviews,
+  index,
+}: {
+  review: ReviewItem;
+  allReviews: ReviewItem[];
+  index: number;
+}) {
   const { popupId, popupName, nickname, content, date, rating, photos, status, region, category, reviewCount } = review;
   const [showDetail, setShowDetail] = useState(false);
 
   return (
     <>
-      <div className="flex-none w-[220px] border border-gray-100 rounded-xl p-3 flex flex-col gap-2.5">
-        {/* 팝업 정보: 누르면 상세페이지로 바로 이동 */}
-        <Link href={`/popup/${popupId}`} className="flex items-start gap-2.5">
-          <div className="w-9 h-9 rounded-lg bg-gray-100 flex-none flex items-center justify-center text-xs text-gray-400">
+      <div className="flex-none w-[260px] flex flex-col gap-3">
+        {/* 1. 팝업정보 카드 - 누르면 상세페이지로 바로 이동 */}
+        <Link href={`/popup/${popupId}`} className="flex items-start gap-2.5 border border-gray-200 rounded-xl p-3">
+          <div className="w-10 h-10 rounded-lg bg-gray-100 flex-none flex items-center justify-center text-sm text-gray-400">
             {popupName[0]}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold truncate">{popupName}</p>
+            <p className="text-base font-semibold truncate">{popupName}</p>
             <div className="flex items-center gap-1 mt-1 flex-wrap">
               <StatusBadge status={status} />
               {region && (
-                <span className="text-[11px] text-gray-500 bg-gray-50 rounded px-1.5 py-0.5">{region}</span>
+                <span className="text-xs text-gray-500 bg-gray-50 rounded px-1.5 py-0.5">{region}</span>
               )}
               {category && (
-                <span className="text-[11px] text-gray-500 bg-gray-50 rounded px-1.5 py-0.5">{category}</span>
+                <span className="text-xs text-gray-500 bg-gray-50 rounded px-1.5 py-0.5">{category}</span>
               )}
             </div>
           </div>
         </Link>
 
-        {/* 나머지 영역: 누르면 후기 크게 보기 모달 */}
-        <button type="button" onClick={() => setShowDetail(true)} className="flex flex-col gap-2.5 text-left">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-600 truncate">
-              {nickname}
-              {typeof reviewCount === "number" && (
-                <span className="text-gray-400"> · 후기 {reviewCount}</span>
-              )}
-            </span>
-            <span className="flex items-center gap-1 text-xs font-medium text-gray-700 flex-none ml-1">
-              <StarRatingDisplay rating={rating} size={12} /> {rating.toFixed(1)} / 5.0
-            </span>
+        <button type="button" onClick={() => setShowDetail(true)} className="flex flex-col gap-3 text-left">
+          {/* 2. 후기 내용 카드 - 최소/최대 높이 고정 */}
+          <div className="border border-gray-200 rounded-xl p-3 min-h-[120px] max-h-[160px] flex flex-col gap-2 overflow-hidden">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600 truncate">
+                {nickname}
+                {typeof reviewCount === "number" && (
+                  <span className="text-gray-400"> · 후기 {reviewCount}</span>
+                )}
+              </span>
+              <span className="flex items-center gap-1 text-sm font-medium text-gray-700 flex-none ml-1">
+                <StarRatingDisplay rating={rating} size={14} /> {rating} / 5
+              </span>
+            </div>
+            <p className="text-sm text-gray-700 leading-relaxed line-clamp-3">{content}</p>
+            <span className="text-xs text-gray-400 mt-auto">{date}</span>
           </div>
 
-          <p className="text-xs text-gray-700 leading-relaxed line-clamp-2">{content}</p>
-
+          {/* 3. 사진 카드 - 있을 때만 */}
           {photos && photos.length > 0 && (
-            <div className="h-[100px] rounded-lg bg-gray-100 flex items-center justify-center text-xs text-gray-400 overflow-hidden">
+            <div className="h-[160px] rounded-xl bg-gray-100 flex items-center justify-center text-sm text-gray-400 overflow-hidden">
               {photos[0].startsWith("http") || photos[0].startsWith("/") ? (
                 <ImageWithFallback src={photos[0]} className="w-full h-full object-cover" />
               ) : (
@@ -65,12 +77,12 @@ export function ReviewCard(review: ReviewItem) {
               )}
             </div>
           )}
-
-          <span className="text-[11px] text-gray-400">{date}</span>
         </button>
       </div>
 
-      {showDetail && <ReviewDetailModal review={review} onClose={() => setShowDetail(false)} />}
+      {showDetail && (
+        <ReviewDetailModal reviews={allReviews} initialIndex={index} onClose={() => setShowDetail(false)} />
+      )}
     </>
   );
 }

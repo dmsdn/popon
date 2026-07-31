@@ -18,7 +18,9 @@ const MENU = [
     { to: "/admin/cs", icon: Headphones, label: "문의 및 신고관리" },
     { to: "/admin/notices", icon: Megaphone, label: "주최자 공지 발송" }, // 7/29 신설
     { to: "/admin/masters", icon: Database, label: "카테고리·지역 마스터" },
-    { to: "/admin/content", icon: Newspaper, label: "배너·콘텐츠 관리" },
+    // 7/30 라벨 정정 — 이 화면이 관리하는 건 소비자 홈의 메인 배너 + 공지 배너다.
+    // "콘텐츠"는 무엇을 다루는지 알기 어려워 실제 대상으로 바꿨다.
+    { to: "/admin/content", icon: Newspaper, label: "배너·공지 관리" },
     { to: "/admin/terms", icon: FileSignature, label: "약관 관리" }, // 7/29 신설 — PUT /api/admin/terms
   ]},
   { group: "계정 관리", items: [
@@ -193,12 +195,12 @@ export default function AdminRoot() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f4f5f7] text-foreground flex" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>
+    <div className="min-h-screen bg-background text-foreground flex" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>
       {/* ── 좌측 다크 사이드바 ── */}
       <aside className="hidden lg:flex w-60 shrink-0 bg-[#191d24] text-white/80 flex-col sticky top-0 h-screen overflow-y-auto">
         <Link to="/admin" className="flex items-center gap-2 px-5 h-14 border-b border-white/10">
           <div className="w-7 h-7 rounded-sm bg-accent flex items-center justify-center">
-            <span className="text-white text-xs font-bold" style={{ fontFamily: "'DM Mono', monospace" }}>PO</span>
+            <span className="text-accent-foreground text-xs font-bold" style={{ fontFamily: "'DM Mono', monospace" }}>PO</span>
           </div>
           <div className="leading-tight">
             <div className="text-sm font-semibold text-white">팝업온 Admin</div>
@@ -241,7 +243,7 @@ export default function AdminRoot() {
 
       {/* ── 우측 영역 ── */}
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="h-14 bg-white border-b border-border flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40">
+        <header className="h-14 bg-card border-b border-border flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40">
           <div className="text-sm font-medium lg:hidden">팝업온 Admin</div>
           <div className="hidden lg:flex items-center gap-3 text-xs text-muted-foreground">
             <span>{todayLabel()}</span>
@@ -312,7 +314,10 @@ export default function AdminRoot() {
             )}
           </div>
         </header>
-        <main className="flex-1 p-4 lg:p-6">
+        {/* 7/30 — 일하는 화면이라 내용 영역만 라이트(#F5F5F5). theme-light가 토큰을
+            다시 선언하므로 안쪽 표·카드·폼이 전부 라이트로 뒤집힌다.
+            상단바·좌측 메뉴는 이 밖에 있어 다크 유지. */}
+        <main className="theme-light bg-background text-foreground flex-1 p-4 lg:p-6">
           <ScrollRestoration />
           <Outlet />
         </main>
@@ -322,7 +327,7 @@ export default function AdminRoot() {
       {notifOpen && (
         <>
           <div className="fixed inset-0 bg-black/20 z-40" onClick={() => setNotifOpen(false)} />
-          <aside className="fixed inset-y-0 right-0 w-80 max-w-[85vw] bg-white border-l border-border shadow-xl z-50 flex flex-col">
+          <aside className="fixed inset-y-0 right-0 w-80 max-w-[85vw] bg-card border-l border-border shadow-xl z-50 flex flex-col">
             <div className="h-14 px-4 border-b border-border flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2 text-sm font-semibold">
                 <Bell size={15} className="text-accent" /> 새 알림

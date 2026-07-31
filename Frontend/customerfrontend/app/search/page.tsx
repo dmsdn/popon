@@ -15,37 +15,56 @@ import { searchPopups } from "@/lib/api/popups";
 import { toPopupItem } from "@/lib/utils/popupMapper";
 import { type PopupItem } from "@/data/mockPopups";
 import { HeartButton } from "@/components/ui/HeartButton";
+import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 import { LoadingState, EmptyState } from "@/components/ui/EmptyState";
 import { getKeywords } from "@/lib/api/customer";
+import { FilterPanel, type FilterTab } from "@/components/search/FilterPanel";
 
 const STATUSES = ["예정", "진행중", "종료"] as const;
+
+// 콤마로 구분된 URL 파라미터를 배열로 (예: "성수,홍대" → ["성수","홍대"])
+function parseListParam(v: string | undefined): string[] {
+  return v ? v.split(",").map((s) => s.trim()).filter(Boolean) : [];
+}
 
 export default function SearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; region?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; region?: string; category?: string; minRating?: string }>;
 }) {
-  const { q: query, status: statusParam, region: regionParam } = use(searchParams);
-  const [category, setCategory] = useState<string | null>(null);
+  const { q: query, status: statusParam, region: regionParam, category: categoryParam, minRating: minRatingParam } =
+    use(searchParams);
+
   const [categories, setCategories] = useState<string[]>([]);
+  const [allCategories, setAllCategories] = useState<string[]>([]);
   useEffect(() => {
     getKeywords()
-      .then((list) => setCategories(list.map((k) => k.name)))
+      .then((list) => setAllCategories(list.map((k) => k.name)))
       .catch((err) => console.error("키워드 목록 조회 실패", err));
   }, []);
-  const [region, setRegion] = useState<string | null>(regionParam ?? null);
-  const [status, setStatus] = useState<(typeof STATUSES)[number] | null>(
-    (STATUSES as readonly string[]).includes(statusParam ?? "") ? (statusParam as (typeof STATUSES)[number]) : null
+
+  // [수정] 이제 카테고리/지역/운영여부를 여러 개 동시에 선택할 수 있어요(배열).
+  // URL에서 넘어온 값도 콤마로 구분된 여러 개를 한 번에 받아요.
+  const [selectedRegions, setSelectedRegions] = useState<string[]>(() => parseListParam(regionParam));
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>(() =>
+    parseListParam(statusParam).filter((s) => (STATUSES as readonly string[]).includes(s))
   );
+  useEffect(() => {
+    setCategories(parseListParam(categoryParam));
+  }, [categoryParam]);
+  const [minRating, setMinRating] = useState<number | null>(
+    minRatingParam ? Number(minRatingParam) : null
+  );
+
   const [mobileSearchFocused, setMobileSearchFocused] = useState(false);
   const [allPopups, setAllPopups] = useState<PopupItem[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [openFilterTab, setOpenFilterTab] = useState<FilterTab | null>(null);
 
-  // 검색어 없이 상태/지역 필터만으로 들어온 경우에도 결과 화면을 보여줍니다.
-  // (예: 홈 화면 "곧 오픈하는 팝업 더보기" → /search?status=예정)
-  const hasActiveFilter = Boolean(query || status || region || category);
+  const hasActiveFilter = Boolean(
+    query || selectedStatuses.length || selectedRegions.length || categories.length || minRating
+  );
 
-  // 검색 대상: 실제 DB의 전체 팝업 (상태 무관하게 다 가져와서 프론트에서 텍스트/필터링)
   useEffect(() => {
     let cancelled = false;
     searchPopups()
@@ -66,16 +85,17 @@ export default function SearchPage({
     [allPopups]
   );
 
-  // 검색어 자체가 지역/운영여부 키워드와 그대로 일치하면(예: "성수", "홍대")
-  // 전체 텍스트 검색과 별개로 그 필터 버튼도 같이 선택된 상태로 맞춰줍니다.
-  // (q 없이 status/region 파라미터로 바로 들어온 경우는 그 값을 그대로 유지해요.)
+  // 검색어 자체가 지역/운영여부 키워드와 그대로 일치하면 그 필터도 같이 켜줘요.
   useEffect(() => {
     if (!query) return;
     const q = query.trim();
-    setCategory(categories.find((c) => c === q) ?? null);
-    setRegion(REGIONS.find((r) => r === q) ?? null);
-    setStatus(STATUSES.find((s) => s === q) ?? null);
-  }, [query, categories, REGIONS]);
+    if (allCategories.includes(q)) setCategories((prev) => (prev.includes(q) ? prev : [...prev, q]));
+    if (REGIONS.includes(q)) setSelectedRegions((prev) => (prev.includes(q) ? prev : [...prev, q]));
+    if ((STATUSES as readonly string[]).includes(q)) {
+      setSelectedStatuses((prev) => (prev.includes(q) ? prev : [...prev, q]));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, allCategories, REGIONS]);
 
   const results = useMemo(() => {
     if (!hasActiveFilter) return [];
@@ -86,65 +106,86 @@ export default function SearchPage({
         !q ||
         item.name.toLowerCase().includes(q) ||
         (item.hashtags?.some((h) => h.toLowerCase().includes(q)) ?? false) ||
+        (item.keywordNames?.some((k) => k.toLowerCase().includes(q)) ?? false) ||
         (item.location?.toLowerCase().includes(q) ?? false);
       if (!matchesQuery) return false;
-      // [수정] 백엔드에 실제 popup_hashtag 데이터가 생겨서, 이름/지역 텍스트로 카테고리를
-      // 유추하던 방식 대신 정확한 해시태그 매칭으로 바꿨어요.
-      if (category) {
-        const matchesCategory = item.hashtags?.includes(category) ?? false;
-        if (!matchesCategory) return false;
+
+      // [수정] 여러 개 선택했을 때는 "그 중 하나라도 맞으면" 통과(OR)예요.
+      if (categories.length > 0) {
+        const matches = categories.some((c) => item.hashtags?.includes(c));
+        if (!matches) return false;
       }
-      if (region && item.location !== region) return false;
-      if (status && item.status !== status) return false;
+      if (selectedRegions.length > 0 && !selectedRegions.includes(item.location ?? "")) return false;
+      if (selectedStatuses.length > 0 && !selectedStatuses.includes(item.status ?? "")) return false;
+      if (minRating && (item.avgRating ?? 0) < minRating) return false;
       return true;
     });
-  }, [allPopups, hasActiveFilter, query, category, region, status]);
+  }, [allPopups, hasActiveFilter, query, categories, selectedRegions, selectedStatuses, minRating]);
 
   const popularForRanking = useMemo(
     () => allPopups.filter((p) => p.status === "진행중").slice(0, 10),
     [allPopups]
   );
 
+  const filterChips: { tab: FilterTab; label: string; count: number }[] = [
+    { tab: "카테고리", label: "카테고리", count: categories.length },
+    { tab: "지역", label: "지역", count: selectedRegions.length },
+    { tab: "운영여부", label: "운영여부", count: selectedStatuses.length },
+    { tab: "별점", label: "별점", count: minRating ? 1 : 0 },
+  ];
+
   return (
-    <main className="pb-16 mobile:pb-0 mobile:max-w-[1000px] mobile:mx-auto">
-      {/* 데스크톱: 원래 쓰던 헤더(로고+검색창+아이콘) 그대로, 검색어만 채워서 보여줌 */}
-      <div className="hidden mobile:block">
-        <Header initialQuery={query ?? ""} />
+    <main className="min-h-screen flex flex-col w-full pb-16 mobile:pb-0 mobile:max-w-[1000px] mobile:mx-auto">
+      {/* [신규] 검색바 + 필터 줄을 스크롤해도 상단에 붙어있게(sticky) 했어요. */}
+      <div className="sticky top-0 z-30 bg-white">
+        <div className="hidden mobile:block">
+          <Header initialQuery={query ?? ""} />
+        </div>
+        <div className="block mobile:hidden">
+          <MobileHeader
+            searchMode
+            initialQuery={query ?? ""}
+            onSearchFocusChange={setMobileSearchFocused}
+            disableAutoFocus={hasActiveFilter}
+          />
+        </div>
+
+        {hasActiveFilter && !mobileSearchFocused && (
+          <div className="flex items-center gap-2 px-4 mobile:px-8 py-3 border-b border-gray-100 overflow-x-auto scrollbar-hide">
+            {filterChips.map(({ tab, label, count }) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setOpenFilterTab(tab)}
+                className={`flex-none flex items-center gap-1 text-sm px-3 py-1.5 rounded-full border ${
+                  count > 0 ? "border-gray-900 text-gray-900 font-medium" : "border-gray-200 text-gray-600"
+                }`}
+              >
+                {label}
+                {count > 0 && ` (${count})`}
+                <span className="text-[10px]">⌄</span>
+              </button>
+            ))}
+            <Link
+              href="/map"
+              className="flex-none flex items-center gap-1 text-sm text-gray-600 border border-gray-200 rounded-full px-3 py-1.5"
+            >
+              <img src="/icon/pin.svg" alt="" width={13} height={13} className="text-gray-500" />
+              지도에서 찾기
+            </Link>
+          </div>
+        )}
       </div>
 
-      {/* 모바일: 뒤로가기 + 검색창만 있는 검색 모드 헤더 */}
-      <div className="block mobile:hidden">
-        <MobileHeader searchMode initialQuery={query ?? ""} onSearchFocusChange={setMobileSearchFocused} />
-      </div>
-
+      <div className="flex-1">
       {hasActiveFilter && !mobileSearchFocused ? (
         <div>
-          <div className="px-4 mobile:px-8 pt-3 pb-1">
-            <p className="text-sm text-gray-600">
-              {query ? (
-                <>&quot;{query}&quot; 검색 결과 {loaded ? results.length : "..."}건</>
-              ) : (
-                <>{loaded ? results.length : "..."}건</>
-              )}
-            </p>
-          </div>
-
-          {/* 카테고리 / 지역 / 운영여부로 결과 좁히기 */}
-          <div className="flex flex-col gap-2 px-4 mobile:px-8 py-3 border-b border-gray-100">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-400">필터</span>
-              <Link
-                href="/map"
-                className="flex items-center gap-1 text-xs text-gray-600 border border-gray-200 rounded-full px-2.5 py-1"
-              >
-                <img src="/icon/pin.svg" alt="" width={13} height={13} className="text-gray-500"  />
-                지도로 보기
-              </Link>
-            </div>
-            <FilterRow label="카테고리" options={categories} selected={category} onSelect={setCategory} />
-            <FilterRow label="지역" options={REGIONS} selected={region} onSelect={setRegion} />
-            <FilterRow label="운영여부" options={[...STATUSES]} selected={status} onSelect={setStatus} />
-          </div>
+          {/* [수정] "\"검색어\" 검색 결과 N건"이라는 큰 문구 + "필터" 라벨을 없애고,
+              결과 개수는 필터 칩들 아래에 작게만 보여줘요. */}
+          <p className="text-xs text-gray-400 px-4 mobile:px-8 pt-2">
+            {query ? `"${query}" 검색 결과 ` : ""}
+            {loaded ? results.length : "..."}건
+          </p>
 
           {!loaded ? (
             <LoadingState />
@@ -187,61 +228,46 @@ export default function SearchPage({
           )}
         </div>
       )}
+      </div>
 
       <Footer />
 
       <div className="block mobile:hidden">
         <BottomTabBar />
       </div>
-    </main>
-  );
-}
 
-function FilterRow<T extends string>({
-  label,
-  options,
-  selected,
-  onSelect,
-}: {
-  label: string;
-  options: readonly T[];
-  selected: T | null;
-  onSelect: (value: T | null) => void;
-}) {
-  return (
-    <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
-      <span className="text-xs text-gray-400 flex-none w-14">{label}</span>
-      <button
-        type="button"
-        onClick={() => onSelect(null)}
-        className={`flex-none text-xs px-3 py-1.5 rounded-full border ${
-          selected === null ? "bg-gray-900 text-white border-gray-900" : "border-gray-200 text-gray-600"
-        }`}
-      >
-        전체
-      </button>
-      {options.map((option) => (
-        <button
-          key={option}
-          type="button"
-          onClick={() => onSelect(option)}
-          className={`flex-none text-xs px-3 py-1.5 rounded-full border ${
-            selected === option ? "bg-gray-900 text-white border-gray-900" : "border-gray-200 text-gray-600"
-          }`}
-        >
-          {option}
-        </button>
-      ))}
-    </div>
+      {openFilterTab && (
+        <FilterPanel
+          initialTab={openFilterTab}
+          categories={allCategories}
+          regions={REGIONS}
+          statuses={STATUSES}
+          selectedCategories={categories}
+          selectedRegions={selectedRegions}
+          selectedStatuses={selectedStatuses}
+          selectedMinRating={minRating}
+          onApply={(next) => {
+            setCategories(next.categories);
+            setSelectedRegions(next.regions);
+            setSelectedStatuses(next.statuses);
+            setMinRating(next.minRating);
+          }}
+          onClose={() => setOpenFilterTab(null)}
+        />
+      )}
+    </main>
   );
 }
 
 function SearchResultRow({ item }: { item: PopupItem }) {
   return (
     <Link href={`/popup/${item.id}`} className="flex gap-4 py-4 border-b border-gray-50">
-      <div className="relative w-24 h-24 flex-none rounded-lg bg-gray-100 border border-gray-200 overflow-hidden">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/images/popup-placeholder.svg" alt="" className="w-full h-full object-cover" />
+      <div className="relative w-24 h-24 flex-none rounded-lg bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center text-xs text-gray-400">
+        {item.imageUrl ? (
+          <ImageWithFallback src={item.imageUrl} className="w-full h-full object-cover" />
+        ) : (
+          "이미지"
+        )}
         <HeartButton popupId={Number(item.id)} className="absolute top-1.5 right-1.5 w-7 h-7" />
       </div>
       <div className="flex flex-col justify-center">

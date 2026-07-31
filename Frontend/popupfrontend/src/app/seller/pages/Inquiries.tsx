@@ -140,13 +140,13 @@ export default function Inquiries() {
           <h1 className="text-lg font-semibold">관리자에게 문의하기</h1>
           <p className="text-xs text-muted-foreground mt-0.5">정산·계약·운영 관련 문의를 남기면 플랫폼 관리자가 답변합니다.</p>
         </div>
-        <button onClick={() => setFormOpen((v) => !v)} className="flex items-center gap-1 text-xs px-3 py-2 rounded-sm bg-accent text-white hover:bg-accent/90">
+        <button onClick={() => setFormOpen((v) => !v)} className="flex items-center gap-1 text-xs px-3 py-2 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90">
           <Plus size={12} /> 새 문의
         </button>
       </div>
 
       {formOpen && (
-        <form onSubmit={submit} className="bg-white border border-border rounded-sm p-4 flex flex-col gap-3">
+        <form onSubmit={submit} className="bg-card border border-border rounded-sm p-4 flex flex-col gap-3">
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-medium">제목 *</span>
             <input
@@ -167,7 +167,7 @@ export default function Inquiries() {
           </label>
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => setFormOpen(false)} className="text-xs px-3 py-2 rounded-sm border border-border">취소</button>
-            <button type="submit" disabled={saving} className="flex items-center gap-1.5 text-xs px-5 py-2 rounded-sm bg-foreground text-white hover:bg-foreground/90 disabled:opacity-50">
+            <button type="submit" disabled={saving} className="flex items-center gap-1.5 text-xs px-5 py-2 rounded-sm bg-foreground text-primary-foreground hover:bg-foreground/90 disabled:opacity-50">
               {saving ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />} 문의 등록
             </button>
           </div>
@@ -183,7 +183,7 @@ export default function Inquiries() {
 
       <div className="flex flex-col gap-2.5">
         {!loading && list.length === 0 && !error && (
-          <div className="bg-white border border-border rounded-sm px-4 py-10 text-center text-xs text-muted-foreground">
+          <div className="bg-card border border-border rounded-sm px-4 py-10 text-center text-xs text-muted-foreground">
             등록한 문의가 없습니다. 「새 문의」로 남겨보세요.
           </div>
         )}
@@ -192,7 +192,7 @@ export default function Inquiries() {
           const open = openId === root.id;
           const last = items[items.length - 1];
           return (
-            <div key={root.id} className="bg-white border border-border rounded-sm">
+            <div key={root.id} className="bg-card border border-border rounded-sm">
               <button className="w-full px-4 py-3.5 flex items-center gap-3 text-left" onClick={() => setOpenId(open ? null : root.id)}>
                 {/* 스레드 상태 = 마지막 문의의 상태 (재문의 후에는 다시 '답변 대기') */}
                 <span className={`shrink-0 text-[11px] px-2 py-0.5 rounded-full border ${STATUS_BADGE[last.status]}`}>{STATUS_LABEL[last.status]}</span>
@@ -245,7 +245,7 @@ export default function Inquiries() {
                           <button
                             onClick={() => submitReask(rootTitleOf(root.title))}
                             disabled={reaskSaving || !reaskText.trim()}
-                            className="flex items-center gap-1.5 text-xs px-4 py-1.5 rounded-sm bg-accent text-white hover:bg-accent/90 disabled:opacity-50"
+                            className="flex items-center gap-1.5 text-xs px-4 py-1.5 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-50"
                           >
                             {reaskSaving ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />} 재문의 등록
                           </button>

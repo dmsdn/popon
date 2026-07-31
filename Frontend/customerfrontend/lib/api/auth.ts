@@ -2,9 +2,12 @@ import { apiFetch, clearToken } from "./client";
 
 export type Provider = "kakao" | "google";
 
-// OAuth는 fetch가 아니라 전체 페이지 이동이라 rewrites를 타지 않음 — 통합 백엔드(8080) 절대 주소로 이동.
-// (카카오 콘솔에 등록된 Redirect URI도 8080 기준)
-const OAUTH_BASE = "http://localhost:8080";
+// OAuth는 fetch가 아니라 전체 페이지 이동이라 rewrites를 타지 않음 — 통합 백엔드 절대 주소로 이동.
+// 이 값이 카카오·구글 콘솔에 등록한 Redirect URI의 origin과 정확히 일치해야 한다.
+// 특히 구글은 IP 주소를 리디렉션 URI로 아예 받지 않아서(공개 최상위 도메인 필수),
+// 배포 환경에서는 nip.io 같은 IP→도메인 매핑을 쓴다 (7/30, DNS 설정 없이 즉시 사용 가능).
+// NEXT_PUBLIC_ 접두사가 브라우저 번들에 값을 심어준다 — 서버 전용 BACKEND_ORIGIN과는 별개.
+const OAUTH_BASE = process.env.NEXT_PUBLIC_OAUTH_BASE ?? "http://localhost:8080";
 
 // 카카오 로그인 버튼 클릭 시 호출 — 백엔드가 카카오 인증 페이지로 리다이렉트해줍니다.
 export function redirectToKakaoLogin() {

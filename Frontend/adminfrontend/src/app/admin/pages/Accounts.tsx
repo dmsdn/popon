@@ -24,7 +24,7 @@ export default function Accounts() {
   }, []);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-10">
       <div>
         <h1 className="text-lg font-semibold">계정·역할(RBAC) 관리</h1>
         <p className="text-xs text-muted-foreground mt-0.5">
@@ -32,19 +32,19 @@ export default function Accounts() {
         </p>
       </div>
 
-      {/* 운영 방침 안내 */}
+{/*       운영 방침 안내
       <div className="flex items-start gap-2.5 bg-blue-50 border border-blue-200 rounded-sm px-4 py-3">
         <Info size={14} className="text-blue-500 shrink-0 mt-0.5" />
         <div className="text-xs text-blue-800 leading-relaxed">
           현재 admin 테이블의 모든 계정은 <strong>마스터(전권)</strong>입니다. 역할 구분(슈퍼관리자/운영관리자 등)은
           백엔드에 role 컬럼·권한 검사 로직 추가 후 지원 예정입니다.
         </div>
-      </div>
+      </div>*/}
 
       {error && <div className="bg-red-50 border border-red-200 rounded-sm px-4 py-3 text-xs text-red-600">{error}</div>}
 
       {/* 계정 테이블 — 7/29 GET /api/admin/admins 실데이터 (기존 수동 반영 목록 대체) */}
-      <div className="bg-white border border-border rounded-sm overflow-x-auto">
+      <div className="bg-card border border-border rounded-sm overflow-x-auto">
         <div className="px-4 py-3 border-b border-border text-sm font-semibold">
           관리자 계정{!loading && accounts.length > 0 ? ` ${accounts.length}개` : ""}
         </div>

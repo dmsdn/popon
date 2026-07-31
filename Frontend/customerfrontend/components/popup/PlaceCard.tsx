@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getCategoryIcon } from "@/lib/utils/categoryIcon";
+import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 
 /**
  * 주변 핫플 / 비슷한 팝업 섹션에서 공용으로 쓰는 카드입니다.
@@ -29,8 +30,7 @@ export function PlaceCard({
   const content = (
     <>
       {imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={imageUrl} alt="" className="w-full aspect-[4/3] rounded-lg mb-2 object-cover" />
+        <ImageWithFallback src={imageUrl} className="w-full aspect-[4/3] rounded-lg mb-2 object-cover" />
       ) : (
         <div className="w-full aspect-[4/3] bg-gray-100 rounded-lg mb-2 flex items-center justify-center text-xs text-gray-400">
           이미지

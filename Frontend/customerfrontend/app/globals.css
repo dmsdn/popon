@@ -2,10 +2,16 @@
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css");
 @import "tailwindcss";
 
-/* 2. Tailwind v3 방식 디렉티브 (v3 사용 중일 경우) */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* [수정] 여기 있던 @tailwind base/components/utilities;(Tailwind v3 방식 디렉티브)를
+   지웠어요 - 위의 @import "tailwindcss"(v4 방식)랑 같이 있으면 충돌해요. 이 프로젝트는
+   바로 아래 @theme inline을 쓰는 v4라서, v3 디렉티브가 섞여 있으면 커스텀
+   브레이크포인트(--breakpoint-mobile) 등록 자체가 깨질 수 있어요 - "화면 크기 상관없이
+   항상 좁은 화면(mobile) 스타일로만 나온다"는 증상이 정확히 이럴 때 나타나는
+   전형적인 패턴이에요. */
+
+/* [신규] 다크모드를 OS 설정이 아니라 버튼으로 직접 켜고 끌 수 있게, <html>에 .dark
+   클래스가 붙었을 때만 dark: 유틸리티가 적용되도록 등록해요 (Tailwind v4 공식 방식). */
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* 3. 테마 및 CSS 변수 */
 :root {
@@ -13,17 +19,38 @@
   --foreground: #171717;
 }
 
+/* [수정] 요청하신 다크모드 배경색(#101010)으로 맞추고, prefers-color-scheme(OS 설정)
+   대신 .dark 클래스가 붙었을 때 적용되도록 바꿨어요. */
+.dark {
+  --background: #101010;
+  --foreground: #ffffff;
+}
+
+/* [신규] 페이지 이동 시(스크롤 없는 짧은 페이지 → 스크롤 생기는 긴 페이지) 세로
+   스크롤바가 나타났다 사라졌다 하면서 본문 너비가 살짝 좁아졌다 넓어졌다 하는
+   문제가 있었어요("화면이 좁아진다"는 문제). scrollbar-gutter만으로는 브라우저에
+   따라 지원이 안 될 수 있어서, 더 오래되고 폭넓게 지원되는 방식(항상 스크롤바
+   자리를 켜두기)도 같이 적용했어요. */
+html {
+  scrollbar-gutter: stable;
+  overflow-y: scroll;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --breakpoint-mobile: 1000px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* [수정] --breakpoint-mobile을 위 @theme inline 블록 안에 같이 넣어뒀었는데,
+   공식 문서의 커스텀 브레이크포인트 예제는 전부 "inline"이 없는 일반 @theme
+   블록을 써요. inline은 값을 CSS 변수 참조(var())가 아니라 리터럴 값으로 강제
+   삽입하는 다른 용도라, 브레이크포인트 변수가 여기 섞여 있으면 미디어쿼리 생성
+   자체가 제대로 안 될 수 있어요. 별도 블록으로 분리했어요. */
+@theme {
+  --breakpoint-mobile: 1000px;
+  /* [신규] 포인트 컬러 - 로고/진행중 표시/주요 버튼에만 제한적으로 써요.
+     text-point / bg-point / border-point 형태로 어디서든 쓸 수 있어요. */
+  --color-point: #8ade1b;
 }
 
 /* 4. body 통합 기본 스타일 (Pretendard 적용 및 Arial 제거) */

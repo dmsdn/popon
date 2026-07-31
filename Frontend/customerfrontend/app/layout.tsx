@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth/AuthContext";
+import { ThemeProvider } from "@/lib/theme/ThemeContext";
 import { BackendStatusBanner } from "@/components/layout/BackendStatusBanner";
 import { VisitLogger } from "@/components/layout/VisitLogger";
 
@@ -16,10 +17,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="min-h-full flex flex-col">
-        <VisitLogger />
-        <BackendStatusBanner />
-        <AuthProvider>{children}</AuthProvider>
+      <body className="min-h-full flex flex-col bg-[var(--background)] text-[var(--foreground)]">
+        <ThemeProvider>
+          <VisitLogger />
+          <BackendStatusBanner />
+          <AuthProvider>{children}</AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

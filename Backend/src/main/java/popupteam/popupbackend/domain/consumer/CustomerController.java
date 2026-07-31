@@ -17,6 +17,8 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class CustomerController {
 
+    // 이메일 형식 검증. 프론트 회원가입 폼과 같은 계열의 규칙이므로 한쪽만 바꾸지 말 것 —
+    // 어긋나면 프론트는 통과했는데 백엔드가 400을 주는 상황이 된다. (7/30 머지: jsw 버전 채택)
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
     private final CustomerAccountRepository customerRepository;

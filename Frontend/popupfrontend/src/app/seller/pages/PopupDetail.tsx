@@ -139,7 +139,7 @@ export default function PopupDetail() {
 
       {/* 관리자 수정사항·사유 */}
       {adminNote && (
-        <div className="bg-white border border-accent/30 rounded-sm p-4">
+        <div className="bg-card border border-accent/30 rounded-sm p-4">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-accent mb-2">
             <ShieldAlert size={12} /> 관리자 수정사항 및 사유
             {(popup.statusChangedAt || meta.editDate) && (
@@ -151,7 +151,7 @@ export default function PopupDetail() {
       )}
 
       {/* 핵심 정보 */}
-      <div className="bg-white border border-border rounded-sm p-5 grid sm:grid-cols-2 gap-x-6 gap-y-4 text-[13px]">
+      <div className="bg-card border border-border rounded-sm p-5 grid sm:grid-cols-2 gap-x-6 gap-y-4 text-[13px]">
         <div className="flex items-start gap-2.5">
           <CalendarClock size={15} className="text-muted-foreground shrink-0 mt-0.5" />
           <div>
@@ -190,7 +190,7 @@ export default function PopupDetail() {
 
       {/* 썸네일 이미지 — 7/29 GET 이미지 연동 (findById 응답의 thumbnailImages, 클릭 시 확대) */}
       {(popup.thumbnailImages?.length ?? 0) > 0 && (
-        <div className="bg-white border border-border rounded-sm">
+        <div className="bg-card border border-border rounded-sm">
           <div className="px-5 py-3 border-b border-border text-sm font-semibold flex items-center gap-2">
             <ImageIcon size={14} className="text-muted-foreground" /> 썸네일 이미지
             <span className="text-xs font-normal text-muted-foreground">{popup.thumbnailImages!.length}장 · 클릭하면 크게 볼 수 있습니다</span>
@@ -206,7 +206,7 @@ export default function PopupDetail() {
       )}
 
       {/* 상세 설명 */}
-      <div className="bg-white border border-border rounded-sm">
+      <div className="bg-card border border-border rounded-sm">
         <div className="px-5 py-3 border-b border-border text-sm font-semibold">상세 설명</div>
         <p className="p-5 text-[13px] leading-relaxed whitespace-pre-wrap">{popup.description}</p>
         {/* 상세 설명 이미지 — 본문 아래 세로로 이어붙임 (쿠팡 상세 스타일, sortOrder 순) */}

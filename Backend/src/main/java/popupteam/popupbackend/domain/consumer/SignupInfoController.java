@@ -22,6 +22,7 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class SignupInfoController {
 
+    // 이메일 형식 검증 — CustomerController와 같은 규칙을 쓴다. (7/30 머지: jsw 버전 채택)
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
     private final CustomerAccountRepository customerRepository;
