@@ -72,13 +72,13 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={handleTestLogin}
-              className="w-full max-w-sm rounded-full py-3.5 text-base font-medium border border-dashed border-gray-300 text-gray-500 mt-2"
+              className="w-full max-w-sm rounded-full py-3.5 text-base font-medium border border-dashed border-gray-300 dark:border-[#282B32] text-gray-500 mt-2"
             >
               [개발용] 테스트 계정으로 계속하기
             </button>
             <Link
               href="/login/dev"
-              className="w-full max-w-sm text-center rounded-full py-3.5 text-sm font-medium border border-dashed border-gray-300 text-gray-500"
+              className="w-full max-w-sm text-center rounded-full py-3.5 text-sm font-medium border border-dashed border-gray-300 dark:border-[#282B32] text-gray-500"
             >
               [개발용] 테스트 ID로 로그인
             </Link>

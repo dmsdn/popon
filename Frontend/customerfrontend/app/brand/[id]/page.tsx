@@ -119,7 +119,7 @@ export default function BrandDetailPage({
               onClick={() => setActiveTab(tab)}
               className={`flex-1 text-center py-3 text-sm ${
                 activeTab === tab
-                  ? "font-semibold border-b-2 border-gray-900"
+                  ? "font-semibold border-b-2 border-gray-900 dark:border-white"
                   : "text-gray-400"
               }`}
             >
@@ -155,7 +155,7 @@ export default function BrandDetailPage({
 
 function BrandPopupRow({ item }: { item: PopupItem }) {
   return (
-    <Link href={`/popup/${item.id}`} className="flex gap-4 py-4 border-b border-gray-50">
+    <Link href={`/popup/${item.id}`} className="flex gap-4 py-4 border-b border-gray-50 dark:border-[#282B32]">
       <div className="w-24 h-24 flex-none rounded-md bg-gray-100 dark:bg-[#282B32] border border-gray-200 dark:border-[#282B32] overflow-hidden flex items-center justify-center text-sm text-gray-400">
         {item.imageUrl ? <ImageWithFallback src={item.imageUrl} className="w-full h-full object-cover" /> : "이미지"}
       </div>

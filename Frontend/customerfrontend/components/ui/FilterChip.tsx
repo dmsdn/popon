@@ -12,7 +12,7 @@ export function FilterChip({ options }: { options: string[] }) {
           onClick={() => setSelected(opt)}
           className={`text-sm px-3 py-1.5 rounded-full border ${
             selected === opt
-              ? "border-gray-800 text-gray-800 font-medium"
+              ? "border-gray-800 dark:border-white text-gray-800 dark:text-white font-medium"
               : "border-gray-200 dark:border-[#282B32] text-gray-500"
           }`}
         >
