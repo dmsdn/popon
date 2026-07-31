@@ -1,18 +1,16 @@
 import type { PopupLiveStatus } from "@/lib/api/popups";
 
 const LABEL_COLOR: Record<PopupLiveStatus["congestionLabel"], string> = {
-  여유: "text-green-600",
-  보통: "text-amber-600",
+  여유: "text-point",
+  보통: "text-amber-500",
   혼잡: "text-red-500",
 };
 
-const SEGMENT_COLOR: Record<PopupLiveStatus["congestionLabel"], string> = {
-  여유: "bg-green-500",
-  보통: "bg-amber-500",
-  혼잡: "bg-red-500",
-};
+// [수정] 신호 세기(막대 높이가 다른 방식) 대신, 참고 이미지처럼 가로 막대를
+// 3등분해서 칸마다 정해진 색(포인트→노랑→빨강)으로 순서대로 채워지는 방식으로
+// 바꿨어요. 여유=포인트컬러 1칸, 보통=포인트+노랑 2칸, 혼잡=포인트+노랑+빨강 3칸.
+const SEGMENT_COLORS = ["bg-point", "bg-amber-400", "bg-red-500"];
 
-// 혼잡도 단계별로 3칸 중 몇 칸을 채울지 (신호 세기 표시 방식)
 const FILLED_SEGMENTS: Record<PopupLiveStatus["congestionLabel"], number> = {
   여유: 1,
   보통: 2,
@@ -21,14 +19,16 @@ const FILLED_SEGMENTS: Record<PopupLiveStatus["congestionLabel"], number> = {
 
 function Segments({ label, size = "md" }: { label: PopupLiveStatus["congestionLabel"]; size?: "sm" | "md" }) {
   const filled = FILLED_SEGMENTS[label];
-  const height = size === "sm" ? "h-3" : "h-4";
+  const height = size === "sm" ? "h-1.5" : "h-2";
+  const width = size === "sm" ? "w-4" : "w-6";
   return (
-    <div className="flex items-end gap-0.5">
-      {[1, 2, 3].map((i) => (
+    <div className="flex items-center gap-0.5">
+      {[0, 1, 2].map((i) => (
         <span
           key={i}
-          className={`w-1.5 rounded-sm ${height} ${i <= filled ? SEGMENT_COLOR[label] : "bg-gray-200"}`}
-          style={{ height: size === "sm" ? `${6 + i * 3}px` : `${8 + i * 4}px` }}
+          className={`${width} ${height} rounded-full ${
+            i < filled ? SEGMENT_COLORS[i] : "bg-gray-200 dark:bg-[#282B32]"
+          }`}
         />
       ))}
     </div>

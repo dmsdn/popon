@@ -23,7 +23,7 @@ export function ImageWithFallback({
   if (failed) {
     return (
       <div
-        className={`flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 text-sm text-center px-1 ${className}`}
+        className={`flex items-center justify-center bg-gray-100 dark:bg-[#282B32] text-gray-400 dark:text-gray-500 text-sm text-center px-1 ${className}`}
       >
         이미지를
         <br />

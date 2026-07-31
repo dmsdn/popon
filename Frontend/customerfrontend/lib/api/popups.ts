@@ -23,10 +23,11 @@ export interface PopupDetail {
   regionName: string | null;
   startDate: string; // ISO datetime
   endDate: string; // ISO datetime
-  status: "PENDING" | "REJECTED" | "BEFOR" | "OPEN" | "CLOSED";
+  status: "PENDING" | "REJECTED" | "BEFOR" | "OPEN" | "CLOSED" | "SUSPENDED";
   rejectReason: string | null;
   createdAt: string;
   areaSqm: number | null;
+  notice: string | null; // [신규] 주최측이 남긴 이용 안내 문구 (없으면 프론트에서 기본 안내로 대체)
   recommendedCapacity: number | null;
   capacity: number;
   reservationMode: "SLOT" | "FREE";
@@ -127,6 +128,7 @@ function buildMockPopupDetails(): PopupDetail[] {
       rejectReason: null,
       createdAt: start,
       areaSqm: null,
+      notice: null,
       recommendedCapacity: null,
       capacity: 30,
       reservationMode: "FREE",
@@ -195,11 +197,20 @@ export function getPopup(popupId: string | number) {
   );
 }
 
-// [수정] 백엔드가 PENDING(승인대기)/REJECTED(반려) 상태 팝업도 목록에 그대로 섞어서
-// 내려주고 있었어요. 그런데 이 두 상태는 아직 공개되면 안 되는 팝업이라, 소비자
-// 화면에 노출되면 안 돼요 — toPopupItem이 이 둘을 전부 "예정"으로 매핑하다보니
-// 승인도 안 된 팝업이 "곧 오픈"에 섞여 보였어요. 여기서 미리 걸러냅니다.
-const HIDDEN_STATUSES = new Set(["PENDING", "REJECTED"]);
+// [신규] 찜 개수는 PopupResponse에 안 실려있고, 별도 엔드포인트로 따로
+// 있었어요 (PopupController.getWishlistCount - GET /api/popups/{id}/wishlist-count).
+export function getPopupWishlistCount(popupId: string | number) {
+  return withMockFallback(
+    () => apiFetch<{ wishlistCount: number }>(`/api/popups/${popupId}/wishlist-count`),
+    () => Promise.resolve({ wishlistCount: 0 })
+  );
+}
+
+// [수정] 백엔드가 PENDING(승인대기)/REJECTED(반려)/SUSPENDED(게시중지) 상태 팝업도
+// 목록에 그대로 섞어서 내려주고 있었어요. 이 상태들은 소비자 화면에 노출되면 안
+// 돼요 — 여기서 미리 걸러냅니다. (SUSPENDED가 누락되어 있었어요 - "최근 본 팝업"에서
+// 게시중지된 팝업이 계속 보이던 문제의 원인 중 하나였어요.)
+export const HIDDEN_STATUSES = new Set(["PENDING", "REJECTED", "SUSPENDED"]);
 
 export function searchPopups(params?: { location?: string; status?: string; keyword?: string }) {
   const query = new URLSearchParams();
@@ -303,9 +314,10 @@ export interface PopupWaitTime {
 // [신규 연결] 백엔드가 해시태그 겹침/지역 등을 기준으로 직접 점수를 매겨 계산해주는
 // "비슷한 팝업" API가 있어요. 이전엔 프론트에서 직접 같은 방식으로 흉내내고
 // 있었는데, 이제 백엔드 걸 그대로 써요 (인증 불필요, 공개 API).
-export function getSimilarPopups(popupId: string | number, limit = 4) {
-  return apiFetch<PopupDetail[]>(`/api/popups/${popupId}/similar?limit=${limit}`);
-}
+// [수정] /api/popups/{id}/similar 엔드포인트가 실제로는 백엔드에 없어서 (전체
+// 코드를 찾아봐도 "similar" 관련 코드가 전혀 없었어요) 항상 404가 나고 있었어요.
+// 팝업 상세페이지는 다시 클라이언트에서 직접 계산하는 방식으로 되돌렸어요 -
+// 이 함수는 더 이상 안 써서 지웠어요.
 
 export function getPopupWaitTime(popupId: string | number, date?: string) {
   const d = date ?? toLocalDateString(new Date());

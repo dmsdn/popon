@@ -4,11 +4,11 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { submitSignupInfo } from "@/lib/api/auth";
 import { getMyInfo, updateMyInfo, type CustomerInfo } from "@/lib/api/customer";
-import { getTerms, type Terms } from "@/lib/api/terms";
+import { TERMS_SECTIONS } from "@/data/termsContent";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { formatPhoneInput, isValidPhone } from "@/lib/utils/formatPhone";
 import { BirthDatePicker } from "@/components/ui/BirthDatePicker";
-import { LoadingState, EmptyState } from "@/components/ui/EmptyState";
+import { LoadingState } from "@/components/ui/EmptyState";
 import { setToken } from "@/lib/api/client";
 import { decodeJwtPayload } from "@/lib/utils/decodeJwtPayload";
 
@@ -55,8 +55,7 @@ function SignupPageInner() {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showTerms, setShowTerms] = useState(false);
-  const [terms, setTerms] = useState<Terms | null>(null);
-  const [termsError, setTermsError] = useState(false);
+  const [expandedTermId, setExpandedTermId] = useState<string | null>(null);
   const [showBirthPicker, setShowBirthPicker] = useState(false);
 
   useEffect(() => {
@@ -102,13 +101,6 @@ function SignupPageInner() {
 
   const handleOpenTerms = () => {
     setShowTerms(true);
-    if (terms || termsError) return;
-    getTerms()
-      .then(setTerms)
-      .catch((error) => {
-        console.warn("약관 조회 실패", error);
-        setTermsError(true);
-      });
   };
 
   const handleSubmit = async () => {
@@ -184,7 +176,7 @@ function SignupPageInner() {
             value={nickname}
             onChange={(e) => setNickname(e.target.value)}
             maxLength={20}
-            className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none"
+            className="w-full bg-gray-100 dark:bg-[#282B32] text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none"
           />
         </label>
 
@@ -199,7 +191,7 @@ function SignupPageInner() {
             onChange={(e) => setPhone(formatPhoneInput(e.target.value))}
             placeholder="010-0000-0000"
             maxLength={13}
-            className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none"
+            className="w-full bg-gray-100 dark:bg-[#282B32] text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none"
           />
         </label>
 
@@ -212,7 +204,7 @@ function SignupPageInner() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="000@example.com"
-            className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none"
+            className="w-full bg-gray-100 dark:bg-[#282B32] text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none"
           />
         </label>
 
@@ -223,7 +215,7 @@ function SignupPageInner() {
           <button
             type="button"
             onClick={() => setShowBirthPicker(true)}
-            className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm text-left"
+            className="w-full bg-gray-100 dark:bg-[#282B32] text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm text-left"
           >
             {birthDate || <span className="text-gray-400">생년월일을 선택해주세요</span>}
           </button>
@@ -247,7 +239,7 @@ function SignupPageInner() {
                 type="button"
                 onClick={() => setGender(value)}
                 className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-3 text-sm border ${
-                  gender === value ? "border-gray-900 text-gray-900 dark:text-white font-medium" : "border-gray-200 dark:border-gray-800 text-gray-500"
+                  gender === value ? "border-gray-900 text-gray-900 dark:text-white font-medium" : "border-gray-200 dark:border-[#282B32] text-gray-500"
                 }`}
               >
                 <span
@@ -269,7 +261,7 @@ function SignupPageInner() {
             <button
               type="button"
               onClick={handleOpenTerms}
-              className="text-sm text-gray-400 underline underline-offset-2"
+              className="text-base text-gray-400 underline underline-offset-2"
             >
               약관 더보기
             </button>
@@ -295,28 +287,48 @@ function SignupPageInner() {
             onClick={() => setShowTerms(false)}
           >
             <div
-              className="bg-white dark:bg-gray-900 rounded-xl px-6 py-6 w-full max-w-md max-h-[70vh] overflow-y-auto"
+              className="bg-white dark:bg-[#282B32] rounded-xl w-full max-w-md max-h-[75vh] flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
-              {termsError ? (
-                <EmptyState message="약관을 불러오지 못했어요." />
-              ) : !terms ? (
-                <LoadingState />
-              ) : (
-                <>
-                  <p className="text-base font-semibold mb-3">{terms.title}</p>
-                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap mb-6">
-                    {terms.content}
-                  </p>
-                </>
-              )}
-              <button
-                type="button"
-                onClick={() => setShowTerms(false)}
-                className="w-full rounded-full py-3 text-sm font-medium bg-gray-100 text-gray-700 dark:text-gray-300"
-              >
-                닫기
-              </button>
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-[#17181a]">
+                <p className="text-base font-bold">약관 전체보기</p>
+                <button
+                  type="button"
+                  onClick={() => setShowTerms(false)}
+                  aria-label="닫기"
+                  className="text-gray-400 text-lg"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* [수정] 백엔드의 단일 약관 문서 대신, 마이페이지·하단바와 같은 4개
+                  문서(이용약관/개인정보처리방침/위치정보이용/마케팅정보수신)를
+                  모아서 아코디언으로 펼쳐볼 수 있게 했어요. */}
+              <div className="overflow-y-auto px-6 py-4 flex flex-col gap-1">
+                {TERMS_SECTIONS.map((section) => {
+                  const isOpen = expandedTermId === section.id;
+                  return (
+                    <div key={section.id} className="border-b border-gray-50 dark:border-[#17181a] py-3">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedTermId(isOpen ? null : section.id)}
+                        className="w-full flex items-center justify-between text-left"
+                      >
+                        <span className="text-sm font-semibold">{section.title}</span>
+                        <span className={`text-sm text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`}>
+                          ⌄
+                        </span>
+                      </button>
+                      {isOpen && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap mt-3">
+                          {section.content}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
@@ -341,7 +353,7 @@ function SignupPageInner() {
           type="button"
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="w-full rounded-full py-3.5 mt-4 text-sm font-medium bg-gray-100 text-gray-900 dark:text-white disabled:opacity-60 enabled:bg-gray-900 enabled:text-white"
+          className="w-full rounded-full py-3.5 mt-4 text-base font-medium bg-gray-100 text-gray-900 dark:text-white disabled:opacity-60 enabled:bg-gray-900 enabled:text-white"
         >
           {submitting ? "저장하는 중..." : "동의하고 가입하기"}
         </button>
