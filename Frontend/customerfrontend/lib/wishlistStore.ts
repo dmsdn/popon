@@ -8,6 +8,14 @@ import { getWishlist, addWishlist, removeWishlist } from "@/lib/api/wishlist";
 import { getToken } from "@/lib/api/client";
 
 let ids = new Set<number>();
+// [신규] useSyncExternalStore의 getServerSnapshot으로 매번 new Set()을 새로
+// 만들어서 넘기면, React가 "스냅샷이 매번 바뀐다"고 오해해서 "getServerSnapshot
+// should be cached" 무한루프 경고가 났어요. 항상 같은 참조를 돌려주는 빈
+// Set을 하나 만들어두고 재사용해요.
+const EMPTY_SET = new Set<number>();
+export function getServerWishlistSnapshot() {
+  return EMPTY_SET;
+}
 let loaded = false;
 let loadingPromise: Promise<void> | null = null;
 const listeners = new Set<() => void>();

@@ -174,9 +174,11 @@ export function ReviewDetailModal({
 
           <div className="flex items-center justify-between mb-3">
             <span className="text-base text-gray-700 dark:text-gray-300">{review.nickname}</span>
-            <span className="flex items-center gap-1 text-base font-medium text-gray-800">
-              <StarRatingDisplay rating={review.rating} size={16} /> {review.rating} / 5
-            </span>
+            {review.rating != null && (
+              <span className="flex items-center gap-1 text-base font-medium text-gray-800 dark:text-gray-300">
+                <StarRatingDisplay rating={review.rating} size={16} /> {review.rating} / 5
+              </span>
+            )}
           </div>
 
           <p className="text-base text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap mb-2">{review.content}</p>

@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createReview, updateReview, getMyReviews } from "@/lib/api/reviews";
+import { ApiError } from "@/lib/api/client";
 import { uploadFile } from "@/lib/api/upload";
 import { getPopup, getPopupImages, type PopupDetail } from "@/lib/api/popups";
 import { getMyReservations } from "@/lib/api/reservations";
@@ -48,7 +49,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
       .then((reviews) => {
         const target = reviews.find((r) => r.id === Number(editId));
         if (!target) return;
-        setRating(target.rating);
+        setRating(target.rating ?? 0);
         setContent(target.content);
         setImageUrls(target.imageUrls ?? []);
       })
@@ -58,6 +59,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showAlreadyReviewed, setShowAlreadyReviewed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -172,8 +174,12 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
     }
   };
 
+  // [신규] visitDate가 있으면(예약/웨이팅 체크인 기록이 있으면) "방문 인증된 후기",
+  // 없으면 "방문 미인증 댓글"이에요. 댓글은 별점 없이도 등록할 수 있어요.
+  const isVisited = visitDate !== null;
+
   const handleSubmit = async () => {
-    if (rating === 0) {
+    if (isVisited && rating === 0) {
       setError("별점을 선택해주세요.");
       return;
     }
@@ -187,7 +193,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
       if (editId) {
         await updateReview(Number(editId), {
           popupId: popup.id,
-          rating,
+          rating: isVisited ? rating : undefined,
           content: content.trim(),
           imageUrls,
           visitDate: visitDate ?? undefined,
@@ -195,7 +201,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
       } else {
         await createReview({
           popupId: popup.id,
-          rating,
+          rating: isVisited ? rating : undefined,
           content: content.trim(),
           imageUrls,
           visitDate: visitDate ?? undefined,
@@ -211,7 +217,17 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
       //   후기 작성 페이지로 다시 돌아가는 일이 없습니다.
       router.replace(`/popup/${id}?tab=review`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "후기 등록에 실패했어요.");
+      const message = err instanceof Error ? err.message : "후기 등록에 실패했어요.";
+      // [수정] 문구 매칭만으로는 놓칠 수 있어서, 백엔드가 이 상황에 실제로 쓰는
+      // 400(Bad Request) 상태코드도 같이 확인해서 더 확실하게 판별해요.
+      const isDuplicate =
+        (err instanceof ApiError && err.status === 400 && message.includes("이미")) ||
+        (message.includes("이미") && (message.includes("작성") || message.includes("리뷰") || message.includes("후기")));
+      if (isDuplicate) {
+        setShowAlreadyReviewed(true);
+      } else {
+        setError(message);
+      }
       setSubmitting(false);
     }
   };
@@ -227,7 +243,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
         >
           <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
         </button>
-        <h1 className="text-lg font-bold">{editId ? "후기 수정하기" : "후기 작성하기"}</h1>
+        <h1 className="text-lg font-bold">{editId ? "후기 수정하기" : isVisited ? "후기 작성하기" : "댓글 작성하기"}</h1>
       </div>
 
       <div className="px-4 mobile:px-8 py-6 flex flex-col gap-6">
@@ -253,10 +269,16 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
 
-        <div>
-          <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">별점</span>
-          <StarRatingInput value={rating} onChange={setRating} />
-        </div>
+        {isVisited ? (
+          <div>
+            <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">별점</span>
+            <StarRatingInput value={rating} onChange={setRating} />
+          </div>
+        ) : (
+          <p className="text-sm text-gray-400">
+            예약/웨이팅으로 방문 인증된 분들만 별점을 남길 수 있어요. 지금은 댓글로 남겨져요.
+          </p>
+        )}
 
         {visitDate && (
           <div className="block">
@@ -338,6 +360,28 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
           onCancel={() => setPendingFile(null)}
           onConfirm={handleCropConfirm}
         />
+      )}
+
+      {/* [신규] 이미 이 팝업에 후기/댓글을 남긴 경우 안내 팝업 */}
+      {showAlreadyReviewed && (
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center px-6 z-50"
+          onClick={() => setShowAlreadyReviewed(false)}
+        >
+          <div
+            className="bg-white dark:bg-[#282B32] rounded-xl px-6 py-6 w-full max-w-xs text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-sm font-medium mb-6">이미 리뷰 / 댓글을 남겼습니다.</p>
+            <button
+              type="button"
+              onClick={() => router.replace(`/popup/${id}?tab=review`)}
+              className="w-full rounded-full py-3 text-sm font-medium bg-gray-900 text-white"
+            >
+              확인
+            </button>
+          </div>
+        </div>
       )}
     </main>
   );

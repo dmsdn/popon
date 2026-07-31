@@ -23,7 +23,9 @@ export type ReviewItem = {
   nickname: string;
   content: string;
   date: string;
-  rating: number;
+  // [수정] 방문 인증(예약/웨이팅 체크인) 안 한 사람은 별점 없이 댓글만 남길 수
+  // 있게 백엔드가 바뀌어서, rating이 null일 수 있어요.
+  rating: number | null;
   photos?: string[]; // 사진 URL 배열 (없으면 사진 없는 후기)
   status?: PopupItem["status"]; // 이 후기가 달린 팝업의 현재 상태 (예정/진행중/종료)
   region?: string; // 팝업 지역 태그 (예: "성수")

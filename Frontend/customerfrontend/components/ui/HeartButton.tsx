@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import {
   subscribeWishlist,
   getWishlistSnapshot,
+  getServerWishlistSnapshot,
   ensureWishlistLoaded,
   toggleWishlist,
 } from "@/lib/wishlistStore";
@@ -25,7 +26,7 @@ export function HeartButton({
 }) {
   const { isLoggedIn } = useAuth();
   const router = useRouter();
-  const ids = useSyncExternalStore(subscribeWishlist, getWishlistSnapshot, () => new Set<number>());
+  const ids = useSyncExternalStore(subscribeWishlist, getWishlistSnapshot, getServerWishlistSnapshot);
   const active = ids.has(popupId);
 
   useEffect(() => {
