@@ -260,7 +260,7 @@ export default function EditProfilePage() {
               >
                 <span
                   className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
-                    gender === value ? "border-gray-900" : "border-gray-300"
+                    gender === value ? "border-gray-900 dark:border-white" : "border-gray-300 dark:border-[#282B32]"
                   }`}
                 >
                   {gender === value && <span className="w-2 h-2 rounded-full bg-gray-900" />}
