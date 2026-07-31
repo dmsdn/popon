@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import {useAuth} from "../../context/AuthContext";
 import {getPopups, getPopupImages, getKeywords, Popup, IdName} from "../../lib/api";
+import { consumerPopupUrl } from "../../lib/siteUrls";
 
 // ② 주최자용 서비스 요약 — 소비자 앱과의 차별점을 첫 스크롤에서 보여주는 구간.
 // 구 랜딩의 CORE_FEATURES를 되살리고 /manage 앵커로 연결한다 (7/30 병합 반영).
@@ -46,8 +47,10 @@ const ORGANIZER_EXTRAS = [
 ];
 
 // 소비자 프론트(customerfrontend) — 카드 클릭 시 이 앱의 상세페이지로 보낸다
-const CONSUMER_URL = "http://localhost:5173";
-const detailUrl = (id: number) => `${CONSUMER_URL}/popup/${id}`;
+// 7/31 — 하드코딩된 localhost:5173을 lib/siteUrls.ts로 옮겼다.
+// 배포 서버에서 히어로의 「지금 바로 확인하기」와 모든 팝업 카드가
+// 사용자 자기 PC(localhost:5173)로 가고 있었다.
+const detailUrl = consumerPopupUrl;
 
 // 소비자 노출 가능한 상태만 (PENDING·REJECTED·SUSPENDED는 공개 화면에 내보내지 않는다)
 const PUBLIC_STATUSES = new Set(["OPEN", "BEFOR", "CLOSED"]);
