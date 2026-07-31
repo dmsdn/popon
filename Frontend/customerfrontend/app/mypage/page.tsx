@@ -21,6 +21,7 @@ import { getKeywords, getMyInterests, withdrawCustomer } from "@/lib/api/custome
 import {
   subscribeWishlist,
   getWishlistSnapshot,
+  getServerWishlistSnapshot,
   ensureWishlistLoaded,
   toggleWishlist,
 } from "@/lib/wishlistStore";
@@ -153,7 +154,7 @@ function MyPageContent() {
   }, [isLoggedIn]);
 
   // 찜 목록
-  const wishlistIds = useSyncExternalStore(subscribeWishlist, getWishlistSnapshot, () => new Set<number>());
+  const wishlistIds = useSyncExternalStore(subscribeWishlist, getWishlistSnapshot, getServerWishlistSnapshot);
   const [wishlistPopups, setWishlistPopups] = useState<Record<number, PopupDetail>>({});
   // [신규] "다녀간 팝업" 탭에서 후기를 누르면 크게 보여줄 모달 상태
   const [openVisitedReview, setOpenVisitedReview] = useState<Extract<VisitedItem, { type: "review" }> | null>(null);
@@ -358,25 +359,30 @@ function MyPageContent() {
 
   // /mypage?menu=공지사항 처럼 쿼리로 들어오면 해당 메뉴가 바로 선택된 상태로 열립니다.
   const queryMenu = searchParams.get("menu");
-const [syncedQueryMenu, setSyncedQueryMenu] = useState<string | null>(null);
 
-if (queryMenu !== syncedQueryMenu) {
-  setSyncedQueryMenu(queryMenu);
-  if (queryMenu && (VALID_MENUS as string[]).includes(queryMenu)) {
+  // [수정] 렌더링 도중(컴포넌트 함수 본문)에서 setState를 호출하던 방식이었는데,
+  // loading이 true인 동안 한 번 처리되고 나면 나중에 loading이 풀려도 다시 안
+  // 돌아서, 새로고침 시 비로그인 사용자가 로그인 필요한 탭에 잠깐 들어가 있는 등
+  // 불안정했어요. 정식 useEffect로 바꾸고, loading 상태도 deps에 포함시켜서
+  // loading이 풀리는 시점에 다시 한번 정확히 확인하도록 했어요.
+  useEffect(() => {
+    if (!queryMenu) {
+      // 뒤로가기 등으로 menu 쿼리파라미터가 사라지면(브라우저 히스토리를 실제로
+      // 되돌아온 경우) 목록 화면으로 돌아가요.
+      setMobileView("list");
+      return;
+    }
+    if (!(VALID_MENUS as string[]).includes(queryMenu)) return;
+
     const isPrivate = (PRIVATE_MENU as string[]).includes(queryMenu) || queryMenu === "내 정보";
     if (isPrivate && !loading && !isLoggedIn) {
       router.replace("/login");
-    } else {
-      setActiveMenu(queryMenu as MenuKey);
-      setMobileView("detail");
+      return;
     }
-  } else if (!queryMenu) {
-    // [신규] 뒤로가기 등으로 menu 쿼리파라미터가 사라지면(브라우저 히스토리를
-    // 실제로 되돌아온 경우) 목록 화면으로 돌아가요 - 이전엔 이 경우를 처리 안 해서
-    // 뒤로가기를 눌러도 눌렀던 탭이 계속 선택된 채로 남아있었어요.
-    setMobileView("list");
-  }
-}
+    if (loading) return; // 아직 로그인 여부를 모르면 판단을 미뤄요 - 확정되면 이 effect가 다시 돌아요.
+    setActiveMenu(queryMenu as MenuKey);
+    setMobileView("detail");
+  }, [queryMenu, loading, isLoggedIn, router]);
 
   // 비로그인 상태로 들어왔는데 아직 기본값(내 정보)이면, 로그인 없이도 볼 수 있는
   // 메뉴로 기본 선택을 바꿔줍니다.
@@ -386,7 +392,6 @@ if (queryMenu !== syncedQueryMenu) {
     }
   }, [loading, isLoggedIn, activeMenu]);
 
-  if (loading) return null;
 
   const handleSelectMenu = (menu: MenuKey) => {
     const isPrivate = (PRIVATE_MENU as string[]).includes(menu) || menu === "내 정보";
@@ -462,7 +467,7 @@ if (queryMenu !== syncedQueryMenu) {
         popupId: number;
         title: string;
         date: string;
-        rating: number;
+        rating: number | null;
         content: string;
         photos: string[];
         visitDate: string | null;
@@ -518,6 +523,12 @@ if (queryMenu !== syncedQueryMenu) {
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
   }, [myReviews, myReservations, myWaitings, popupTitles, reservationPopupTitles]);
+
+  // [수정] 이 조기 return이 이전엔 hooks 중간에 있어서 "Rendered more hooks than
+  // during the previous render" 에러가 났었어요. 모든 useState/useEffect/useMemo가
+  // 끝난 뒤, 화면을 그리기 직전으로 옮겼어요 - React 훅은 매 렌더링마다 정확히
+  // 같은 순서로 호출돼야 해서, 훅들 사이에 조건부 return이 끼어있으면 안 돼요.
+  if (loading) return null;
 
   return (
     <main className="min-h-screen flex flex-col w-full mobile:max-w-[1000px] mobile:mx-auto">
@@ -909,7 +920,7 @@ if (queryMenu !== syncedQueryMenu) {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
                           <span className="text-sm font-medium bg-gray-100 dark:bg-[#282B32] text-gray-500 rounded px-1.5 py-0.5">
-                            {item.type === "review" ? "후기" : item.type === "reservation" ? "예약" : "웨이팅"}
+                            {item.type === "review" ? "댓글/후기" : item.type === "reservation" ? "예약" : "웨이팅"}
                           </span>
                           <p className="text-sm font-semibold truncate">{item.title}</p>
                         </div>
@@ -926,7 +937,13 @@ if (queryMenu !== syncedQueryMenu) {
                         className="block w-full text-left px-4 pb-3"
                       >
                         <p className="flex items-center gap-1 text-sm text-gray-500 mb-1">
-                          <StarRatingDisplay rating={item.rating} size={12} /> {item.rating}
+                          {item.rating != null ? (
+                            <>
+                              <StarRatingDisplay rating={item.rating} size={12} /> {item.rating}
+                            </>
+                          ) : (
+                            <span className="text-gray-400">방문 미인증 댓글</span>
+                          )}
                           {item.visitDate && <span className="text-gray-400">· {item.visitDate} 다녀옴</span>}
                         </p>
                         <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-2">{item.content}</p>
@@ -943,7 +960,13 @@ if (queryMenu !== syncedQueryMenu) {
                         )}
                       </button>
                     ) : (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 px-4 pb-3">방문 완료 · 아직 후기를 남기지 않았어요</p>
+                      <Link
+                        href={`/popup/${item.popupId}/review`}
+                        className="flex items-center justify-between px-4 pb-3 text-sm"
+                      >
+                        <span className="text-gray-600 dark:text-gray-400">방문 완료 · 아직 댓글/후기를 남기지 않았어요</span>
+                        <span className="text-gray-900 dark:text-white font-medium flex-none ml-2">후기 남기기 ›</span>
+                      </Link>
                     )}
 
                     {/* [신규] 후기에도 수정/삭제 버튼 + 추천받은 수를 보여줘요. */}
@@ -1241,7 +1264,13 @@ if (queryMenu !== syncedQueryMenu) {
             </div>
             <div className="overflow-y-auto px-5 py-4">
               <p className="flex items-center gap-1.5 text-sm text-gray-500 mb-3">
-                <StarRatingDisplay rating={openVisitedReview.rating} size={16} /> {openVisitedReview.rating}
+                {openVisitedReview.rating != null ? (
+                  <>
+                    <StarRatingDisplay rating={openVisitedReview.rating} size={16} /> {openVisitedReview.rating}
+                  </>
+                ) : (
+                  <span className="text-gray-400">방문 미인증 댓글</span>
+                )}
                 {openVisitedReview.visitDate && (
                   <span className="text-gray-400">· {openVisitedReview.visitDate} 다녀옴</span>
                 )}

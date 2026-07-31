@@ -89,6 +89,10 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   const [popupReviews, setPopupReviews] = useState<Review[]>([]);
   const [reviewSort, setReviewSort] = useState<"latest" | "recommended">("latest");
   const [photoOnly, setPhotoOnly] = useState(false);
+  // [수정] "방문 인증만" 체크박스 하나로는 "댓글만 보기"가 안 됐어요 - 전체/인증된
+  // 후기/댓글 3단 필터로 바꿨어요.
+  const [reviewFilter, setReviewFilter] = useState<"all" | "verified" | "comment">("all");
+  const [showSortMenu, setShowSortMenu] = useState(false);
   const [imageModal, setImageModal] = useState<{ reviewIndex: number; photoIndex: number } | null>(null);
   const [detailImagesExpanded, setDetailImagesExpanded] = useState(false);
   const [hotPlaces, setHotPlaces] = useState<HotPlace[]>([]);
@@ -337,6 +341,11 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   // [신규] 정렬(최신순/추천순) + 사진 리뷰만 보기 필터
   const visibleReviews = [...relatedReviews]
     .filter((r) => !photoOnly || (r.photos && r.photos.length > 0))
+    .filter((r) => {
+      if (reviewFilter === "verified") return r.rating != null;
+      if (reviewFilter === "comment") return r.rating == null;
+      return true;
+    })
     .sort((a, b) =>
       reviewSort === "recommended"
         ? (b.likeCount ?? 0) - (a.likeCount ?? 0)
@@ -531,17 +540,22 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                 router.push("/login");
                 return;
               }
-              // [수정] 이전엔 "다른 팝업"일 때만 막았는데, 같은 팝업에 같은 날짜로 또
-              // 예약하는 것도 막아야 "하나만"이라는 요청에 맞아서, 팝업 구분 없이
-              // 같은 날짜에 활성 예약이 하나라도 있으면 무조건 막도록 강화했어요.
+              // [수정] "같은 날짜"라는 이유만으로 무조건 막고 있었는데, 그러면
+              // 같은 날 다른 시간대 예약까지 막혀버려서 요청과 안 맞았어요.
+              // 진짜 막아야 하는 건 "완전히 같은 예약을 중복으로 넣는 것"이라,
+              // 같은 팝업 + 같은 날짜 + 같은 시간대일 때만 막도록 좁혔어요.
               const targetDateStr = toLocalDateString(date);
               try {
                 const myReservations = await getMyReservations(customer.id);
-                const sameDay = myReservations.find(
-                  (r) => r.status !== "CANCELLED" && r.reservationDate === targetDateStr
+                const duplicate = myReservations.find(
+                  (r) =>
+                    r.status !== "CANCELLED" &&
+                    r.popupId === popup.id &&
+                    r.reservationDate === targetDateStr &&
+                    (r.reservationTime ?? null) === (time ?? null)
                 );
-                if (sameDay) {
-                  alert("같은 날짜에 이미 예약이 있어요. 한 번에 하나의 예약만 가능해요.");
+                if (duplicate) {
+                  alert("이미 같은 시간대에 예약이 있어요.");
                   return;
                 }
               } catch (err) {
@@ -632,7 +646,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                   : "text-gray-400"
               }`}
             >
-              {tab === "후기" ? `후기 (${popup.reviewCount})` : tab}
+              {tab === "후기" ? `댓글/후기 (${popup.reviewCount})` : tab}
             </button>
           ))}
         </div>
@@ -746,33 +760,94 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                   size={48}
                 />
               </div>
+              {/* [신규] 웨이팅/예약 없이도 후기를 남기고 싶은 사람을 위한 버튼 -
+                  별점 없이 바로 댓글 작성 화면으로 가요. */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (!customer) {
+                    saveRedirectTarget(`/popup/${id}`);
+                    router.push("/login");
+                    return;
+                  }
+                  router.push(`/popup/${id}/review`);
+                }}
+                className="mt-3 text-sm text-gray-400 underline underline-offset-2"
+              >
+                방문 안 하셨나요? 댓글만 남기기
+              </button>
             </div>
 
             {relatedReviews.length > 0 && (
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-1">
-                  {(["latest", "recommended"] as const).map((sort) => (
+              <div className="mb-4">
+                {/* 왼쪽: 전체 개수, 오른쪽: 정렬 드롭다운 */}
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm text-gray-500">전체 {visibleReviews.length}</span>
+                  <div className="relative">
                     <button
-                      key={sort}
                       type="button"
-                      onClick={() => setReviewSort(sort)}
-                      className={`text-sm px-3 py-1.5 rounded-full ${
-                        reviewSort === sort ? "bg-gray-900 text-white" : "text-gray-500"
-                      }`}
+                      onClick={() => setShowSortMenu((prev) => !prev)}
+                      className="flex items-center gap-1 text-sm text-gray-500"
                     >
-                      {sort === "latest" ? "최신순" : "추천순"}
+                      ↑↓ {reviewSort === "latest" ? "최신순" : "추천순"}
                     </button>
-                  ))}
+                    {showSortMenu && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setShowSortMenu(false)} />
+                        <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-[#282B32] border border-gray-200 dark:border-[#282B32] rounded-lg shadow-md py-1 w-28">
+                          {(["latest", "recommended"] as const).map((sort) => (
+                            <button
+                              key={sort}
+                              type="button"
+                              onClick={() => {
+                                setReviewSort(sort);
+                                setShowSortMenu(false);
+                              }}
+                              className={`block w-full text-left px-3 py-2 text-sm ${
+                                reviewSort === sort ? "font-semibold text-gray-900 dark:text-white" : "text-gray-500"
+                              }`}
+                            >
+                              {sort === "latest" ? "최신순" : "추천순"}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <label className="flex items-center gap-1.5 text-sm text-gray-500">
-                  <input
-                    type="checkbox"
-                    checked={photoOnly}
-                    onChange={(e) => setPhotoOnly(e.target.checked)}
-                    className="w-3.5 h-3.5 accent-point"
-                  />
-                  사진 리뷰만
-                </label>
+
+                {/* 왼쪽: 전체/인증된 후기/댓글 필터, 오른쪽: 사진만 보기 체크 */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    {(
+                      [
+                        ["all", "전체"],
+                        ["verified", "인증된 후기"],
+                        ["comment", "댓글"],
+                      ] as const
+                    ).map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setReviewFilter(value)}
+                        className={`text-sm px-3 py-1.5 rounded-full ${
+                          reviewFilter === value ? "bg-gray-900 text-white" : "text-gray-500"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <label className="flex items-center gap-1.5 text-sm text-gray-500 flex-none ml-2">
+                    <input
+                      type="checkbox"
+                      checked={photoOnly}
+                      onChange={(e) => setPhotoOnly(e.target.checked)}
+                      className="w-3.5 h-3.5 accent-point"
+                    />
+                    사진만
+                  </label>
+                </div>
               </div>
             )}
 

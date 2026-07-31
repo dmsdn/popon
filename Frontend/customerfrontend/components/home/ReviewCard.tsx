@@ -39,12 +39,8 @@ export function ReviewCard({
             <p className="text-base font-semibold truncate">{popupName}</p>
             <div className="flex items-center gap-1 mt-1 flex-wrap">
               <StatusBadge status={status} />
-              {region && (
-                <span className="text-sm text-gray-500 bg-gray-50 rounded px-1.5 py-0.5">{region}</span>
-              )}
-              {category && (
-                <span className="text-sm text-gray-500 bg-gray-50 rounded px-1.5 py-0.5">{category}</span>
-              )}
+              {region && <span className="text-sm text-gray-500">{region}</span>}
+              {category && <span className="text-sm text-gray-500">{category}</span>}
             </div>
           </div>
         </Link>
@@ -59,9 +55,11 @@ export function ReviewCard({
                   <span className="text-gray-400"> · 후기 {reviewCount}</span>
                 )}
               </span>
-              <span className="flex items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300 flex-none ml-1">
-                <StarRatingDisplay rating={rating} size={14} /> {rating} / 5
-              </span>
+              {rating != null && (
+                <span className="flex items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300 flex-none ml-1">
+                  <StarRatingDisplay rating={rating} size={14} /> {rating} / 5
+                </span>
+              )}
             </div>
             <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed line-clamp-3">{content}</p>
             <span className="text-sm text-gray-400 mt-auto">{date}</span>
