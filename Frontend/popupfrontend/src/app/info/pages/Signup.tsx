@@ -4,7 +4,7 @@
 // 팝업등록 폼·소비자 관심 카테고리와 같은 마스터를 쓰므로 관리자가 마스터를 고치면 여기도 같이 바뀐다.
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router";
-import { ArrowRight, ArrowLeft, CheckCircle, Building2, Check, X, Loader2, Eye, EyeOff } from "lucide-react";
+import { ArrowRight, ArrowLeft, CheckCircle, Building2, Check, X, Loader2, Eye, EyeOff, AlertTriangle } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { signup as apiSignup, checkBusinessNumber, getKeywords, IdName } from "../../lib/api";
 import {
@@ -88,11 +88,14 @@ export default function Signup() {
       const { valid, message } = await checkBusinessNumber(bizNo);
       setBizMessage(message);
       if (valid) setBizVerified(true);
-      else setError(message); // 미등록·폐업 — 다음 단계로 못 가게 막고 사유를 그대로 보여준다
+      else setError(message); // 미등록·폐업·조회불가 — 다음 단계로 못 가게 막고 사유를 그대로 보여준다
     } catch {
-      // 진위확인 API 자체가 죽었을 때는 가입을 막지 않는다 — 최종 가입 시 서버가 다시 검증하므로
-      setBizMessage("지금은 진위확인 서버에 연결할 수 없어 형식만 확인했습니다. 최종 가입 시 다시 확인됩니다.");
-      setBizVerified(true);
+      // 7/31 정책 변경: 확인하지 못하면 막는다.
+      // 그전에는 여기서 setBizVerified(true)를 했다 — "지금 확인 못 하니 통과시키고 최종 가입 때
+      // 서버가 다시 본다"는 뜻이었는데, **서버도 같은 이유로 통과시키고 있었다.**
+      // 실제로 국세청 API가 503으로 죽자 검증이 통째로 무력화돼 없는 번호로 가입이 됐다.
+      setBizVerified(false);
+      setError("지금은 국세청 사업자등록 상태조회에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       setBizChecking(false);
     }
@@ -353,8 +356,22 @@ export default function Signup() {
                   <CheckCircle size={14} /> 사업자등록번호가 확인되었습니다
                 </div>
                 <p className="text-xs text-green-200/80 leading-relaxed">
-                  {/* 국세청 응답을 그대로 보여준다 — 진위확인 서버 장애로 형식만 통과한 경우 그 사실도 여기 표시된다 */}
+                  {/* 국세청 응답을 그대로 보여준다 */}
                   {bizMessage || "국세청 사업자등록 상태조회를 통과했습니다."} 최종 가입 시 한 번 더 검증됩니다.
+                </p>
+              </div>
+            )}
+
+            {/* 확인 실패 — 버튼 바로 아래에서 붉게 알린다 (7/31).
+                상단 에러 박스만으로는 「진위확인」을 누른 자리와 멀어서 실패를 놓치기 쉬웠다.
+                미등록·폐업(사용자 잘못)과 조회불가(우리 잘못)를 구분해 문구를 다르게 쓴다. */}
+            {!bizVerified && bizMessage && (
+              <div className="rounded-sm border border-destructive/40 bg-destructive/15 p-4 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-sm font-semibold text-destructive">
+                  <AlertTriangle size={14} /> 사업자등록번호를 확인하지 못했습니다
+                </div>
+                <p className="text-xs text-destructive/85 leading-relaxed">
+                  {bizMessage} 확인되지 않으면 다음 단계로 넘어갈 수 없습니다.
                 </p>
               </div>
             )}
