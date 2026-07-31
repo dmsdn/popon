@@ -17,19 +17,22 @@ export function PopupCard({
   return (
     <Link href={`/popup/${id}`} className="flex-none w-[190px] flex flex-col gap-2">
       {/* 이미지: 카드 테두리 없이 이미지 자체에만 4~8px 라운드 */}
-      <div className="relative h-[190px] rounded-md overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-sm text-gray-400">
+      <div className="relative h-[190px] rounded-md overflow-hidden bg-gray-100 dark:bg-[#282B32] flex items-center justify-center text-sm text-gray-400">
         {imageUrl ? (
           <ImageWithFallback src={imageUrl} className="w-full h-full object-cover" />
         ) : (
           "이미지"
         )}
         {rank ? (
-          <span className="absolute top-2 left-2 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900 text-sm font-bold text-white">
+          <span
+            className="absolute bottom-1 left-2 text-5xl font-extrabold text-white leading-none"
+            style={{ textShadow: "0 2px 8px rgba(0,0,0,0.55)" }}
+          >
             {rank}
           </span>
         ) : (
           badge && (
-            <span className="absolute top-2 left-2 text-sm font-bold bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-2 py-0.5 rounded shadow-sm">
+            <span className="absolute top-2 left-2 text-sm font-bold bg-white dark:bg-[#282B32] text-gray-900 dark:text-white px-2 py-0.5 rounded shadow-sm">
               {badge}
             </span>
           )

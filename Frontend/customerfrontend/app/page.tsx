@@ -143,6 +143,13 @@ export default function Home() {
     const nameById = new Map(allRegions.map((r) => [r.id, r.name]));
     return myRegionIds.map((id) => nameById.get(id)).filter((n): n is string => !!n);
   }, [allRegions, myRegionIds]);
+
+  // [신규] "내 관심 지역 팝업" 제목을 "OO에 이런 팝업이 열려요"로 바꾸면서, 관심
+  // 지역이 여러 개면 그 중 하나를 랜덤으로 골라 제목에 써요.
+  const featuredRegion = useMemo(() => {
+    if (preferredRegions.length === 0) return "";
+    return preferredRegions[Math.floor(Math.random() * preferredRegions.length)];
+  }, [preferredRegions]);
   const easyEntryPopupItems = useMemo(
     () => easyEntryItems.map(({ item, count }) => ({ ...item, badge: `웨이팅 ${count}팀` })),
     [easyEntryItems]
@@ -179,17 +186,45 @@ export default function Home() {
       <PromoCarousel />
       <MapSearchEntry />
       <CategoryIconList />
-      <NearbyRegionPopupSection />
-      <NearbyHotPlacesSection />
 
       {recentlyViewed.length > 0 && (
         <PopupSection title="최근 본 팝업" items={recentlyViewed} moreHref="/recent" />
       )}
+
       <PopularRankingSection />
+
+      <NearbyRegionPopupSection />
+
+      {congestionItems.length > 0 && (
+        <section className="mb-14 mobile:mb-16 px-4 mobile:px-8">
+          <h3 className="text-base mobile:text-lg font-semibold mb-3 mobile:mb-4">실시간 혼잡도</h3>
+          <HorizontalCarousel>
+            {congestionItems.map(({ item, status, imageUrl }) => (
+              <Link
+                key={item.id}
+                href={`/popup/${item.id}`}
+                className="flex-none w-[150px] border border-gray-100 dark:border-[#282B32] rounded-lg overflow-hidden"
+              >
+                {imageUrl ? (
+                  <ImageWithFallback src={imageUrl} className="w-full aspect-[4/3] object-cover" />
+                ) : (
+                  <div className="w-full aspect-[4/3] bg-gray-100 dark:bg-[#282B32] flex items-center justify-center text-sm text-gray-400">
+                    이미지
+                  </div>
+                )}
+                <div className="p-3 pt-3.5 pb-4 flex flex-col gap-2">
+                  <p className="text-sm font-medium truncate">{item.name}</p>
+                  <LiveCongestionMini status={status} />
+                </div>
+              </Link>
+            ))}
+          </HorizontalCarousel>
+        </section>
+      )}
 
       {regionPopups.length > 0 && (
         <PopupSection
-          title="내 관심 지역 팝업"
+          title={`"${featuredRegion}"에 이런 팝업이 열려요`}
           items={regionPopups}
           moreHref={`/search?region=${encodeURIComponent(preferredRegions.join(","))}`}
         />
@@ -207,32 +242,11 @@ export default function Home() {
           )
       )}
 
-      {congestionItems.length > 0 && (
-        <section className="mb-14 mobile:mb-16 px-4 mobile:px-8">
-          <h3 className="text-base mobile:text-lg font-semibold mb-3 mobile:mb-4">실시간 혼잡도</h3>
-          <HorizontalCarousel>
-            {congestionItems.map(({ item, status, imageUrl }) => (
-              <Link
-                key={item.id}
-                href={`/popup/${item.id}`}
-                className="flex-none w-[140px] border border-gray-100 dark:border-gray-800 rounded-lg overflow-hidden"
-              >
-                {imageUrl ? (
-                  <ImageWithFallback src={imageUrl} className="w-full aspect-[4/3] object-cover" />
-                ) : (
-                  <div className="w-full aspect-[4/3] bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-sm text-gray-400">
-                    이미지
-                  </div>
-                )}
-                <div className="p-3">
-                  <p className="text-sm font-medium truncate mb-1">{item.name}</p>
-                  <LiveCongestionMini status={status} />
-                </div>
-              </Link>
-            ))}
-          </HorizontalCarousel>
-        </section>
-      )}
+      <PopupSection
+        title="곧 오픈하는 팝업"
+        items={loaded ? openingSoon : []}
+        moreHref="/search?status=예정"
+      />
 
       {easyEntryPopupItems.length > 0 && (
         <section className="mb-14 mobile:mb-16 px-4 mobile:px-8">
@@ -247,17 +261,17 @@ export default function Home() {
               <Link
                 key={item.id}
                 href={`/popup/${item.id}`}
-                className="flex-none w-[140px] border border-gray-100 dark:border-gray-800 rounded-lg overflow-hidden"
+                className="flex-none w-[150px] border border-gray-100 dark:border-[#282B32] rounded-lg overflow-hidden"
               >
                 {item.imageUrl ? (
                   <ImageWithFallback src={item.imageUrl} className="w-full aspect-[4/3] object-cover" />
                 ) : (
-                  <div className="w-full aspect-[4/3] bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-sm text-gray-400">
+                  <div className="w-full aspect-[4/3] bg-gray-100 dark:bg-[#282B32] flex items-center justify-center text-sm text-gray-400">
                     이미지
                   </div>
                 )}
-                <div className="p-3">
-                  <p className="text-sm font-medium truncate mb-1">{item.name}</p>
+                <div className="p-3 pt-3.5 pb-4 flex flex-col gap-2">
+                  <p className="text-sm font-medium truncate">{item.name}</p>
                   <p className="text-sm text-gray-500">{item.badge}</p>
                 </div>
               </Link>
@@ -266,13 +280,9 @@ export default function Home() {
         </section>
       )}
 
-      <PopupSection
-        title="곧 오픈하는 팝업"
-        items={loaded ? openingSoon : []}
-        moreHref="/search?status=예정"
-      />
-
       <ReviewSection />
+
+      <NearbyHotPlacesSection />
 
       </div>
 

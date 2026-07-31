@@ -124,9 +124,11 @@ export default function SearchPage({
         (item.location?.toLowerCase().includes(q) ?? false);
       if (!matchesQuery) return false;
 
-      // [수정] 여러 개 선택했을 때는 "그 중 하나라도 맞으면" 통과(OR)예요.
+      // [수정] 필터 패널에 보여주는 카테고리 목록은 getKeywords()(표준 카테고리)인데,
+      // 실제 매칭은 hashtags(주최측이 자유롭게 입력한 해시태그)로 하고 있어서 대부분
+      // 안 걸리고 있었어요. keywordNames로 매칭하도록 고쳤어요.
       if (categories.length > 0) {
-        const matches = categories.some((c) => item.hashtags?.includes(c));
+        const matches = categories.some((c) => item.keywordNames?.includes(c));
         if (!matches) return false;
       }
       if (selectedRegions.length > 0 && !selectedRegions.includes(item.location ?? "")) return false;
@@ -151,7 +153,7 @@ export default function SearchPage({
   return (
     <main className="min-h-screen flex flex-col w-full pb-16 mobile:pb-0 mobile:max-w-[1000px] mobile:mx-auto">
       {/* [신규] 검색바 + 필터 줄을 스크롤해도 상단에 붙어있게(sticky) 했어요. */}
-      <div className="sticky top-0 z-30 bg-white dark:bg-[#101010]">
+      <div className="sticky top-0 z-30 bg-white dark:bg-[#17181a]">
         <div className="hidden mobile:block">
           <Header initialQuery={query ?? ""} />
         </div>
@@ -165,14 +167,14 @@ export default function SearchPage({
         </div>
 
         {hasActiveFilter && !mobileSearchFocused && (
-          <div className="flex items-center gap-2 px-4 mobile:px-8 py-3 border-b border-gray-100 dark:border-gray-800 overflow-x-auto scrollbar-hide">
+          <div className="flex items-center gap-2 px-4 mobile:px-8 py-3 border-b border-gray-100 dark:border-[#282B32] overflow-x-auto scrollbar-hide">
             {filterChips.map(({ tab, label, count }) => (
               <button
                 key={tab}
                 type="button"
                 onClick={() => setOpenFilterTab(tab)}
                 className={`flex-none flex items-center gap-1 text-sm px-3 py-1.5 rounded-full border ${
-                  count > 0 ? "border-gray-900 dark:border-white text-gray-900 dark:text-white font-medium" : "border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400"
+                  count > 0 ? "border-gray-900 dark:border-white text-gray-900 dark:text-white font-medium" : "border-gray-200 dark:border-[#282B32] text-gray-600 dark:text-gray-400"
                 }`}
               >
                 {label}
@@ -182,7 +184,7 @@ export default function SearchPage({
             ))}
             <Link
               href="/map"
-              className="flex-none flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-800 rounded-full px-3 py-1.5"
+              className="flex-none flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-[#282B32] rounded-full px-3 py-1.5"
             >
               <img src="/Icon/pin.svg" alt="" width={13} height={13} className="text-gray-500" />
               지도에서 찾기
@@ -218,9 +220,9 @@ export default function SearchPage({
           <RecentSearches />
           <Link
             href="/map"
-            className="flex items-center gap-3 border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-4 mx-4 mobile:mx-0 mb-4"
+            className="flex items-center gap-3 border border-gray-200 dark:border-[#282B32] rounded-xl px-4 py-4 mx-4 mobile:mx-0 mb-4"
           >
-            <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-none">
+            <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-[#282B32] flex items-center justify-center flex-none">
               <img src="/Icon/pin.svg" alt="" className="text-gray-500" width={18} height={18}  />
             </div>
             <div className="flex-1 min-w-0">
@@ -276,7 +278,7 @@ export default function SearchPage({
 function SearchResultRow({ item }: { item: PopupItem }) {
   return (
     <Link href={`/popup/${item.id}`} className="flex gap-4 py-4 border-b border-gray-50">
-      <div className="relative w-24 h-24 flex-none rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-800 overflow-hidden flex items-center justify-center text-sm text-gray-400">
+      <div className="relative w-24 h-24 flex-none rounded-lg bg-gray-100 dark:bg-[#282B32] border border-gray-200 dark:border-[#282B32] overflow-hidden flex items-center justify-center text-sm text-gray-400">
         {item.imageUrl ? (
           <ImageWithFallback src={item.imageUrl} className="w-full h-full object-cover" />
         ) : (

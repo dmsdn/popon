@@ -21,24 +21,32 @@ export default function LoginPage() {
   };
 
   return (
-    <main>
+    <main className="min-h-screen flex flex-col">
       {/* 상단바 */}
-      <header className="flex items-center px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+      <header className="flex items-center h-14 px-4 border-b border-gray-100 dark:border-[#282B32]">
         <Link href="/" className="font-bold text-lg">팝업</Link>
       </header>
 
-      {/* 로그인 버튼 영역 */}
-      <div className="flex flex-col items-center justify-center px-6 pt-40 gap-3">
-        <div className="relative mb-3">
-          <span className="whitespace-nowrap bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-full px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 shadow-sm">
-            웨이팅은 카카오로만 가능해요
-          </span>
+      {/* [수정] "웨이팅은 카카오로만 가능해요" 문구 제거 - 지금은 카카오가 아니어도
+          웨이팅 가능해서 안 맞는 안내였어요. 그 자리엔 큰 로고를 두고, 버튼들은
+          아래쪽으로 내렸어요. */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 gap-4">
+        {/* [신규] 간편 가입 안내 말풍선 - 살짝 동동 뜨는 애니메이션을 넣었어요. */}
+        <div className="relative bg-gray-100 dark:bg-[#282B32] rounded-2xl px-5 py-3 animate-float">
+          <p className="text-sm font-medium text-center">간편 가입으로 서비스를 편리하게 이용해보세요</p>
+          <div className="absolute left-1/2 -translate-x-1/2 -bottom-2 w-4 h-4 bg-gray-100 dark:bg-[#282B32] rotate-45" />
         </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/Icon/LOGO_Light.svg" alt="POP-ON" className="w-[220px] h-auto dark:hidden" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/Icon/LOGO_Dark.svg" alt="POP-ON" className="w-[220px] h-auto hidden dark:block" />
+      </div>
 
+      <div className="flex flex-col items-center px-6 pb-16 gap-3">
         <button
           type="button"
           onClick={redirectToKakaoLogin}
-          className="w-full max-w-sm rounded-full py-3.5 text-sm font-medium bg-[#FEE500]"
+          className="w-full max-w-sm rounded-full py-3.5 text-base font-medium bg-[#FEE500]"
         >
           카카오로 시작하기
         </button>
@@ -64,7 +72,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={handleTestLogin}
-              className="w-full max-w-sm rounded-full py-3.5 text-sm font-medium border border-dashed border-gray-300 text-gray-500 mt-2"
+              className="w-full max-w-sm rounded-full py-3.5 text-base font-medium border border-dashed border-gray-300 text-gray-500 mt-2"
             >
               [개발용] 테스트 계정으로 계속하기
             </button>

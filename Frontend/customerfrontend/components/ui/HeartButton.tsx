@@ -12,7 +12,17 @@ import {
 } from "@/lib/wishlistStore";
 import { saveRedirectTarget } from "@/lib/postLoginRedirect";
 
-export function HeartButton({ popupId, className = "" }: { popupId: number; className?: string }) {
+export function HeartButton({
+  popupId,
+  className = "",
+  onToggle,
+}: {
+  popupId: number;
+  className?: string;
+  /** [신규] 토글 직후(낙관적 업데이트 시점) 새 찜 상태를 알려줘요 - 찜 개수 같은
+      숫자를 화면에서 즉시 반영하고 싶을 때 써요. */
+  onToggle?: (nextActive: boolean) => void;
+}) {
   const { isLoggedIn } = useAuth();
   const router = useRouter();
   const ids = useSyncExternalStore(subscribeWishlist, getWishlistSnapshot, () => new Set<number>());
@@ -35,6 +45,7 @@ export function HeartButton({ popupId, className = "" }: { popupId: number; clas
           router.push("/login");
           return;
         }
+        onToggle?.(!active);
         toggleWishlist(popupId);
       }}
       className={`flex items-center justify-center w-8 h-8 ${className}`}

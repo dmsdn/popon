@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
 import Link from "next/link";
-import { searchPopups, getPopupImages, type PopupDetail } from "@/lib/api/popups";
+import { searchPopups, getPopupImages, getPopupWishlistCount, type PopupDetail } from "@/lib/api/popups";
 import { toPopupItem } from "@/lib/utils/popupMapper";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { StarRatingDisplay } from "@/components/ui/StarRatingDisplay";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 
 // [수정] 네이버 지도 - 핀에 팝업 이름 라벨을 붙이고, 핀을 누르면 이미지 참고하신
@@ -42,6 +43,23 @@ export default function MapPage() {
   const [upcomingPopups, setUpcomingPopups] = useState<PopupDetail[]>([]);
   const [showUpcoming, setShowUpcoming] = useState(DEFAULT_SHOW_UPCOMING);
   const [selected, setSelected] = useState<PopupDetail | null>(null);
+  const [selectedWishlistCount, setSelectedWishlistCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!selected) {
+      setSelectedWishlistCount(null);
+      return;
+    }
+    let cancelled = false;
+    getPopupWishlistCount(selected.id)
+      .then((res) => {
+        if (!cancelled) setSelectedWishlistCount(res.wishlistCount);
+      })
+      .catch((err) => console.error("찜 개수 조회 실패", err));
+    return () => {
+      cancelled = true;
+    };
+  }, [selected]);
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const [query, setQuery] = useState("");
 
@@ -160,8 +178,8 @@ export default function MapPage() {
     return (
       <main className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
         <img src="/Icon/pin.svg" alt="" className="text-gray-300 mb-3" width={40} height={40}  />
-        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">지도를 표시할 수 없어요</p>
-        <p className="text-sm text-gray-400 leading-relaxed">
+        <p className="text-base font-medium text-gray-700 dark:text-gray-300 mb-2">지도를 표시할 수 없어요</p>
+        <p className="text-base text-gray-400 leading-relaxed">
           네이버 지도 API 키(NEXT_PUBLIC_NAVER_MAP_CLIENT_ID)가 설정되어 있지 않아요.
           <br />
           .env.local에 키를 추가한 뒤 다시 시도해주세요.
@@ -174,8 +192,8 @@ export default function MapPage() {
     return (
       <main className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
         <img src="/Icon/pin.svg" alt="" className="text-gray-300 mb-3" width={40} height={40}  />
-        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">지도 인증에 실패했어요</p>
-        <p className="text-sm text-gray-400 leading-relaxed">
+        <p className="text-base font-medium text-gray-700 dark:text-gray-300 mb-2">지도 인증에 실패했어요</p>
+        <p className="text-base text-gray-400 leading-relaxed">
           네이버 클라우드 플랫폼 콘솔에 등록된 서비스 URL과
           <br />
           지금 접속 중인 주소({typeof window !== "undefined" ? window.location.origin : ""})가 달라요.
@@ -198,48 +216,47 @@ export default function MapPage() {
       <div ref={mapRef} className="w-full h-full" />
 
       {/* 상단 바 */}
-      <div className="absolute top-0 left-0 right-0 flex flex-col gap-2 px-4 py-3 bg-white/95 dark:bg-gray-900/95">
-        <div className="flex items-center justify-between">
-          <button type="button" onClick={() => router.back()} aria-label="뒤로가기" className="text-lg text-gray-700 dark:text-gray-300">
-            ‹
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowUpcoming((v) => !v)}
-            className={`text-sm px-3 py-1.5 rounded-full border ${
-              showUpcoming ? "bg-gray-900 text-white border-gray-900" : "border-gray-300 text-gray-600 dark:text-gray-400"
-            }`}
-          >
-            운영예정 팝업 {showUpcoming ? "숨기기" : "함께 보기"}
-          </button>
-        </div>
+      <div className="absolute top-0 left-0 right-0 flex items-center gap-2 px-4 py-3 bg-white/95 dark:bg-[#282B32]/95">
+        <button type="button" onClick={() => router.back()} aria-label="뒤로가기" className="flex-none text-gray-700 dark:text-gray-300">
+          <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
+        </button>
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="팝업 이름으로 찾기"
-          className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-full px-4 py-2.5 text-sm outline-none"
+          className="flex-1 min-w-0 bg-gray-100 dark:bg-[#282B32] text-gray-900 dark:text-white rounded-full px-4 py-2.5 text-base outline-none"
         />
+        <button
+          type="button"
+          onClick={() => setShowUpcoming((v) => !v)}
+          className={`flex-none whitespace-nowrap text-base px-3 py-1.5 rounded-full border ${
+            showUpcoming ? "bg-gray-900 text-white border-gray-900" : "border-gray-300 text-gray-600 dark:text-gray-400"
+          }`}
+        >
+          운영예정 {showUpcoming ? "숨기기" : "함께 보기"}
+        </button>
       </div>
 
       {/* 선택된 팝업 카드 - 카드 전체를 누르면 상세페이지로 이동 */}
       {selected && selectedItem && (
         <div className="absolute bottom-4 left-4 right-4">
-          <div className="relative bg-white dark:bg-gray-900 rounded-xl shadow-lg overflow-hidden">
+          <div className="relative bg-white dark:bg-[#282B32] rounded-xl shadow-lg overflow-hidden">
             <button
               type="button"
               onClick={() => setSelected(null)}
               aria-label="닫기"
-              className="absolute top-2 right-2 z-10 w-6 h-6 rounded-full bg-white/90 flex items-center justify-center text-gray-500 text-sm shadow-sm"
+              className="absolute top-2 right-2 z-10 w-6 h-6 rounded-full bg-white/90 flex items-center justify-center text-gray-500 text-base shadow-sm"
             >
               ✕
             </button>
             <Link href={`/popup/${selected.id}`} className="flex items-stretch gap-3 p-3">
-              <div className="w-20 h-20 flex-none rounded-lg overflow-hidden bg-gray-100">
+              {/* [수정] 이미지가 너무 작아서 80px → 112px로 키웠어요. */}
+              <div className="w-28 h-28 flex-none rounded-lg overflow-hidden bg-gray-100 dark:bg-[#282B32]">
                 {selectedImageUrl ? (
                   <ImageWithFallback src={selectedImageUrl} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-sm text-gray-400">
+                  <div className="w-full h-full flex items-center justify-center text-base text-gray-400">
                     이미지
                   </div>
                 )}
@@ -248,17 +265,36 @@ export default function MapPage() {
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <StatusBadge status={selectedItem.status} />
                   {selectedItem.location && (
-                    <span className="text-sm text-gray-500 bg-gray-50 rounded px-1.5 py-0.5">
-                      {selectedItem.location}
-                    </span>
+                    <span className="text-base text-gray-500">{selectedItem.location}</span>
                   )}
                 </div>
-                <p className="text-sm font-semibold truncate">{selected.title}</p>
+                <p className="text-base font-semibold truncate">{selected.title}</p>
+                {/* [수정] 별점/찜 개수를 상태·지역 줄에 끼워 넣지 않고, 이름 바로
+                    아래에 독립된 줄로 분리해서 눈에 잘 띄게 했어요. */}
+                {(selectedItem.avgRating != null || selectedWishlistCount !== null) && (
+                  <div className="flex items-center gap-3">
+                    {selectedItem.avgRating != null && (
+                      <span className="flex items-center gap-1 text-base text-gray-500">
+                        <StarRatingDisplay rating={Number(selectedItem.avgRating)} size={14} />
+                        {Number(selectedItem.avgRating).toFixed(1)}
+                      </span>
+                    )}
+                    {selectedWishlistCount !== null && (
+                      <span className="flex items-center gap-1 text-base text-gray-500">
+                        <img src="/Icon/heart.svg" alt="" width={14} height={14} />
+                        {selectedWishlistCount}
+                      </span>
+                    )}
+                  </div>
+                )}
                 {selectedItem.dateRange && (
-                  <p className="text-sm text-gray-400">{selectedItem.dateRange}</p>
+                  <p className="text-base text-gray-400">{selectedItem.dateRange}</p>
+                )}
+                {/* 날짜 아래에 키워드 전체 표시 */}
+                {(selected.keywordNames ?? []).length > 0 && (
+                  <p className="text-base text-gray-400">{(selected.keywordNames ?? []).join(" · ")}</p>
                 )}
               </div>
-              <span className="self-center text-gray-300 text-lg flex-none">›</span>
             </Link>
           </div>
         </div>

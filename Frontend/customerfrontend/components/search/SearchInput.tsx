@@ -60,7 +60,7 @@ export function SearchInput({
         placeholder="검색해보세요"
         autoFocus={autoFocus}
         enterKeyHint="search"
-        className={`w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-800 rounded-full py-2 text-sm placeholder:text-gray-400 ${
+        className={`w-full bg-white dark:bg-[#282B32] text-gray-900 dark:text-white border border-gray-200 dark:border-[#282B32] rounded-full py-2 text-sm placeholder:text-gray-400 ${
           isTyping ? "pl-9 pr-9" : "pl-4 pr-10"
         }`}
       />

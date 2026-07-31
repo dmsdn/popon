@@ -51,7 +51,8 @@ export default function DevLoginPage() {
   return (
     <main className="w-full max-w-sm mx-auto flex flex-col min-h-screen px-6 py-10">
       <Link href="/login" className="self-start text-sm text-gray-500 mb-6">
-        ‹ 뒤로
+        <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
+          <span>뒤로</span>
       </Link>
 
       <h1 className="text-lg font-bold mb-1">개발용 로그인</h1>
@@ -70,7 +71,7 @@ export default function DevLoginPage() {
             value={testId}
             onChange={(e) => setTestId(e.target.value)}
             placeholder="tester1"
-            className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none"
+            className="w-full bg-gray-100 dark:bg-[#282B32] text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none"
           />
         </label>
 
@@ -83,7 +84,7 @@ export default function DevLoginPage() {
             value={nickname}
             onChange={(e) => setNickname(e.target.value)}
             placeholder="테스트유저1"
-            className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none"
+            className="w-full bg-gray-100 dark:bg-[#282B32] text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none"
             onKeyDown={(e) => {
               if (e.key === "Enter") handleSubmit();
             }}
@@ -96,7 +97,7 @@ export default function DevLoginPage() {
           type="button"
           onClick={handleSubmit}
           disabled={submitting}
-          className="w-full rounded-full py-3.5 text-sm font-medium bg-gray-900 text-white disabled:opacity-40 mt-2"
+          className="w-full rounded-full py-3.5 text-base font-medium bg-gray-900 text-white disabled:opacity-40 mt-2"
         >
           {submitting ? "로그인 중..." : "로그인"}
         </button>

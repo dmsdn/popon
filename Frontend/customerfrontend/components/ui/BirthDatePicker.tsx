@@ -68,7 +68,7 @@ export function BirthDatePicker({
   return createPortal(
     <div className="fixed inset-0 bg-black/40 flex items-end mobile:items-center justify-center z-50" onClick={onClose}>
       <div
-        className="w-full mobile:max-w-sm bg-white dark:bg-gray-900 rounded-t-2xl mobile:rounded-2xl px-5 pt-5 pb-6"
+        className="w-full mobile:max-w-sm bg-white dark:bg-[#282B32] rounded-t-2xl mobile:rounded-2xl px-5 pt-5 pb-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">

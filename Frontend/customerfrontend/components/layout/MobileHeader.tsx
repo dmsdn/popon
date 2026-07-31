@@ -27,10 +27,10 @@ export function MobileHeader({
 
   if (searchMode) {
     return (
-      <header className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+      <header className="flex items-center gap-3 h-14 px-4 border-b border-gray-100 dark:border-[#282B32]">
         <button type="button" onClick={() => router.back()} aria-label="뒤로가기" className="text-gray-500">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/Icon/back_arrow.svg" alt="" width={20} height={20} />
+          <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
         </button>
         <SearchInput
           autoFocus={!initialQuery && !disableAutoFocus}
@@ -42,9 +42,12 @@ export function MobileHeader({
   }
 
   return (
-    <header className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-      <Link href="/" className="text-lg font-bold tracking-tight text-point">
-        팝업
+    <header className="flex items-center justify-between h-14 px-4 border-b border-gray-100 dark:border-[#282B32]">
+      <Link href="/">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/Icon/LOGO_Light.svg" alt="POP-ON" className="h-5 w-auto dark:hidden" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/Icon/LOGO_Dark.svg" alt="POP-ON" className="h-5 w-auto hidden dark:block" />
       </Link>
       <div className="flex items-center gap-4">
         <Link href="/search" aria-label="검색">
