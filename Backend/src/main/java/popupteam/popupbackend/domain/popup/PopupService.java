@@ -384,6 +384,25 @@ public class PopupService {
         return PopupResponse.from(popupRepository.save(popup));
     }
 
+    // 프론트 localStorage에 저장된 "최근 본 팝업" ID 목록으로 최신 상태 조회
+    // (localStorage 스냅샷이 아니라 DB 최신 데이터를 내려줘서 게시중지 등 반영되도록)
+    public List<PopupResponse> getByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        List<Popup> popups = popupRepository.findAllByIdWithBusiness(ids);
+
+        // 요청한 ids 순서 그대로 유지 (최근 본 순서 = 최근순 정렬이라서 순서 유지가 중요)
+        java.util.Map<Long, Popup> popupMap = popups.stream()
+                .collect(Collectors.toMap(Popup::getId, p -> p));
+        List<Popup> ordered = ids.stream()
+                .map(popupMap::get)
+                .filter(java.util.Objects::nonNull) // 삭제된 팝업 등은 자동으로 걸러짐
+                .toList();
+
+        return enrichForList(ordered);
+    }
+
     public List<PopupResponse> getMyPopups(Long businessId) {
         List<Popup> popups = popupRepository.findByBusinessIdWithRegion(businessId);
         return enrichForList(popups);
