@@ -21,20 +21,21 @@ export default function LoginPage() {
   };
 
   return (
-    <main>
+    <main className="min-h-screen flex flex-col">
       {/* 상단바 */}
       <header className="flex items-center px-4 py-3 border-b border-gray-100 dark:border-gray-800">
         <Link href="/" className="font-bold text-lg">팝업</Link>
       </header>
 
-      {/* 로그인 버튼 영역 */}
-      <div className="flex flex-col items-center justify-center px-6 pt-40 gap-3">
-        <div className="relative mb-3">
-          <span className="whitespace-nowrap bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-full px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 shadow-sm">
-            웨이팅은 카카오로만 가능해요
-          </span>
-        </div>
+      {/* [수정] "웨이팅은 카카오로만 가능해요" 문구 제거 - 지금은 카카오가 아니어도
+          웨이팅 가능해서 안 맞는 안내였어요. 그 자리엔 큰 로고를 두고, 버튼들은
+          아래쪽으로 내렸어요. */}
+      <div className="flex-1 flex items-center justify-center px-6">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/Icon/LOGO_Light.svg" alt="POP-ON" className="w-[220px] h-auto" />
+      </div>
 
+      <div className="flex flex-col items-center px-6 pb-16 gap-3">
         <button
           type="button"
           onClick={redirectToKakaoLogin}

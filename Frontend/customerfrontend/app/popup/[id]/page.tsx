@@ -61,6 +61,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   const [similar, setSimilar] = useState<PopupItem[]>([]);
 
   const [showReservation, setShowReservation] = useState(false);
+  const [showMapConfirm, setShowMapConfirm] = useState(false);
   const [showWaiting, setShowWaiting] = useState(false);
   const [slots, setSlots] = useState<PopupSlot[]>([]);
 
@@ -379,20 +380,46 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         </p>
 
         {/* [수정] 상세주소가 "태그"로 잘못 들어가 있었어요 - 날짜 밑으로 옮기고,
-            누르면(확인 문구 먼저 띄우고) 네이버 지도 길찾기로 연결되게 했어요. */}
+            누르면(브라우저 기본 confirm 대신 주소 바로 아래에 작은 팝업으로) 네이버
+            지도 길찾기로 연결되게 했어요. */}
         {popup.location && (
-          <button
-            type="button"
-            onClick={() => {
-              if (confirm(`네이버 지도에서 "${popup.location}" 길찾기를 시작할까요?`)) {
-                window.open(`https://map.naver.com/p/search/${encodeURIComponent(popup.location!)}`, "_blank");
-              }
-            }}
-            className="flex items-center gap-1 text-sm text-gray-500 mb-3"
-          >
-            {popup.location}
-            <span className="text-gray-400">›</span>
-          </button>
+          <div className="relative mb-3">
+            <button
+              type="button"
+              onClick={() => setShowMapConfirm((prev) => !prev)}
+              className="flex items-center gap-1 text-sm text-gray-500"
+            >
+              {popup.location}
+              <span className="text-gray-400">›</span>
+            </button>
+
+            {showMapConfirm && (
+              <div className="absolute left-0 top-full mt-1.5 z-20 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-md p-3 w-64">
+                <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                  "{popup.location}"으로 길찾기를 시작할까요?
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowMapConfirm(false)}
+                    className="flex-1 text-sm text-gray-500 border border-gray-200 dark:border-gray-700 rounded-full py-2"
+                  >
+                    취소
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.open(`https://map.naver.com/p/search/${encodeURIComponent(popup.location!)}`, "_blank");
+                      setShowMapConfirm(false);
+                    }}
+                    className="flex-1 text-sm bg-gray-900 text-white rounded-full py-2"
+                  >
+                    길찾기
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {/* [수정] 상세주소 대신 진짜 태그(지역/카테고리/해시태그)를 가져와요.

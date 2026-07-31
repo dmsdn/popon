@@ -13,7 +13,10 @@ export function Header({ initialQuery = "" }: { initialQuery?: string }) {
 
   return (
     <header className="flex items-center gap-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-      <Link href="/" className="font-bold text-lg flex-none text-point">팝업</Link>
+      <Link href="/" className="flex-none">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/Icon/LOGO_Light.svg" alt="POP-ON" className="h-6 w-auto" />
+      </Link>
 
       <div
         className="relative flex-1"

@@ -124,9 +124,11 @@ export default function SearchPage({
         (item.location?.toLowerCase().includes(q) ?? false);
       if (!matchesQuery) return false;
 
-      // [수정] 여러 개 선택했을 때는 "그 중 하나라도 맞으면" 통과(OR)예요.
+      // [수정] 필터 패널에 보여주는 카테고리 목록은 getKeywords()(표준 카테고리)인데,
+      // 실제 매칭은 hashtags(주최측이 자유롭게 입력한 해시태그)로 하고 있어서 대부분
+      // 안 걸리고 있었어요. keywordNames로 매칭하도록 고쳤어요.
       if (categories.length > 0) {
-        const matches = categories.some((c) => item.hashtags?.includes(c));
+        const matches = categories.some((c) => item.keywordNames?.includes(c));
         if (!matches) return false;
       }
       if (selectedRegions.length > 0 && !selectedRegions.includes(item.location ?? "")) return false;
