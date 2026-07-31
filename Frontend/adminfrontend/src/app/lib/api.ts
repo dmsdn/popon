@@ -11,6 +11,21 @@ export class ApiError extends Error {
 
 const TOKEN_KEY = "accessToken";
 
+// 비로그인 방문자를 구분하는 임의 id (7/31).
+//
+// 원래 crypto.randomUUID()를 그냥 불렀는데, 이 함수는 **보안 컨텍스트(HTTPS 또는 localhost)에서만
+// 존재한다.** 평문 HTTP로 배포하는 순간 undefined가 되어 TypeError가 나고, logVisit()이 앱 최초
+// 마운트에서 호출되기 때문에 렌더가 통째로 죽어 화면이 새까맣게 나왔다.
+// 개발 중에는 localhost가 예외적으로 보안 컨텍스트라 아무도 눈치채지 못했다.
+//
+// 이 값은 방문자 추이 집계용 구분자일 뿐 보안에 쓰이지 않으므로, 없으면 난수로 대체한다.
+function randomId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `anon-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 // ── 플랫폼 방문 로그 (관리자 대시보드 방문자 추이 집계용) ──
 // 앱 최초 마운트 시 1회만 호출한다. 집계용 fire-and-forget이라 실패는 무시(콘솔만).
 // visitorKey: 관리자 "admin:{id}" / 주최자 "business:{id}" / 비로그인은 localStorage에 보관하는 UUID 재사용
@@ -31,7 +46,7 @@ export function logVisit() {
   if (!visitorKey) {
     let anon = localStorage.getItem("visitor_id");
     if (!anon) {
-      anon = crypto.randomUUID();
+      anon = randomId();
       localStorage.setItem("visitor_id", anon);
     }
     visitorKey = anon;
