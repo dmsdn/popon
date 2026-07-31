@@ -3,7 +3,8 @@ import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
   CartesianGrid, Tooltip, BarChart, Bar,
 } from "recharts";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowUpRight } from "lucide-react";
+import { Link } from "react-router";
 import {
   getAdminDashboard, AdminDashboard as Dashboard,
   getPopupRanking, PopupVisitorRanking,
@@ -139,7 +140,10 @@ export default function PlatformStats() {
           </div>
 
           {/* 방문자 랭킹 */}
-          <div className="grid lg:grid-cols-2 gap-3 items-start">
+          {/* 7/31 — items-start를 뺐다. 그리드 기본값(stretch)이라 같은 줄 카드가
+              같은 높이로 늘어나 아래가 직사각형으로 맞는다.
+              items-start면 카드마다 내용 높이가 달라 아랫변이 들쭉날쭉했다(310 vs 412). */}
+          <div className="grid lg:grid-cols-2 gap-3">
             <div className="bg-card border border-border rounded-sm p-4">
               <div className="text-sm font-semibold mb-4">팝업별 방문자 TOP 5 (누적 체크인)</div>
               <div className="h-60">
@@ -166,14 +170,21 @@ export default function PlatformStats() {
                 {ranking.length === 0 && (
                   <li className="px-4 py-8 text-center text-xs text-muted-foreground">체크인 데이터가 없습니다.</li>
                 )}
+                {/* 7/31 — 행 전체를 팝업 상세로 연결. 그전에는 이름이 보이는데 눌러도 아무 일이 없었다 */}
                 {ranking.slice(0, 8).map((r) => (
-                  <li key={r.popupId} className="px-4 py-3 flex items-center gap-3">
-                    <span className="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center text-xs font-semibold shrink-0" style={{ fontFamily: "'DM Mono', monospace" }}>{r.rank}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[13px] font-medium truncate">{r.popupTitle}</div>
-                      <div className="text-[11px] text-muted-foreground truncate">{r.companyName}</div>
-                    </div>
-                    <div className="text-[13px] font-semibold shrink-0">{r.visitorCount.toLocaleString()}명</div>
+                  <li key={r.popupId}>
+                    <Link
+                      to={`/admin/popups/${r.popupId}`}
+                      className="px-4 py-3 flex items-center gap-3 hover:bg-secondary/40 transition-colors"
+                    >
+                      <span className="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center text-xs font-semibold shrink-0" style={{ fontFamily: "'DM Mono', monospace" }}>{r.rank}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[13px] font-medium truncate">{r.popupTitle}</div>
+                        <div className="text-[11px] text-muted-foreground truncate">{r.companyName}</div>
+                      </div>
+                      <div className="text-[13px] font-semibold shrink-0">{r.visitorCount.toLocaleString()}명</div>
+                      <ArrowUpRight size={12} className="shrink-0 text-muted-foreground" />
+                    </Link>
                   </li>
                 ))}
               </ul>

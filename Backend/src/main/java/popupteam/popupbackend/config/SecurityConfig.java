@@ -43,6 +43,10 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/venues/**").permitAll()   // === 추가 ===
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/terms").permitAll()   // === 추가 ===
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/popups/*/waiting").permitAll()   // === 추가 ===
+                        // 손님이 문자로 받은 /qr/{token} 화면이 자기 대기 상태를 확인한다 (7/31).
+                        // 비회원 웨이팅도 써야 해서 인증을 안 건다. 대신 응답에 개인정보를 담지 않는다
+                        // (WaitingQrStatusResponse — 이름·연락처·이메일 제외, 상태와 순번만).
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/waiting/qr/*").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/popups/*/waiting/board").permitAll()   // === 추가 ===
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/waiting/*").permitAll()   // === 추가 ===
                         .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/waiting/*/cancel").permitAll()   // === 추가: 소비자 본인취소는 컨트롤러 안에서 customerId로 권한 체크함 ===
