@@ -203,7 +203,7 @@ export default function AdminRoot() {
             <span className="text-accent-foreground text-xs font-bold" style={{ fontFamily: "'DM Mono', monospace" }}>PO</span>
           </div>
           <div className="leading-tight">
-            <div className="text-sm font-semibold text-white">팝업온 Admin</div>
+            <div className="text-sm font-semibold text-white">팝온[POP-ON] Admin</div>
             <div className="text-[10px] text-white/40">Platform Operations</div>
           </div>
         </Link>
