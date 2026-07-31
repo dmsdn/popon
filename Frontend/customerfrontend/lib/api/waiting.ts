@@ -50,6 +50,24 @@ export function getMyWaitingStatus(waitingId: number) {
   return apiFetch<Waiting>(`/api/waiting/${waitingId}`);
 }
 
+// [신규 7/31] QR 토큰으로 내 대기 상태만 조회해요 (로그인 불필요).
+// 문자로 받은 /qr/{token} 화면이 이걸 주기적으로 물어봐서,
+// 직원이 QR을 찍는 순간 손님 화면도 "입장 완료"로 바뀌게 해요.
+// 응답에 이름·연락처는 없어요 - 토큰만 알면 누구나 부를 수 있는 주소라
+// 백엔드가 상태와 순번만 내려줘요.
+export interface WaitingQrStatus {
+  popupId: number | null;
+  popupTitle: string | null;
+  teamNumber: number | null;
+  partySize: number | null;
+  status: "WAITING" | "CALLED" | "ENTERED" | "CANCELLED" | null;
+  teamsAhead: number | null;
+}
+
+export function getWaitingStatusByQr(qrToken: string) {
+  return apiFetch<WaitingQrStatus>(`/api/waiting/qr/${encodeURIComponent(qrToken)}`);
+}
+
 // [신규 연결] 백엔드에 "로그인한 내 활성 웨이팅 전체 목록"을 돌려주는 API가 이미
 // 있었어요(GET /api/waiting/me) - 예전엔 이게 없는 줄 알고 브라우저에 id를
 // 하나씩 저장해두는 방식으로 우회하고 있었는데, 이제 진짜 API로 바로 받아와요.
