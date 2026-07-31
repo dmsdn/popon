@@ -4,11 +4,13 @@
 // (기존 seller/data.ts 목업 의존 제거 — 이 화면은 전면 실연동)
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { ArrowUpRight, AlertTriangle, Users, CalendarCheck, Store, FileClock, Inbox } from "lucide-react";
+import { ArrowUpRight, AlertTriangle, Users, CalendarCheck, Store, FileClock, Inbox, TrendingUp, Percent } from "lucide-react";
+import { ResponsiveContainer, AreaChart, Area, Tooltip } from "recharts";
 import {
   getMyPopups, getSlots, getPopupReservations, getQueueBoard, getToken, getMyNoticeInbox,
+  getVisitorTrend, getConversionRate,
   type Popup, type PopupSlot, type ReservationDetail, type UnifiedEntry, type PopupStatusCode,
-  type NoticeInboxItem,
+  type NoticeInboxItem, type DailyCount, type ConversionRate,
 } from "../../lib/api";
 import { isSuspended } from "../../lib/adminPopupMeta";
 
@@ -45,19 +47,30 @@ export default function SellerDashboard() {
   const [queue, setQueue] = useState<UnifiedEntry[]>([]);
   // 미확인 관리자 공지 (7/30) — "처리 필요" 목록이 반려 없을 때 텅 비어 보여서, 공지 수신함과 연결
   const [unreadNotices, setUnreadNotices] = useState<NoticeInboxItem[]>([]);
+  // 7/31 — 성과 대시보드의 6종 중 2종만 홈으로 끌어온다 (매일 들어와서 볼 이유가 되는 지표).
+  // 나머지 4종(연령·성별·요약·예약추이)은 「성과 대시보드」에서 보고, 여기서는 링크로 안내만.
+  const [visitTrend, setVisitTrend] = useState<DailyCount[]>([]);
+  const [conversion, setConversion] = useState<ConversionRate | null>(null);
   const [loading, setLoading] = useState(true);
 
   const todayStr = toDateStr(new Date());
 
-  // 대표 팝업: 진행중(OPEN) 우선 → 오픈예정(BEFOR) → 그 외 첫 번째
+  // 화면 지표의 기준 팝업. 팝업을 여러 개 운영하면 자동 선택만으로는 원하는 팝업을 볼 수 없어
+  // 상단 셀렉트로 직접 고르게 했다 (7/31). null이면 아래 기본 규칙을 따른다.
+  const [pickedPopupId, setPickedPopupId] = useState<number | null>(null);
+
+  // 기본값: 진행중(OPEN) 우선 → 오픈예정(BEFOR) → 그 외 첫 번째.
+  // 고른 팝업이 목록에서 사라져도(삭제·권한 변경) 화면이 빈 채로 굳지 않게 기본값으로 되돌아간다.
   const activePopup = useMemo(() => {
+    const picked = pickedPopupId != null ? popups.find((p) => p.id === pickedPopupId) : undefined;
     return (
+      picked ??
       popups.find((p) => p.status === "OPEN") ??
       popups.find((p) => p.status === "BEFOR") ??
       popups[0] ??
       null
     );
-  }, [popups]);
+  }, [popups, pickedPopupId]);
 
   // 1) 내 팝업 목록 + 미확인 관리자 공지
   useEffect(() => {
@@ -74,10 +87,13 @@ export default function SellerDashboard() {
 
   // 2) 대표 팝업의 슬롯·예약·대기열 (실패해도 나머지 지표는 표시)
   useEffect(() => {
-    if (!activePopup) { setSlots([]); setReservations([]); setQueue([]); return; }
+    if (!activePopup) { setSlots([]); setReservations([]); setQueue([]); setVisitTrend([]); setConversion(null); return; }
     getSlots(activePopup.id).then(setSlots).catch(() => setSlots([]));
     getPopupReservations(activePopup.id).then(setReservations).catch(() => setReservations([]));
     getQueueBoard(activePopup.id).then((b) => setQueue(b.entries)).catch(() => setQueue([]));
+    // 성과 요약 2종 (7/31) — 본인 팝업 전용 API라 실패(권한·미집계)해도 조용히 빈 상태 유지
+    getVisitorTrend(activePopup.id, 7).then(setVisitTrend).catch(() => setVisitTrend([]));
+    getConversionRate(activePopup.id).then(setConversion).catch(() => setConversion(null));
   }, [activePopup?.id]);
 
   // ── KPI 집계 (전부 실데이터) ──
@@ -103,6 +119,10 @@ export default function SellerDashboard() {
 
   const rejectedPopups = popups.filter((p) => p.status === "REJECTED");
   const pendingCount = popups.filter((p) => p.status === "PENDING").length;
+
+  // 7/31 — 홈 스파크라인용 추이 (visitor-trend 7일). 합계는 카드 헤드라인, 파형은 "매일 볼 이유"
+  const sparkData = visitTrend.map((v) => ({ date: v.date.slice(5), visitors: v.visitorCount ?? 0 }));
+  const sparkTotal = sparkData.reduce((s, d) => s + d.visitors, 0);
 
   // 7/30 — 카드 클릭 시 해당 업무 화면으로 바로 이동 (to 추가)
   const kpis = [
@@ -139,19 +159,37 @@ export default function SellerDashboard() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">대시보드</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             {todayStr} 기준
             {activePopup
-              ? ` · ${STATUS_LABEL[activePopup.status]} 팝업 「${activePopup.title}」`
+              ? ` · ${STATUS_LABEL[activePopup.status]} 팝업의 오늘 현황`
               : loading ? " · 불러오는 중…" : " · 등록된 팝업 없음"}
           </p>
         </div>
-        <Link to="/seller/popups/new" className="text-xs px-4 py-2 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90">
-          + 새 팝업 등록
-        </Link>
+        <div className="flex items-center gap-2 ml-auto">
+          {/* 지표 기준 팝업 선택 (7/31) — 아래 KPI·성과 카드가 전부 이 팝업을 따른다.
+              팝업이 하나뿐이면 고를 게 없으므로 숨긴다 */}
+          {popups.length > 1 && (
+            <select
+              value={activePopup?.id ?? ""}
+              onChange={(e) => setPickedPopupId(Number(e.target.value))}
+              title="이 팝업 기준으로 아래 지표를 표시합니다"
+              className="text-xs border border-border rounded-sm px-3 py-2 bg-card focus:outline-none focus:border-accent max-w-[240px]"
+            >
+              {popups.map((p) => (
+                <option key={p.id} value={p.id}>
+                  [{STATUS_LABEL[p.status]}] {p.title}
+                </option>
+              ))}
+            </select>
+          )}
+          <Link to="/seller/popups/new" className="text-xs px-4 py-2 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90 whitespace-nowrap">
+            + 새 팝업 등록
+          </Link>
+        </div>
       </div>
 
       {/* KPI 카드 — 대표 팝업 기준 실데이터. 카드를 누르면 해당 업무 화면으로 (7/30) */}
@@ -171,6 +209,68 @@ export default function SellerDashboard() {
           </Link>
         ))}
       </div>
+
+      {/* 성과 요약 (7/31) — 성과 대시보드 6종 중 방문 추이·전환율만 홈으로. 카드 클릭 시 성과 대시보드로 */}
+      {activePopup && (
+        <div className="grid md:grid-cols-3 gap-3">
+          <Link
+            to="/seller/performance"
+            className="group md:col-span-2 bg-card border border-border rounded-sm p-4 hover:border-accent transition-colors"
+          >
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+              <TrendingUp size={13} /> 최근 7일 방문 추이
+              <span className="text-[11px]">「{activePopup.title}」 · 체크인 기준</span>
+              <ArrowUpRight size={11} className="ml-auto opacity-0 group-hover:opacity-100 text-accent transition-opacity" />
+            </div>
+            <div className="flex items-end gap-4">
+              <div className="shrink-0">
+                <div className="text-xl font-semibold">{sparkTotal.toLocaleString()}명</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">7일 합계</div>
+              </div>
+              {/* 축 없는 스파크라인 — 상세 눈금은 성과 대시보드가 담당 */}
+              <div className="flex-1 h-14 min-w-0">
+                {sparkData.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-[11px] text-muted-foreground">
+                    아직 집계된 방문 데이터가 없습니다
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={sparkData} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+                      <defs>
+                        <linearGradient id="gHomeSpark" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#E85D3C" stopOpacity={0.3} />
+                          <stop offset="100%" stopColor="#E85D3C" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <Tooltip
+                        contentStyle={{ fontSize: 11, borderRadius: 4, padding: "4px 8px" }}
+                        labelFormatter={(l) => `${l} 방문`}
+                        formatter={(v) => [`${v}명`, "방문자"]}
+                      />
+                      <Area type="monotone" dataKey="visitors" stroke="#E85D3C" strokeWidth={2} fill="url(#gHomeSpark)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+          </Link>
+          <Link
+            to="/seller/performance"
+            className="group bg-card border border-border rounded-sm p-4 hover:border-accent transition-colors"
+          >
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+              <Percent size={13} /> 예약 전환율
+              <ArrowUpRight size={11} className="ml-auto opacity-0 group-hover:opacity-100 text-accent transition-opacity" />
+            </div>
+            <div className="text-xl font-semibold">{(conversion?.conversionRate ?? 0).toFixed(1)}%</div>
+            <div className="text-[11px] text-muted-foreground mt-1">
+              {conversion
+                ? `클릭 ${conversion.clickCount.toLocaleString()} → 예약 ${conversion.reservationCount.toLocaleString()}`
+                : "클릭·예약 데이터 없음"}
+            </div>
+          </Link>
+        </div>
+      )}
 
       {/* 알림/처리 필요 */}
       <div className="grid lg:grid-cols-2 gap-3">
