@@ -45,24 +45,26 @@ public class ReviewController {
             @RequestBody ReviewRequest request
     ) {
         Long customerId = extractCustomerId(authHeader);
-        validateRating(request.getRating());
         validateImageCount(request.getImageUrls());
 
+        // 방문 여부는 작성 가능 여부를 막는 조건이 아니라, 댓글 유형(방문자 후기/일반 댓글)을 구분하기 위한 값이다.
+        // 방문자는 별점이 있는 "후기", 방문 안 한 사람은 별점이 없는 "댓글"로 취급한다.
         boolean visited = reservationRepository.existsByPopup_IdAndCustomer_IdAndEntryStatus(
                 request.getPopupId(), customerId, EntryStatus.CHECKED_IN)
                 || waitingQueueRepository.existsByPopupIdAndCustomerIdAndStatus(
                 request.getPopupId(), customerId, WaitingStatus.ENTERED);
 
-        if (!visited) {
-            throw new IllegalArgumentException("실제로 방문(체크인/입장)한 팝업에만 후기를 작성할 수 있어요.");
+        if (visited) {
+            validateRating(request.getRating());
         }
 
         Review review = new Review();
         review.setCustomerId(customerId);
         review.setPopupId(request.getPopupId());
-        review.setRating(request.getRating());
+        review.setRating(visited ? request.getRating() : null);
         review.setContent(request.getContent());
-        review.setVisitDate(request.getVisitDate());
+        review.setVisitDate(visited ? request.getVisitDate() : null);
+        review.setVisited(visited);
 
         Review saved;
         try {
@@ -157,7 +159,6 @@ public class ReviewController {
             @RequestBody ReviewRequest request
     ) {
         Long customerId = extractCustomerId(authHeader);
-        validateRating(request.getRating());
         validateImageCount(request.getImageUrls());
 
         Review review = reviewRepository.findById(id)
@@ -167,7 +168,13 @@ public class ReviewController {
             throw new RuntimeException("본인이 작성한 리뷰만 수정할 수 있어요.");
         }
 
-        review.setRating(request.getRating());
+        // visited는 최초 작성 시점에 정해진 값을 그대로 유지한다 (댓글이 나중에 방문자 후기로 바뀌거나 그 반대인 일은 없음)
+        if (review.isVisited()) {
+            validateRating(request.getRating());
+            review.setRating(request.getRating());
+        } else {
+            review.setRating(null);
+        }
         review.setContent(request.getContent());
         Review saved = reviewRepository.save(review);
 
@@ -252,6 +259,9 @@ public class ReviewController {
     }
 
     private void validateRating(BigDecimal rating) {
+        if (rating == null) {
+            throw new IllegalArgumentException("방문자 후기는 별점을 입력해야 해요.");
+        }
         if (rating.compareTo(new BigDecimal("0.5")) < 0 || rating.compareTo(new BigDecimal("5.0")) > 0) {
             throw new IllegalArgumentException("별점은 0.5점에서 5점 사이여야 해요.");
         }

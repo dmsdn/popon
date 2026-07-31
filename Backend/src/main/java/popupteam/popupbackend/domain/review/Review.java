@@ -25,7 +25,7 @@ public class Review {
     @Column(name = "popup_id", nullable = false)
     private Long popupId;
 
-    @Column(nullable = false)
+    @Column
     private BigDecimal rating;
 
     @Column(nullable = false, columnDefinition = "TEXT")
@@ -34,6 +34,10 @@ public class Review {
     // 실제로 다녀간 날짜 (프론트가 예약 체크인/웨이팅 입장 기록에서 계산해서 보냄, 기록 없으면 null)
     @Column(name = "visit_date")
     private LocalDate visitDate;
+
+    // 작성 시점에 실제 방문(체크인/입장) 이력이 있었는지 여부. 방문자 댓글 / 일반 댓글 구분용.
+    @Column(name = "visited", nullable = false)
+    private boolean visited = false;
 
     // 신고 처리 결과 관리자가 부적절하다고 판단해서 숨김 처리했는지 여부 (숨겨져도 삭제는 아니고, 소비자 화면엔 안내문구로 대체되어 보임)
     @Column(nullable = false)
