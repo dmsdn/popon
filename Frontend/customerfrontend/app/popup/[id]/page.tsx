@@ -628,7 +628,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
               onClick={() => setActiveTab(tab)}
               className={`flex-1 text-center py-3 text-sm ${
                 activeTab === tab
-                  ? "font-semibold border-b-2 border-gray-900"
+                  ? "font-semibold border-b-2 border-gray-900 dark:border-white"
                   : "text-gray-400"
               }`}
             >

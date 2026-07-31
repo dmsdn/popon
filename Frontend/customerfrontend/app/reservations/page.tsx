@@ -80,7 +80,7 @@ export default function ReservationsPage() {
                 <button
                   type="button"
                   onClick={handlePostponeWaiting}
-                  className="flex-1 rounded-full py-3 text-base font-medium border border-gray-300"
+                  className="flex-1 rounded-full py-3 text-base font-medium border border-gray-300 dark:border-[#282B32]"
                 >
                   웨이팅 미루기
                 </button>

@@ -300,7 +300,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
             ))}
             {imageUrls.length < MAX_IMAGE_COUNT && (
               <label
-                className={`w-28 h-28 rounded-lg border border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-sm ${
+                className={`w-28 h-28 rounded-lg border border-dashed border-gray-300 dark:border-[#282B32] flex items-center justify-center text-gray-400 text-sm ${
                   uploading ? "opacity-50" : "cursor-pointer"
                 }`}
               >
