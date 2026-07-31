@@ -55,15 +55,22 @@ export default function SellerDashboard() {
 
   const todayStr = toDateStr(new Date());
 
-  // 대표 팝업: 진행중(OPEN) 우선 → 오픈예정(BEFOR) → 그 외 첫 번째
+  // 화면 지표의 기준 팝업. 팝업을 여러 개 운영하면 자동 선택만으로는 원하는 팝업을 볼 수 없어
+  // 상단 셀렉트로 직접 고르게 했다 (7/31). null이면 아래 기본 규칙을 따른다.
+  const [pickedPopupId, setPickedPopupId] = useState<number | null>(null);
+
+  // 기본값: 진행중(OPEN) 우선 → 오픈예정(BEFOR) → 그 외 첫 번째.
+  // 고른 팝업이 목록에서 사라져도(삭제·권한 변경) 화면이 빈 채로 굳지 않게 기본값으로 되돌아간다.
   const activePopup = useMemo(() => {
+    const picked = pickedPopupId != null ? popups.find((p) => p.id === pickedPopupId) : undefined;
     return (
+      picked ??
       popups.find((p) => p.status === "OPEN") ??
       popups.find((p) => p.status === "BEFOR") ??
       popups[0] ??
       null
     );
-  }, [popups]);
+  }, [popups, pickedPopupId]);
 
   // 1) 내 팝업 목록 + 미확인 관리자 공지
   useEffect(() => {
@@ -152,19 +159,37 @@ export default function SellerDashboard() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">대시보드</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             {todayStr} 기준
             {activePopup
-              ? ` · ${STATUS_LABEL[activePopup.status]} 팝업 「${activePopup.title}」`
+              ? ` · ${STATUS_LABEL[activePopup.status]} 팝업의 오늘 현황`
               : loading ? " · 불러오는 중…" : " · 등록된 팝업 없음"}
           </p>
         </div>
-        <Link to="/seller/popups/new" className="text-xs px-4 py-2 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90">
-          + 새 팝업 등록
-        </Link>
+        <div className="flex items-center gap-2 ml-auto">
+          {/* 지표 기준 팝업 선택 (7/31) — 아래 KPI·성과 카드가 전부 이 팝업을 따른다.
+              팝업이 하나뿐이면 고를 게 없으므로 숨긴다 */}
+          {popups.length > 1 && (
+            <select
+              value={activePopup?.id ?? ""}
+              onChange={(e) => setPickedPopupId(Number(e.target.value))}
+              title="이 팝업 기준으로 아래 지표를 표시합니다"
+              className="text-xs border border-border rounded-sm px-3 py-2 bg-card focus:outline-none focus:border-accent max-w-[240px]"
+            >
+              {popups.map((p) => (
+                <option key={p.id} value={p.id}>
+                  [{STATUS_LABEL[p.status]}] {p.title}
+                </option>
+              ))}
+            </select>
+          )}
+          <Link to="/seller/popups/new" className="text-xs px-4 py-2 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90 whitespace-nowrap">
+            + 새 팝업 등록
+          </Link>
+        </div>
       </div>
 
       {/* KPI 카드 — 대표 팝업 기준 실데이터. 카드를 누르면 해당 업무 화면으로 (7/30) */}
