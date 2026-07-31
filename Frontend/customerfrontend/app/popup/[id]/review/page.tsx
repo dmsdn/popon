@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createReview, updateReview, getMyReviews } from "@/lib/api/reviews";
+import { ApiError } from "@/lib/api/client";
 import { uploadFile } from "@/lib/api/upload";
 import { getPopup, getPopupImages, type PopupDetail } from "@/lib/api/popups";
 import { getMyReservations } from "@/lib/api/reservations";
@@ -217,9 +218,12 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
       router.replace(`/popup/${id}?tab=review`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "후기 등록에 실패했어요.";
-      // [수정] "이미 리뷰를 작성했어요" 에러는 빨간 인라인 텍스트 대신, 안내
-      // 팝업으로 명확하게 보여줘요.
-      if (message.includes("이미") && message.includes("작성")) {
+      // [수정] 문구 매칭만으로는 놓칠 수 있어서, 백엔드가 이 상황에 실제로 쓰는
+      // 400(Bad Request) 상태코드도 같이 확인해서 더 확실하게 판별해요.
+      const isDuplicate =
+        (err instanceof ApiError && err.status === 400 && message.includes("이미")) ||
+        (message.includes("이미") && (message.includes("작성") || message.includes("리뷰") || message.includes("후기")));
+      if (isDuplicate) {
         setShowAlreadyReviewed(true);
       } else {
         setError(message);
