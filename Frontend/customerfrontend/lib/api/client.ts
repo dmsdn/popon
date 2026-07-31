@@ -84,7 +84,14 @@ export async function apiFetch<T>(
 
   markBackendUp();
   if (res.status === 204) return undefined as T;
-  return res.json();
+  // [수정 7/31] 204 말고 **200인데 본문이 빈** 응답도 있어요. 스프링에서
+  // ResponseEntity.ok().build() 로 끝내는 엔드포인트가 그래요 (예: 클릭 로그 기록
+  // POST /api/popups/{id}/click). 이걸 그대로 res.json()에 넘기면
+  // "Unexpected end of JSON input"이 나서, 서버는 200으로 잘 처리했는데 프론트만
+  // 실패로 인식했어요. 빈 본문이면 undefined로 돌려줘요.
+  const text = await res.text();
+  if (!text) return undefined as T;
+  return JSON.parse(text) as T;
 }
 
 export { API_BASE };
