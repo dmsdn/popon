@@ -311,6 +311,22 @@ export function rejectPopup(id: number | string, reason: string) {
   });
 }
 
+// 게시중지 · 게시재개 (7/31 연동).
+// 그전에는 전용 API가 없다고 보고 reject를 재사용하면서 사유 앞에 [게시중지] 마커를 붙였는데,
+// 그러면 DB에 status=REJECTED로 저장돼 **게시중지한 팝업이 「반려」 필터에 뜨고 「게시중지」 필터는 늘 비었다.**
+// 백엔드에는 7/27부터 전용 API가 있었다 — status를 SUSPENDED로 바로 바꾼다.
+// suspend는 BEFOR·OPEN에서만 허용되고, resume은 날짜를 보고 원래 있어야 할 상태로 되돌린다.
+export function suspendPopup(id: number | string, reason: string) {
+  return request<Popup>(`/api/admin/popups/${id}/suspend`, {
+    method: "PUT",
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export function resumePopup(id: number | string) {
+  return request<Popup>(`/api/admin/popups/${id}/resume`, { method: "PUT" });
+}
+
 // ── 예약 슬롯 ──
 
 export type PopupSlot = {
