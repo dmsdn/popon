@@ -202,7 +202,9 @@ export function getPopup(popupId: string | number) {
 export function getPopupWishlistCount(popupId: string | number) {
   return withMockFallback(
     () => apiFetch<{ wishlistCount: number }>(`/api/popups/${popupId}/wishlist-count`),
-    () => Promise.resolve({ wishlistCount: 0 })
+    // withMockFallback의 두 번째 인자는 () => T 예요. Promise를 넘기면 타입이 안 맞아요
+    // (T가 {wishlistCount:number}인데 Promise<{...}>를 준 셈). 값을 그대로 돌려줘요. (7/31 수정)
+    () => ({ wishlistCount: 0 })
   );
 }
 
@@ -336,4 +338,24 @@ export function getPopupWaitTime(popupId: string | number, date?: string) {
 // 요청해야 해요.
 export function getQueueBoardCount(popupId: string | number) {
   return apiFetch<{ popupId: number; totalCount: number }>(`/api/popups/${popupId}/queue/board`);
+}
+
+// -------------------- 클릭 로그 --------------------
+//
+// [신규 연결 7/31] POST /api/popups/{id}/click — 상세페이지 진입을 기록해요.
+//
+// 백엔드에 이 엔드포인트도, permitAll 설정도 처음부터 있었는데 **부르는 코드가 어디에도
+// 없었어요.** 그래서 popup_click_log 테이블에 3건(수동 테스트분)만 쌓여 있었고,
+// 이 값을 분모로 쓰는 주최자 성과 대시보드의 "예약 전환율"이 늘 이상하게 나왔어요
+// (클릭 2·예약 4 → 200%). 컨트롤러·시큐리티·테이블·집계 쿼리·화면 카드가 다 있는데
+// "그 주소를 부르는 한 줄"만 없던 거예요.
+//
+// 집계용이라 실패해도 사용자가 할 일이 없어요. 그래서 오류를 삼키고 화면에는 아무것도
+// 알리지 않아요 - logVisit()과 같은 판단이에요.
+// customerId는 선택이에요. 비회원 클릭도 인기순위 집계에 들어가야 하니까요.
+export function logPopupClick(popupId: string | number, customerId?: number | null) {
+  const qs = customerId != null ? `?customerId=${customerId}` : "";
+  return apiFetch<void>(`/api/popups/${popupId}/click${qs}`, { method: "POST" }).catch((err) => {
+    console.debug("[popup-click] 기록 실패 — 무시", err);
+  });
 }
