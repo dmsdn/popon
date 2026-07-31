@@ -208,7 +208,6 @@ export default function Root() {
             <div className="text-xs font-medium text-muted-foreground mb-3" style={{ fontFamily: "'DM Mono', monospace" }}>고객센터</div>
             <div className="text-sm font-semibold">1588-0000</div>
             <div className="text-xs text-muted-foreground mt-1">평일 09:00 — 18:00</div>
-            <div className="text-xs text-accent mt-1">hello@popupon.kr</div>
           </div>
           <div className="md:text-right">
             <div className="text-xs text-muted-foreground leading-relaxed">
@@ -219,7 +218,7 @@ export default function Root() {
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-6 lg:px-10 mt-8 pt-6 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="text-xs text-muted-foreground">© 2025 팝온. All rights reserved.</div>
+          <div className="text-xs text-muted-foreground">© 애지중지. All rights reserved.</div>
           <div className="flex gap-6 text-xs text-muted-foreground">
             <a href="#" className="hover:text-foreground transition-colors">이용약관</a>
             <a href="#" className="hover:text-foreground transition-colors">개인정보처리방침</a>
