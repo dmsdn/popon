@@ -250,7 +250,7 @@ export default function Home() {
                         </div>
                         <h2 className="text-2xl lg:text-4xl font-extrabold leading-tight mb-4"
                             style={{fontFamily: "'NanumSquareRound', sans-serif"}}>
-                            팝업온은 <span className="text-accent">브랜드</span>를 위한 플랫폼입니다
+                            팝온은 <span className="text-accent">브랜드</span>를 위한 플랫폼입니다
                         </h2>
                     </div>
 
