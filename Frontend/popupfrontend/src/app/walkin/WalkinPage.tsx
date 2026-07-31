@@ -49,12 +49,13 @@ export default function WalkinPage() {
     }
   };
 
+  // 7/30 — 현장 QR 접수 폼도 작업 화면 계열이라 라이트 서피스로 (theme-light)
   return (
-    <div className="min-h-screen bg-[#f4f5f7] flex items-center justify-center p-4" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>
-      <div className="w-full max-w-md bg-white border border-border rounded-sm p-6">
+    <div className="theme-light min-h-screen bg-background text-foreground flex items-center justify-center p-4" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>
+      <div className="w-full max-w-md bg-card border border-border rounded-sm p-6">
         <div className="flex items-center gap-2 mb-1">
           <div className="w-7 h-7 rounded-sm bg-accent flex items-center justify-center">
-            <span className="text-white text-xs font-bold" style={{ fontFamily: "'DM Mono', monospace" }}>PO</span>
+            <span className="text-accent-foreground text-xs font-bold" style={{ fontFamily: "'DM Mono', monospace" }}>PO</span>
           </div>
           <span className="font-semibold text-sm">팝업온 현장 웨이팅</span>
         </div>
@@ -107,7 +108,7 @@ export default function WalkinPage() {
               </label>
               <button
                 type="submit" disabled={submitting}
-                className="mt-2 flex items-center justify-center gap-1.5 text-sm px-4 py-3 rounded-sm bg-accent text-white hover:bg-accent/90 disabled:opacity-50"
+                className="mt-2 flex items-center justify-center gap-1.5 text-sm px-4 py-3 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-50"
               >
                 {submitting ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />} 웨이팅 접수하기
               </button>
@@ -129,7 +130,7 @@ export default function WalkinPage() {
               {popup.title} · {done.name}님 {done.partySize}명
               <br />앞 대기 {done.teamsAhead}팀 · 차례가 되면 아래 입장 QR을 현장 직원에게 보여주세요.
             </p>
-            <div className="border border-border rounded-sm p-4 bg-white">
+            <div className="border border-border rounded-sm p-4 bg-card">
               <QRCodeSVG value={done.qrToken} size={160} />
             </div>
             <div className="mt-4 flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-sm px-3 py-2.5 text-left">

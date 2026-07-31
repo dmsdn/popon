@@ -48,6 +48,19 @@ spring:
             scope:
               - profile_nickname
               - profile_image
+          # 구글 로그인 — 값이 비어 있으면 기동 자체가 실패한다
+          # ("Client id of registration 'google' must not be empty").
+          # 안 쓸 거면 이 google 블록 전체를 지울 것 — 빈 문자열로 두면 안 됨.
+          # Google Cloud Console 발급, redirect-uri는 {baseUrl} 템플릿이라 자동 계산됨.
+          # ※ 구글은 리디렉션 URI에 IP 주소를 허용하지 않는다(공개 최상위 도메인 필수) —
+          #   배포 환경에서 IP만 있다면 nip.io 같은 IP→도메인 매핑을 등록해 우회한다.
+          google:
+            client-id: "여기에_구글_클라이언트_ID"
+            client-secret: "여기에_구글_클라이언트_시크릿"
+            redirect-uri: "{baseUrl}/login/oauth2/code/google"
+            scope:
+              - profile
+              - email
         provider:
           kakao:
             authorization-uri: https://kauth.kakao.com/oauth/authorize
@@ -64,9 +77,14 @@ file:
   #   저장 폴더가 갈린다 (IDE 실행 = 리포 루트/uploads, 터미널에서 Backend/ 진입 = Backend/uploads).
   #   같은 기계인데도 방금 업로드한 이미지가 404가 되는 원인. 본인 경로로 바꿔 쓰세요.
   upload-dir: C:/경로/popup-store-project/uploads
-  # 파일이 서빙되는 주소. 이 값이 DB(popup_image.image_url)에 그대로 저장되므로
-  # 배포 시에는 실제 도메인으로 바꿔야 한다 (기존 행은 별도 일괄 치환 필요).
-  base-url: http://localhost:8080/uploads
+  # 업로드된 파일의 URL 앞부분. 이 값이 DB(popup_image·banner·business·review_image)에
+  # 그대로 저장되므로 반드시 상대경로로 둔다 → "/uploads/xxx.jpg"
+  #
+  # 절대주소(http://localhost:8080/uploads)로 두면 안 된다. 서버 주소가 바뀔 때마다
+  # 기존 행 전체를 UPDATE해야 하고, 로컬에서 올린 이미지는 배포 환경에서 전부 깨진다.
+  # (7/30 EC2 배포에서 실제로 겪어 상대경로로 전환)
+  # 프론트 3개가 /uploads를 백엔드로 프록시하므로 상대경로로도 이미지가 정상 표시된다.
+  base-url: /uploads
 
 app:
   # 개발용 로그인(소셜 없이 테스트 계정 발급) — 로컬에서만 true. 운영 배포 시 반드시 false/삭제.

@@ -93,7 +93,7 @@ export default function Performance() {
         <select
           value={popupId ?? ""}
           onChange={(e) => setPopupId(Number(e.target.value))}
-          className="text-xs border border-border rounded-sm px-3 py-2 bg-white focus:outline-none focus:border-accent min-w-[220px]"
+          className="text-xs border border-border rounded-sm px-3 py-2 bg-card focus:outline-none focus:border-accent min-w-[220px]"
         >
           {popups.length === 0 && <option value="">등록된 팝업 없음</option>}
           {popups.map((p) => (
@@ -111,7 +111,7 @@ export default function Performance() {
       )}
 
       {!loading && !error && popups.length === 0 && (
-        <div className="bg-white border border-border rounded-sm px-4 py-14 text-center text-xs text-muted-foreground">
+        <div className="bg-card border border-border rounded-sm px-4 py-14 text-center text-xs text-muted-foreground">
           등록된 팝업이 없습니다. 팝업 등록 후 성과를 확인할 수 있습니다.
         </div>
       )}
@@ -142,7 +142,7 @@ export default function Performance() {
                 sub: `${selected.startDate?.slice(0, 10) ?? "-"} ~ ${selected.endDate?.slice(0, 10) ?? "-"}`,
               },
             ].map((k) => (
-              <div key={k.label} className="bg-white border border-border rounded-sm p-4">
+              <div key={k.label} className="bg-card border border-border rounded-sm p-4">
                 <div className="text-xs text-muted-foreground mb-1.5">{k.label}</div>
                 <div className="text-xl font-semibold">{k.value}</div>
                 <div className="text-[11px] text-muted-foreground mt-1">{k.sub}</div>
@@ -151,7 +151,7 @@ export default function Performance() {
           </div>
 
           {/* 방문자·예약 추이 — visitor-trend + reservation-trend 병합 */}
-          <div className="bg-white border border-border rounded-sm p-4">
+          <div className="bg-card border border-border rounded-sm p-4">
             <div className="text-sm font-semibold mb-4">일별 방문자·예약 추이 (최근 7일)</div>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -175,7 +175,7 @@ export default function Performance() {
 
           <div className="grid lg:grid-cols-3 gap-3">
             {/* 연령 분포 — visitor-age-stats */}
-            <div className="bg-white border border-border rounded-sm p-4">
+            <div className="bg-card border border-border rounded-sm p-4">
               <div className="text-sm font-semibold mb-2">방문객 연령 분포</div>
               {ageData.length === 0 ? (
                 <div className="h-52 flex items-center justify-center text-xs text-muted-foreground">
@@ -205,7 +205,7 @@ export default function Performance() {
             </div>
 
             {/* 성별 분포 — visitor-gender-stats (기존 목업 '방문 경로' 대체) */}
-            <div className="bg-white border border-border rounded-sm p-4">
+            <div className="bg-card border border-border rounded-sm p-4">
               <div className="text-sm font-semibold mb-2">방문객 성별 분포</div>
               {genderData.length === 0 ? (
                 <div className="h-52 flex items-center justify-center text-xs text-muted-foreground">
@@ -226,7 +226,7 @@ export default function Performance() {
             </div>
 
             {/* 예약 추이 — reservation-trend */}
-            <div className="bg-white border border-border rounded-sm p-4">
+            <div className="bg-card border border-border rounded-sm p-4">
               <div className="text-sm font-semibold mb-2">일별 예약 건수 (취소 제외)</div>
               <div className="h-52">
                 <ResponsiveContainer width="100%" height="100%">

@@ -65,8 +65,8 @@ export function ReviewSection() {
     <section className="mb-14 mobile:mb-16 px-4 mobile:px-8">
       <h3 className="text-base mobile:text-lg font-semibold mb-3 mobile:mb-4">실시간 후기 모음</h3>
       <HorizontalCarousel>
-        {items.map((r) => (
-          <ReviewCard key={r.id} {...r} />
+        {items.map((r, i) => (
+          <ReviewCard key={r.id} review={r} allReviews={items} index={i} />
         ))}
       </HorizontalCarousel>
     </section>

@@ -10,6 +10,7 @@ import { getPopupsByBrand, type PopupItem } from "@/data/mockPopups";
 import { searchPopups } from "@/lib/api/popups";
 import { toPopupItem } from "@/lib/utils/popupMapper";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 
 const TABS = ["진행중인 팝업", "완료된 팝업"] as const;
 
@@ -77,7 +78,8 @@ export default function BrandDetailPage({
   const displayName = hasRealData ? realCompanyName! : mockBrand!.name;
 
   return (
-    <main className="w-full mobile:max-w-[1000px] mobile:mx-auto pb-16 mobile:pb-0">
+    <main className="min-h-screen flex flex-col w-full mobile:max-w-[1000px] mobile:mx-auto pb-16 mobile:pb-0">
+      <div className="flex-1">
       <div className="px-4 mobile:px-8 pt-4">
         <button
           type="button"
@@ -140,6 +142,8 @@ export default function BrandDetailPage({
         )}
       </div>
 
+      </div>
+
       <Footer />
 
       <div className="block mobile:hidden">
@@ -152,7 +156,9 @@ export default function BrandDetailPage({
 function BrandPopupRow({ item }: { item: PopupItem }) {
   return (
     <Link href={`/popup/${item.id}`} className="flex gap-4 py-4 border-b border-gray-50">
-      <div className="w-20 h-20 flex-none rounded-md bg-gray-100 border border-gray-200" />
+      <div className="w-24 h-24 flex-none rounded-md bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center text-xs text-gray-400">
+        {item.imageUrl ? <ImageWithFallback src={item.imageUrl} className="w-full h-full object-cover" /> : "이미지"}
+      </div>
       <div className="flex flex-col justify-center">
         {item.status && <p className="text-xs text-gray-400 mb-1">{item.status === "예정" ? "진행예정" : item.status}</p>}
         <p className="text-base font-medium">{item.name}</p>

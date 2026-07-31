@@ -21,7 +21,7 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
   }, [id]);
 
   return (
-    <main className="w-full mobile:max-w-[1000px] mobile:mx-auto px-4 mobile:px-8 py-6">
+    <main className="min-h-screen flex flex-col w-full mobile:max-w-[1000px] mobile:mx-auto px-4 mobile:px-8 py-6">
       <Link href="/" className="inline-block text-sm text-gray-500 mb-6">
         ‹ 뒤로
       </Link>

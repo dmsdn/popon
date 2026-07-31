@@ -56,7 +56,7 @@ export default function PlatformStats() {
         <select
           value={period}
           onChange={(e) => setPeriod(e.target.value as Period)}
-          className="text-xs border border-border rounded-sm px-3 py-2 bg-white focus:outline-none focus:border-accent"
+          className="text-xs border border-border rounded-sm px-3 py-2 bg-card focus:outline-none focus:border-accent"
         >
           <option value="DAILY30">매출: 최근 30일 (일별)</option>
           <option value="MONTHLY12">매출: 최근 12개월 (월별)</option>
@@ -80,7 +80,7 @@ export default function PlatformStats() {
               { label: "게시중 / 심사 대기", value: dash ? `${dash.openPopupCount} / ${dash.pendingPopupCount}` : "—", sub: "팝업 현황" },
               { label: "누적 소비자 회원", value: dash ? `${dash.totalCustomerCount.toLocaleString()}명` : "—", sub: `활성 파트너 ${dash?.activePartnerCount ?? "—"}사` },
             ].map((k) => (
-              <div key={k.label} className="bg-white border border-border rounded-sm p-4">
+              <div key={k.label} className="bg-card border border-border rounded-sm p-4">
                 <div className="text-xs text-muted-foreground mb-1.5">{k.label}</div>
                 <div className="text-xl font-semibold">{k.value}</div>
                 <div className="text-[11px] text-muted-foreground mt-1">{k.sub}</div>
@@ -89,7 +89,7 @@ export default function PlatformStats() {
           </div>
 
           {/* 매출 추이 */}
-          <div className="bg-white border border-border rounded-sm p-4">
+          <div className="bg-card border border-border rounded-sm p-4">
             <div className="text-sm font-semibold mb-4">
               매출 추이 (계약금 · {period === "DAILY30" ? "최근 30일" : "최근 12개월"})
             </div>
@@ -120,7 +120,7 @@ export default function PlatformStats() {
 
           {/* 방문자 랭킹 */}
           <div className="grid lg:grid-cols-2 gap-3 items-start">
-            <div className="bg-white border border-border rounded-sm p-4">
+            <div className="bg-card border border-border rounded-sm p-4">
               <div className="text-sm font-semibold mb-4">팝업별 방문자 TOP 5 (누적 체크인)</div>
               <div className="h-60">
                 {top5.length === 0 ? (
@@ -140,7 +140,7 @@ export default function PlatformStats() {
               </div>
             </div>
 
-            <div className="bg-white border border-border rounded-sm">
+            <div className="bg-card border border-border rounded-sm">
               <div className="px-4 py-3 border-b border-border text-sm font-semibold">방문자 랭킹 전체</div>
               <ul className="divide-y divide-border">
                 {ranking.length === 0 && (

@@ -2,81 +2,125 @@
 
 :root {
   --font-size: 16px;
-  --background: #F5F0E8;
-  --foreground: #1C1C1E;
-  --card: #FDFAF5;
-  --card-foreground: #1C1C1E;
-  --popover: #FDFAF5;
-  --popover-foreground: #1C1C1E;
-  --primary: #1C1C1E;
-  --primary-foreground: #F5F0E8;
-  --secondary: #EDE8DE;
-  --secondary-foreground: #1C1C1E;
-  --muted: #E8E3D8;
-  --muted-foreground: #6B6560;
-  --accent: #E85D3C;
-  --accent-foreground: #FFFFFF;
-  --destructive: #d4183d;
-  --destructive-foreground: #ffffff;
-  --border: rgba(28, 28, 30, 0.12);
+  --background: #101010;
+  --foreground: #F5F5F5;
+  --card: #17181A;
+  --card-foreground: #F5F5F5;
+  --popover: #1B1D20;
+  --popover-foreground: #F5F5F5;
+  --primary: #F5F5F5;
+  --primary-foreground: #101010;
+  --secondary: #1E2124;
+  --secondary-foreground: #F5F5F5;
+  --muted: #24272B;
+  --muted-foreground: #9BA294;
+  --accent: #8ADE1B;
+  --accent-foreground: #101010;
+  --destructive: #FF5C5C;
+  --destructive-foreground: #101010;
+  --border: rgba(245, 245, 245, 0.12);
   --input: transparent;
-  --input-background: #EDE8DE;
-  --switch-background: #c8c2b4;
+  --input-background: #1E2124;
+  --switch-background: #3A3E42;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: #E85D3C;
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  --ring: #8ADE1B;
+  --chart-1: #8ADE1B;
+  --chart-2: #B6E96A;
+  --chart-3: #5FA80E;
+  --chart-4: #DCF2B0;
+  --chart-5: #3B6B07;
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: #030213;
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: #0A0A0A;
+  --sidebar-foreground: #F5F5F5;
+  --sidebar-primary: #8ADE1B;
+  --sidebar-primary-foreground: #101010;
+  --sidebar-accent: #1E2124;
+  --sidebar-accent-foreground: #F5F5F5;
+  --sidebar-border: rgba(245, 245, 245, 0.10);
+  --sidebar-ring: #8ADE1B;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
+  --font-size: 16px;
+  --background: #101010;
+  --foreground: #F5F5F5;
+  --card: #17181A;
+  --card-foreground: #F5F5F5;
+  --popover: #1B1D20;
+  --popover-foreground: #F5F5F5;
+  --primary: #F5F5F5;
+  --primary-foreground: #101010;
+  --secondary: #1E2124;
+  --secondary-foreground: #F5F5F5;
+  --muted: #24272B;
+  --muted-foreground: #9BA294;
+  --accent: #8ADE1B;
+  --accent-foreground: #101010;
+  --destructive: #FF5C5C;
+  --destructive-foreground: #101010;
+  --border: rgba(245, 245, 245, 0.12);
+  --input: transparent;
+  --input-background: #1E2124;
+  --switch-background: #3A3E42;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+  --ring: #8ADE1B;
+  --chart-1: #8ADE1B;
+  --chart-2: #B6E96A;
+  --chart-3: #5FA80E;
+  --chart-4: #DCF2B0;
+  --chart-5: #3B6B07;
+  --radius: 0.625rem;
+  --sidebar: #0A0A0A;
+  --sidebar-foreground: #F5F5F5;
+  --sidebar-primary: #8ADE1B;
+  --sidebar-primary-foreground: #101010;
+  --sidebar-accent: #1E2124;
+  --sidebar-accent-foreground: #F5F5F5;
+  --sidebar-border: rgba(245, 245, 245, 0.10);
+  --sidebar-ring: #8ADE1B;
 }
+
+/* ── 라이트 서피스 (7/30) ──────────────────────────────────────────────
+   ① 주최자센터·관리자 콘솔의 *내용 영역*(main)  ② 안내 페이지의 라이트 모드.
+   토큰만 다시 선언하면 그 안의 bg-card·text-foreground·border-border 등이
+   전부 함께 뒤집힌다 — 화면마다 클래스를 고칠 필요가 없다.
+   상단바·좌측 메뉴는 이 스코프 '밖'에 두어 다크를 유지한다. */
+.theme-light {
+  --background: #F5F5F5;
+  --foreground: #101010;
+  --card: #FFFFFF;
+  --card-foreground: #101010;
+  --popover: #FFFFFF;
+  --popover-foreground: #101010;
+  --primary: #101010;
+  --primary-foreground: #F5F5F5;
+  --secondary: #EAEBEC;
+  --secondary-foreground: #101010;
+  --muted: #E4E6E2;
+  --muted-foreground: #5F6558;
+  --accent: #8ADE1B;
+  --accent-foreground: #101010;
+  --destructive: #C62828;
+  --destructive-foreground: #FFFFFF;
+  --border: rgba(16, 16, 16, 0.12);
+  --input: transparent;
+  --input-background: #FFFFFF;
+  --switch-background: #C7CBC1;
+  --ring: #8ADE1B;
+  --sidebar: #101010;
+  --sidebar-foreground: #F5F5F5;
+  --sidebar-accent: #1E2124;
+  --sidebar-accent-foreground: #F5F5F5;
+  --sidebar-border: rgba(245, 245, 245, 0.10);
+}
+
+/* 브랜드 라임(#8ADE1B)은 흰 배경 위 '글자'로 쓰면 대비가 1.7:1밖에 안 나온다.
+   면(bg-accent)은 브랜드색을 그대로 쓰고, 글자일 때만 같은 계열로 낮춘다. */
+.theme-light .text-accent,
+.theme-light.text-accent { color: #3F7A08; }
+.theme-light .hover\:text-accent:hover { color: #3F7A08; }
 
 @theme inline {
   --color-background: var(--background);

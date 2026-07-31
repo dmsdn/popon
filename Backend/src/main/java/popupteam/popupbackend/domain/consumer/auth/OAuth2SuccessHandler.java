@@ -14,6 +14,7 @@ import java.util.Map;
 
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -38,8 +39,12 @@ import org.springframework.stereotype.Component;
 public class OAuth2SuccessHandler
         extends SimpleUrlAuthenticationSuccessHandler {
 
-    private static final String FRONTEND_BASE_URL =
-            "http://localhost:5173";
+    // 로그인 성공 후 토큰을 들려 보낼 소비자 웹 주소.
+    // localhost 기본값은 "브라우저가 있는 그 기계"로 풀리므로, 각자 자기 PC에서
+    // 소비자 dev 서버를 띄우는 지금 팀 구조에서는 누가 로그인해도 동작한다.
+    // 소비자 프론트를 서버에 올리는 날에는 app.frontend-base-url만 그 주소로 잡으면 됨 (코드 무수정).
+    @Value("${app.frontend-base-url:http://localhost:5173}")
+    private String FRONTEND_BASE_URL;
 
     private final CustomerAccountRepository customerRepository;
     private final JwtUtil jwtUtil;

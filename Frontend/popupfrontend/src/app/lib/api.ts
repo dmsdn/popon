@@ -733,16 +733,24 @@ export function getPopupNotices(popupId: number | string) {
   return request<NoticeItem[]>(`/api/popups/${popupId}/notices`);
 }
 
-// 주최자가 받은 공지(관리자 발송분) — 벨 알림 3번째 원천
+// 주최자가 받은 공지(관리자 발송분) — 벨 알림 3번째 원천 + /seller/admin-notices 페이지
+// 백엔드: NoticeBusinessController(/api/business/notices/my), DTO는 NoticeInboxResponse.
+// category는 NoticeCategory enum 이름 — NOTICE(관리자·주최자 직접 발송) / WISHLIST / RESERVATION / WAITING.
+export type NoticeCategoryCode = "NOTICE" | "WISHLIST" | "RESERVATION" | "WAITING";
 export type NoticeInboxItem = {
   recipientId: number; noticeId: number; popupId: number | null; popupTitle: string | null;
-  category: string; title: string; content: string; sentAt: string; read: boolean;
+  category: NoticeCategoryCode | string; title: string; content: string; sentAt: string; read: boolean;
 };
-export function getMyNoticeInbox() {
-  return request<NoticeInboxItem[]>("/api/business/notices/my");
+// category를 넘기면 서버가 그 분류만 걸러서 준다 (getBusinessInbox의 두 번째 인자)
+export function getMyNoticeInbox(category?: NoticeCategoryCode) {
+  return request<NoticeInboxItem[]>(
+    `/api/business/notices/my${category ? `?category=${category}` : ""}`,
+  );
 }
+// ⚠ 7/30 수정 — 서버는 { unreadCount } 로 주는데 타입이 { count } 였다.
+// 아직 쓰는 화면이 없어서 안 드러났던 불일치 (백엔드: Map.of("unreadCount", ...)).
 export function getMyNoticeUnreadCount() {
-  return request<{ count: number }>("/api/business/notices/my/unread-count");
+  return request<{ unreadCount: number }>("/api/business/notices/my/unread-count");
 }
 export function markNoticeRead(recipientId: number) {
   return request<void>(`/api/business/notices/my/${recipientId}/read`, { method: "PATCH" });

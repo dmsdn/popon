@@ -3,6 +3,7 @@ export type PopupItem = {
   name: string;
   category?: string; // 검색 필터용 카테고리 (뷰티/패션/애니/푸드/스포츠/라이프/굿즈)
   hashtags?: string[]; // 실제 백엔드 popup_hashtag 데이터 (있으면 category보다 이걸 우선 씀)
+  keywordNames?: string[]; // [신규] 표준 카테고리 이름들 - 검색에서 카테고리로도 찾을 수 있게
   regionId?: number | null; // 실제 백엔드 region(동네 단위) id - 정확한 지역 필터링용
   dateRange?: string;
   location?: string;
@@ -10,6 +11,7 @@ export type PopupItem = {
   brandId?: string; // data/mockBrands.ts의 Brand.id와 연결
   status?: "예정" | "진행중" | "종료";
   imageUrl?: string; // [신규] 팝업 대표 이미지 - 목록 카드에서 실제 썸네일을 보여줄 때 씀
+  avgRating?: number | null; // [신규] 평균 평점 - 검색 별점 필터에 씀
 };
 
 export type ReviewItem = {
@@ -29,6 +31,7 @@ export type ReviewItem = {
   reviewCount?: number; // 이 팝업에 달린 전체 후기 개수
   likeCount?: number; // [신규] 추천순 정렬에 사용
   likedByMe?: boolean; // [신규] 내가 이미 추천했는지 - 추천 버튼 상태 표시용
+  isMine?: boolean; // [신규] 내가 쓴 후기인지 - 수정/삭제 버튼 표시 여부 판단용
 };
 
 export const promoCards = [

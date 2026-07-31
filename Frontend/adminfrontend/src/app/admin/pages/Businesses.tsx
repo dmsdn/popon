@@ -79,20 +79,20 @@ export default function Businesses() {
       {error && <div className="bg-red-50 border border-red-200 rounded-sm px-4 py-3 text-xs text-red-600">{error}</div>}
 
       {/* 검색 (7/29) */}
-      <div className="bg-white border border-border rounded-sm p-3 flex items-center gap-2">
+      <div className="bg-card border border-border rounded-sm p-3 flex items-center gap-2">
         <div className="relative flex-1 max-w-sm">
           <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="회사명·이메일·사업자번호 검색"
-            className="w-full pl-8 pr-3 py-1.5 text-xs border border-border rounded-sm bg-white focus:outline-none focus:border-accent"
+            className="w-full pl-8 pr-3 py-1.5 text-xs border border-border rounded-sm bg-card focus:outline-none focus:border-accent"
           />
         </div>
         <span className="text-[11px] text-muted-foreground ml-auto">{rows.length}개 계정</span>
       </div>
 
-      <div className="bg-white border border-border rounded-sm overflow-x-auto">
+      <div className="bg-card border border-border rounded-sm overflow-x-auto">
         <table className="w-full text-[13px] min-w-[860px]">
           <thead>
             <tr className="border-b border-border bg-secondary/60 text-xs text-muted-foreground">

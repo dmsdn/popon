@@ -5,12 +5,18 @@ import {
   getAdminAnnouncements, createAnnouncement, deleteAnnouncement, Announcement,
 } from "../../lib/api";
 
-// 배너·콘텐츠 관리 — 7/28 실연동 (banner·announcement 백엔드는 7/27 jsw 신설)
+// 배너·공지 관리 — 7/28 실연동 (banner·announcement 백엔드는 7/27 jsw 신설)
 // 배너: 소비자 홈 상단 캐러셀 / 공지 배너: 소비자 홈 공지줄
+//
+// 관리자가 '소비자에게 알리는' 창구는 이 화면의 공지 배너다 (announcement 테이블).
+// 관리자 → 소비자 개별 공지 발송 API는 없고, 만들지 않는다 —
+// 소비자 대상 안내는 전원이 보는 공지 배너로, 팝업별 안내는 주최자가
+// 자기 예약자에게 보내는 긴급공지(POST /api/popups/{id}/notices)로 나뉘어 있다.
+// 「주최자 공지 발송」(/admin/notices)은 주최자 1명에게 보내는 별개 화면.
 
 const fmtDate = (iso: string | null) => (iso ? iso.slice(0, 10) : "-");
 
-const inputCls = "px-2.5 py-1.5 text-xs border border-border rounded-sm bg-white focus:outline-none focus:border-accent";
+const inputCls = "px-2.5 py-1.5 text-xs border border-border rounded-sm bg-card focus:outline-none focus:border-accent";
 
 export default function ContentManage() {
   const [banners, setBanners] = useState<Banner[]>([]);
@@ -130,8 +136,10 @@ export default function ContentManage() {
   return (
     <div className="flex flex-col gap-4 max-w-5xl">
       <div>
-        <h1 className="text-lg font-semibold">배너·콘텐츠 관리</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">소비자 서비스 홈의 메인 배너와 공지 배너 노출을 관리합니다.</p>
+        <h1 className="text-lg font-semibold">배너·공지 관리</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          소비자 서비스 홈의 메인 배너와 공지 배너 노출을 관리합니다. 소비자에게 알릴 내용은 공지 배너로 게시됩니다.
+        </p>
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 rounded-sm px-4 py-3 text-xs text-red-600">{error}</div>}
@@ -144,14 +152,14 @@ export default function ContentManage() {
       {!loading && (
         <>
           {/* 메인 배너 */}
-          <div className="bg-white border border-border rounded-sm">
+          <div className="bg-card border border-border rounded-sm">
             <div className="px-4 py-3 border-b border-border flex items-center justify-between">
               <span className="text-sm font-semibold flex items-center gap-2">
                 <ImageIcon size={14} className="text-muted-foreground" /> 메인 배너 <span className="text-xs font-normal text-muted-foreground">{banners.length}건</span>
               </span>
               <button
                 onClick={() => setShowBannerForm((v) => !v)}
-                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-sm bg-accent text-white hover:bg-accent/90"
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90"
               >
                 <Plus size={12} /> 배너 추가
               </button>
@@ -189,7 +197,7 @@ export default function ContentManage() {
                   링크 URL (선택)
                   <input className={inputCls} value={bForm.linkUrl} onChange={(e) => setBForm((p) => ({ ...p, linkUrl: e.target.value }))} />
                 </label>
-                <button onClick={submitBanner} disabled={actingId === "banner:new"} className="text-xs px-4 py-2 rounded-sm bg-foreground text-white disabled:opacity-50">
+                <button onClick={submitBanner} disabled={actingId === "banner:new"} className="text-xs px-4 py-2 rounded-sm bg-foreground text-primary-foreground disabled:opacity-50">
                   {actingId === "banner:new" ? "등록 중…" : "등록"}
                 </button>
               </div>
@@ -233,7 +241,7 @@ export default function ContentManage() {
           </div>
 
           {/* 공지 배너 (소비자 홈 공지줄) */}
-          <div className="bg-white border border-border rounded-sm">
+          <div className="bg-card border border-border rounded-sm">
             <div className="px-4 py-3 border-b border-border flex items-center justify-between">
               <span className="text-sm font-semibold flex items-center gap-2">
                 <Megaphone size={14} className="text-muted-foreground" /> 공지 배너 <span className="text-xs font-normal text-muted-foreground">{announcements.length}건</span>
@@ -256,7 +264,7 @@ export default function ContentManage() {
                   내용 (선택)
                   <input className={inputCls} value={aForm.content} onChange={(e) => setAForm((p) => ({ ...p, content: e.target.value }))} />
                 </label>
-                <button onClick={submitAnn} disabled={actingId === "ann:new"} className="text-xs px-4 py-2 rounded-sm bg-foreground text-white disabled:opacity-50">
+                <button onClick={submitAnn} disabled={actingId === "ann:new"} className="text-xs px-4 py-2 rounded-sm bg-foreground text-primary-foreground disabled:opacity-50">
                   {actingId === "ann:new" ? "등록 중…" : "등록"}
                 </button>
               </div>

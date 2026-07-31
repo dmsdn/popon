@@ -2,12 +2,8 @@ package popupteam.popupbackend.domain.review;
 
 import popupteam.popupbackend.domain.review.dto.ReviewRequest;
 import popupteam.popupbackend.domain.review.dto.ReviewResponse;
-import popupteam.popupbackend.domain.review.Review;
-import popupteam.popupbackend.domain.review.ReviewImage;
-import popupteam.popupbackend.domain.review.ReviewLike;
-import popupteam.popupbackend.domain.review.ReviewImageRepository;
-import popupteam.popupbackend.domain.review.ReviewLikeRepository;
-import popupteam.popupbackend.domain.review.ReviewRepository;
+import popupteam.popupbackend.domain.consumer.Customer;
+import popupteam.popupbackend.domain.consumer.CustomerAccountRepository;
 import popupteam.popupbackend.domain.consumer.auth.JwtUtil;
 import popupteam.popupbackend.domain.reservation.ReservationRepository;
 import popupteam.popupbackend.domain.reservation.EntryStatus;
@@ -19,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -36,6 +33,7 @@ public class ReviewController {
     private final ReviewRepository reviewRepository;
     private final ReviewImageRepository reviewImageRepository;
     private final ReviewLikeRepository reviewLikeRepository;
+    private final CustomerAccountRepository customerRepository;
     private final JwtUtil jwtUtil;
     private final ReservationRepository reservationRepository;
     private final WaitingQueueRepository waitingQueueRepository;
@@ -75,7 +73,7 @@ public class ReviewController {
 
         List<String> savedImageUrls = saveImages(saved.getId(), request.getImageUrls());
 
-        return new ReviewResponse(saved, savedImageUrls, 0, false);
+        return new ReviewResponse(saved, savedImageUrls, 0, false, getNickname(customerId));
     }
 
     // 내가 쓴 리뷰 목록 조회
@@ -83,8 +81,10 @@ public class ReviewController {
     public List<ReviewResponse> getMyReviews(@RequestHeader("Authorization") String authHeader) {
         Long customerId = extractCustomerId(authHeader);
 
-        return reviewRepository.findByCustomerId(customerId)
-                .stream()
+        List<Review> reviews = reviewRepository.findByCustomerId(customerId);
+        Map<Long, String> nicknames = getNicknames(reviews);
+
+        return reviews.stream()
                 .map(review -> {
                     List<String> imageUrls = reviewImageRepository
                             .findByReviewIdOrderBySortOrder(review.getId())
@@ -95,7 +95,8 @@ public class ReviewController {
                     boolean likedByMe = reviewLikeRepository
                             .findByReviewIdAndCustomerId(review.getId(), customerId)
                             .isPresent();
-                    return new ReviewResponse(review, imageUrls, likeCount, likedByMe);
+                    return new ReviewResponse(review, imageUrls, likeCount, likedByMe,
+                            nicknames.get(review.getCustomerId()));
                 })
                 .toList();
     }
@@ -111,9 +112,12 @@ public class ReviewController {
         Long customerId = (authHeader != null) ? extractCustomerId(authHeader) : null;
         Pageable pageable = PageRequest.of(page, size);
 
-        return reviewRepository.findByPopupIdOrderByCreatedAtDesc(popupId, pageable)
-                .stream()
-                .map(review -> buildResponse(review, customerId))
+        List<Review> reviews = reviewRepository.findByPopupIdOrderByCreatedAtDesc(popupId, pageable)
+                .getContent();
+        Map<Long, String> nicknames = getNicknames(reviews);
+
+        return reviews.stream()
+                .map(review -> buildResponse(review, customerId, nicknames.get(review.getCustomerId())))
                 .toList();
     }
 
@@ -122,14 +126,16 @@ public class ReviewController {
     public List<ReviewResponse> getRecentReviews(@RequestParam(defaultValue = "10") int limit) {
         Pageable pageable = PageRequest.of(0, limit);
 
-        return reviewRepository.findAllByOrderByCreatedAtDesc(pageable)
-                .stream()
-                .map(review -> buildResponse(review, null))
+        List<Review> reviews = reviewRepository.findAllByOrderByCreatedAtDesc(pageable).getContent();
+        Map<Long, String> nicknames = getNicknames(reviews);
+
+        return reviews.stream()
+                .map(review -> buildResponse(review, null, nicknames.get(review.getCustomerId())))
                 .toList();
     }
 
     // 공통 응답 조립 (비회원이면 customerId null → likedByMe는 항상 false)
-    private ReviewResponse buildResponse(Review review, Long customerId) {
+    private ReviewResponse buildResponse(Review review, Long customerId, String nickname) {
         List<String> imageUrls = reviewImageRepository
                 .findByReviewIdOrderBySortOrder(review.getId())
                 .stream()
@@ -139,7 +145,8 @@ public class ReviewController {
         boolean likedByMe = (customerId != null) && reviewLikeRepository
                 .findByReviewIdAndCustomerId(review.getId(), customerId)
                 .isPresent();
-        return new ReviewResponse(review, imageUrls, likeCount, likedByMe, true);
+        // 남이 보는 목록·상세라 숨김 마스킹(jsw)과 작성자 닉네임(jmy)이 둘 다 필요하다.
+        return new ReviewResponse(review, imageUrls, likeCount, likedByMe, true, nickname);
     }
 
     // 리뷰 수정
@@ -170,7 +177,7 @@ public class ReviewController {
         long likeCount = reviewLikeRepository.countByReviewId(id);
         boolean likedByMe = reviewLikeRepository.findByReviewIdAndCustomerId(id, customerId).isPresent();
 
-        return new ReviewResponse(saved, savedImageUrls, likeCount, likedByMe);
+        return new ReviewResponse(saved, savedImageUrls, likeCount, likedByMe, getNickname(customerId));
     }
 
     // 리뷰 삭제
@@ -259,5 +266,23 @@ public class ReviewController {
     private Long extractCustomerId(String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         return jwtUtil.getCustomerIdFromToken(token);
+    }
+
+    // 리뷰 하나 작성/수정 직후 등, 단건일 때 쓰는 닉네임 조회
+    private String getNickname(Long customerId) {
+        return customerRepository.findById(customerId).map(Customer::getNickname).orElse("탈퇴한 회원");
+    }
+
+    // 목록 조회할 때 리뷰마다 따로따로 조회(N+1)하지 않고 한 번에 배치 조회
+    private Map<Long, String> getNicknames(List<Review> reviews) {
+        List<Long> customerIds = reviews.stream().map(Review::getCustomerId).distinct().toList();
+        if (customerIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, String> result = new HashMap<>();
+        for (Customer c : customerRepository.findAllById(customerIds)) {
+            result.put(c.getId(), c.getNickname());
+        }
+        return result;
     }
 }

@@ -38,7 +38,7 @@ export default function AdminDashboard() {
       {/* 승인 대기 요약 */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
         {pendingCards.map(({ icon: Icon, label, value, to, color }) => (
-          <Link key={label} to={to} className="bg-white border border-border rounded-sm p-4 hover:border-accent/50 transition-colors group">
+          <Link key={label} to={to} className="bg-card border border-border rounded-sm p-4 hover:border-accent/50 transition-colors group">
             <div className="flex items-center justify-between mb-2">
               <span className="flex items-center gap-2 text-xs text-muted-foreground"><Icon size={13} /> {label}</span>
               <ArrowUpRight size={13} className="text-muted-foreground group-hover:text-accent" />
@@ -52,7 +52,7 @@ export default function AdminDashboard() {
 
       <div className="grid lg:grid-cols-3 gap-3 items-start">
         {/* 플랫폼 방문자 추이 (실데이터) */}
-        <div className="bg-white border border-border rounded-sm p-4 lg:col-span-2">
+        <div className="bg-card border border-border rounded-sm p-4 lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
             <span className="text-sm font-semibold">플랫폼 전체 방문자 추이 (최근 {chart.length || 7}일)</span>
             <Link to="/admin/stats" className="text-xs text-accent">상세 통계</Link>
@@ -98,7 +98,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* 매출 추이 (계약금 기준) */}
-        <div className="bg-white border border-border rounded-sm">
+        <div className="bg-card border border-border rounded-sm">
           <div className="px-4 py-3 border-b border-border flex items-center justify-between">
             <span className="text-sm font-semibold">매출 추이 (계약금)</span>
             <Link to="/admin/stats" className="text-xs text-accent">상세</Link>
