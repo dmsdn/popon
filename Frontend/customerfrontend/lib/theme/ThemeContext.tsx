@@ -12,9 +12,9 @@ const ThemeContext = createContext<{
 const STORAGE_KEY = "theme";
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("light");
+  const [theme, setTheme] = useState<Theme>("dark");
 
-  // 처음 켜질 때 localStorage에 저장된 값을 읽어와요 (없으면 라이트 모드가 기본값).
+  // 처음 켜질 때 localStorage에 저장된 값을 읽어와요 (없으면 다크 모드가 기본값이에요).
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved === "dark" || saved === "light") {

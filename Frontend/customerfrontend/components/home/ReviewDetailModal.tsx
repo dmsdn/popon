@@ -87,11 +87,11 @@ export function ReviewDetailModal({
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden max-w-[500px] w-full max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-[#282B32] rounded-2xl overflow-hidden max-w-[500px] w-full max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div
-          className="relative w-full aspect-square bg-gray-100 dark:bg-gray-800 cursor-grab active:cursor-grabbing"
+          className="relative w-full aspect-square bg-gray-100 dark:bg-[#282B32] cursor-grab active:cursor-grabbing"
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
           onTouchStart={handleTouchStart}
@@ -109,7 +109,7 @@ export function ReviewDetailModal({
             type="button"
             onClick={onClose}
             aria-label="닫기"
-            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center text-sm"
+            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center text-base"
           >
             ✕
           </button>
@@ -153,9 +153,9 @@ export function ReviewDetailModal({
               카드를 누르면 이동하도록 바꿨어요. */}
           <Link
             href={`/popup/${review.popupId}`}
-            className="flex items-center gap-3 mb-4 border border-gray-200 dark:border-gray-800 rounded-xl p-3"
+            className="flex items-center gap-3 mb-4 border border-gray-200 dark:border-[#282B32] rounded-xl p-3"
           >
-            <div className="w-11 h-11 rounded-lg bg-gray-100 dark:bg-gray-800 flex-none flex items-center justify-center text-base text-gray-400">
+            <div className="w-11 h-11 rounded-lg bg-gray-100 dark:bg-[#282B32] flex-none flex items-center justify-center text-base text-gray-400">
               {review.popupName[0]}
             </div>
             <div className="min-w-0 flex-1">
