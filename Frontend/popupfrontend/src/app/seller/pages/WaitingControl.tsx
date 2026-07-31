@@ -717,9 +717,6 @@ export default function WaitingControl() {
                     소비자 플랫폼 <span className="font-medium text-foreground">회원가입 페이지</span>로 연결됩니다.
                     가입(소셜 로그인) 후 팝업 상세페이지에서 현장 웨이팅을 등록하면 이 대기열에 순서대로 추가됩니다.
                   </p>
-                  <p className="text-[11px] text-amber-600 mt-1.5">
-                    등록 API는 준비됨(customerId 파라미터) — 상세페이지 웨이팅 버튼은 소비자 프론트(pew) 구현 후 동작
-                  </p>
                 </div>
               </div>
               <div className="bg-card border border-border rounded-sm p-5 flex gap-4">

@@ -67,7 +67,7 @@ export default function Root() {
               <span className="text-accent-foreground text-xs font-bold leading-none" style={{ fontFamily: "'DM Mono', monospace" }}>PO</span>
             </div>
             <span className="text-base font-semibold tracking-tight" style={{ fontFamily: "'NanumSquareRound', sans-serif" }}>
-              팝업온
+              팝온[POP-ON]
             </span>
           </NavLink>
 
@@ -201,7 +201,7 @@ export default function Root() {
               <div className="w-6 h-6 rounded-sm bg-accent flex items-center justify-center">
                 <span className="text-accent-foreground text-xs font-bold" style={{ fontFamily: "'DM Mono', monospace" }}>PO</span>
               </div>
-              <span className="font-semibold text-sm" style={{ fontFamily: "'NanumSquareRound', sans-serif" }}>팝업온</span>
+              <span className="font-semibold text-sm" style={{ fontFamily: "'NanumSquareRound', sans-serif" }}>팝온[POP-ON]</span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
               팝업스토어 주최자와 공간을 연결하는<br />대한민국 No.1 팝업 중개 플랫폼
@@ -215,14 +215,14 @@ export default function Root() {
           </div>
           <div className="md:text-right">
             <div className="text-xs text-muted-foreground leading-relaxed">
-              <div>㈜팝업온 | 대표 박민준</div>
-              <div className="mt-1">서울시 성동구 성수이로 14길 14</div>
+              <div>㈜팝온[POP-ON] | 대표 하이미디어아카데미</div>
+              <div className="mt-1">서울특별시 강남구 테헤란로 5길 20</div>
               <div className="mt-1">사업자등록번호 123-45-67890</div>
             </div>
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-6 lg:px-10 mt-8 pt-6 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="text-xs text-muted-foreground">© 2025 팝업온. All rights reserved.</div>
+          <div className="text-xs text-muted-foreground">© 2025 팝온. All rights reserved.</div>
           <div className="flex gap-6 text-xs text-muted-foreground">
             <a href="#" className="hover:text-foreground transition-colors">이용약관</a>
             <a href="#" className="hover:text-foreground transition-colors">개인정보처리방침</a>

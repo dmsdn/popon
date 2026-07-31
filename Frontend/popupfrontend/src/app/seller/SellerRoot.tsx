@@ -228,7 +228,7 @@ export default function SellerRoot() {
             <div className="w-7 h-7 rounded-sm bg-accent flex items-center justify-center">
               <span className="text-accent-foreground text-xs font-bold" style={{ fontFamily: "'DM Mono', monospace" }}>PO</span>
             </div>
-            <span className="font-semibold text-sm tracking-tight">팝업온 <span className="text-accent">주최자센터</span></span>
+            <span className="font-semibold text-sm tracking-tight">팝온[POP-ON] <span className="text-accent">주최자센터</span></span>
           </Link>
           <span className="hidden md:inline-flex text-[11px] px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium">파트너 전용</span>
         </div>

@@ -155,14 +155,6 @@ export default function AdminPopups() {
         </p>
       </div>
 
-      <div className="flex items-start gap-2.5 bg-blue-50 border border-blue-200 rounded-sm px-4 py-3">
-        <Info size={14} className="text-blue-500 shrink-0 mt-0.5" />
-        <div className="text-xs text-blue-800 leading-relaxed">
-          심사(승인/반려)·게시중지는 실데이터로 즉시 반영됩니다. <strong>수정</strong>은 수정사항·사유가 주최자에게
-          전달되며, 팝업 내용의 실제 반영은 관리자용 수정 API 백엔드 구성 후 연동됩니다.
-        </div>
-      </div>
-
       {/* 상태 필터 + 검색 */}
       <div className="bg-card border border-border rounded-sm p-3 flex flex-wrap items-center gap-2">
         {FILTERS.map((f) => {
