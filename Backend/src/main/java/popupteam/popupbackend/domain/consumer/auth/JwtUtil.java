@@ -12,7 +12,16 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JwtUtil {
-   @Value("${jwt.secret}")
+   // 8/3 — 서명키를 직원용(security/JwtUtil)과 분리했다.
+   //
+   // 그전에는 둘 다 jwt.secret 하나로 서명해서, 관리자·주최자 토큰을 이 파서에 넣어도
+   // **서명 검증이 통과**했다. "우리 토큰이 아니면 파싱에서 예외가 난다"는 전제가
+   // 무너진 상태였고, 실제로 8/3에 CustomerAuthCheckFilter가 관리자 토큰의 없는
+   // id 클레임을 읽다 NPE → 두 콘솔 전체 500으로 터졌다.
+   // 키가 다르면 남의 토큰은 SignatureException으로 파싱 단계에서 튕긴다 —
+   // 신원 구분이 클레임 모양이 아니라 암호학으로 보장된다.
+   // 기본값 없음 = 설정이 빠지면 안 뜨는 게 의도다 (qr-base-url과 같은 원칙).
+   @Value("${jwt.consumer-secret}")
    private String secret;
    @Value("${jwt.expiration}")
    private long expiration;
@@ -38,7 +47,15 @@ public class JwtUtil {
       // id 값이 작으면 JJWT/Jackson이 Integer로 역직렬화해버려서 claims.get("id", Long.class)가
       // RequiredTypeException을 던짐. Number로 받아서 안전하게 long으로 변환.
       Number id = claims.get("id", Number.class);
-      return id.longValue();
+      // 8/3 — id 클레임이 없으면 null을 돌려준다 (그전에는 여기서 NPE가 났다).
+      //
+      // 주최자·관리자 토큰은 security/JwtUtil이 발급하는데 형태가 다르다 — id 없이
+      // subject에 이메일만 담는다. 그런데 **두 발급기가 같은 jwt.secret으로 서명**해서
+      // 이 파서에 넣어도 서명 검증이 통과해 버린다. 즉 "우리 토큰이 아니면 파싱에서
+      // 예외가 난다"는 전제가 성립하지 않는다.
+      // 호출부는 전부 소비자 전용 경로라 정상 흐름에서 null이 나올 일은 없고,
+      // 이 null은 "소비자 토큰이 아니다"라는 신호로만 쓰인다 (CustomerAuthCheckFilter).
+      return id == null ? null : id.longValue();
    }
 
    /**
