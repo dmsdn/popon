@@ -69,7 +69,7 @@ spring:
             user-name-attribute: id
 
 jwt:
-  secret: "po2zg+6RlGd7S+vA+nfM86hgViC/4209T+SV0qQQdzZYoqBcL5GmDGnce/RHfdETClvu0CkxzytGwEilv3tRJA=="
+  secret: ""
   expiration: 86400000   # 24시간 (ms)
 
 file:
