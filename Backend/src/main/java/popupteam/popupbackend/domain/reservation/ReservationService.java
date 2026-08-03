@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 @Service
 @RequiredArgsConstructor
@@ -74,12 +75,24 @@ public class ReservationService {
                 throw new IllegalArgumentException("정원이 초과되어 예약할 수 없습니다. 남은 자리: " + (slot.getCapacity() - reserved));
             }
 
+            if (LocalDateTime.of(slot.getSlotDate(), slot.getStartTime()).isBefore(LocalDateTime.now())) {
+                throw new IllegalArgumentException("이미 지난 시간대는 예약할 수 없습니다.");
+            }
+
             reservation.setSlot(slot);
             reservation.setReservationDate(slot.getSlotDate());
 
         } else { // FREE 모드
             if (request.getReservationDate() == null) {
                 throw new IllegalArgumentException("당일 방문 팝업입니다. reservationDate를 입력해주세요.");
+            }
+
+            if (request.getReservationTime() != null
+                    && LocalDateTime.of(request.getReservationDate(), request.getReservationTime()).isBefore(LocalDateTime.now())) {
+                throw new IllegalArgumentException("이미 지난 시간은 예약할 수 없습니다.");
+            } else if (request.getReservationTime() == null
+                    && request.getReservationDate().isBefore(LocalDate.now())) {
+                throw new IllegalArgumentException("이미 지난 날짜는 예약할 수 없습니다.");
             }
 
             int reserved = reservationRepository.findByPopupIdAndReservationDateAndStatus(
@@ -145,12 +158,24 @@ public class ReservationService {
                 throw new IllegalArgumentException("정원이 초과되어 변경할 수 없습니다. 남은 자리: " + (newSlot.getCapacity() - reserved));
             }
 
+            if (LocalDateTime.of(newSlot.getSlotDate(), newSlot.getStartTime()).isBefore(LocalDateTime.now())) {
+                throw new IllegalArgumentException("이미 지난 시간대로는 변경할 수 없습니다.");
+            }
+
             reservation.setSlot(newSlot);
             reservation.setReservationDate(newSlot.getSlotDate());
 
         } else { // FREE 모드
             LocalDate newDate = (request.getNewReservationDate() != null)
                     ? request.getNewReservationDate() : reservation.getReservationDate();
+            LocalTime newTime = (request.getNewReservationTime() != null)
+                    ? request.getNewReservationTime() : reservation.getReservationTime();
+
+            if (newTime != null && LocalDateTime.of(newDate, newTime).isBefore(LocalDateTime.now())) {
+                throw new IllegalArgumentException("이미 지난 시간으로는 변경할 수 없습니다.");
+            } else if (newTime == null && newDate.isBefore(LocalDate.now())) {
+                throw new IllegalArgumentException("이미 지난 날짜로는 변경할 수 없습니다.");
+            }
 
             int reserved = reservationRepository.findByPopupIdAndReservationDateAndStatus(
                             popup.getId(), newDate, ReservationStatus.CONFIRMED).stream()

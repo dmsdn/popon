@@ -206,6 +206,32 @@ public class PopupController {
         return ResponseEntity.ok(popupVisitorAgeStatsService.getConversionRate(id));
     }
 
+    // 오늘 방문자 수(QR 체크인 기준) - 대시보드용, 본인 팝업만 조회 가능
+    @GetMapping("/{id}/today-visitor-count")
+    public ResponseEntity<java.util.Map<String, Object>> getTodayVisitorCount(
+            @PathVariable Long id, Authentication authentication) {
+        Long businessId = getBusinessId(authentication);
+        PopupResponse popup = popupService.findById(id);
+        if (!popup.getBusinessId().equals(businessId)) {
+            throw new IllegalArgumentException("본인이 등록한 팝업만 조회할 수 있습니다.");
+        }
+        java.util.Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("visitorCount", popupVisitorAgeStatsService.getTodayVisitorCount(id));
+        return ResponseEntity.ok(result);
+    }
+
+    // 오늘 예약 요약(건수 + 인원 합) - 대시보드용, 본인 팝업만 조회 가능
+    @GetMapping("/{id}/today-reservation-summary")
+    public ResponseEntity<java.util.Map<String, Object>> getTodayReservationSummary(
+            @PathVariable Long id, Authentication authentication) {
+        Long businessId = getBusinessId(authentication);
+        PopupResponse popup = popupService.findById(id);
+        if (!popup.getBusinessId().equals(businessId)) {
+            throw new IllegalArgumentException("본인이 등록한 팝업만 조회할 수 있습니다.");
+        }
+        return ResponseEntity.ok(popupVisitorAgeStatsService.getTodayReservationSummary(id));
+    }
+
     @GetMapping("/{id}/keywords")
     public ResponseEntity<?> getPopupKeywords(@PathVariable Long id) {
         return ResponseEntity.ok(popupService.getPopupKeywordIds(id));

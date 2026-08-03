@@ -116,6 +116,15 @@ List<Object[]> countDailyCheckedInVisitors(
 
     // 예약 전환율 계산용 - 취소되지 않은 전체 예약 건수
     long countByPopupIdAndStatus(Long popupId, ReservationStatus status);
+
+    // 오늘 예약 요약(건수 + 인원 합) - 대시보드용 서버 사이드 집계.
+    // 기존엔 프론트가 findByPopupId로 전체 예약을 다 받아서 reservationDate === 오늘 로 클라이언트에서 필터링했음.
+    @Query("SELECT COUNT(r), COALESCE(SUM(r.partySize), 0) FROM Reservation r " +
+            "WHERE r.popup.id = :popupId AND r.reservationDate = :date AND r.status = :status")
+    Object[] sumTodayReservations(@Param("popupId") Long popupId,
+                                   @Param("date") LocalDate date,
+                                   @Param("status") ReservationStatus status);
+
     // 후기 작성 가능 여부 확인용 - 이 소비자가 이 팝업에 실제로 체크인(입장)한 예약이 있는지
     boolean existsByPopup_IdAndCustomer_IdAndEntryStatus(Long popupId, Long customerId, EntryStatus entryStatus);
 
