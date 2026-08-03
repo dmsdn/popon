@@ -1,5 +1,7 @@
 {
   "/icon.svg/route": "app/icon.svg/route.js",
   "/checkin/page": "app/checkin/page.js",
-  "/select-popup/page": "app/select-popup/page.js"
+  "/checkin/scan/page": "app/checkin/scan/page.js",
+  "/select-popup/page": "app/select-popup/page.js",
+  "/page": "app/page.js"
 }

@@ -1,295 +1,91 @@
-// app/page.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Header } from "@/components/layout/Header";
-import { MobileHeader } from "@/components/layout/MobileHeader";
-import { Footer } from "@/components/layout/Footer";
-import { BottomTabBar } from "@/components/layout/BottomTabBar";
-import { PromoCarousel } from "@/components/home/PromoCarousel";
-import { CategoryIconList } from "@/components/home/CategoryIconList";
-import { NearbyHotPlacesSection } from "@/components/home/NearbyHotPlacesSection";
-import { NearbyRegionPopupSection } from "@/components/home/NearbyRegionPopupSection";
-import { MapSearchEntry } from "@/components/home/MapSearchEntry";
-import { PopupSection } from "@/components/home/PopupSection";
-import { PopularRankingSection } from "@/components/home/PopularRankingSection";
-import { ReviewSection } from "@/components/home/ReviewSection";
-import { HorizontalCarousel } from "@/components/ui/HorizontalCarousel";
-import { searchPopups, getPopup, getPopupLiveStatus, getQueueBoardCount, getPopupImages, type PopupLiveStatus } from "@/lib/api/popups";
-import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
-import { toPopupItem } from "@/lib/utils/popupMapper";
-import { getRecentlyViewedIds } from "@/lib/recentlyViewed";
-import { getRegions, getMyRegions, type Region } from "@/lib/api/regions";
-import { getKeywords, getMyInterests, type Keyword } from "@/lib/api/customer";
-import { useAuth } from "@/lib/auth/AuthContext";
-import { LiveCongestionMini } from "@/components/popup/LiveCongestion";
+// 로그인 페이지 - 카카오/구글 소셜 로그인 버튼과 간편 가입 안내 말풍선.
+
 import Link from "next/link";
-import type { PopupItem } from "@/data/mockPopups";
+import { useRouter } from "next/navigation";
+import { redirectToKakaoLogin, redirectToGoogleLogin } from "@/lib/api/auth";
+import { useAuth } from "@/lib/auth/AuthContext";
 
-export default function Home() {
-  const { customer } = useAuth();
-  const [openingSoon, setOpeningSoon] = useState<PopupItem[]>([]);
-  const [recentlyViewed, setRecentlyViewed] = useState<PopupItem[]>([]);
-  const [allOpenPopups, setAllOpenPopups] = useState<PopupItem[]>([]);
-  const [congestionItems, setCongestionItems] = useState<
-    { item: PopupItem; status: PopupLiveStatus; imageUrl: string | null }[]
-  >([]);
-  const [easyEntryItems, setEasyEntryItems] = useState<{ item: PopupItem; count: number }[]>([]);
-  const [loaded, setLoaded] = useState(false);
-  const [allKeywords, setAllKeywords] = useState<Keyword[]>([]);
-  const [myKeywordIds, setMyKeywordIds] = useState<number[]>([]);
-  const [allRegions, setAllRegions] = useState<Region[]>([]);
-  const [myRegionIds, setMyRegionIds] = useState<number[]>([]);
+export default function LoginPage() {
+  const router = useRouter();
+  const { loginAsTestUser } = useAuth();
 
-  useEffect(() => {
-    let cancelled = false;
-
-    searchPopups({ status: "BEFOR" })
-      .then((list) => {
-        if (!cancelled) setOpeningSoon(list.map(toPopupItem));
-      })
-      .catch((err) => console.error("오픈예정 팝업 조회 실패", err))
-      .finally(() => {
-        if (!cancelled) setLoaded(true);
-      });
-
-    // "최근 본 팝업" - 이 브라우저에서 실제로 들어가봤던 팝업 상세페이지 기록 기준
-    // (lib/recentlyViewed.ts, popup/[id]/page.tsx에서 방문 시 기록해요)
-    const ids = getRecentlyViewedIds();
-    Promise.all(
-      ids.map((id) =>
-        getPopup(id)
-          .then(toPopupItem)
-          .catch(() => null)
-      )
-    ).then((results) => {
-      if (!cancelled) {
-        setRecentlyViewed(results.filter((p): p is PopupItem => p !== null));
-      }
-    });
-
-    // "내 관심 지역"/"관심 카테고리"/"실시간 혼잡도" 섹션에서 같이 쓸 진행중 팝업 목록
-    searchPopups({ status: "OPEN" })
-      .then((list) => {
-        if (cancelled) return;
-        const items = list.map(toPopupItem);
-        setAllOpenPopups(items);
-
-        // 실시간 혼잡도 - 진행중 팝업 중 앞쪽 8개만 골라서 개별 조회 (팝업별 API라 한 번에 못 가져옴)
-        const targets = items.slice(0, 8);
-        Promise.all(
-          targets.map((item) =>
-            Promise.all([getPopupLiveStatus(item.id), getPopupImages(item.id).catch(() => [])])
-              .then(([status, images]) => ({ item, status, imageUrl: images[0]?.imageUrl ?? null }))
-              .catch(() => null)
-          )
-        ).then((results) => {
-          if (cancelled) return;
-          const valid = results.filter((r): r is NonNullable<typeof r> => r !== null);
-          valid.sort((a, b) => b.status.congestionRate - a.status.congestionRate);
-          setCongestionItems(valid);
-        });
-
-        // [신규] 지금 입장하기 좋은 팝업 - 통합 대기열 총 인원이 적은 순. 개인정보
-        // 노출 우려로 totalCount만 씁니다 (lib/api/popups.ts getQueueBoardCount 참고).
-        Promise.all(
-          targets.map((item) =>
-            getQueueBoardCount(item.id)
-              .then((data) => ({ item, count: data.totalCount }))
-              .catch(() => null)
-          )
-        ).then((results) => {
-          if (cancelled) return;
-          const valid = results.filter((r): r is { item: PopupItem; count: number } => r !== null);
-          valid.sort((a, b) => a.count - b.count);
-          setEasyEntryItems(valid);
-        });
-      })
-      .catch((err) => console.error("진행중 팝업 조회 실패", err));
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // [수정] 관심 카테고리가 죽은 로컬 저장 함수(getPreferredCategories)를 읽고 있었어요 -
-  // signup/preferences·마이페이지수정에서 이미 실제 keyword API로 옮겨서 그 로컬
-  // 저장소엔 더 이상 아무것도 안 쓰여지고 있었고, 그래서 이 섹션이 항상 빈 채로
-  // 사라져 있었어요. 실제 API로 교체하고, 매칭도 해시태그 정확 매칭으로 바꿨어요.
-  useEffect(() => {
-    if (!customer) return;
-    getKeywords()
-      .then(setAllKeywords)
-      .catch((err) => console.error("키워드 목록 조회 실패", err));
-    getMyInterests()
-      .then((res) => setMyKeywordIds(res?.keywordIds ?? []))
-      .catch((err) => console.error("내 관심 키워드 조회 실패", err));
-  }, [customer]);
-
-  // [수정] "내 관심 지역 팝업" 섹션도 마찬가지로 죽은 로컬 저장 함수(getPreferredRegions)를
-  // 읽고 있어서, 마이페이지 수정화면에서 저장한 진짜 관심 지역이 전혀 반영이 안 되고
-  // 이 섹션이 항상 비어 있었어요. 실제 지역 API로 교체했어요.
-  useEffect(() => {
-    if (!customer) return;
-    getRegions()
-      .then(setAllRegions)
-      .catch((err) => console.error("지역 목록 조회 실패", err));
-    getMyRegions()
-      .then((res) => setMyRegionIds(res?.regionIds ?? []))
-      .catch((err) => console.error("내 관심 지역 조회 실패", err));
-  }, [customer]);
-
-  const preferredRegions = useMemo(() => {
-    const nameById = new Map(allRegions.map((r) => [r.id, r.name]));
-    return myRegionIds.map((id) => nameById.get(id)).filter((n): n is string => !!n);
-  }, [allRegions, myRegionIds]);
-
-  // [신규] "내 관심 지역 팝업" 제목을 "OO에 이런 팝업이 열려요"로 바꾸면서, 관심
-  // 지역이 여러 개면 그 중 하나를 랜덤으로 골라 제목에 써요.
-  const featuredRegion = useMemo(() => {
-    if (preferredRegions.length === 0) return "";
-    return preferredRegions[Math.floor(Math.random() * preferredRegions.length)];
-  }, [preferredRegions]);
-  const easyEntryPopupItems = useMemo(
-    () => easyEntryItems.map(({ item, count }) => ({ ...item, badge: `웨이팅 ${count}팀` })),
-    [easyEntryItems]
-  );
-  const preferredCategories = useMemo(() => {
-    const nameById = new Map(allKeywords.map((k) => [k.id, k.name]));
-    return myKeywordIds.map((id) => nameById.get(id)).filter((n): n is string => !!n).slice(0, 2);
-  }, [allKeywords, myKeywordIds]);
-
-  const regionPopups = useMemo(() => {
-    if (preferredRegions.length === 0) return [];
-    return allOpenPopups.filter((p) =>
-      preferredRegions.some((r) => p.location?.toLowerCase().includes(r.toLowerCase()))
-    );
-  }, [allOpenPopups, preferredRegions]);
-
-  const categoryPopupLists = useMemo(() => {
-    return preferredCategories.map((category) => ({
-      category,
-      items: allOpenPopups.filter((p) => p.hashtags?.includes(category) ?? false),
-    }));
-  }, [allOpenPopups, preferredCategories]);
+  const handleTestLogin = () => {
+    loginAsTestUser();
+    try {
+      const raw = window.localStorage.getItem("mock_customer");
+      const onboarded = raw ? JSON.parse(raw).onboarded : false;
+      router.push(onboarded ? "/" : "/signup");
+    } catch {
+      router.push("/signup");
+    }
+  };
 
   return (
-    <main className="min-h-screen flex flex-col w-full pb-16 mobile:pb-0 mobile:max-w-[1000px] mobile:mx-auto">
-      <div className="flex-1">
-      <div className="hidden mobile:block">
-        <Header />
+    <main className="min-h-screen flex flex-col">
+      {/* 상단바 */}
+      <header className="flex items-center h-14 px-4 border-b border-gray-100 dark:border-[#282B32]">
+        <Link href="/" className="font-bold text-lg">팝업</Link>
+      </header>
+
+      {/* [수정] "웨이팅은 카카오로만 가능해요" 문구 제거 - 지금은 카카오가 아니어도
+          웨이팅 가능해서 안 맞는 안내였어요. 그 자리엔 큰 로고를 두고, 버튼들은
+          아래쪽으로 내렸어요. */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 gap-4">
+        {/* [신규] 간편 가입 안내 말풍선 - 살짝 동동 뜨는 애니메이션을 넣었어요. */}
+        <div className="relative bg-gray-100 dark:bg-[#282B32] rounded-2xl px-5 py-3 animate-float">
+          <p className="text-sm font-medium text-center">간편 가입으로 서비스를 편리하게 이용해보세요</p>
+          <div className="absolute left-1/2 -translate-x-1/2 -bottom-2 w-4 h-4 bg-gray-100 dark:bg-[#282B32] rotate-45" />
+        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/icons/ui/LOGO_Light.svg" alt="POP-ON" className="w-[220px] h-auto dark:hidden" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/icons/ui/LOGO_Dark.svg" alt="POP-ON" className="w-[220px] h-auto hidden dark:block" />
       </div>
-      <div className="block mobile:hidden">
-        <MobileHeader />
-      </div>
 
-      <PromoCarousel />
-      <MapSearchEntry />
-      <CategoryIconList />
+      <div className="flex flex-col items-center px-6 pb-16 gap-3">
+        <button
+          type="button"
+          onClick={redirectToKakaoLogin}
+          className="w-full max-w-sm rounded-full py-3.5 text-base font-medium bg-[#FEE500] text-gray-900"
+        >
+          카카오로 시작하기
+        </button>
 
-      {recentlyViewed.length > 0 && (
-        <PopupSection title="최근 본 팝업" items={recentlyViewed} moreHref="/recent" />
-      )}
+        <button
+          type="button"
+          onClick={redirectToGoogleLogin}
+          className="w-full max-w-sm flex items-center gap-3 bg-gray-100 rounded-full px-5 py-3.5"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="text-gray-900">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.99.66-2.26 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0012 23z"/>
+            <path d="M5.84 14.09A6.6 6.6 0 015.5 12c0-.73.13-1.43.35-2.09V7.07H2.18A11 11 0 001 12c0 1.77.42 3.45 1.18 4.93l3.66-2.84z"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1A11 11 0 002.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+          </svg>
+          <span className="flex-1 text-center text-sm font-medium text-gray-900">
+            구글로 시작하기
+          </span>
+        </button>
 
-      <PopularRankingSection />
-
-      <NearbyRegionPopupSection />
-
-      {congestionItems.length > 0 && (
-        <section className="mb-14 mobile:mb-16 px-4 mobile:px-8">
-          <h3 className="text-base mobile:text-lg font-semibold mb-3 mobile:mb-4">실시간 혼잡도</h3>
-          <HorizontalCarousel>
-            {congestionItems.map(({ item, status, imageUrl }) => (
-              <Link
-                key={item.id}
-                href={`/popup/${item.id}`}
-                className="flex-none w-[150px] border border-gray-100 dark:border-[#282B32] rounded-lg overflow-hidden"
-              >
-                {imageUrl ? (
-                  <ImageWithFallback src={imageUrl} className="w-full aspect-[4/3] object-cover" />
-                ) : (
-                  <div className="w-full aspect-[4/3] bg-gray-100 dark:bg-[#282B32] flex items-center justify-center text-sm text-gray-400">
-                    이미지
-                  </div>
-                )}
-                <div className="p-3 pt-3.5 pb-4 flex flex-col gap-2">
-                  <p className="text-sm font-medium truncate">{item.name}</p>
-                  <LiveCongestionMini status={status} />
-                </div>
-              </Link>
-            ))}
-          </HorizontalCarousel>
-        </section>
-      )}
-
-      {regionPopups.length > 0 && (
-        <PopupSection
-          title={`"${featuredRegion}"에 이런 팝업이 열려요`}
-          items={regionPopups}
-          moreHref={`/search?region=${encodeURIComponent(preferredRegions.join(","))}`}
-        />
-      )}
-
-      {categoryPopupLists.map(
-        ({ category, items }) =>
-          items.length > 0 && (
-            <PopupSection
-              key={category}
-              title={`${category} 팝업`}
-              items={items}
-              moreHref={`/search?q=${encodeURIComponent(category)}`}
-            />
-          )
-      )}
-
-      <PopupSection
-        title="곧 오픈하는 팝업"
-        items={loaded ? openingSoon : []}
-        moreHref="/search?status=예정"
-      />
-
-      {easyEntryPopupItems.length > 0 && (
-        <section className="mb-14 mobile:mb-16 px-4 mobile:px-8">
-          <div className="flex items-center justify-between mb-3 mobile:mb-4">
-            <h3 className="text-base mobile:text-lg font-semibold">지금 입장하기 좋은 팝업</h3>
-            <Link href="/easy-entry" className="text-sm text-gray-400">
-              더보기
+        {process.env.NODE_ENV === "development" && (
+          <>
+            <button
+              type="button"
+              onClick={handleTestLogin}
+              className="w-full max-w-sm rounded-full py-3.5 text-base font-medium border border-dashed border-gray-300 dark:border-[#282B32] text-gray-500 mt-2"
+            >
+              [개발용] 테스트 계정으로 계속하기
+            </button>
+            <Link
+              href="/login/dev"
+              className="w-full max-w-sm text-center rounded-full py-3.5 text-sm font-medium border border-dashed border-gray-300 dark:border-[#282B32] text-gray-500"
+            >
+              [개발용] 테스트 ID로 로그인
             </Link>
-          </div>
-          <HorizontalCarousel>
-            {easyEntryPopupItems.map((item) => (
-              <Link
-                key={item.id}
-                href={`/popup/${item.id}`}
-                className="flex-none w-[150px] border border-gray-100 dark:border-[#282B32] rounded-lg overflow-hidden"
-              >
-                {item.imageUrl ? (
-                  <ImageWithFallback src={item.imageUrl} className="w-full aspect-[4/3] object-cover" />
-                ) : (
-                  <div className="w-full aspect-[4/3] bg-gray-100 dark:bg-[#282B32] flex items-center justify-center text-sm text-gray-400">
-                    이미지
-                  </div>
-                )}
-                <div className="p-3 pt-3.5 pb-4 flex flex-col gap-2">
-                  <p className="text-sm font-medium truncate">{item.name}</p>
-                  <p className="text-sm text-gray-500">{item.badge}</p>
-                </div>
-              </Link>
-            ))}
-          </HorizontalCarousel>
-        </section>
-      )}
-
-      <ReviewSection />
-
-      <NearbyHotPlacesSection />
-
-      </div>
-
-      <Footer />
-
-      <div className="block mobile:hidden">
-        <BottomTabBar />
+          </>
+        )}
       </div>
     </main>
   );

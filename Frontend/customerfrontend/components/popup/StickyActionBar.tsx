@@ -1,8 +1,7 @@
 "use client";
 
-// 팝업 상세페이지 하단 고정 액션바 - 찜/사전예약/웨이팅/문의하기 버튼.
+// 팝업 상세페이지 하단 고정 액션바 - 찜/사전예약/웨이팅/전화로 문의하기 버튼.
 
-import Link from "next/link";
 import { HeartButton } from "@/components/ui/HeartButton";
 import type { PopupItem } from "@/data/mockPopups";
 
@@ -21,7 +20,7 @@ export function StickyActionBar({
   onWishlistToggle,
   onReserve,
   onWaiting,
-  inquiryHref,
+  businessPhone,
 }: {
   popupId: number;
   /** 팝업 진행 상태 - 웨이팅은 "진행중"일 때만, 예약은 "종료" 전까지 열어둬요.
@@ -41,9 +40,10 @@ export function StickyActionBar({
   onWishlistToggle?: (nextActive: boolean) => void;
   onReserve: () => void;
   onWaiting: () => void;
-  /** [신규] 예약/웨이팅을 둘 다 지원 안 하는 팝업이면, 그 자리에 대신
-      "문의하기" 버튼을 띄워요 - 정보탭에 있던 문의하기를 여기로 옮긴 거예요. */
-  inquiryHref?: string;
+  /** [수정] 예약/웨이팅을 둘 다 지원 안 하는 팝업이면, 그 자리에 대신
+      "전화로 문의하기" 버튼을 띄워요 - 1:1 문의 폼 대신 주최자 전화번호로
+      바로 통화 연결해요. 전화번호가 없으면 버튼 자체를 숨겨요. */
+  businessPhone?: string | null;
 }) {
   const supportsWaiting = queueMode === "ONSITE_WAITING_ONLY" || queueMode === "BOTH";
   const noSlotsYet = reservationMode === "SLOT" && !hasSlots;
@@ -65,7 +65,7 @@ export function StickyActionBar({
             type="button"
             onClick={onReserve}
             disabled={!reservationEnabled}
-            className="flex-1 rounded-full py-3 text-base font-medium bg-gray-100 dark:bg-[#282B32] text-gray-900 dark:text-white disabled:opacity-40"
+            className="flex-1 rounded-full py-3 text-base font-medium border-2 border-point text-gray-900 dark:text-white disabled:opacity-40 disabled:border-gray-300 dark:disabled:border-gray-700"
           >
             {reservationEnabled ? "사전 예약" : "예약 준비중"}
           </button>
@@ -86,14 +86,15 @@ export function StickyActionBar({
               : "웨이팅"}
           </button>
         )}
-        {/* [신규] 예약/웨이팅 둘 다 지원 안 하면 그 자리에 문의하기를 대신 띄워요. */}
-        {!supportsReservation && !supportsWaiting && inquiryHref && (
-          <Link
-            href={inquiryHref}
+        {/* [수정] 예약/웨이팅 둘 다 지원 안 하면 그 자리에 "전화로 문의하기"를
+            대신 띄워요 - 누르면 주최자 전화번호로 바로 통화 연결돼요. */}
+        {!supportsReservation && !supportsWaiting && businessPhone && (
+          <a
+            href={`tel:${businessPhone}`}
             className="flex-1 text-center rounded-full py-3 text-base font-medium border border-point text-gray-900 dark:text-white"
           >
-            문의하기
-          </Link>
+            전화로 문의하기
+          </a>
         )}
       </div>
     </div>
