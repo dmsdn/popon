@@ -305,7 +305,7 @@ export default function WaitingControl() {
     if (!popupId) return;
     setActingKey(`exit-${row.key}`);
     try {
-      await exitUnifiedQr(row.qrToken);
+      await exitUnifiedQr(row.qrToken, popupId);
       refreshBoard(popupId);
     } catch (e) {
       alert(e instanceof Error ? e.message : "퇴장 처리에 실패했습니다.");
@@ -358,7 +358,9 @@ export default function WaitingControl() {
     if (!v || !popupId) return;
     try {
       // 통합 QR 체크인 — 예약·웨이팅 QR 모두 서버가 판별해 입장 처리·시각 기록
-      const entry = await checkinUnifiedQr(v);
+      // popupId를 함께 보낸다 (7/31): 그러지 않으면 서버가 「내 팝업인가」까지만 보기 때문에
+      // 팝업을 여러 개 운영하는 주최자는 여기서 **다른 팝업 손님의 QR도 입장 처리**해 버린다.
+      const entry = await checkinUnifiedQr(v, popupId);
       setQrMsg({ ok: true, text: `${entry.displayName}님(${entry.source === "RESERVATION" ? "사전예약" : "현장 웨이팅"}) 입장 처리 완료` });
       refreshBoard(popupId);
     } catch (err) {

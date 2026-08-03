@@ -42,20 +42,6 @@ public class WaitingQueueController {
         return ResponseEntity.ok(waitingQueueService.getMyStatus(id));
     }
 
-    // QR 토큰으로 내 대기 상태 확인 (7/31 신설, 로그인 불필요)
-    //
-    // 손님이 문자로 받은 링크(/qr/{token})를 열면 그 화면이 이걸 주기적으로 물어본다.
-    // 그전에는 손님 화면이 QR만 띄우고 멈춰 있어서, 직원이 스캔해 입장 처리를 해도
-    // **손님 쪽에는 아무 변화가 없었다.** 입장이 됐는지 손님이 알 방법이 없었다.
-    //
-    // 비회원 웨이팅(이름·연락처만 남기고 접수)도 써야 하므로 인증을 걸지 않는다.
-    // 대신 **토큰을 아는 사람에게도 개인정보를 주지 않는다** — 응답에서 이름·연락처·이메일을 뺀다.
-    // 토큰은 문자로 전달되므로 유출 가능성이 있고, 이 화면에 필요한 것은 상태와 순번뿐이다.
-    @GetMapping("/api/waiting/qr/{qrToken}")
-    public ResponseEntity<WaitingQrStatusResponse> getStatusByQr(@PathVariable String qrToken) {
-        return ResponseEntity.ok(waitingQueueService.getStatusByQr(qrToken));
-    }
-
     // 주최자/관리자: 호출
     @PatchMapping("/api/waiting/{id}/call")
     public ResponseEntity<?> call(@PathVariable Long id, Authentication authentication) {
@@ -71,12 +57,17 @@ public class WaitingQueueController {
     }
 
     // 주최자/관리자: QR 스캔 입장확인 (현장웨이팅 QR 전용)
+    // popupId는 지금 스캔 중인 화면(현장)이 속한 팝업 ID - 프론트가 반드시 함께 전달해야 함
+    // (QR 토큰이 유효해도 스캔 중인 팝업과 QR의 팝업이 다르면 거부하기 위한 필수 검증값)
     @PostMapping("/api/waiting/checkin/qr")
     public ResponseEntity<?> checkinByQr(Authentication authentication,
                                          @RequestBody java.util.Map<String, String> body) {
         requireStaff(authentication);
         String qrToken = body.get("qrToken");
-        return ResponseEntity.ok(waitingQueueService.enterByQr(qrToken));
+        Long popupId = Long.valueOf(body.get("popupId"));
+        String name = authentication.getName();
+        boolean isAdmin = name != null && name.startsWith("admin:");
+        return ResponseEntity.ok(waitingQueueService.enterByQr(qrToken, popupId, name, isAdmin));
     }
 
     // 주최자/관리자: 수동 취소 (customerId 넘기면 소비자 본인취소 경로로 대신 처리)

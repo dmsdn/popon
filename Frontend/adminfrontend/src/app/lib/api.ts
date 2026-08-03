@@ -439,19 +439,26 @@ export function getQueueBoard(popupId: number | string) {
 }
 
 // 통합 QR 체크인 — 예약 QR·웨이팅 QR 구분 없이 하나로 처리 (서버가 시각 기록)
-export function checkinUnifiedQr(qrToken: string) {
+// 7/31 — popupId를 함께 보낸다.
+// 그전에는 qrToken만 보냈고, 서버는 「이 QR이 내 팝업 것인가」까지만 확인했다
+// (business email 비교). 그래서 **주최자가 같으면 지금 보고 있는 팝업이 아닌
+// 다른 내 팝업의 QR도 입장 처리가 됐다.** 현장에서 팝업을 여러 개 운영하면
+// 옆 매장 손님을 여기서 입장시켜 버리는 셈이라 명단이 어긋난다.
+// popupId를 함께 보내 서버가 「지금 이 팝업의 QR인가」까지 검증하게 한다.
+export function checkinUnifiedQr(qrToken: string, popupId: number | string) {
   return request<UnifiedEntry>("/api/queue/checkin/qr", {
     method: "POST",
-    body: JSON.stringify({ qrToken }),
+    body: JSON.stringify({ qrToken, popupId }),
   });
 }
 
 // 통합 QR 퇴장 처리 (7/23 신규) — 예약·웨이팅 구분 없이 qrToken으로 퇴장 시각(exitedAt) 기록.
 // 이 API로 관제의 체류 인원이 서버 기준으로 계산됨 (기존 localStorage 퇴장 기록 대체)
-export function exitUnifiedQr(qrToken: string) {
+// 퇴장도 같은 이유로 popupId를 함께 보낸다 (7/31)
+export function exitUnifiedQr(qrToken: string, popupId: number | string) {
   return request<UnifiedEntry>("/api/queue/exit/qr", {
     method: "POST",
-    body: JSON.stringify({ qrToken }),
+    body: JSON.stringify({ qrToken, popupId }),
   });
 }
 
@@ -754,10 +761,12 @@ export function markNoShow(id: number) {
 }
 
 // QR 스캔 입장 — 사전예약자의 입장 QR(qrToken)을 스캔해 체크인 (서버가 입장 시각 기록)
-export function checkinByQr(qrToken: string) {
+// popupId는 지금 화면에서 선택 중인 팝업 (7/31 추가). 없으면 서버가 「내 팝업인가」까지만 보므로
+// 팝업을 여러 개 운영하는 주최자가 다른 팝업 손님의 QR도 찍을 수 있다.
+export function checkinByQr(qrToken: string, popupId?: number | string) {
   return request<ReservationDetail>("/api/reservations/checkin/qr", {
     method: "POST",
-    body: JSON.stringify({ qrToken }),
+    body: JSON.stringify(popupId == null ? { qrToken } : { qrToken, popupId }),
   });
 }
 

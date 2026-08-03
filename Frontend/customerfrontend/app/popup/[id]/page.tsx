@@ -31,6 +31,7 @@ import {
   getQueueBoardCount,
   getPopupImages,
   getPopupWishlistCount,
+  logPopupClick,
   type PopupDetail,
   type PopupSlot,
   type PopupLiveStatus,
@@ -116,6 +117,10 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         if (!cancelled) {
           setPopup(data);
           recordPopupView(data.id);
+          // [신규 7/31] 서버에도 클릭을 남긴다 — 주최자 성과 대시보드의 「예약 전환율」 분모다.
+          // 그전에는 아무도 이 API를 부르지 않아 전환율이 늘 이상하게 나왔다(클릭 2·예약 4 → 200%).
+          // 집계용이라 실패는 무시한다 (logPopupClick 안에서 catch).
+          logPopupClick(data.id, customer?.id ?? null);
           // [수정] 백엔드 API 대신 프론트에 직접 넣어둔 지역별 데이터에서 바로 찾아요
           // (data/hotplaces.ts 참고). 관리자용 업로드 화면이 없는 지금 상황에선
           // 이게 훨씬 빨라요 - SQL 안 만지고 코드에 몇 줄 추가하면 바로 반영돼요.
