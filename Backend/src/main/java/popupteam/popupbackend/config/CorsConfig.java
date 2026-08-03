@@ -48,6 +48,7 @@ public class CorsConfig {
                 "http://3.35.16.87.nip.io",
                 "http://seller.3.35.16.87.nip.io",
                 "http://admin.3.35.16.87.nip.io"
+                "http://localhost:5176",   // 현장 웨이팅(staff-checkin)
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
