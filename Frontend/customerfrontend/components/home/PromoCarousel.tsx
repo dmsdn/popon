@@ -66,8 +66,10 @@ export function PromoCarousel() {
     stopOnMouseEnter: true,
   });
 
+  // [수정] 웹에서 카드가 왼쪽 정렬이라 다음 카드만 살짝 보였는데, 가운데 정렬로
+  // 바꿔서 이전/다음 카드가 양쪽에서 살짝 보이도록 했어요.
   const [emblaRef, emblaApi] = useEmblaCarousel(
-    { loop: true, align: "start", containScroll: false },
+    { loop: true, align: "center", containScroll: false },
     [autoplay]
   );
 
@@ -105,9 +107,9 @@ export function PromoCarousel() {
   return (
     <div className="mb-14 mobile:mb-16 min-[700px]:px-4">
       <div className="overflow-hidden" ref={emblaRef}>
-        <div className="flex">
+        <div className="flex gap-4">
           {showRealBanners
-            ? validBanners.map((banner) => {
+            ? validBanners.map((banner, index) => {
                 // [수정] linkUrl이 있어도 "/"나 "http"로 시작하지 않으면 정상적인
                 // 경로가 아닐 가능성이 높아요(예: 앞에 슬래시가 빠진 값). 이런 값을
                 // 그대로 Link에 넘기면 엉뚱한 경로로 붙어서 404로 이어질 수 있어서,
@@ -116,31 +118,51 @@ export function PromoCarousel() {
                   !!banner.linkUrl && (banner.linkUrl.startsWith("/") || banner.linkUrl.startsWith("http"));
                 const href = isValidLink ? normalizeLinkUrl(banner.linkUrl!) : null;
                 // [수정] 600px 미만: 높이 고정 300px(600의 절반) + 좌우 꽉 채움.
-                // 600px 이상: 고정 600×600 정사각형으로 바뀌면서, 옆에 다음 배너가
-                // 살짝 보이도록 카드 사이 여백과 둥근 모서리를 살려요.
+                // 600px 이상: 가운데 정렬로 바뀌면서 양옆 카드가 살짝 보이도록
+                // 폭을 조금 줄이고, 안 보이는 카드는 어둡게 눌러줘요.
                 const sizeClass =
-                  "flex-[0_0_100%] h-[400px] min-[700px]:flex-[0_0_600px] min-[700px]:h-[600px] min-[700px]:mr-4 min-[700px]:rounded-2xl";
+                  "relative flex-[0_0_100%] h-[400px] min-[700px]:flex-[0_0_520px] min-[700px]:h-[520px] min-[700px]:rounded-2xl";
+                const isActive = active === index;
+                const content = (
+                  <>
+                    <ImageWithFallback src={banner.imageUrl} className="w-full h-full object-cover" />
+                    {/* [신규] 가운데(선택된) 카드가 아니면 반투명 검은 막을 덮어서 눌러줘요 */}
+                    <div
+                      className={`absolute inset-0 bg-black transition-opacity duration-300 pointer-events-none ${
+                        isActive ? "opacity-0" : "opacity-50"
+                      }`}
+                    />
+                  </>
+                );
                 return href ? (
                   <Link key={banner.id} href={href} className={`${sizeClass} overflow-hidden bg-gray-50`}>
-                    <ImageWithFallback src={banner.imageUrl} className="w-full h-full object-cover" />
+                    {content}
                   </Link>
                 ) : (
                   <div key={banner.id} className={`${sizeClass} overflow-hidden bg-gray-50`}>
-                    <ImageWithFallback src={banner.imageUrl} className="w-full h-full object-cover" />
+                    {content}
                   </div>
                 );
               })
-            : fallbackCards.map((card) => (
-                <Link
-                  key={card.id}
-                  href={`/popup/${card.id}`}
-                  className="flex-[0_0_100%] h-[400px] min-[700px]:flex-[0_0_600px] min-[700px]:h-[600px] min-[700px]:mr-4 min-[700px]:rounded-2xl overflow-hidden bg-gray-50 flex items-end p-4"
-                >
-                  <span className="text-sm mobile:text-base font-medium text-gray-700 dark:text-gray-300">
-                    {card.name}
-                  </span>
-                </Link>
-              ))}
+            : fallbackCards.map((card, index) => {
+                const isActive = active === index;
+                return (
+                  <Link
+                    key={card.id}
+                    href={`/popup/${card.id}`}
+                    className="relative flex-[0_0_100%] h-[400px] min-[700px]:flex-[0_0_520px] min-[700px]:h-[520px] min-[700px]:rounded-2xl overflow-hidden bg-gray-50 flex items-end p-4"
+                  >
+                    <span className="relative z-10 text-sm mobile:text-base font-medium text-gray-700 dark:text-gray-300">
+                      {card.name}
+                    </span>
+                    <div
+                      className={`absolute inset-0 bg-black transition-opacity duration-300 pointer-events-none ${
+                        isActive ? "opacity-0" : "opacity-50"
+                      }`}
+                    />
+                  </Link>
+                );
+              })}
         </div>
       </div>
 

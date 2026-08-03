@@ -12,6 +12,10 @@ export interface BusinessSession {
   accessToken: string;
   businessId: number;
   companyName: string;
+  // [신규] 계정 탭에 표시할 아이디(이메일)와 브랜드 로고 이미지.
+  // 로그인 응답에 없으면 undefined로 저장되고, 화면에서는 이니셜 아바타로 대체돼요.
+  email?: string;
+  profileImageUrl?: string;
 }
 
 export interface SelectedPopup {
@@ -21,7 +25,15 @@ export interface SelectedPopup {
 
 export function saveSession(session: BusinessSession) {
   sessionStorage.setItem(TOKEN_KEY, session.accessToken);
-  sessionStorage.setItem(BUSINESS_KEY, JSON.stringify({ businessId: session.businessId, companyName: session.companyName }));
+  sessionStorage.setItem(
+    BUSINESS_KEY,
+    JSON.stringify({
+      businessId: session.businessId,
+      companyName: session.companyName,
+      email: session.email,
+      profileImageUrl: session.profileImageUrl,
+    })
+  );
 }
 
 export function getToken(): string | null {
@@ -29,7 +41,12 @@ export function getToken(): string | null {
   return sessionStorage.getItem(TOKEN_KEY);
 }
 
-export function getBusinessInfo(): { businessId: number; companyName: string } | null {
+export function getBusinessInfo(): {
+  businessId: number;
+  companyName: string;
+  email?: string;
+  profileImageUrl?: string;
+} | null {
   if (typeof window === "undefined") return null;
   const raw = sessionStorage.getItem(BUSINESS_KEY);
   return raw ? JSON.parse(raw) : null;

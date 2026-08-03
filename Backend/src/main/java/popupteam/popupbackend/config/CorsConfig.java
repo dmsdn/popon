@@ -41,6 +41,7 @@ public class CorsConfig {
                 "http://localhost:5173",   // 소비자 (customerfrontend)
                 "http://localhost:5174",   // 주최자 (popupfrontend)
                 "http://localhost:5175",   // 관리자 (adminfrontend)
+                "http://localhost:5176",   // 현장 웨이팅
                 // ── 배포 (EC2 3.35.16.87 · nip.io + Let's Encrypt) ──
                 "https://3.35.16.87.nip.io",          // 소비자
                 "https://seller.3.35.16.87.nip.io",   // 주최자

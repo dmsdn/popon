@@ -9,7 +9,7 @@ import { BackendStatusBanner } from "@/components/layout/BackendStatusBanner";
 import { VisitLogger } from "@/components/layout/VisitLogger";
 
 export const metadata: Metadata = {
-  title: "팝온 [POP-ON]",
+  title: "팝온",
   description: "지금 뜨는 팝업스토어, 팝온에서 확인하세요",
   icons: {
     // [신규] 사용자가 LOGO.svg를 정사각형(둥근 모서리) 아이콘으로 직접 만들어서

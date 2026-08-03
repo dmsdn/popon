@@ -38,6 +38,13 @@ public class JwtUtil {
       // id 값이 작으면 JJWT/Jackson이 Integer로 역직렬화해버려서 claims.get("id", Long.class)가
       // RequiredTypeException을 던짐. Number로 받아서 안전하게 long으로 변환.
       Number id = claims.get("id", Number.class);
+      // [수정] "id" 클레임이 없는 토큰(예: 다른 도메인의 business 토큰, 가입대기 토큰)이 들어오면
+      // 예전엔 여기서 NPE가 나서 그대로 500으로 튀었음. IllegalArgumentException으로 바꿔서
+      // 호출부(CustomerAuthCheckFilter 등)의 기존 catch (JwtException | IllegalArgumentException)
+      // 블록에서 정상적으로 처리되게 함.
+      if (id == null) {
+         throw new IllegalArgumentException("토큰에 customer id(\"id\") 클레임이 없습니다.");
+      }
       return id.longValue();
    }
 
