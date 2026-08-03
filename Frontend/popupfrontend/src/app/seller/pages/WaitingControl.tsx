@@ -165,6 +165,26 @@ export default function WaitingControl() {
   // 예약 상세(입장 시각 등)를 보드 행에 붙이기 위한 맵
   const rosterById = useMemo(() => Object.fromEntries(roster.map((r) => [r.id, r])), [roster]);
 
+  // 현장 웨이팅이 「어느 슬롯 손님인가」를 등록 시각으로 정한다 (8/3).
+  //
+  // 예약은 refId로 slotId를 정확히 잇지만, 웨이팅에는 slotId가 아예 없다.
+  // 대신 UnifiedEntry.joinedAt 이 **등록한 순간**이므로(예약과 달리 여기서는 의미가 맞다),
+  // 그 시각을 품는 슬롯을 찾으면 된다. 접수대에서 줄 선 시점이 곧 그 회차다.
+  //
+  // 슬롯 사이 빈 시간이나 운영 시간 밖에 등록한 사람은 어느 슬롯에도 안 들어간다 →
+  // null 로 남고, 아래 필터에서 「미지정」으로 따로 처리한다 (사라지면 안 되므로).
+  const slotIdAt = (iso: string | null): number | null => {
+    if (!iso) return null;
+    const t = new Date(iso).getTime();
+    if (Number.isNaN(t)) return null;
+    const hit = slots.find((s) => {
+      const start = new Date(`${s.slotDate}T${s.startTime}`).getTime();
+      const end = new Date(`${s.slotDate}T${s.endTime}`).getTime();
+      return t >= start && t < end;
+    });
+    return hit?.id ?? null;
+  };
+
   const rowEnd = (slotId: number | null): Date | null => {
     if (slotId && slotMap[slotId]) {
       const s = slotMap[slotId];
@@ -195,7 +215,9 @@ export default function WaitingControl() {
       .map((e) => {
         // 예약 행은 refId(예약 id)로 상세를 찾아 그 slotId를 쓴다 (7/31).
         // 시각 문자열로 맞춰 보던 옛 방식은 joinedAt이 예약 생성 시각이라 절대 안 맞았다.
-        const slotId = e.source === "RESERVATION" ? (rosterById[e.refId]?.slotId ?? null) : null;
+        // 웨이팅은 등록 시각(joinedAt)이 속한 슬롯으로 잇는다 (8/3 — slotIdAt 주석 참고)
+        const slotId =
+          e.source === "RESERVATION" ? (rosterById[e.refId]?.slotId ?? null) : slotIdAt(e.joinedAt);
         return {
           key: `${e.source}-${e.refId}`,
           source: e.source,
@@ -208,12 +230,22 @@ export default function WaitingControl() {
           noShow: e.entryStatus === "NO_SHOW" || e.entryStatus === "CANCELLED",
         };
       });
-  }, [board, rosterById, mode]);
+    // slots 추가 (8/3) — 웨이팅 slotId를 slotIdAt(slots)으로 계산하므로,
+    // 슬롯 목록이 늦게 도착하면 이 값이 다시 계산돼야 한다. 빠뜨리면 첫 로드에서
+    // 웨이팅이 전부 「미지정」으로 굳는다.
+  }, [board, rosterById, mode, slots]);
 
-  // 현장 웨이팅은 "지금 대기 중"이므로 슬롯과 무관하게 항상 표시.
-  // 슬롯 선택은 사전예약 편입분에만 적용 (7/25 피드백 — 수동 추가분이 특정 슬롯 뷰에서 사라지던 문제 해결)
+  // 슬롯 필터 (8/3 개정)
+  //
+  // 그전에는 현장 웨이팅을 슬롯과 무관하게 **항상** 보여 줬다. 7/25에 「수동 추가한
+  // 사람이 특정 슬롯 뷰에서 사라진다」는 피드백을 그렇게 막았던 것인데, 부작용이 컸다 —
+  // 11시에 줄 선 손님이 14시 회차를 봐도 계속 남아 있어서 **어느 회차 손님인지 알 수 없었다.**
+  //
+  // 이제 웨이팅도 등록 시각으로 슬롯을 매기므로 자기 회차에만 나온다.
+  // 다만 슬롯을 못 매긴 사람(운영 시간 밖·슬롯 사이 공백에 등록)은 **어디에도 안 나오면 안 되므로**
+  // 항상 함께 보여 준다. 7/25 피드백이 진짜로 막으려던 것이 이 경우다.
   const filteredRows = queueRows.filter(
-    (row) => row.source === "ONSITE_WAITING" || row.slotId === slotFilter,
+    (row) => row.slotId === slotFilter || (row.source === "ONSITE_WAITING" && row.slotId === null),
   );
 
   // 셀렉트에는 오늘 슬롯만 노출 (전 기간 슬롯 수백 개를 다 보여줄 이유가 없음 — 7/25 피드백).
