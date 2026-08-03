@@ -1,3 +1,6 @@
+// components/ui/StatusBadge.tsx
+// 팝업 상태(예정/진행중/종료) 배지.
+
 import type { PopupItem } from "@/data/mockPopups";
 
 const STATUS_STYLE: Record<NonNullable<PopupItem["status"]>, string> = {

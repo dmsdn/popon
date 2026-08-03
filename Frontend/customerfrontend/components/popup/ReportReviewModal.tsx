@@ -1,5 +1,7 @@
 "use client";
 
+// 후기 신고 사유를 선택하는 모달.
+
 import { createPortal } from "react-dom";
 import { useState } from "react";
 import { createReport, type ReportReason } from "@/lib/api/reports";

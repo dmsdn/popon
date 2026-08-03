@@ -1,5 +1,7 @@
 "use client";
 
+// 홈 화면 "실시간 후기 모음"용 후기 카드 - 팝업 썸네일과 후기 내용을 같이 보여줘요.
+
 import { useState } from "react";
 import Link from "next/link";
 import { ReviewItem } from "@/data/mockPopups";

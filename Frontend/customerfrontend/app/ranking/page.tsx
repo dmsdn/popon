@@ -1,5 +1,7 @@
 "use client";
 
+// 인기 추천 팝업 더보기 페이지 - 지역별 탭으로 진행중인 팝업을 볼 수 있어요.
+
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -77,14 +79,12 @@ function RankingListInner() {
           aria-label="뒤로가기"
           className="text-lg text-gray-500"
         >
-          <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
+          <img src="/icons/ui/back_arrow.svg" alt="" width={24} height={24} className="dark:invert" />
         </button>
+        <h1 className="text-lg font-bold">인기 추천 팝업</h1>
       </div>
 
-      <div className="px-4 mobile:px-8 py-4">
-        <h1 className="text-lg font-bold mb-4">인기 추천 팝업</h1>
-
-        {/* 키워드(지역) 필터 - 상단 고정 */}
+      <div className="px-4 mobile:px-8 py-4">        {/* 키워드(지역) 필터 - 상단 고정 */}
         <div className="flex gap-2 mb-5 overflow-x-auto scrollbar-hide">
           {keywords.map((k) => (
             <button
@@ -93,7 +93,7 @@ function RankingListInner() {
               onClick={() => setKeyword(k)}
               className={`flex-none text-sm px-3 py-1.5 rounded-full border ${
                 keyword === k
-                  ? "border-gray-900 bg-gray-900 text-white font-medium"
+                  ? "border-gray-900 dark:border-white text-gray-900 dark:text-white font-medium"
                   : "border-gray-200 dark:border-[#282B32] text-gray-500"
               }`}
             >
@@ -114,7 +114,11 @@ function RankingListInner() {
                 href={`/popup/${item.id}`}
                 className="flex items-center gap-4 py-4 border-b border-gray-50 dark:border-[#282B32]"
               >
-                <span className="w-6 text-center text-sm font-bold text-gray-900 dark:text-white flex-none">
+                <span
+                  className={`w-6 text-center font-bold flex-none ${
+                    index < 5 ? "text-base text-gray-900 dark:text-white" : "text-sm text-gray-400"
+                  }`}
+                >
                   {index + 1}
                 </span>
                 <div className="w-24 h-24 flex-none rounded-lg bg-gray-100 dark:bg-[#282B32] overflow-hidden flex items-center justify-center text-sm text-gray-400">

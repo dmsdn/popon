@@ -1,5 +1,7 @@
 "use client";
 
+// 홈 화면 최상단 프로모션 배너 캐러셀 - 자동 슬라이드, 반응형(700px 기준 높이 전환).
+
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import useEmblaCarousel from "embla-carousel-react";

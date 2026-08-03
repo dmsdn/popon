@@ -1,5 +1,7 @@
 "use client";
 
+// 마이페이지 - 찜/웨이팅·예약/쿠폰함/다녀간 팝업/알림 설정/화면 설정을 모아둔 메인 허브. 이 프로젝트에서 가장 큰 파일이에요.
+
 import { Suspense, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -30,7 +32,7 @@ import { LoadingState, EmptyState } from "@/components/ui/EmptyState";
 type MenuKey =
   | "내 정보"
   | "찜 목록"
-  | "예약 / 웨이팅"
+  | "웨이팅 / 예약"
   | "쿠폰함"
   | "다녀간 팝업"
   | "알림 설정"
@@ -41,7 +43,7 @@ type MenuKey =
   | "약관";
 
 const PUBLIC_MENU: MenuKey[] = ["공지사항", "1:1 문의", "Q&A", "약관"];
-const PRIVATE_MENU: MenuKey[] = ["찜 목록", "예약 / 웨이팅", "쿠폰함", "다녀간 팝업", "알림 설정", "화면 설정"];
+const PRIVATE_MENU: MenuKey[] = ["찜 목록", "웨이팅 / 예약", "쿠폰함", "다녀간 팝업", "알림 설정", "화면 설정"];
 const SIDEBAR_MENU: MenuKey[] = [...PRIVATE_MENU, ...PUBLIC_MENU];
 
 const PROVIDER_LABEL = {
@@ -52,7 +54,7 @@ const PROVIDER_LABEL = {
 
 const FAQS = [
   { q: "웨이팅은 어떻게 신청하나요?", a: "팝업 상세페이지의 '웨이팅' 버튼에서 카카오 로그인으로 바로 신청할 수 있어요." },
-  { q: "예약 취소는 어디서 하나요?", a: "마이페이지 > 예약 / 웨이팅에서 취소할 예약을 선택해 취소할 수 있어요." },
+  { q: "예약 취소는 어디서 하나요?", a: "마이페이지 > 웨이팅 / 예약에서 취소할 예약을 선택해 취소할 수 있어요." },
   { q: "쿠폰은 어떻게 받나요?", a: "일부 팝업은 사전 예약/방문 인증 시 쿠폰함에 자동으로 지급돼요." },
 ];
 
@@ -187,7 +189,7 @@ function MyPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wishlistIds]);
 
-  // 예약 / 웨이팅
+  // 웨이팅 / 예약
   const [myReservations, setMyReservations] = useState<Reservation[] | null>(null);
   const [myWaitings, setMyWaitings] = useState<Waiting[]>([]);
   const [reservationPopupTitles, setReservationPopupTitles] = useState<Record<number, string>>({});
@@ -399,13 +401,25 @@ function MyPageContent() {
       router.push("/login");
       return;
     }
-    // [수정] 로컬 state만 바꾸던 것에서 실제 URL(히스토리 엔트리)을 남기도록
-    // 바꿨어요 - 그래야 뒤로가기를 눌렀을 때 브라우저가 "이전 화면(목록)"으로
-    // 정확히 되돌아갈 수 있어요.
-    router.push(`/mypage?menu=${encodeURIComponent(menu)}`);
+    // [수정] 탭을 여러 개 옮겨다니면 push()가 매번 히스토리를 쌓아서, 뒤로가기를
+    // 눌렀을 때 "마이페이지 진입 전"이 아니라 "직전에 봤던 탭들"을 하나씩
+    // 거쳐가는 문제가 있었어요. replace()로 바꿔서 마이페이지 안에서 탭을
+    // 아무리 옮겨다녀도 히스토리 엔트리가 하나만 남게 했어요 - 뒤로가기 한 번에
+    // 바로 마이페이지 진입 전 화면으로 나가요.
+    setActiveMenu(menu);
+    setMobileView("detail");
+    router.replace(`/mypage?menu=${encodeURIComponent(menu)}`);
   };
 
-  const handleBackToList = () => router.back();
+  // [수정] 목록↔상세 전환은 이제 URL/히스토리와 무관한 순수 로컬 상태예요 -
+  // router.back()을 쓰면 (탭 전환이 이제 replace라) 마이페이지 밖으로
+  // 나가버려서, 그냥 상태만 되돌려요.
+  const handleBackToList = () => {
+    setMobileView("list");
+    // URL의 menu 파라미터도 같이 지워요 - 안 지우면 목록 화면에서 새로고침했을 때
+    // 여전히 남아있는 ?menu=X 때문에 다시 상세 화면으로 돌아가버려요.
+    router.replace("/mypage");
+  };
 
   const handleConfirmLogout = () => {
     logout();
@@ -543,7 +557,7 @@ function MyPageContent() {
           aria-label="뒤로가기"
           className="text-lg text-gray-500"
         >
-          <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
+          <img src="/icons/ui/back_arrow.svg" alt="" width={24} height={24} className="dark:invert" />
         </button>
         <h1 className="text-lg font-bold">내 정보</h1>
       </div>
@@ -571,27 +585,53 @@ function MyPageContent() {
               {/* [수정] 예전엔 웨이팅/예약이 합쳐진 카드 하나만 있어서 찜한 개수는
                   아예 안 보였어요. 찜 / 웨이팅·예약을 각각 개수와 함께 보여주는
                   카드 2개로 나눴어요. 개수가 0이어도 카드 자체는 보여주되(눌러서
-                  둘러볼 수 있게), "N개"는 1개 이상일 때만 붙여요. */}
-              <div className="grid grid-cols-2 gap-3 mx-4 mb-4">
+                  둘러볼 수 있게), "N개"는 1개 이상일 때만 붙여요.
+                  [수정] 웹(넓은 화면)에서는 카드 그리드 대신, 라벨은 왼쪽/개수는
+                  오른쪽에 붙는 한 줄짜리 리스트로 따로 보여줘요. */}
+              {/* [수정] 참고 이미지처럼 박스 하나 안에 세로 구분선(|)으로 나눈
+                  두 칸으로 합쳤어요. 숫자는 가운데 정렬, "개"는 뺐어요. */}
+              <div className="mobile:hidden grid grid-cols-2 rounded-xl bg-gray-100 dark:bg-[#282B32] mx-4 mb-4 divide-x divide-gray-200 dark:divide-[#17181a]">
                 <button
                   type="button"
                   onClick={() => handleSelectMenu("찜 목록")}
-                  className="flex flex-col items-start rounded-xl border border-gray-200 dark:border-[#282B32] px-4 py-3 text-left"
+                  className="flex flex-col items-center py-4"
                 >
-                  <span className="text-sm text-gray-400 mb-1">찜</span>
-                  <span className="text-sm font-semibold text-gray-800">
-                    {wishlistIds.size > 0 ? `${wishlistIds.size}개` : "둘러보기"}
+                  {/* [수정] text-gray-800에 dark: 짝이 없어서 다크모드에서 숫자가
+                      거의 안 보였어요. 라벨보다 눈에 띄도록 크고 굵게, 다크모드에서도
+                      확실히 밝게 나오도록 고쳤어요. */}
+                  <span className="text-3xl font-semibold text-gray-900 dark:text-white">
+                    {wishlistIds.size > 0 ? wishlistIds.size : "둘러보기"}
                   </span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400 mt-1">찜</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleSelectMenu("예약 / 웨이팅")}
-                  className="flex flex-col items-start rounded-xl border border-gray-200 dark:border-[#282B32] px-4 py-3 text-left"
+                  onClick={() => handleSelectMenu("웨이팅 / 예약")}
+                  className="flex flex-col items-center py-4"
                 >
-                  <span className="text-sm text-gray-400 mb-1">웨이팅 · 예약</span>
-                  <span className="text-sm font-semibold text-gray-800">
-                    {activeCount > 0 ? `${activeCount}개` : "둘러보기"}
+                  <span className="text-3xl font-semibold text-gray-900 dark:text-white">
+                    {activeCount > 0 ? activeCount : "둘러보기"}
                   </span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400 mt-1">웨이팅 · 예약</span>
+                </button>
+              </div>
+
+              <div className="hidden mobile:flex flex-col gap-1 px-6 mb-4">
+                <button
+                  type="button"
+                  onClick={() => handleSelectMenu("찜 목록")}
+                  className="flex items-center justify-between rounded-lg px-2 py-2 text-left bg-gray-50 dark:bg-[#282B32]"
+                >
+                  <span className="text-sm text-gray-700 dark:text-gray-300">찜</span>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{wishlistIds.size}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSelectMenu("웨이팅 / 예약")}
+                  className="flex items-center justify-between rounded-lg px-2 py-2 text-left bg-gray-50 dark:bg-[#282B32]"
+                >
+                  <span className="text-sm text-gray-700 dark:text-gray-300">웨이팅 · 예약</span>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{activeCount}</span>
                 </button>
               </div>
             </>
@@ -616,7 +656,9 @@ function MyPageContent() {
                 type="button"
                 onClick={() => handleSelectMenu(menu)}
                 className={`w-full text-left px-4 mobile:px-6 py-3.5 text-sm ${
-                  activeMenu === menu ? "font-semibold text-gray-900 dark:text-white bg-gray-50 dark:bg-[#282B32]" : "text-gray-700 dark:text-gray-300"
+                  activeMenu === menu && mobileView === "detail"
+                    ? "font-semibold text-gray-900 dark:text-white bg-gray-50 dark:bg-[#282B32]"
+                    : "text-gray-700 dark:text-gray-300 mobile:hover:bg-gray-50 dark:mobile:hover:bg-[#282B32]"
                 }`}
               >
                 {menu}
@@ -640,7 +682,7 @@ function MyPageContent() {
             onClick={handleBackToList}
             className="mobile:hidden flex items-center gap-2 mb-4"
           >
-            <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
+            <img src="/icons/ui/back_arrow.svg" alt="" width={24} height={24} className="dark:invert" />
             <span className="text-lg font-bold">{activeMenu}</span>
           </button>
 
@@ -665,15 +707,15 @@ function MyPageContent() {
                 <span className="text-sm text-gray-700 dark:text-gray-300">연결된 로그인</span>
                 <span
                   className={`flex items-center gap-1.5 text-sm font-medium rounded-full px-3 py-1.5 ${
-                    customer.provider === "KAKAO" ? "bg-[#FEE500]" : "bg-gray-100 dark:bg-[#282B32] text-gray-700 dark:text-gray-300"
+                    customer.provider === "KAKAO" ? "bg-[#FEE500] text-gray-900" : "bg-gray-100 dark:bg-[#282B32] text-gray-700 dark:text-gray-300"
                   }`}
                 >
                   {customer.provider === "KAKAO" ? (
-                    <img src="/Icon/kakao.svg" alt="Kakao" className="w-4 h-4" />
+                    <img src="/icons/ui/kakao.svg" alt="Kakao" className="w-4 h-4" />
                   ) : customer.provider === "GOOGLE" ? (
-                    <img src="/Icon/google.svg" alt="Google" className="w-4 h-4" />
+                    <img src="/icons/ui/google.svg" alt="Google" className="w-4 h-4" />
                   ) : (
-                    <img src="/Icon/admin.svg" alt="Admin" className="w-4 h-4" />
+                    <img src="/icons/ui/admin.svg" alt="Admin" className="w-4 h-4" />
                   )}{" "}
                   {PROVIDER_LABEL[customer.provider]}
                 </span>
@@ -808,7 +850,7 @@ function MyPageContent() {
               </div>
             ))}
 
-          {activeMenu === "예약 / 웨이팅" && (
+          {activeMenu === "웨이팅 / 예약" && (
             <div className="flex flex-col gap-10">
               <section>
                 <h2 className="text-sm font-semibold mb-3">웨이팅</h2>
@@ -842,7 +884,7 @@ function MyPageContent() {
                             </p>
                           </div>
                           <div className="text-right flex-none">
-                            <span className="text-2xl font-bold">{w.teamNumber}</span>
+                            <span className="text-3xl font-semibold">{w.teamNumber}</span>
                             <span className="text-sm text-gray-500 ml-0.5">번째</span>
                           </div>
                         </div>

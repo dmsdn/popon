@@ -1,5 +1,7 @@
 "use client";
 
+// 팝업 상세페이지의 개별 후기 카드 - 별점(또는 방문 미인증 댓글), 사진, 500px 확장/스크롤, 수정·삭제 버튼.
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ReviewItem } from "@/data/mockPopups";

@@ -1,5 +1,7 @@
 "use client";
 
+// 개발용 임시 로그인 페이지 - 실 로그인 없이 테스트 계정으로 바로 들어갈 수 있어요.
+
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -51,7 +53,7 @@ export default function DevLoginPage() {
   return (
     <main className="w-full max-w-sm mx-auto flex flex-col min-h-screen px-6 py-10">
       <Link href="/login" className="self-start text-sm text-gray-500 mb-6">
-        <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
+        <img src="/icons/ui/back_arrow.svg" alt="" width={24} height={24} className="dark:invert" />
           <span>뒤로</span>
       </Link>
 

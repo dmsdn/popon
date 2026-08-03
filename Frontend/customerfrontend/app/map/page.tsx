@@ -1,5 +1,7 @@
 "use client";
 
+// 지도로 팝업 찾기 페이지 - 네이버 지도에 마커를 찍고, 선택한 팝업 카드를 하단에 보여줘요.
+
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
@@ -135,7 +137,7 @@ export default function MapPage() {
     targets.forEach(({ popup, active }) => {
       const position = new window.naver.maps.LatLng(popup.latitude, popup.longitude);
       const isSelected = selected?.id === popup.id;
-      const dotColor = active ? "#111827" : "#9ca3af";
+      const dotColor = active ? "#5bce41" : "#9ca3af";
       const label = popup.title.length > 8 ? `${popup.title.slice(0, 8)}…` : popup.title;
 
       const marker = new window.naver.maps.Marker({
@@ -177,7 +179,7 @@ export default function MapPage() {
   if (!clientId) {
     return (
       <main className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
-        <img src="/Icon/pin.svg" alt="" className="text-gray-300 mb-3" width={40} height={40}  />
+        <img src="/icons/ui/pin.svg" alt="" className="text-gray-300 mb-3 dark:invert" width={40} height={40} />
         <p className="text-base font-medium text-gray-700 dark:text-gray-300 mb-2">지도를 표시할 수 없어요</p>
         <p className="text-base text-gray-400 leading-relaxed">
           네이버 지도 API 키(NEXT_PUBLIC_NAVER_MAP_CLIENT_ID)가 설정되어 있지 않아요.
@@ -191,7 +193,7 @@ export default function MapPage() {
   if (sdkAuthFailed) {
     return (
       <main className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
-        <img src="/Icon/pin.svg" alt="" className="text-gray-300 mb-3" width={40} height={40}  />
+        <img src="/icons/ui/pin.svg" alt="" className="text-gray-300 mb-3 dark:invert" width={40} height={40} />
         <p className="text-base font-medium text-gray-700 dark:text-gray-300 mb-2">지도 인증에 실패했어요</p>
         <p className="text-base text-gray-400 leading-relaxed">
           네이버 클라우드 플랫폼 콘솔에 등록된 서비스 URL과
@@ -218,7 +220,7 @@ export default function MapPage() {
       {/* 상단 바 */}
       <div className="absolute top-0 left-0 right-0 flex items-center gap-2 px-4 py-3 bg-white/95 dark:bg-[#282B32]/95">
         <button type="button" onClick={() => router.back()} aria-label="뒤로가기" className="flex-none text-gray-700 dark:text-gray-300">
-          <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
+          <img src="/icons/ui/back_arrow.svg" alt="" width={24} height={24} className="dark:invert" />
         </button>
         <input
           type="text"
@@ -281,7 +283,7 @@ export default function MapPage() {
                     )}
                     {selectedWishlistCount !== null && (
                       <span className="flex items-center gap-1 text-base text-gray-500">
-                        <img src="/Icon/heart.svg" alt="" width={14} height={14} />
+                        <img src="/icons/ui/heart.svg" alt="" width={14} height={14} />
                         {selectedWishlistCount}
                       </span>
                     )}

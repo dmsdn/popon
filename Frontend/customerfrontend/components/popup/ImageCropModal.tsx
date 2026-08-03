@@ -1,5 +1,7 @@
 "use client";
 
+// 프로필 사진 등 업로드 시 원형으로 잘라내는 크롭 모달.
+
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 

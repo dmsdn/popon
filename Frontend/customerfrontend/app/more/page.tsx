@@ -1,9 +1,12 @@
 "use client";
 
+// "바로가기" 페이지 - 카테고리별/지역별 바로가기 목록 (하단바의 바로가기 탭).
+
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Footer } from "@/components/layout/Footer";
+import { BottomTabBar } from "@/components/layout/BottomTabBar";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { getKeywords, getMyInterests, type Keyword } from "@/lib/api/customer";
 import { getRegions, getMyRegions, type Region } from "@/lib/api/regions";
@@ -68,9 +71,9 @@ export default function MorePage() {
           aria-label="뒤로가기"
           className="text-lg text-gray-500"
         >
-          <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
+          <img src="/icons/ui/back_arrow.svg" alt="" width={24} height={24} className="dark:invert" />
         </button>
-        <h1 className="text-lg font-bold">더보기</h1>
+        <h1 className="text-lg font-bold">바로가기</h1>
       </div>
 
       {/* 내 계정 정보 */}
@@ -149,6 +152,9 @@ export default function MorePage() {
       </div>
 
       <Footer />
+      <div className="block mobile:hidden">
+        <BottomTabBar />
+      </div>
     </main>
   );
 }

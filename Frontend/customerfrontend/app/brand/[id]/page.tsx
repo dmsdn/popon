@@ -1,5 +1,7 @@
 "use client";
 
+// 브랜드(주최사) 상세 페이지 - 이 브랜드가 연 팝업 목록, 브랜드 소개를 보여줘요.
+
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -86,7 +88,7 @@ export default function BrandDetailPage({
           onClick={() => router.back()}
           className="text-sm text-gray-500"
         >
-          <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
+          <img src="/icons/ui/back_arrow.svg" alt="" width={24} height={24} className="dark:invert" />
         </button>
       </div>
 
@@ -104,7 +106,7 @@ export default function BrandDetailPage({
           {mockBrand && (
             <div className="flex flex-col items-center flex-none pt-1">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/Icon/heart_N.svg" alt="" width={20} height={20} />
+              <img src="/icons/ui/heart_N.svg" alt="" width={20} height={20} />
               <span className="text-sm text-gray-500 mt-1">{mockBrand.likeCount}</span>
             </div>
           )}
