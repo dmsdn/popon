@@ -117,3 +117,9 @@ body {
 .animate-float {
   animation: gentle-float 2.6s ease-in-out infinite;
 }
+
+/* [신규] 텍스트 드래그할 때 브라우저 기본 파란색 대신, 쓰고 있는 회색 톤으로 */
+::selection {
+  background-color: #9ca3af;
+  color: #17181a;
+}

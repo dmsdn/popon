@@ -163,6 +163,9 @@ const PRIVACY_CONTENT = `애지중지(이하 "회사")는 이용자의 개인정
 interface BoardResponse {
   popupId: number;
   totalWaitingTeams: number;
+  // [신규] 정확한 대기시간 계산에는 "대기 팀 수"가 아니라 "대기 인원 수"가
+  // 필요해요(정원은 사람 수 기준이라). 각 대기 항목의 인원수를 더해서 써요.
+  waitingList: { partySize: number }[];
 }
 
 function CheckinPageInner() {
@@ -171,9 +174,19 @@ function CheckinPageInner() {
   const popupId = searchParams.get("popupId");
 
   const [popupTitle, setPopupTitle] = useState<string | null>(null);
+  const [avgExperienceMinutes, setAvgExperienceMinutes] = useState<number | null>(null);
+  const [maxPartySize, setMaxPartySize] = useState<number | null>(null);
+  // [신규] 팀당 최대 인원(maxPartySizePerTeam)과는 다른 개념이에요 - capacity는
+  // "동시에 공간에 들어갈 수 있는 전체 인원"이에요. 대기시간 계산엔 이게 필요해요.
+  const [capacity, setCapacity] = useState<number | null>(null);
   const [totalWaitingTeams, setTotalWaitingTeams] = useState<number | null>(null);
+  const [totalWaitingPeople, setTotalWaitingPeople] = useState<number | null>(null);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  // [신규] 웨이팅 인원 - 예전엔 화면에 아예 없고 항상 1명으로 고정 전송하고
+  // 있었어요. 연락처를 입력하기 전에 먼저 인원을 크게 고르는 단계를 추가했어요.
+  const [partySize, setPartySize] = useState(1);
+  const [step, setStep] = useState<"party" | "contact">("party");
   const [agreed, setAgreed] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -190,7 +203,11 @@ function CheckinPageInner() {
       fetch(`/api/popups/${popupId}/waiting/board`)
         .then((res) => res.json())
         .then((data: BoardResponse) => {
-          if (!cancelled) setTotalWaitingTeams(data.totalWaitingTeams);
+          if (!cancelled) {
+            setTotalWaitingTeams(data.totalWaitingTeams);
+            const people = (data.waitingList ?? []).reduce((sum, w) => sum + (w.partySize ?? 0), 0);
+            setTotalWaitingPeople(people);
+          }
         })
         .catch((err) => console.error("현황판 조회 실패", err));
     };
@@ -198,7 +215,18 @@ function CheckinPageInner() {
     fetch(`/api/popups/${popupId}`)
       .then((res) => res.json())
       .then((data) => {
-        if (!cancelled) setPopupTitle(data.title ?? null);
+        if (!cancelled) {
+          setPopupTitle(data.title ?? null);
+          // [수정] 소비자 앱이 실제로 쓰는 대기시간 공식(PopupWaitTimeService)을
+          // 확인해보니, 단순히 "팀 수 × 체류시간"이 아니라 정원(capacity) 기준
+          // 배치(batch) 회전 계산식이었어요:
+          //   대기시간(분) = 체류시간 × (⌈대기인원/정원⌉ - 1) / 2
+          // 팀 수가 아니라 "인원 수" 기준이고, 한 번에 여러 팀이 동시에 들어갈 수
+          // 있다는 걸 반영해요. capacity도 같이 가져와서 이 공식을 그대로 써요.
+          setAvgExperienceMinutes(data.avgExperienceMinutes ?? null);
+          setMaxPartySize(data.maxPartySizePerTeam ?? null);
+          setCapacity(data.capacity ?? null);
+        }
       })
       .catch((err) => console.error("팝업 정보 조회 실패", err));
 
@@ -236,7 +264,7 @@ function CheckinPageInner() {
           name: "현장고객",
           email: emailToSend,
           phoneNumber: phoneToSend,
-          partySize: 1,
+          partySize,
         }),
       });
       if (!res.ok) {
@@ -256,6 +284,8 @@ function CheckinPageInner() {
   const resetForm = () => {
     setEmail("");
     setPhone("");
+    setPartySize(1);
+    setStep("party");
     setAgreed(false);
     setShowTerms(false);
     setShowConfirm(false);
@@ -280,39 +310,108 @@ function CheckinPageInner() {
   }
 
   return (
-    <main className="h-full flex relative">
-      {/* [수정] 로고를 화면 최상단 좌측에 고정, 앱에서 쓰는 실제 SVG 파일로 교체 */}
+    <main className="h-full flex flex-col landscape:flex-row relative overflow-y-auto landscape:overflow-hidden scrollbar-hide">
+      {/* [수정] 로고를 화면 최상단 좌측에 고정, 앱에서 쓰는 실제 SVG 파일로 교체.
+          세로 모드에서는 현황 섹션과 겹치지 않도록 살짝 작고 위쪽에 맞춰요. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/icons/LOGO.svg" alt="POP-ON" className="absolute top-6 left-6 w-24 h-auto z-10" />
+      <img
+        src="/icons/LOGO_Dark.svg"
+        alt="POP-ON"
+        className="absolute top-4 left-4 w-16 h-auto z-10 landscape:top-6 landscape:left-6 landscape:w-24"
+      />
 
-      {/* 왼쪽: 현황 */}
-      <section className="w-[38%] h-full flex flex-col items-center justify-center gap-6 bg-card px-8">
+      {/* 왼쪽(가로)/위(세로): 현황 */}
+      <section className="w-full landscape:w-[38%] landscape:h-full flex flex-col items-center justify-center gap-6 bg-card px-8 py-10 pt-16 landscape:py-8 landscape:pt-8 flex-none">
         {/* [수정] 팝업 이름 한 단계 굵게 (font-normal → font-semibold) */}
-        {popupTitle && <p className="text-base font-semibold text-gray-300 text-center">{popupTitle}</p>}
+        {popupTitle && <p className="text-xl font-semibold text-gray-300 text-center">{popupTitle}</p>}
 
         <div className="flex flex-col items-center gap-1 mt-4">
           <span className="text-sm text-gray-400">현재 대기 팀</span>
           {/* [수정] 굵기를 extrabold(800)에서 중간 정도(semibold, 600)로,
               크기는 더 키우고, "팀"을 아래 대신 숫자 옆에 붙였어요. */}
           <span className="flex items-baseline gap-2">
-            <span className="text-8xl font-semibold text-point">
+            <span className="text-7xl landscape:text-8xl font-semibold text-point">
               {totalWaitingTeams === null ? "-" : totalWaitingTeams}
             </span>
             <span className="text-xl text-gray-400">팀</span>
           </span>
         </div>
-        {/* [참고] 예상 대기시간은 별도 계산 API 없이는 정확한 값을 못 띄워서
-            뺐어요. 요청하신 대로 "못 띄우면 빼기"로 처리했어요. */}
+
+        {/* [수정] 실제 백엔드 공식(정원 기준 배치 회전)으로 계산해요:
+            대기시간(분) = 체류시간 × (⌈대기인원/정원⌉ - 1) / 2
+            정원(capacity) 정보가 없는 팝업은 정확한 계산이 안 돼서 안 보여줘요. */}
+        {totalWaitingPeople !== null && avgExperienceMinutes != null && capacity != null && capacity > 0 && (
+          <div className="flex items-baseline gap-2 mt-2">
+            <span className="text-sm text-gray-400">예상 대기시간</span>
+            <span className="text-3xl font-semibold text-point">
+              {totalWaitingPeople <= capacity
+                ? 0
+                : Math.round((avgExperienceMinutes * (Math.ceil(totalWaitingPeople / capacity) - 1)) / 2)}
+            </span>
+            <span className="text-base text-gray-400">분</span>
+          </div>
+        )}
       </section>
 
-      {/* 오른쪽: 등록 폼 */}
-      <section className="flex-1 h-full flex flex-col items-center justify-center px-12 gap-6">
+      {/* 오른쪽(가로)/아래(세로): 등록 폼 */}
+      <section className="flex-1 w-full landscape:h-full flex flex-col items-center justify-center px-8 landscape:px-12 py-10 landscape:py-0 gap-6">
+        {step === "party" ? (
+          // [신규] 인원 선택 단계 - 크게, 손가락으로 누르기 쉽게. 이걸 먼저
+          // 고르고 나서 연락처 입력 단계로 넘어가요.
+          <div className="w-full max-w-md flex flex-col items-center gap-10">
+            <div className="text-center">
+              <p className="text-xl font-bold">몇 분이서 오셨나요?</p>
+              <p className="text-sm text-gray-400 mt-1">인원수를 선택해주세요</p>
+            </div>
+            <div className="flex items-center gap-8">
+              <button
+                type="button"
+                onClick={() => setPartySize((v) => Math.max(1, v - 1))}
+                disabled={partySize <= 1}
+                aria-label="인원 줄이기"
+                className="w-16 h-16 rounded-full bg-card text-white text-3xl font-bold flex items-center justify-center disabled:opacity-30"
+              >
+                −
+              </button>
+              <span className="text-7xl font-bold text-point w-28 text-center">{partySize}</span>
+              <button
+                type="button"
+                onClick={() => setPartySize((v) => Math.min(maxPartySize ?? 10, v + 1))}
+                disabled={maxPartySize != null && partySize >= maxPartySize}
+                aria-label="인원 늘리기"
+                className="w-16 h-16 rounded-full bg-card text-white text-3xl font-bold flex items-center justify-center disabled:opacity-30"
+              >
+                +
+              </button>
+            </div>
+            {maxPartySize != null && (
+              <p className="text-sm text-gray-500">한 팀 최대 {maxPartySize}명까지 가능해요</p>
+            )}
+            <button
+              type="button"
+              onClick={() => setStep("contact")}
+              className="w-full rounded-full py-4 text-lg font-bold bg-point text-gray-900"
+            >
+              다음
+            </button>
+          </div>
+        ) : (
         <div className="w-full max-w-md flex flex-col gap-6">
           {/* [수정] 가운데 정렬이던 걸 좌측 정렬로, 전화번호/이메일 중 하나만
               입력해도 등록할 수 있다는 걸 안내에 반영했어요. */}
-          <div className="text-left mb-2">
-            <p className="text-xl font-bold">웨이팅 등록</p>
-            <p className="text-sm text-gray-400 mt-1">전화번호와 이메일 중 하나를 입력하고 등록해주세요</p>
+          <div className="text-left mb-2 flex items-center justify-between">
+            <div>
+              <p className="text-xl font-bold">웨이팅 등록</p>
+              <p className="text-sm text-gray-400 mt-1">전화번호와 이메일 중 하나를 입력하고 등록해주세요</p>
+            </div>
+            {/* [신규] 인원 선택 단계로 돌아가서 다시 고를 수 있게 */}
+            <button
+              type="button"
+              onClick={() => setStep("party")}
+              className="flex-none text-sm text-gray-400 border border-gray-700 rounded-full px-3 py-1.5"
+            >
+              {partySize}명 변경
+            </button>
           </div>
 
           <div>
@@ -371,6 +470,7 @@ function CheckinPageInner() {
             {submitting ? "등록하는 중..." : "웨이팅하기"}
           </button>
         </div>
+        )}
       </section>
 
       {/* [신규] 전화번호로 등록 완료되면 뜨는 안내 모달 */}
