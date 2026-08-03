@@ -8,6 +8,7 @@ import { useAuth } from "../context/AuthContext";
 import { getToken, getPopups, getAdminCsList, getAdminInquiries, getAdminReports, Popup } from "../lib/api";
 import { loadSeen, saveSeen, unseenCount } from "../lib/navBadges";
 import Logo from "../components/Logo";
+import { SELLER_HOME_URL } from "../lib/siteUrls";
 
 const MENU = [
   { group: "모니터링", items: [
@@ -269,8 +270,9 @@ export default function AdminRoot() {
             )}
           </div>
           <div className="flex items-center gap-4">
-            {/* 서비스 홈(주최자 정보사이트)은 분리된 popupfrontend(5174)에 있음 — 다른 origin이라 <a>로 이동 */}
-            <a href="http://localhost:5174/" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+            {/* 서비스 홈(주최자 정보사이트)은 분리된 popupfrontend에 있음 — 다른 origin이라 <a>로 이동.
+                주소는 배포 환경마다 다르므로 siteUrls.ts에서 환경변수로 받는다 (8/3) */}
+            <a href={SELLER_HOME_URL} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
               서비스 홈 <ExternalLink size={12} />
             </a>
             <button
