@@ -15,39 +15,16 @@ import {
 import { CONSUMER_SIGNUP_URL } from "../../lib/siteUrls";
 
 // 대기열·인원 관제 — 예약·웨이팅 통합관리 (jsw waiting·unified queue 백엔드 실연동)
-// 실연동: 통합 대기열 보드(서버가 사전예약 자동 편입·정렬), 웨이팅 등록/입장/취소, 통합 QR 체크인, 예약 체크인/노쇼
-// 로컬로 남은 것: 운영 모드 저장 폴백(구 팝업 한정 — 신규는 서버 queueMode 사용), 입장 완료 웨이팅 목록
+// 실연동: 통합 대기열 보드(서버가 사전예약 자동 편입·정렬), 웨이팅 등록/입장/취소, 예약 체크인/노쇼
+// 로컬로 남은 것: 운영 모드 저장 폴백(구 팝업 한정 — 신규는 서버 queueMode 사용)
 // ※ 퇴장 처리는 POST /api/queue/exit/qr로 실연동돼 있다 (7/29 주석 정정 — 예전 문구가 낡아 있었음)
 
-// 7/31 — lib/siteUrls.ts로 이동 (배포 시 localhost를 가리키던 문제)
-// 7/29 — 회원 웨이팅 QR은 소비자 회원가입으로 직행
-// 비회원 웨이팅 QR은 자체 접수 폼(/walkin)으로 고정 (7/29 결정 — 구글폼 안 씀).
-// 자체 폼은 제출 즉시 대기열 등록 + 대기번호·입장 QR 발급까지 백엔드 실연동이 끝나 있어 구글폼보다 완결적이다.
-const NOSHOW_GRACE_MS = 5 * 60 * 1000; // 슬롯 종료 +5분 안에 미입장 → 노쇼 처리 대상
+// 8/3 — QR 관련 UI(입장 스캔·비치용 QR 2종)는 현장 접수 웹(checkin 앱)으로 이관하기로 해
+// 화면에서 내렸다. 코드는 지우지 않고 이 플래그로 꺼 둔다 — 복구는 true 한 줄.
+const SHOW_QR_TOOLS = false;
 
 const fmtTime = (t: string | null) => (t ? t.slice(0, 5) : "");
 const fmtClock = (iso: string | null | undefined) => (iso ? iso.slice(11, 16) : "");
-
-// 로컬 기준 날짜/시각 문자열 (toISOString은 UTC라 자정 근처에 날짜가 밀림 — 사용 금지)
-const localDateStr = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-const localTimeStr = (d: Date) => d.toTimeString().slice(0, 8); // "HH:mm:ss"
-
-// 기본 선택 슬롯: 지금 시각이 포함된(진행 중) 슬롯 → 없으면 오늘의 다음 슬롯 → 오늘 마지막 슬롯 → null
-// (7/25 피드백: /seller/waiting 진입 시 항상 "지금 이 시각"의 슬롯이 기본으로 보여야 함)
-function pickCurrentSlot(list: PopupSlot[], now: Date): PopupSlot | null {
-  const today = localDateStr(now);
-  const t = localTimeStr(now);
-  const todays = list
-    .filter((s) => s.slotDate === today)
-    .sort((a, b) => a.startTime.localeCompare(b.startTime));
-  if (todays.length === 0) return null;
-  return (
-    todays.find((s) => s.startTime <= t && t < s.endTime) ?? // 진행 중
-    todays.find((s) => s.startTime > t) ??                   // 다음 슬롯
-    todays[todays.length - 1]                                 // 오늘 영업 종료 후면 마지막 슬롯
-  );
-}
 
 const MODE_LABEL: Record<OpsMode, string> = {
   RESERVATION: "사전예약만",
@@ -55,10 +32,53 @@ const MODE_LABEL: Record<OpsMode, string> = {
   BOTH: "둘 다 운영",
 };
 
-const TYPE_BADGE: Record<string, [string, string]> = {
-  RESERVATION: ["사전예약", "bg-blue-50 text-blue-600 border-blue-200"],
-  ONSITE_WAITING: ["현장 웨이팅", "bg-amber-50 text-amber-700 border-amber-200"],
-};
+// 처리 열 공용 렌더 (8/3) — 대기중이면 입장/노쇼 버튼, 처리 후에는 상태 배지.
+// 행을 지우는 대신 배지로 남겨 명단이 당일 기록지 역할을 하게 한다.
+function QueueActions<T extends { key: string; status: "WAITING" | "ENTERED" | "NO_SHOW"; enteredAt: string | null }>({
+  row, actingKey, onEnter, onNoShow,
+}: {
+  row: T;
+  actingKey: string | null;
+  onEnter: (row: T) => void;
+  onNoShow: (row: T) => void;
+}) {
+  if (row.status === "NO_SHOW") {
+    return (
+      <div className="flex justify-center">
+        <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border bg-red-50 text-red-500 border-red-200">
+          <XCircle size={10} /> 노쇼처리됨
+        </span>
+      </div>
+    );
+  }
+  if (row.status === "ENTERED") {
+    return (
+      <div className="flex justify-center">
+        <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-600 border-emerald-200">
+          <CheckCircle2 size={10} /> 입장처리됨{row.enteredAt ? ` ${fmtClock(row.enteredAt)}` : ""}
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center justify-center gap-1.5">
+      <button
+        onClick={() => onEnter(row)}
+        disabled={actingKey === row.key}
+        className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-sm border border-emerald-200 text-emerald-600 hover:bg-emerald-50 disabled:opacity-40"
+      >
+        <CheckCircle2 size={11} /> 입장
+      </button>
+      <button
+        onClick={() => onNoShow(row)}
+        disabled={actingKey === row.key}
+        className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-sm border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-40"
+      >
+        <XCircle size={11} /> 노쇼
+      </button>
+    </div>
+  );
+}
 
 export default function WaitingControl() {
   const { user } = useAuth();
@@ -70,8 +90,7 @@ export default function WaitingControl() {
   const [roster, setRoster] = useState<ReservationDetail[]>([]);
   const [board, setBoard] = useState<UnifiedEntry[]>([]);
   const [mode, setMode] = useState<OpsMode>("BOTH");
-  // 선택 슬롯 — 사전예약 편입분 필터 (현장 웨이팅은 슬롯과 무관하게 항상 표시). null = 오늘 슬롯 없음
-  const [slotFilter, setSlotFilter] = useState<number | null>(null);
+  // 8/3 — 슬롯 필터 폐지: 현장 대기열은 회차 구분 없는 전체 대기 하나다 (아래 개편 주석 참고)
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [actingKey, setActingKey] = useState<string | null>(null);
@@ -118,8 +137,6 @@ export default function WaitingControl() {
           setRoster(r);
           setBoard(b.entries);
           setError("");
-          // 최초 로드 시 기본 선택 = 지금 시각의 슬롯 (30초 갱신 때는 직원이 고른 슬롯 유지)
-          if (withSpinner) setSlotFilter(pickCurrentSlot(s, new Date())?.id ?? null);
         })
         .catch((e) => alive && setError(e instanceof Error ? e.message : "데이터를 불러오지 못했습니다."))
         .finally(() => alive && withSpinner && setLoading(false));
@@ -146,54 +163,18 @@ export default function WaitingControl() {
 
   const selected = popups.find((p) => p.id === popupId) ?? null;
   const slotMap = useMemo(() => Object.fromEntries(slots.map((s) => [s.id, s])), [slots]);
-  // ⚠ 7/31 — 여기 있던 slotByStart 매칭을 걷어냈다.
-  //
-  // 「보드의 joinedAt(슬롯 시작시각) ↔ 슬롯 날짜+시작시각」으로 역추적하고 있었는데,
-  // **joinedAt은 슬롯 시작시각이 아니라 예약을 만든 시각이다.** 주석의 전제가 틀렸다.
-  //
-  //   슬롯 키   "2026-07-31T11:00"   (30분 단위로 딱 떨어짐)
-  //   joinedAt  "2026-07-31T15:05"   (사람이 예약을 누른 순간)
-  //
-  // 예약 시각이 슬롯 시작시각과 우연히 분 단위까지 같지 않으면 절대 안 맞는다.
-  // 그래서 **모든 예약의 slotId가 null이 됐고**, 슬롯을 고르면
-  // `row.slotId === slotFilter`가 전부 거짓이라 예약자가 한 명도 안 나왔다.
-  // 현장 웨이팅만 보인 이유는 그쪽이 슬롯 조건을 안 타기 때문이다.
-  //
-  // 통합 보드 응답에는 slotId가 없고 refId(예약 id)만 있다. 대신 예약 상세 목록
-  // (getPopupReservations)에 slotId가 실려 오므로, 시각을 맞춰 보는 대신
-  // **id로 정확히 잇는다.** 아래 rosterById를 그대로 쓴다.
-  // 예약 상세(입장 시각 등)를 보드 행에 붙이기 위한 맵
+  // 예약 상세(슬롯·입장 시각)를 보드 행에 붙이기 위한 맵 — 보드 응답에는 refId(예약 id)만 있다
   const rosterById = useMemo(() => Object.fromEntries(roster.map((r) => [r.id, r])), [roster]);
 
-  // 현장 웨이팅이 「어느 슬롯 손님인가」를 등록 시각으로 정한다 (8/3).
+  // ── 8/3 전면 개편: 슬롯별 보기 폐지 ──
   //
-  // 예약은 refId로 slotId를 정확히 잇지만, 웨이팅에는 slotId가 아예 없다.
-  // 대신 UnifiedEntry.joinedAt 이 **등록한 순간**이므로(예약과 달리 여기서는 의미가 맞다),
-  // 그 시각을 품는 슬롯을 찾으면 된다. 접수대에서 줄 선 시점이 곧 그 회차다.
-  //
-  // 슬롯 사이 빈 시간이나 운영 시간 밖에 등록한 사람은 어느 슬롯에도 안 들어간다 →
-  // null 로 남고, 아래 필터에서 「미지정」으로 따로 처리한다 (사라지면 안 되므로).
-  const slotIdAt = (iso: string | null): number | null => {
-    if (!iso) return null;
-    const t = new Date(iso).getTime();
-    if (Number.isNaN(t)) return null;
-    const hit = slots.find((s) => {
-      const start = new Date(`${s.slotDate}T${s.startTime}`).getTime();
-      const end = new Date(`${s.slotDate}T${s.endTime}`).getTime();
-      return t >= start && t < end;
-    });
-    return hit?.id ?? null;
-  };
-
-  const rowEnd = (slotId: number | null): Date | null => {
-    if (slotId && slotMap[slotId]) {
-      const s = slotMap[slotId];
-      return new Date(`${s.slotDate}T${s.endTime}`);
-    }
-    return null;
-  };
-
-  // ── 현장 대기열: 서버 통합 보드 (사전예약 자동 편입 + 대기중 웨이팅, joinedAt 정렬) ──
+  // 회차를 골라 보는 방식은 「웨이팅을 어느 회차에 매길 것인가」라는 답 없는 문제를
+  // 계속 만들었다 (7/31 joinedAt 오매칭 → 8/3 「이전 대기」 응급 구역까지).
+  // 현장 운영의 실제 단위는 회차가 아니라 **지금 줄** 하나다. 그래서
+  //   - 현장 대기열은 전체 대기 하나. 사전예약/현장 웨이팅 표 둘로만 나눈다
+  //   - 사전예약은 슬롯 시작 시각이 되면 서버 보드가 자동 편입한다 (기존 동작 그대로 —
+  //     아직 시작 전인 회차는 우측 「대기 현황」의 자동 편입 예고로 보인다)
+  //   - 입장·노쇼를 처리해도 행을 숨기지 않고 상태 배지로 남긴다 — 명단이 곧 당일 기록지다
   type QueueRow = {
     key: string;
     source: "RESERVATION" | "ONSITE_WAITING";
@@ -201,67 +182,55 @@ export default function WaitingControl() {
     name: string;
     contact: string;
     partySize: number;
-    slotId: number | null;
+    joinedAt: string | null; // 웨이팅 = 등록 시각 (예약은 서버가 다른 의미로 채워 표기에 안 씀)
+    slotLabel: string;       // 사전예약의 예약 회차 "MM-DD HH:MM" (웨이팅은 "-")
     enteredAt: string | null;
-    noShow: boolean;
+    status: "WAITING" | "ENTERED" | "NO_SHOW";
   };
 
-  // 7/23: 통합 보드가 체류중(CHECKED_IN/ENTERED)까지 반환 — 대기열 표에는 입장 전만 표시(체류자는 아래 체류 목록으로)
-  const queueRows = useMemo<QueueRow[]>(() => {
-    return board
-      .filter((e) => e.entryStatus !== "CHECKED_IN" && e.entryStatus !== "ENTERED")
-      .filter((e) => (mode === "WALKIN" ? e.source !== "RESERVATION" : true))
-      .filter((e) => (mode === "RESERVATION" ? e.source !== "ONSITE_WAITING" : true))
-      .map((e) => {
-        // 예약 행은 refId(예약 id)로 상세를 찾아 그 slotId를 쓴다 (7/31).
-        // 시각 문자열로 맞춰 보던 옛 방식은 joinedAt이 예약 생성 시각이라 절대 안 맞았다.
-        // 웨이팅은 등록 시각(joinedAt)이 속한 슬롯으로 잇는다 (8/3 — slotIdAt 주석 참고)
-        const slotId =
-          e.source === "RESERVATION" ? (rosterById[e.refId]?.slotId ?? null) : slotIdAt(e.joinedAt);
-        return {
-          key: `${e.source}-${e.refId}`,
-          source: e.source,
-          refId: e.refId,
-          name: e.displayName,
-          contact: e.phoneNumber ?? "-",
-          partySize: e.partySize,
-          slotId,
-          enteredAt: null,
-          noShow: e.entryStatus === "NO_SHOW" || e.entryStatus === "CANCELLED",
-        };
-      });
-    // slots 추가 (8/3) — 웨이팅 slotId를 slotIdAt(slots)으로 계산하므로,
-    // 슬롯 목록이 늦게 도착하면 이 값이 다시 계산돼야 한다. 빠뜨리면 첫 로드에서
-    // 웨이팅이 전부 「미지정」으로 굳는다.
-  }, [board, rosterById, mode, slots]);
+  const slotLabelOf = (slotId: number | null | undefined): string => {
+    if (slotId == null) return "-";
+    const s = slotMap[slotId];
+    return s ? `${s.slotDate.slice(5)} ${s.startTime.slice(0, 5)}` : "-";
+  };
 
-  // 슬롯 필터 (8/3 개정)
-  //
-  // 그전에는 현장 웨이팅을 슬롯과 무관하게 **항상** 보여 줬다. 7/25에 「수동 추가한
-  // 사람이 특정 슬롯 뷰에서 사라진다」는 피드백을 그렇게 막았던 것인데, 부작용이 컸다 —
-  // 11시에 줄 선 손님이 14시 회차를 봐도 계속 남아 있어서 **어느 회차 손님인지 알 수 없었다.**
-  //
-  // 이제 웨이팅도 등록 시각으로 슬롯을 매기므로 자기 회차에만 나온다.
-  // 다만 슬롯을 못 매긴 사람(운영 시간 밖·슬롯 사이 공백에 등록)은 **어디에도 안 나오면 안 되므로**
-  // 항상 함께 보여 준다. 7/25 피드백이 진짜로 막으려던 것이 이 경우다.
-  const filteredRows = queueRows.filter(
-    (row) => row.slotId === slotFilter || (row.source === "ONSITE_WAITING" && row.slotId === null),
+  const toRow = (e: UnifiedEntry): QueueRow => {
+    const entered = e.entryStatus === "CHECKED_IN" || e.entryStatus === "ENTERED";
+    const detail = e.source === "RESERVATION" ? rosterById[e.refId] : undefined;
+    return {
+      key: `${e.source}-${e.refId}`,
+      source: e.source,
+      refId: e.refId,
+      name: e.displayName,
+      contact: e.phoneNumber ?? "-",
+      partySize: e.partySize,
+      joinedAt: e.joinedAt,
+      slotLabel: e.source === "RESERVATION" ? slotLabelOf(detail?.slotId) : "-",
+      // 입장 엔트리의 joinedAt은 서버가 입장 시각으로 채운다 — 예약은 명단 상세(checkedInAt)로 보정
+      enteredAt: entered ? ((detail?.checkedInAt ?? null) || e.joinedAt) : null,
+      status: entered
+        ? "ENTERED"
+        : e.entryStatus === "NO_SHOW" || e.entryStatus === "CANCELLED"
+          ? "NO_SHOW"
+          : "WAITING",
+    };
+  };
+
+  // 표 2개 — 서버 보드 순서(joinedAt 정렬)를 그대로 따른다
+  const reservationRows = useMemo(
+    () => board.filter((e) => e.source === "RESERVATION").map(toRow),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [board, rosterById, slotMap],
   );
-
-  // 셀렉트에는 오늘 슬롯만 노출 (전 기간 슬롯 수백 개를 다 보여줄 이유가 없음 — 7/25 피드백).
-  // 오늘 슬롯이 없는 팝업(운영 전·종료)은 전체 목록으로 폴백해 사전예약 확인은 가능하게 유지
-  const todaySlots = useMemo(() => {
-    const today = localDateStr(new Date(nowMs));
-    const t = slots.filter((s) => s.slotDate === today);
-    return (t.length > 0 ? t : slots).slice().sort((a, b) => `${a.slotDate}${a.startTime}`.localeCompare(`${b.slotDate}${b.startTime}`));
-  }, [slots, nowMs]);
-  const currentSlotId = useMemo(() => pickCurrentSlot(slots, new Date(nowMs))?.id ?? null, [slots, nowMs]);
-
-  // 노쇼 버튼 노출: 슬롯 종료 +5분까지 입장 처리되지 않은 사람 (웨이팅·슬롯 미지정은 직원 재량으로 항상)
-  const noShowReady = (row: QueueRow) => {
-    const end = rowEnd(row.slotId);
-    return end === null || nowMs > end.getTime() + NOSHOW_GRACE_MS;
-  };
+  const walkinRows = useMemo(
+    () => board.filter((e) => e.source === "ONSITE_WAITING").map(toRow),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [board, rosterById, slotMap],
+  );
+  const waitingTeams = useMemo(
+    () => [...reservationRows, ...walkinRows].filter((r) => r.status === "WAITING"),
+    [reservationRows, walkinRows],
+  );
 
   // ── 체류 인원: 서버 통합 보드의 입장완료(CHECKED_IN/ENTERED, 퇴장 전) 엔트리 — 7/23 전면 서버 기준 ──
   type StayRow = { key: string; source: "RESERVATION" | "ONSITE_WAITING"; refId: number; name: string; partySize: number; enteredAt: string | null; qrToken: string };
@@ -359,10 +328,7 @@ export default function WaitingControl() {
       });
       setAddForm({ name: "", partySize: 1, phone: "", email: "" });
       setAddOpen(false);
-      // 수동 추가 = 지금 온 손님 → 현재 시각 슬롯 뷰로 복귀해 방금 추가된 대기가 바로 보이게 (7/25 피드백)
-      const cur = pickCurrentSlot(slots, new Date());
-      if (cur) setSlotFilter(cur.id);
-      refreshBoard(popupId);
+      refreshBoard(popupId); // 전체 대기 하나라 뷰 조작 없이 갱신만 하면 바로 보인다 (8/3)
     } catch (err) {
       alert(err instanceof Error ? err.message : "대기 추가에 실패했습니다.");
     } finally {
@@ -566,11 +532,14 @@ export default function WaitingControl() {
             <div className="bg-card border border-border rounded-sm p-5 flex flex-col">
               <div className="text-sm font-semibold mb-3">대기 현황</div>
               <div className="text-3xl font-semibold">
-                {filteredRows.filter((r) => !r.enteredAt && !r.noShow).length}
+                {waitingTeams.length}
                 <span className="text-sm font-normal text-muted-foreground ml-1">팀</span>
               </div>
               <div className="text-xs text-muted-foreground mt-1">
-                총 {filteredRows.filter((r) => !r.enteredAt && !r.noShow).reduce((a, r) => a + r.partySize, 0)}명 대기 중
+                총 {waitingTeams.reduce((a, r) => a + r.partySize, 0)}명 대기 중
+                {mode === "BOTH" && (
+                  <> · 사전예약 {reservationRows.filter((r) => r.status === "WAITING").length} · 현장 {walkinRows.filter((r) => r.status === "WAITING").length}</>
+                )}
               </div>
               {upcoming.length > 0 && (
                 <div className="text-[11px] text-muted-foreground bg-secondary/70 rounded-sm p-3 mt-4 leading-relaxed">
@@ -585,187 +554,185 @@ export default function WaitingControl() {
             </div>
           </div>
 
-          {/* ── QR 입장 처리: 카메라 스캔 (통합 체크인) ── */}
-          <div className="bg-card border border-border rounded-sm p-4 flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-1.5 text-sm font-semibold">
-              <QrCode size={15} className="text-accent" /> QR 입장 처리
+          {/* ── QR 입장 처리: 카메라 스캔 — 8/3 현장 접수 웹(checkin)으로 이관, 화면에서 내림 ── */}
+          {SHOW_QR_TOOLS && (
+            <div className="bg-card border border-border rounded-sm p-4 flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-1.5 text-sm font-semibold">
+                <QrCode size={15} className="text-accent" /> QR 입장 처리
+              </div>
+              <button
+                onClick={() => setScanOpen(true)}
+                className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90"
+              >
+                <Camera size={13} /> QR코드 읽기
+              </button>
+              <span className="text-[11px] text-muted-foreground">
+                사전예약·현장 웨이팅 QR 구분 없이 스캔 즉시 입장 처리되고 시각이 기록됩니다
+              </span>
+              {qrMsg && !scanOpen && (
+                <span className={`w-full text-xs ${qrMsg.ok ? "text-emerald-600" : "text-red-500"}`}>{qrMsg.text}</span>
+              )}
             </div>
-            <button
-              onClick={() => setScanOpen(true)}
-              className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-sm bg-accent text-accent-foreground hover:bg-accent/90"
-            >
-              <Camera size={13} /> QR코드 읽기
-            </button>
-            <span className="text-[11px] text-muted-foreground">
-              사전예약·현장 웨이팅 QR 구분 없이 스캔 즉시 입장 처리되고 시각이 기록됩니다
-            </span>
-            {qrMsg && !scanOpen && (
-              <span className={`w-full text-xs ${qrMsg.ok ? "text-emerald-600" : "text-red-500"}`}>{qrMsg.text}</span>
-            )}
-          </div>
+          )}
 
-          {/* ── 현장 대기열 (서버 통합 보드 · 슬롯별 보기) ── */}
-          <div className="bg-card border border-border rounded-sm overflow-x-auto">
-            <div className="px-4 py-3 border-b border-border flex flex-wrap items-center gap-2">
-              <span className="text-sm font-semibold mr-2">현장 대기열</span>
-              {/* 오늘 슬롯만 노출, 기본 선택 = 지금 시각의 슬롯 ("전체 슬롯" 옵션 삭제 — 7/25 피드백) */}
-              {slots.length > 0 && (
-                <select
-                  value={slotFilter != null ? String(slotFilter) : ""}
-                  onChange={(e) => setSlotFilter(e.target.value ? Number(e.target.value) : null)}
-                  className="text-[12px] px-2.5 py-1.5 border border-border rounded-sm bg-card focus:outline-none focus:border-accent"
-                  style={{ fontFamily: "'DM Mono', monospace" }}
-                >
-                  {todaySlots.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.slotDate.slice(5)} {fmtTime(s.startTime)}~{fmtTime(s.endTime)}
-                      {s.id === currentSlotId ? " (현재)" : ""}
-                    </option>
-                  ))}
-                </select>
+          {/* ── 현장 대기열 — 전체 대기 하나, 사전예약·현장 웨이팅 표 2개 (8/3 전면 개편) ──
+              입장·노쇼를 처리해도 행이 사라지지 않는다: 상태 열에 「입장처리됨/노쇼처리됨」으로
+              남아 명단이 곧 당일 기록지가 된다. */}
+          {mode !== "WALKIN" && (
+            <div className="bg-card border border-border rounded-sm overflow-x-auto">
+              <div className="px-4 py-3 border-b border-border flex flex-wrap items-center gap-2">
+                <span className="text-sm font-semibold">현장 대기열 — 사전예약</span>
+                <span className="text-[11px] text-muted-foreground">
+                  슬롯 시작 시각이 되면 그 회차 예약 명단이 자동으로 들어옵니다
+                </span>
+              </div>
+              {loading ? (
+                <div className="text-center text-xs text-muted-foreground py-10">
+                  <Loader2 size={14} className="inline animate-spin mr-1.5" /> 불러오는 중…
+                </div>
+              ) : (
+                <table className="w-full text-[13px] min-w-[760px]">
+                  <thead>
+                    <tr className="border-b border-border bg-secondary/60 text-xs text-muted-foreground">
+                      <th className="text-left font-medium px-4 py-2.5">순번</th>
+                      <th className="text-left font-medium px-4 py-2.5">예약 회차</th>
+                      <th className="text-left font-medium px-4 py-2.5">이름</th>
+                      <th className="text-left font-medium px-4 py-2.5">연락처</th>
+                      <th className="text-right font-medium px-4 py-2.5">인원</th>
+                      <th className="text-center font-medium px-4 py-2.5">처리</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {reservationRows.map((row, i) => (
+                      <tr key={row.key} className={row.status === "NO_SHOW" ? "opacity-60" : row.status === "ENTERED" ? "bg-emerald-50/40" : "hover:bg-secondary/40"}>
+                        <td className="px-4 py-2.5 font-semibold" style={{ fontFamily: "'DM Mono', monospace" }}>#{i + 1}</td>
+                        <td className="px-4 py-2.5 text-xs text-muted-foreground" style={{ fontFamily: "'DM Mono', monospace" }}>{row.slotLabel}</td>
+                        <td className="px-4 py-2.5 font-medium">{row.name}</td>
+                        <td className="px-4 py-2.5 text-xs text-muted-foreground">{row.contact}</td>
+                        <td className="px-4 py-2.5 text-right">{row.partySize}명</td>
+                        <td className="px-4 py-2.5">
+                          <QueueActions row={row} actingKey={actingKey} onEnter={handleEnter} onNoShow={handleNoShow} />
+                        </td>
+                      </tr>
+                    ))}
+                    {reservationRows.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-10 text-center text-xs text-muted-foreground">
+                          아직 편입된 사전예약이 없습니다. 슬롯 시작 시간이 되면 예약자가 자동으로 들어옵니다.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               )}
-              {slots.length > 0 && slotFilter !== currentSlotId && currentSlotId != null && (
-                <button
-                  onClick={() => setSlotFilter(currentSlotId)}
-                  className="text-[11px] px-2 py-1 rounded-sm border border-border text-muted-foreground hover:border-accent hover:text-accent"
-                >
-                  현재 슬롯으로
-                </button>
-              )}
-              {mode !== "RESERVATION" && (
+            </div>
+          )}
+
+          {mode !== "RESERVATION" && (
+            <div className="bg-card border border-border rounded-sm overflow-x-auto">
+              <div className="px-4 py-3 border-b border-border flex flex-wrap items-center gap-2">
+                <span className="text-sm font-semibold">현장 대기열 — 현장 웨이팅</span>
+                <span className="text-[11px] text-muted-foreground">줄 선 순서 그대로의 전체 대기입니다</span>
                 <button
                   onClick={() => setAddOpen((v) => !v)}
                   className="ml-auto flex items-center gap-1 text-xs px-3 py-1.5 rounded-sm border border-border hover:border-accent hover:text-accent"
                 >
                   <UserPlus size={12} /> 대기 수동 추가
                 </button>
-              )}
-            </div>
-
-            {addOpen && (
-              <form onSubmit={handleManualAdd} className="px-4 py-3 border-b border-border bg-secondary/40 flex flex-wrap items-end gap-3">
-                <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
-                  이름
-                  <input
-                    required value={addForm.name}
-                    onChange={(e) => setAddForm((p) => ({ ...p, name: e.target.value }))}
-                    className="px-2 py-1.5 text-xs border border-border rounded-sm bg-card w-28"
-                  />
-                </label>
-                <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
-                  전화번호
-                  <input
-                    required value={addForm.phone} placeholder="010-0000-0000"
-                    onChange={(e) => setAddForm((p) => ({ ...p, phone: e.target.value }))}
-                    className="px-2 py-1.5 text-xs border border-border rounded-sm bg-card w-32"
-                  />
-                </label>
-                <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
-                  이메일
-                  <input
-                    required type="email" value={addForm.email}
-                    onChange={(e) => setAddForm((p) => ({ ...p, email: e.target.value }))}
-                    className="px-2 py-1.5 text-xs border border-border rounded-sm bg-card w-44"
-                  />
-                </label>
-                <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
-                  인원
-                  <input
-                    type="number" min={1} value={addForm.partySize}
-                    onChange={(e) => setAddForm((p) => ({ ...p, partySize: Number(e.target.value) }))}
-                    className="w-16 px-2 py-1.5 text-xs border border-border rounded-sm bg-card text-right"
-                  />
-                </label>
-                <button type="submit" disabled={adding} className="text-xs px-4 py-2 rounded-sm bg-foreground text-primary-foreground hover:bg-foreground/90 disabled:opacity-50">
-                  {adding ? "추가 중…" : "추가"}
-                </button>
-              </form>
-            )}
-
-            {loading ? (
-              <div className="text-center text-xs text-muted-foreground py-10">
-                <Loader2 size={14} className="inline animate-spin mr-1.5" /> 불러오는 중…
               </div>
-            ) : (
-              <table className="w-full text-[13px] min-w-[760px]">
-                <thead>
-                  <tr className="border-b border-border bg-secondary/60 text-xs text-muted-foreground">
-                    {/* 슬롯 열 제거 — 선택한 슬롯 기준으로 이미 걸러져 있어 중복 정보 (7/25 피드백) */}
-                    <th className="text-left font-medium px-4 py-2.5">순번</th>
-                    <th className="text-left font-medium px-4 py-2.5">유형</th>
-                    <th className="text-left font-medium px-4 py-2.5">이름</th>
-                    <th className="text-left font-medium px-4 py-2.5">연락처</th>
-                    <th className="text-right font-medium px-4 py-2.5">인원</th>
-                    <th className="text-center font-medium px-4 py-2.5">처리</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {filteredRows.map((row, i) => {
-                    const [typeLabel, typeCls] = TYPE_BADGE[row.source] ?? TYPE_BADGE.ONSITE_WAITING;
-                    return (
-                      <tr key={row.key} className={row.noShow ? "opacity-50" : row.enteredAt ? "bg-emerald-50/40" : "hover:bg-secondary/40"}>
+
+              {addOpen && (
+                <form onSubmit={handleManualAdd} className="px-4 py-3 border-b border-border bg-secondary/40 flex flex-wrap items-end gap-3">
+                  <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                    이름
+                    <input
+                      required value={addForm.name}
+                      onChange={(e) => setAddForm((p) => ({ ...p, name: e.target.value }))}
+                      className="px-2 py-1.5 text-xs border border-border rounded-sm bg-card w-28"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                    전화번호
+                    <input
+                      required value={addForm.phone} placeholder="010-0000-0000"
+                      onChange={(e) => setAddForm((p) => ({ ...p, phone: e.target.value }))}
+                      className="px-2 py-1.5 text-xs border border-border rounded-sm bg-card w-32"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                    이메일
+                    <input
+                      required type="email" value={addForm.email}
+                      onChange={(e) => setAddForm((p) => ({ ...p, email: e.target.value }))}
+                      className="px-2 py-1.5 text-xs border border-border rounded-sm bg-card w-44"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                    인원
+                    <input
+                      type="number" min={1} value={addForm.partySize}
+                      onChange={(e) => setAddForm((p) => ({ ...p, partySize: Number(e.target.value) }))}
+                      className="w-16 px-2 py-1.5 text-xs border border-border rounded-sm bg-card text-right"
+                    />
+                  </label>
+                  <button type="submit" disabled={adding} className="text-xs px-4 py-2 rounded-sm bg-foreground text-primary-foreground hover:bg-foreground/90 disabled:opacity-50">
+                    {adding ? "추가 중…" : "추가"}
+                  </button>
+                </form>
+              )}
+
+              {loading ? (
+                <div className="text-center text-xs text-muted-foreground py-10">
+                  <Loader2 size={14} className="inline animate-spin mr-1.5" /> 불러오는 중…
+                </div>
+              ) : (
+                <table className="w-full text-[13px] min-w-[760px]">
+                  <thead>
+                    <tr className="border-b border-border bg-secondary/60 text-xs text-muted-foreground">
+                      <th className="text-left font-medium px-4 py-2.5">순번</th>
+                      <th className="text-left font-medium px-4 py-2.5">등록 시각</th>
+                      <th className="text-left font-medium px-4 py-2.5">이름</th>
+                      <th className="text-left font-medium px-4 py-2.5">연락처</th>
+                      <th className="text-right font-medium px-4 py-2.5">인원</th>
+                      <th className="text-center font-medium px-4 py-2.5">처리</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {walkinRows.map((row, i) => (
+                      <tr key={row.key} className={row.status === "NO_SHOW" ? "opacity-60" : row.status === "ENTERED" ? "bg-emerald-50/40" : "hover:bg-secondary/40"}>
                         <td className="px-4 py-2.5 font-semibold" style={{ fontFamily: "'DM Mono', monospace" }}>#{i + 1}</td>
-                        <td className="px-4 py-2.5">
-                          <span className={`text-[11px] px-2 py-0.5 rounded-full border ${typeCls}`}>{typeLabel}</span>
+                        {/* 입장 처리되면 서버가 joinedAt을 입장 시각으로 바꿔 보낸다 — 그때는 등록 시각 대신 "-" */}
+                        <td className="px-4 py-2.5 text-xs text-muted-foreground" style={{ fontFamily: "'DM Mono', monospace" }}>
+                          {row.status === "WAITING" && row.joinedAt
+                            ? `${row.joinedAt.slice(5, 10)} ${fmtClock(row.joinedAt)}`
+                            : "-"}
                         </td>
                         <td className="px-4 py-2.5 font-medium">{row.name}</td>
                         <td className="px-4 py-2.5 text-xs text-muted-foreground">{row.contact}</td>
                         <td className="px-4 py-2.5 text-right">{row.partySize}명</td>
                         <td className="px-4 py-2.5">
-                          <div className="flex items-center justify-center gap-1.5">
-                            {row.noShow ? (
-                              <span className="text-[11px] px-2 py-0.5 rounded-full border bg-red-50 text-red-500 border-red-200">
-                                {row.source === "RESERVATION" ? "노쇼" : "취소"}
-                              </span>
-                            ) : row.enteredAt ? (
-                              // QR·수동 입장 처리 시 처리 열에 시각 표기
-                              <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-600 border-emerald-200">
-                                <CheckCircle2 size={10} /> 입장 {fmtClock(row.enteredAt)}
-                              </span>
-                            ) : (
-                              <>
-                                <button
-                                  onClick={() => handleEnter(row)}
-                                  disabled={actingKey === row.key}
-                                  className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-sm border border-emerald-200 text-emerald-600 hover:bg-emerald-50 disabled:opacity-40"
-                                >
-                                  <CheckCircle2 size={11} /> 입장
-                                </button>
-                                {noShowReady(row) && (
-                                  <button
-                                    onClick={() => handleNoShow(row)}
-                                    disabled={actingKey === row.key}
-                                    title="슬롯 종료 +5분까지 미입장"
-                                    className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-sm border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-40"
-                                  >
-                                    <XCircle size={11} /> 노쇼
-                                  </button>
-                                )}
-                              </>
-                            )}
-                          </div>
+                          <QueueActions row={row} actingKey={actingKey} onEnter={handleEnter} onNoShow={handleNoShow} />
                         </td>
                       </tr>
-                    );
-                  })}
-                  {filteredRows.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-10 text-center text-xs text-muted-foreground">
-                        현재 대기열이 비어 있습니다.
-                        {mode !== "WALKIN" && " 슬롯 시작 시간이 되면 사전예약자가 자동 편입됩니다."}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            )}
-            <div className="px-4 py-2.5 border-t border-border text-[11px] text-muted-foreground">
-              서버 통합 대기열(30초 갱신) · 입장 처리 시 처리 열에 시각 기록 · 슬롯 종료 +5분 미입장 시 노쇼 버튼 표시 · 예약취소자는 편입되지 않습니다
+                    ))}
+                    {walkinRows.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-10 text-center text-xs text-muted-foreground">
+                          현재 현장 웨이팅이 없습니다. 현장 접수 웹 또는 수동 추가로 등록되면 여기 표시됩니다.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
+              <div className="px-4 py-2.5 border-t border-border text-[11px] text-muted-foreground">
+                서버 통합 대기열(30초 갱신) · 입장·노쇼 처리해도 명단에 남습니다 · 예약취소자는 편입되지 않습니다
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* ── 하단: 현장 비치용 QR 2종 ── */}
-          {mode !== "RESERVATION" && (
+          {/* ── 하단: 현장 비치용 QR 2종 — 8/3 현장 접수 웹(checkin)으로 이관, 화면에서 내림 ── */}
+          {SHOW_QR_TOOLS && mode !== "RESERVATION" && (
             <div className="grid md:grid-cols-2 gap-3">
               <div className="bg-card border border-border rounded-sm p-5 flex gap-4">
                 <div className="border border-border rounded-sm p-2 bg-card shrink-0">
@@ -799,8 +766,8 @@ export default function WaitingControl() {
         </>
       )}
 
-      {/* ── QR 스캔 모달 (카메라) ── */}
-      {scanOpen && (
+      {/* ── QR 스캔 모달 (카메라) — SHOW_QR_TOOLS로 꺼 둠 (8/3) ── */}
+      {SHOW_QR_TOOLS && scanOpen && (
         <>
           <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setScanOpen(false)} />
           <div className="fixed inset-x-0 top-[10vh] mx-auto w-[min(420px,92vw)] bg-card border border-border rounded-sm shadow-xl z-50 p-4">

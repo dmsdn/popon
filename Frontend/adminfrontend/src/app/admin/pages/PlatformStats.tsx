@@ -55,7 +55,7 @@ export default function PlatformStats() {
   }, [period]);
 
   const totalCheckin = ranking.reduce((s, r) => s + r.visitorCount, 0);
-  const revenueSum = revenue.reduce((s, r) => s + Number(r.totalAmount), 0);
+  // 8/3 — revenueSum(요약 카드용) 제거. 매출은 아래 추이 차트로만 남긴다
   const revenueChart = revenue.map((r) => ({
     period: period === "DAILY30" ? r.period.slice(5) : r.period, // 일별은 MM-DD
     amount: Math.round(Number(r.totalAmount) / 10000), // 만원 단위
@@ -90,11 +90,11 @@ export default function PlatformStats() {
 
       {!loading && !error && (
         <>
-          {/* 요약 지표 — dashboard BFF + 랭킹·매출 합산 + 재입점률(팝업 목록 집계) */}
-          <div className="grid grid-cols-2 xl:grid-cols-5 gap-3">
+          {/* 요약 지표 — dashboard BFF + 랭킹 합산 + 재입점률(팝업 목록 집계)
+              8/3 — 「최근 30일 매출」 카드 제거 (홈의 매출추이 제거와 같은 결정) → 4분할 */}
+          <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
             {[
               { label: "누적 체크인 방문", value: `${totalCheckin.toLocaleString()}명`, sub: `랭킹 집계 팝업 ${ranking.length}개` },
-              { label: period === "DAILY30" ? "최근 30일 매출" : "최근 12개월 매출", value: `${(revenueSum / 10000).toLocaleString()}만원`, sub: "계약금 등록 기준" },
               { label: "게시중 / 심사 대기", value: dash ? `${dash.openPopupCount} / ${dash.pendingPopupCount}` : "—", sub: "팝업 현황" },
               { label: "누적 소비자 회원", value: dash ? `${dash.totalCustomerCount.toLocaleString()}명` : "—", sub: `활성 파트너 ${dash?.activePartnerCount ?? "—"}사` },
               // 재입점률 (7/31) — 다시 팝업을 연 브랜드 비율. 두 번째 입점이 곧 플랫폼 만족의 증거

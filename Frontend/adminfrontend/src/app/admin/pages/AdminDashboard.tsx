@@ -159,29 +159,8 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* 매출 추이 (계약금 기준) */}
-        <div className="bg-card border border-border rounded-sm">
-          <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-            <span className="text-sm font-semibold">매출 추이 (계약금)</span>
-            <Link to="/admin/stats" className="text-xs text-accent">상세</Link>
-          </div>
-          <ul className="divide-y divide-border">
-            {(data?.revenueTrend ?? []).slice(-6).map((r) => (
-              <li key={r.period} className="px-4 py-2.5 flex items-center justify-between text-xs">
-                <span className="text-muted-foreground" style={{ fontFamily: "'DM Mono', monospace" }}>{r.period}</span>
-                <span className="font-semibold">{Number(r.totalAmount).toLocaleString()}원</span>
-              </li>
-            ))}
-            {data && data.revenueTrend.length === 0 && (
-              <li className="px-4 py-8 text-center text-xs text-muted-foreground">계약 매출 데이터가 없습니다.<br />(팝업 계약금 등록 시 집계)</li>
-            )}
-            {!data && !error && <li className="px-4 py-8 text-center text-xs text-muted-foreground">불러오는 중…</li>}
-          </ul>
-        </div>
-      </div>
-
-      {/* 실시간 운영 지표 (7/31) — 이벤트 로그·신고·지역 마스터에서 집계 */}
-      <div className="grid lg:grid-cols-3 gap-3">
+        {/* 8/3 — 매출 추이(계약금) 카드 제거. 빈 자리는 오늘 체크인 카드를 올려 채운다 —
+            4 KPI / 차트(2)+체크인(1) / 신고+지역(2분할)로 줄마다 직사각형이 맞는다 */}
         {/* 오늘 체크인 — 팝업 상세의 이벤트 로그(감사 원장)를 플랫폼 단위로 합산 */}
         <div className="bg-card border border-border rounded-sm p-4">
           <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
@@ -200,7 +179,10 @@ export default function AdminDashboard() {
             예약·웨이팅 상태 변화가 자동 기록되는 이벤트 로그 기준. 팝업별 원장은 각 팝업 상세에서 볼 수 있습니다.
           </p>
         </div>
+      </div>
 
+      {/* 실시간 운영 지표 (7/31) — 신고·지역 마스터 집계. 8/3 — 2분할로 아랫줄 직사각형 유지 */}
+      <div className="grid lg:grid-cols-2 gap-3">
         {/* 신고 처리 현황 — 접수/반려/수용 3상태 비율 */}
         <div className="bg-card border border-border rounded-sm p-4">
           <div className="flex items-center justify-between mb-2">

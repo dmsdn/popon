@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { ArrowUpRight, AlertTriangle, Users, CalendarCheck, Store, FileClock, Inbox, TrendingUp, Percent } from "lucide-react";
-import { ResponsiveContainer, AreaChart, Area, Tooltip } from "recharts";
+import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis } from "recharts";
 import {
   getMyPopups, getSlots, getPopupReservations, getQueueBoard, getToken, getMyNoticeInbox,
   getVisitorTrend, getConversionRate,
@@ -242,6 +242,9 @@ export default function SellerDashboard() {
                           <stop offset="100%" stopColor="#E85D3C" stopOpacity={0} />
                         </linearGradient>
                       </defs>
+                      {/* 8/3 — XAxis 없이는 툴팁 라벨이 배열 인덱스(0~6)로 나와 "0 방문"처럼 보였다.
+                          date(MM-DD)를 라벨로 쓰되 눈금은 숨겨 스파크라인 모양은 유지 */}
+                      <XAxis dataKey="date" hide />
                       <Tooltip
                         contentStyle={{ fontSize: 11, borderRadius: 4, padding: "4px 8px" }}
                         labelFormatter={(l) => `${l} 방문`}
