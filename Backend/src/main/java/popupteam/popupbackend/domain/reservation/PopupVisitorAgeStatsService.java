@@ -158,6 +158,29 @@ public class PopupVisitorAgeStatsService {
         return trend;
     }
 
+    // 오늘 방문자 수(QR 체크인 기준) - 대시보드용 서버 사이드 집계.
+    // checkedInAt이 오늘인 예약들의 partySize 합. countDailyCheckedInVisitors를 오늘 하루 범위로 재사용.
+    public long getTodayVisitorCount(Long popupId) {
+        LocalDate today = LocalDate.now();
+        List<Object[]> rows = reservationRepository.countDailyCheckedInVisitors(
+                popupId, today.atStartOfDay(), today.plusDays(1).atStartOfDay());
+        return rows.isEmpty() ? 0L : (Long) rows.get(0)[1];
+    }
+
+    // 오늘 예약 요약(건수 + 인원 합) - 대시보드용 서버 사이드 집계
+    public Map<String, Object> getTodayReservationSummary(Long popupId) {
+        Object[] row = reservationRepository.sumTodayReservations(
+                popupId, LocalDate.now(), popupteam.popupbackend.domain.reservation.ReservationStatus.CONFIRMED);
+
+        long reservationCount = (Long) row[0];
+        long partySize = (Long) row[1];
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("reservationCount", reservationCount);
+        result.put("partySize", partySize);
+        return result;
+    }
+
     // 예약 전환율 = 취소되지 않은 예약 건수 / 팝업 상세페이지 클릭수
     public Map<String, Object> getConversionRate(Long popupId) {
         long reservationCount = reservationRepository.countByPopupIdAndStatus(
