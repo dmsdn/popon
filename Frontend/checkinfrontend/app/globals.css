@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+/* [참고] customerfrontend와 동일한 색상 토큰을 그대로 가져왔어요. 이 앱은
+   "다크모드만" 쓰기로 했으니, .dark 클래스 분기 없이 다크모드 값을 기본값으로
+   바로 박아넣었어요. */
+@theme {
+  --color-background: #17181a;
+  --color-foreground: #f2f8ff;
+  --color-point: #5bce41;
+  --color-card: #282b32;
+}
+
+:root {
+  --background: #17181a;
+  --foreground: #f2f8ff;
+}
+
+html,
+body {
+  background: var(--background);
+  color: var(--foreground);
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+* {
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-button {
+  display: none;
+}
+
+/* [신규] 완전히 스크롤바를 숨기는 유틸 - 예약/웨이팅 모달, 이메일 드롭다운 등에 씀 */
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* [신규] 태블릿을 세로로 들었을 때를 위한 안내 - 화면 자체를 가로로 고정하는
+   진짜 "orientation lock"은 브라우저 권한(fullscreen + Screen Orientation API)이
+   필요하고 사용자가 허용해야만 동작해요. 그래서 CSS로는 완벽히 막을 수 없고,
+   대신 세로로 들었을 때 "가로로 돌려주세요" 안내 화면을 전체화면으로 덮어서
+   사실상 가로 모드로만 쓰게 유도했어요. */
+@media (orientation: portrait) {
+  #checkin-app {
+    display: none;
+  }
+  #rotate-notice {
+    display: flex;
+  }
+}
+
+@media (orientation: landscape) {
+  #rotate-notice {
+    display: none;
+  }
+}
+
+@keyframes gentle-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.animate-float {
+  animation: gentle-float 2.6s ease-in-out infinite;
+}

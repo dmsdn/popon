@@ -1,5 +1,7 @@
 "use client";
 
+// 팝업 상세 페이지 - 정보/댓글·후기 탭, 예약·웨이팅 버튼, 상세이미지, SNS링크, 이용안내 등 팝업의 거의 모든 정보를 보여주는 핵심 페이지.
+
 import { use, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -10,6 +12,7 @@ import { StickyActionBar } from "@/components/popup/StickyActionBar";
 import { ReviewCard } from "@/components/popup/ReviewCard";
 import { PlaceCard } from "@/components/popup/PlaceCard";
 import { PopupSnsLinks } from "@/components/popup/PopupSnsLinks";
+import { DEFAULT_USAGE_GUIDE } from "@/lib/usageGuide";
 import { OperatingHoursSection } from "@/components/popup/OperatingHoursSection";
 import { ReviewImageModal } from "@/components/popup/ReviewImageModal";
 import { SimpleMarkdown } from "@/components/ui/SimpleMarkdown";
@@ -28,6 +31,7 @@ import {
   getQueueBoardCount,
   getPopupImages,
   getPopupWishlistCount,
+  logPopupClick,
   type PopupDetail,
   type PopupSlot,
   type PopupLiveStatus,
@@ -89,6 +93,10 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   const [popupReviews, setPopupReviews] = useState<Review[]>([]);
   const [reviewSort, setReviewSort] = useState<"latest" | "recommended">("latest");
   const [photoOnly, setPhotoOnly] = useState(false);
+  // [수정] "방문 인증만" 체크박스 하나로는 "댓글만 보기"가 안 됐어요 - 전체/인증된
+  // 후기/댓글 3단 필터로 바꿨어요.
+  const [reviewFilter, setReviewFilter] = useState<"all" | "verified" | "comment">("all");
+  const [showSortMenu, setShowSortMenu] = useState(false);
   const [imageModal, setImageModal] = useState<{ reviewIndex: number; photoIndex: number } | null>(null);
   const [detailImagesExpanded, setDetailImagesExpanded] = useState(false);
   const [hotPlaces, setHotPlaces] = useState<HotPlace[]>([]);
@@ -109,6 +117,10 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         if (!cancelled) {
           setPopup(data);
           recordPopupView(data.id);
+          // [신규 7/31] 서버에도 클릭을 남긴다 — 주최자 성과 대시보드의 「예약 전환율」 분모다.
+          // 그전에는 아무도 이 API를 부르지 않아 전환율이 늘 이상하게 나왔다(클릭 2·예약 4 → 200%).
+          // 집계용이라 실패는 무시한다 (logPopupClick 안에서 catch).
+          logPopupClick(data.id, customer?.id ?? null);
           // [수정] 백엔드 API 대신 프론트에 직접 넣어둔 지역별 데이터에서 바로 찾아요
           // (data/hotplaces.ts 참고). 관리자용 업로드 화면이 없는 지금 상황에선
           // 이게 훨씬 빨라요 - SQL 안 만지고 코드에 몇 줄 추가하면 바로 반영돼요.
@@ -337,6 +349,11 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   // [신규] 정렬(최신순/추천순) + 사진 리뷰만 보기 필터
   const visibleReviews = [...relatedReviews]
     .filter((r) => !photoOnly || (r.photos && r.photos.length > 0))
+    .filter((r) => {
+      if (reviewFilter === "verified") return r.rating != null;
+      if (reviewFilter === "comment") return r.rating == null;
+      return true;
+    })
     .sort((a, b) =>
       reviewSort === "recommended"
         ? (b.likeCount ?? 0) - (a.likeCount ?? 0)
@@ -361,7 +378,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
           aria-label="뒤로가기"
           className="text-lg text-gray-500"
         >
-          <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
+          <img src="/icons/ui/back_arrow.svg" alt="" width={24} height={24} className="dark:invert" />
         </button>
       </div>
 
@@ -388,7 +405,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
           </Link>
           {averageRating != null && (
             <span className="flex items-center gap-1.5 text-sm text-gray-500 flex-none">
-              <img src="/Icon/star_active.svg" alt="" width={20} height={20} />
+              <img src="/icons/ui/star_active.svg" alt="" width={20} height={20} />
               {Number(averageRating).toFixed(1)}/5
             </span>
           )}
@@ -507,12 +524,19 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           )}
 
-          <Link
-            href={`/mypage?menu=1:1 문의&prefillTitle=${encodeURIComponent(`[${popup.companyName}] ${popup.title} 관련 문의`)}`}
-            className="w-full text-center text-sm font-medium border border-gray-300 dark:border-[#282B32] text-gray-700 dark:text-gray-300 rounded-full py-2.5"
-          >
-            문의하기
-          </Link>
+          {/* [수정] 예약/웨이팅 둘 다 지원 안 하는 팝업은 여기서 문의하기를
+              빼고, 대신 하단 고정 액션바(StickyActionBar)에 넣었어요 - 거기가
+              원래 예약/웨이팅 버튼이 뜨던 자리라, 그 자리가 비어보이지 않게요. */}
+          {(popup.queueMode === "PRERESERVATION_ONLY" ||
+            popup.queueMode === "ONSITE_WAITING_ONLY" ||
+            popup.queueMode === "BOTH") && (
+            <Link
+              href={`/mypage?menu=1:1 문의&prefillTitle=${encodeURIComponent(`[${popup.companyName}] ${popup.title} 관련 문의`)}`}
+              className="w-full text-center text-sm font-medium border border-gray-300 dark:border-[#282B32] text-gray-700 dark:text-gray-300 rounded-full py-2.5"
+            >
+              문의하기
+            </Link>
+          )}
         </div>
 
         {showReservation && (
@@ -520,6 +544,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   popupName={popup.title}
   dateRange={`${new Date(popup.startDate).toLocaleDateString("ko-KR")} ~ ${new Date(popup.endDate).toLocaleDateString("ko-KR")}`}
   location={popup.location ?? undefined}
+  notice={popup.notice}
   slots={slots}
   minDate={new Date(popup.startDate)}
   maxDate={new Date(popup.endDate)}
@@ -531,17 +556,22 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                 router.push("/login");
                 return;
               }
-              // [수정] 이전엔 "다른 팝업"일 때만 막았는데, 같은 팝업에 같은 날짜로 또
-              // 예약하는 것도 막아야 "하나만"이라는 요청에 맞아서, 팝업 구분 없이
-              // 같은 날짜에 활성 예약이 하나라도 있으면 무조건 막도록 강화했어요.
+              // [수정] "같은 날짜"라는 이유만으로 무조건 막고 있었는데, 그러면
+              // 같은 날 다른 시간대 예약까지 막혀버려서 요청과 안 맞았어요.
+              // 진짜 막아야 하는 건 "완전히 같은 예약을 중복으로 넣는 것"이라,
+              // 같은 팝업 + 같은 날짜 + 같은 시간대일 때만 막도록 좁혔어요.
               const targetDateStr = toLocalDateString(date);
               try {
                 const myReservations = await getMyReservations(customer.id);
-                const sameDay = myReservations.find(
-                  (r) => r.status !== "CANCELLED" && r.reservationDate === targetDateStr
+                const duplicate = myReservations.find(
+                  (r) =>
+                    r.status !== "CANCELLED" &&
+                    r.popupId === popup.id &&
+                    r.reservationDate === targetDateStr &&
+                    (r.reservationTime ?? null) === (time ?? null)
                 );
-                if (sameDay) {
-                  alert("같은 날짜에 이미 예약이 있어요. 한 번에 하나의 예약만 가능해요.");
+                if (duplicate) {
+                  alert("이미 같은 시간대에 예약이 있어요.");
                   return;
                 }
               } catch (err) {
@@ -570,6 +600,8 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
             popupName={popup.title}
             dateRange={`${new Date(popup.startDate).toLocaleDateString("ko-KR")} ~ ${new Date(popup.endDate).toLocaleDateString("ko-KR")}`}
             location={popup.location ?? undefined}
+            notice={popup.notice}
+            capacity={popup.capacity}
             onClose={() => setShowWaiting(false)}
             onSubmit={async (count) => {
               if (!customer) {
@@ -632,7 +664,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                   : "text-gray-400"
               }`}
             >
-              {tab === "후기" ? `후기 (${popup.reviewCount})` : tab}
+              {tab === "후기" ? `댓글/후기 (${popup.reviewCount})` : tab}
             </button>
           ))}
         </div>
@@ -658,26 +690,6 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
               </p>
             </section>
 
-            {/* [신규] "이용 정보" 아래에 좀 더 상세한 이용 안내사항을 넣었어요.
-                주최측이 남긴 안내(popup.notice)가 있으면 그걸 그대로 보여주고,
-                없으면 팝업스토어 방문 시 일반적으로 알아두면 좋은 기본 안내로
-                대체해요. */}
-            <section>
-              <h2 className="text-sm font-semibold mb-2">이용 안내사항</h2>
-              {popup.notice ? (
-                <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{popup.notice}</p>
-              ) : (
-                <ul className="text-sm text-gray-600 dark:text-gray-400 list-disc pl-4 flex flex-col gap-1.5">
-                  <li>입장 전 예약/웨이팅 확인용 QR코드를 미리 준비해주세요.</li>
-                  <li>현장 상황에 따라 입장이 지연되거나 순서가 조정될 수 있어요.</li>
-                  <li>대기 중 자리를 비우실 경우 순번이 밀리거나 취소될 수 있어요.</li>
-                  <li>예약 시간에 늦으면 예약이 자동으로 취소될 수 있어요.</li>
-                  <li>매장 내 음식물 반입, 촬영 등은 현장 안내를 따라주세요.</li>
-                  <li>운영 일정은 현장 사정에 따라 변경될 수 있어요.</li>
-                </ul>
-              )}
-            </section>
-
             <section>
               <h2 className="text-sm font-semibold mb-2">상세 이미지</h2>
               {/* [수정] 이미지를 16:9로 강제로 잘라내던 걸(object-cover) 없애고, 올린
@@ -696,6 +708,24 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                         <ImageWithFallback key={img.id} src={img.imageUrl} className="w-full h-auto block" />
                       ))}
                     </div>
+
+                    {/* [수정] "이용 안내사항"을 상세 이미지 펼침 영역 맨 아래로 옮겼어요 -
+                        접혀있을 땐(더보기 누르기 전) 이미지랑 같이 숨겨져 있다가, 더보기를
+                        누르면 이미지들 아래에 나타나고, 다시 접으면 같이 숨겨져요.
+                        주최측이 남긴 안내(popup.notice)가 있으면 그걸, 없으면 일반적인
+                        기본 안내로 대체해요. */}
+                    <section className="px-4 mobile:px-0 py-6">
+                      <h2 className="text-sm font-semibold mb-2">이용 안내사항</h2>
+                      {popup.notice ? (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{popup.notice}</p>
+                      ) : (
+                        <ul className="text-sm text-gray-600 dark:text-gray-400 list-disc pl-4 flex flex-col gap-1.5">
+                          {DEFAULT_USAGE_GUIDE.map((line) => (
+                            <li key={line}>{line}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </section>
                   </div>
 
                   {!detailImagesExpanded && (
@@ -746,33 +776,94 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                   size={48}
                 />
               </div>
+              {/* [신규] 웨이팅/예약 없이도 후기를 남기고 싶은 사람을 위한 버튼 -
+                  별점 없이 바로 댓글 작성 화면으로 가요. */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (!customer) {
+                    saveRedirectTarget(`/popup/${id}`);
+                    router.push("/login");
+                    return;
+                  }
+                  router.push(`/popup/${id}/review`);
+                }}
+                className="mt-3 text-sm text-gray-400 underline underline-offset-2"
+              >
+                방문 안 하셨나요? 댓글만 남기기
+              </button>
             </div>
 
             {relatedReviews.length > 0 && (
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-1">
-                  {(["latest", "recommended"] as const).map((sort) => (
+              <div className="mb-4">
+                {/* 왼쪽: 전체 개수, 오른쪽: 정렬 드롭다운 */}
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm text-gray-500">전체 {visibleReviews.length}</span>
+                  <div className="relative">
                     <button
-                      key={sort}
                       type="button"
-                      onClick={() => setReviewSort(sort)}
-                      className={`text-sm px-3 py-1.5 rounded-full ${
-                        reviewSort === sort ? "bg-gray-900 text-white" : "text-gray-500"
-                      }`}
+                      onClick={() => setShowSortMenu((prev) => !prev)}
+                      className="flex items-center gap-1 text-sm text-gray-500"
                     >
-                      {sort === "latest" ? "최신순" : "추천순"}
+                      ↑↓ {reviewSort === "latest" ? "최신순" : "추천순"}
                     </button>
-                  ))}
+                    {showSortMenu && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setShowSortMenu(false)} />
+                        <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-[#282B32] border border-gray-200 dark:border-[#282B32] rounded-lg shadow-md py-1 w-28">
+                          {(["latest", "recommended"] as const).map((sort) => (
+                            <button
+                              key={sort}
+                              type="button"
+                              onClick={() => {
+                                setReviewSort(sort);
+                                setShowSortMenu(false);
+                              }}
+                              className={`block w-full text-left px-3 py-2 text-sm ${
+                                reviewSort === sort ? "font-semibold text-gray-900 dark:text-white" : "text-gray-500"
+                              }`}
+                            >
+                              {sort === "latest" ? "최신순" : "추천순"}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <label className="flex items-center gap-1.5 text-sm text-gray-500">
-                  <input
-                    type="checkbox"
-                    checked={photoOnly}
-                    onChange={(e) => setPhotoOnly(e.target.checked)}
-                    className="w-3.5 h-3.5 accent-point"
-                  />
-                  사진 리뷰만
-                </label>
+
+                {/* 왼쪽: 전체/인증된 후기/댓글 필터, 오른쪽: 사진만 보기 체크 */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    {(
+                      [
+                        ["all", "전체"],
+                        ["verified", "인증된 후기"],
+                        ["comment", "댓글"],
+                      ] as const
+                    ).map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setReviewFilter(value)}
+                        className={`text-sm px-3 py-1.5 rounded-full ${
+                          reviewFilter === value ? "bg-gray-900 text-white" : "text-gray-500"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <label className="flex items-center gap-1.5 text-sm text-gray-500 flex-none ml-2">
+                    <input
+                      type="checkbox"
+                      checked={photoOnly}
+                      onChange={(e) => setPhotoOnly(e.target.checked)}
+                      className="w-3.5 h-3.5 accent-point"
+                    />
+                    사진만
+                  </label>
+                </div>
               </div>
             )}
 
@@ -845,6 +936,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         hasSlots={slots.length > 0}
         waitingTeams={waitingTeams}
         wishlistCount={wishlistCount}
+        inquiryHref={`/mypage?menu=1:1 문의&prefillTitle=${encodeURIComponent(`[${popup.companyName}] ${popup.title} 관련 문의`)}`}
         onWishlistToggle={(nextActive) => {
           setWishlistCount((prev) => (prev === undefined ? prev : Math.max(0, prev + (nextActive ? 1 : -1))));
         }}

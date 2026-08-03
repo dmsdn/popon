@@ -1,5 +1,7 @@
 "use client";
 
+// 이미지 로드 실패 시 대체 화면을 보여주는 이미지 컴포넌트.
+
 import { useState } from "react";
 
 /**

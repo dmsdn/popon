@@ -1,5 +1,7 @@
 "use client";
 
+// "인기 추천 팝업" 섹션 - 지역 탭(진행중 팝업이 많은 지역 자동 계산)으로 필터링되는 가로 캐러셀.
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PopupCard } from "./PopupCard";
@@ -62,7 +64,7 @@ export function PopularRankingSection() {
       <div className="flex items-baseline justify-between mb-3 mobile:mb-4">
         <h3 className="text-base mobile:text-lg font-semibold">인기 추천 팝업</h3>
         <Link href={moreHref} className="text-sm mobile:text-base text-gray-400">
-          더보기 ›
+          더보기
         </Link>
       </div>
 

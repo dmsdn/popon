@@ -1,5 +1,7 @@
 "use client";
 
+// 팝업 상세페이지 후기 사진을 크게 보는 모달.
+
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ReviewItem } from "@/data/mockPopups";
@@ -161,9 +163,11 @@ export function ReviewImageModal({
                 <p className="text-sm text-gray-400">{review.date}</p>
               </div>
             </div>
-            <span className="flex items-center gap-1 text-base font-medium text-gray-700 dark:text-gray-300">
-              <StarRatingDisplay rating={review.rating} size={16} /> {review.rating} / 5
-            </span>
+            {review.rating != null && (
+              <span className="flex items-center gap-1 text-base font-medium text-gray-700 dark:text-gray-300">
+                <StarRatingDisplay rating={review.rating} size={16} /> {review.rating} / 5
+              </span>
+            )}
           </div>
           <p className="text-base text-gray-700 dark:text-gray-300 leading-relaxed">{review.content}</p>
         </div>

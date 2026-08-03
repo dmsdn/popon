@@ -207,12 +207,23 @@ public class ReservationService {
     }
 
     // QR 스캔으로 입장확인 (주최자/관리자)
-    public ReservationDetailResponse checkinByQr(String qrToken, String requesterEmail, boolean isAdmin) {
+    // popupId: 지금 스캔 중인 화면(현장)이 속한 팝업 ID - 같은 주최자 소유 팝업이라도
+    // QR이 다른 팝업 소속이면 거부하기 위한 필수 검증값
+    public ReservationDetailResponse checkinByQr(String qrToken, Long popupId, String requesterEmail, boolean isAdmin) {
         Reservation reservation = reservationRepository.findByQrToken(qrToken)
                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 QR 코드입니다."));
 
+        validateQrCheckinPopup(reservation, popupId);
         validateCheckinPermission(reservation, requesterEmail, isAdmin);
         return doCheckin(reservation, requesterEmail);
+    }
+
+    // 팝업 단위 검증 - QR 스캔 전용. 수동 체크인/노쇼 처리는 이미 특정 팝업의 예약 명단 화면에서
+    // reservationId로 선택해서 호출하는 구조라 팝업 혼동 위험이 없어 대상 아님
+    private void validateQrCheckinPopup(Reservation reservation, Long popupId) {
+        if (!reservation.getPopup().getId().equals(popupId)) {
+            throw new ForbiddenException("다른 팝업의 QR 코드는 사용할 수 없습니다.");
+        }
     }
 
     // 수동 입장확인 (QR 인식 안 될 때 대비)

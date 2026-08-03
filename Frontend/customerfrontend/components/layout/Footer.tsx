@@ -1,5 +1,7 @@
 "use client";
 
+// 페이지 하단 푸터 - 약관 4종을 각각 모달로 띄우는 링크 포함.
+
 import { useState } from "react";
 import { TERMS_SECTIONS } from "@/data/termsContent";
 import { TermsModal } from "@/components/ui/TermsModal";

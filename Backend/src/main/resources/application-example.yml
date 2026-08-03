@@ -69,7 +69,12 @@ spring:
             user-name-attribute: id
 
 jwt:
-  secret: "po2zg+6RlGd7S+vA+nfM86hgViC/4209T+SV0qQQdzZYoqBcL5GmDGnce/RHfdETClvu0CkxzytGwEilv3tRJA=="
+  # 8/3 — 서명키를 둘로 분리했다. 소비자 토큰과 직원(주최자·관리자) 토큰이 각자의
+  # 키로 서명된다. 하나였을 때는 서로의 파서를 서명 검증까지 통과해 버려서,
+  # 필터가 남의 토큰을 자기 것으로 착각하는 사고가 실제로 났다 (8/3, 콘솔 전체 500).
+  # 각자 `openssl rand -base64 64` 로 만들어 넣을 것. 두 키는 반드시 서로 달라야 한다.
+  consumer-secret: ""
+  staff-secret: ""
   expiration: 86400000   # 24시간 (ms)
 
 file:

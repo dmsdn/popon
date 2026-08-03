@@ -1,13 +1,18 @@
 "use client";
 
+// 사전예약 등록/일정변경 모달 - 달력 선택, 시간대(슬롯) 선택, 인원, 이용안내를 포함하는 큰 컴포넌트.
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CountStepper } from "./CountStepper";
 import type { PopupSlot } from "@/lib/api/popups";
+import { RESERVATION_USAGE_GUIDE } from "@/lib/usageGuide";
+import { useScrollLock } from "@/lib/useScrollLock";
 
 interface ReservationModalProps {
   popupName: string;
   dateRange?: string;
   location?: string;
+  notice?: string | null;
   onClose: () => void;
   onSubmit: (date: Date, count: number, slotId?: number, time?: string) => void;
   slots?: PopupSlot[];
@@ -48,6 +53,7 @@ export function ReservationModal({
   popupName,
   dateRange,
   location,
+  notice,
   onClose,
   onSubmit,
   slots = [],
@@ -56,14 +62,9 @@ export function ReservationModal({
   capacity,
   mode = "create",
 }: ReservationModalProps) {
-  // [신규] 모달이 열려있는 동안 배경 스크롤을 막아요.
-  useEffect(() => {
-    const original = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = original;
-    };
-  }, []);
+  // [수정] 단순 overflow:hidden만으로는 모바일 터치 스크롤이 새는 경우가 있어서,
+  // body를 고정하는 더 확실한 방식으로 바꿨어요.
+  useScrollLock();
 
   const today = useMemo(() => startOfDay(new Date()), []);
   const earliestSelectable = useMemo(
@@ -98,6 +99,21 @@ export function ReservationModal({
     monthSectionRefs.current[index]?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  // [신규] 스크롤할 때 상단 "OOOO.MM" 표시가 안 바뀌던 문제 - 스크롤 위치가
+  // 박스 절반을 넘어간 달로 자동 전환되도록 스크롤 이벤트를 붙였어요.
+  const handleCalendarScroll = () => {
+    const box = scrollBoxRef.current;
+    if (!box) return;
+    const boxRect = box.getBoundingClientRect();
+    const midpointY = boxRect.top + boxRect.height / 2;
+    let current = 0;
+    monthSectionRefs.current.forEach((el, i) => {
+      if (!el) return;
+      if (el.getBoundingClientRect().top <= midpointY) current = i;
+    });
+    setMonthIndex(current);
+  };
+
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
@@ -122,7 +138,14 @@ export function ReservationModal({
   }, [selectedDate]);
 
   const selectedSlot = slotsForSelectedDay.find((s) => s.id === selectedSlotId);
-  const maxCount = hasSlots ? Math.max(1, selectedSlot?.remaining ?? 1) : Math.max(1, capacity ?? 10);
+  // [수정] 시간대(슬롯)를 아직 안 골랐을 때 무조건 "최대 1명"으로 떠서
+  // 마치 정원이 1명인 것처럼 보였어요. 슬롯을 고르기 전엔 팝업 전체 정원을
+  // 기본으로 보여주고, 슬롯을 고르면 그 시간대의 실제 잔여 인원으로 좁혀요.
+  const maxCount = hasSlots
+    ? selectedSlot
+      ? Math.max(1, selectedSlot.remaining)
+      : Math.max(1, capacity ?? 10)
+    : Math.max(1, capacity ?? 10);
 
   useEffect(() => {
     if (count > maxCount) setCount(maxCount);
@@ -160,7 +183,7 @@ export function ReservationModal({
       onClick={onClose}
     >
       <div
-        className={`w-full bg-white dark:bg-[#282B32] overflow-y-auto px-6 pt-6 pb-8 mobile:max-w-lg mobile:rounded-2xl mobile:max-h-[85vh] ${
+        className={`w-full bg-white dark:bg-[#282B32] overflow-y-auto scrollbar-hide px-6 pt-6 pb-8 mobile:max-w-lg mobile:rounded-2xl mobile:max-h-[85vh] ${
           expanded ? "h-full rounded-none" : "rounded-t-2xl max-h-[85vh]"
         }`}
         onClick={(e) => e.stopPropagation()}
@@ -213,7 +236,7 @@ export function ReservationModal({
         </div>
 
         {/* 이번 달 아래로 스크롤(또는 위 버튼)로 다음 달까지 이어서 볼 수 있어요 */}
-        <div ref={scrollBoxRef} className="max-h-[220px] overflow-y-auto mb-6 pr-1">
+        <div ref={scrollBoxRef} onScroll={handleCalendarScroll} className="max-h-[220px] overflow-y-auto scrollbar-hide mb-6 pr-1">
           <div className="grid grid-cols-7 gap-y-1 text-center mb-1">
             {WEEKDAYS.map((wd) => (
               <span key={wd} className="text-sm text-gray-400">{wd}</span>
@@ -242,7 +265,7 @@ export function ReservationModal({
                   const isSelected = sameDate(selectedDate, cellDate);
                   const isCurrentMonth = mi === 0;
 
-                  let textClass = "text-gray-200";
+                  let textClass = "text-gray-200 dark:text-gray-700";
                   if (selectable) {
                     textClass = isCurrentMonth ? "text-gray-900 dark:text-white font-semibold" : "text-gray-400 font-medium";
                   }
@@ -291,7 +314,7 @@ export function ReservationModal({
                             ? "border-gray-100 dark:border-[#282B32] text-gray-300 line-through"
                             : isSelected
                             ? "bg-gray-900 text-white border-gray-900 font-medium"
-                            : "border-gray-200 dark:border-[#282B32] text-gray-700 dark:text-gray-300"
+                            : "border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
                         }`}
                       >
                         {formatTime(slot.startTime)}
@@ -318,7 +341,7 @@ export function ReservationModal({
                           ? "border-gray-100 dark:border-[#282B32] text-gray-300 line-through"
                           : selectedTime === time
                           ? "bg-gray-900 text-white border-gray-900 font-medium"
-                          : "border-gray-200 dark:border-[#282B32] text-gray-700 dark:text-gray-300"
+                          : "border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
                       }`}
                     >
                       {time}
@@ -335,6 +358,20 @@ export function ReservationModal({
             인원 <span className="text-sm text-gray-400 font-normal">(최대 {maxCount}명)</span>
           </span>
           <CountStepper value={count} onChange={setCount} max={maxCount} />
+        </div>
+
+        {/* [신규] 인원 설정 아래에 예약 전용 이용 안내사항을 넣었어요. */}
+        <div className="mb-8">
+          <p className="text-sm font-semibold mb-2">이용 안내사항</p>
+          {notice ? (
+            <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{notice}</p>
+          ) : (
+            <ul className="text-sm text-gray-600 dark:text-gray-400 list-disc pl-4 flex flex-col gap-1.5">
+              {RESERVATION_USAGE_GUIDE.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          )}
         </div>
 
         <button

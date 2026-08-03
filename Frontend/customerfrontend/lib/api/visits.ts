@@ -7,24 +7,12 @@ import { apiFetch } from "./client";
 
 const VISITOR_KEY_STORAGE = "visitor_key";
 
-// crypto.randomUUID()는 **보안 컨텍스트(HTTPS 또는 localhost)에서만 존재한다** (7/31).
-// 평문 HTTP로 배포하면 undefined가 되어 TypeError가 난다. 아래 try/catch가 그걸 삼키는 바람에
-// 이 앱은 화면이 죽지는 않았지만, 방문자 키가 빈 문자열이 되어 **집계가 조용히 멈춘다.**
-// (주최자·관리자 앱은 같은 호출이 catch 밖에 있어서 첫 렌더가 통째로 죽었다)
-// 이 값은 방문자 구분용일 뿐 보안에 쓰이지 않으므로 없으면 난수로 대체한다.
-function randomId(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `anon-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
 function getOrCreateVisitorKey(): string {
   if (typeof window === "undefined") return "";
   try {
     let key = window.localStorage.getItem(VISITOR_KEY_STORAGE);
     if (!key) {
-      key = randomId();
+      key = crypto.randomUUID();
       window.localStorage.setItem(VISITOR_KEY_STORAGE, key);
     }
     return key;

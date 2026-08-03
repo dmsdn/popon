@@ -1,5 +1,7 @@
 "use client";
 
+// 생년월일을 년/월/일 드럼(휠)으로 고르는 피커.
+
 import { createPortal } from "react-dom";
 import { useMemo, useState } from "react";
 

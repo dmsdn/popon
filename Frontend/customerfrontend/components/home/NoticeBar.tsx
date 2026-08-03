@@ -1,5 +1,7 @@
 "use client";
 
+// 홈 상단에 뜨는 공지 롤링 배너.
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getAnnouncements, type Announcement } from "@/lib/api/announcements";
@@ -28,7 +30,7 @@ export function NoticeBar() {
         href="/mypage?menu=공지사항"
         className="text-gray-400 text-sm flex-none ml-3"
       >
-        더보기 ›
+        더보기
       </Link>
     </div>
   );

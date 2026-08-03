@@ -1,5 +1,7 @@
 "use client";
 
+// 예약 상세 페이지 - QR 확인, 일정 변경, 취소를 여기서 처리해요.
+
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -138,7 +140,7 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
     <main className="min-h-screen flex flex-col w-full mobile:max-w-[1000px] mobile:mx-auto pb-16 mobile:pb-0">
       <div className="flex items-center gap-2 h-14 px-4 mobile:px-8 border-b border-gray-100 dark:border-[#282B32]">
         <button type="button" onClick={() => router.back()} aria-label="뒤로가기" className="text-lg text-gray-500">
-          <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
+          <img src="/icons/ui/back_arrow.svg" alt="" width={24} height={24} className="dark:invert" />
         </button>
         <h1 className="text-lg font-bold">예약 상세</h1>
       </div>
@@ -248,6 +250,7 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
           popupName={`${popup.title} - 일정 변경`}
           dateRange={`${new Date(popup.startDate).toLocaleDateString("ko-KR")} ~ ${new Date(popup.endDate).toLocaleDateString("ko-KR")}`}
           location={popup.location ?? undefined}
+          notice={popup.notice}
           mode="change"
           slots={slots}
           minDate={new Date(popup.startDate)}

@@ -1,42 +1,52 @@
 // lib/utils/popupCategoryIcon.ts
 //
-// [신규] 홈 화면 카테고리 목록(패션/뷰티/푸드 등 팝업 키워드)에 어울리는 아이콘과
-// 연한 파스텔 배경색을 매핑해요. 기존 categoryIcon.ts는 핫플레이스용(카페/공원 등
-// 장소 종류) 어휘라 팝업 키워드랑은 겹치지 않아서 별도로 만들었어요.
-// 정확히 일치하는 키워드가 없으면 기본 아이콘 + 회색 배경으로 대체돼요.
+// [수정] 제가 직접 SVG 좌표를 손으로 짜서 그리다 보니 (렌더링해서 눈으로 확인할
+// 방법이 없는 환경이라) 퀄리티가 많이 떨어졌어요. 대신 실제로 검증된 아이콘
+// 라이브러리(lucide-react)의 컴포넌트를 그대로 쓰기로 했어요 - 파일 경로가
+// 아니라 React 컴포넌트를 반환해요. lucide-react가 프로젝트에 없다면
+// `npm install lucide-react`로 설치해주세요 (MIT 라이선스, 무료).
 
-const ICON_RULES: [string[], string][] = [
-  [["패션", "의류", "옷"], "/icons/shopping.svg"],
-  [["뷰티", "화장품", "코스메틱"], "/icons/idea.svg"],
-  [["푸드", "음식", "카페", "디저트"], "/icons/food.svg"],
-  [["스포츠", "운동"], "/icons/sports.svg"],
-  [["굿즈", "캐릭터", "애니메이션", "애니"], "/icons/art.svg"],
-  [["라이프스타일", "리빙", "홈"], "/icons/park.svg"],
-  [["엔터테인먼트", "게임", "전시"], "/icons/ferris-wheel.svg"],
-  [["도서", "북"], "/icons/book.svg"],
+import {
+  Shirt,
+  Sparkles,
+  UtensilsCrossed,
+  Dumbbell,
+  Gift,
+  Sofa,
+  Ticket,
+  BookOpen,
+  Tag,
+  Grid3x3,
+  Palette,
+  Laptop,
+  type LucideIcon,
+} from "lucide-react";
+
+// [수정] 실제 카테고리 목록을 보니 "F&B"/"아트"/"테크"처럼 제 키워드 목록에
+// 없던 이름들이 있어서, 다 "기타"(Grid3x3, 네모 격자 모양이라 "네모난 아이콘만
+// 뜬다"고 느끼셨던 거예요) 로 빠지고 있었어요. 실제 이름 기준으로 규칙을 넓혔어요.
+const ICON_RULES: [string[], LucideIcon][] = [
+  [["패션", "의류", "옷"], Shirt],
+  [["뷰티", "화장품", "코스메틱"], Sparkles],
+  [["푸드", "F&B", "음식", "카페", "디저트"], UtensilsCrossed],
+  [["스포츠", "운동"], Dumbbell],
+  [["굿즈", "캐릭터", "애니메이션", "애니"], Gift],
+  [["라이프스타일", "리빙", "홈"], Sofa],
+  [["엔터테인먼트", "게임", "전시"], Ticket],
+  [["도서", "북"], BookOpen],
+  [["브랜드"], Tag],
+  [["아트", "예술"], Palette],
+  [["테크", "디지털", "전자"], Laptop],
 ];
 
-const BG_RULES: [string[], string][] = [
-  [["패션", "의류", "옷"], "bg-rose-50 dark:bg-rose-950"],
-  [["뷰티", "화장품", "코스메틱"], "bg-pink-50 dark:bg-pink-950"],
-  [["푸드", "음식", "카페", "디저트"], "bg-orange-50 dark:bg-orange-950"],
-  [["스포츠", "운동"], "bg-blue-50 dark:bg-blue-950"],
-  [["굿즈", "캐릭터", "애니메이션", "애니"], "bg-violet-50 dark:bg-violet-950"],
-  [["라이프스타일", "리빙", "홈"], "bg-emerald-50 dark:bg-emerald-950"],
-  [["엔터테인먼트", "게임", "전시"], "bg-amber-50 dark:bg-amber-950"],
-  [["도서", "북"], "bg-cyan-50 dark:bg-cyan-950"],
-];
-
-export function getPopupCategoryIcon(category: string): string {
-  for (const [keywords, path] of ICON_RULES) {
-    if (keywords.some((kw) => category.includes(kw))) return path;
+export function getPopupCategoryIcon(category: string): LucideIcon {
+  for (const [keywords, Icon] of ICON_RULES) {
+    if (keywords.some((kw) => category.includes(kw))) return Icon;
   }
-  return "/Icon/pin.svg";
+  return Grid3x3; // 일치하는 카테고리가 없으면 "기타"
 }
 
-export function getPopupCategoryBg(category: string): string {
-  for (const [keywords, bg] of BG_RULES) {
-    if (keywords.some((kw) => category.includes(kw))) return bg;
-  }
-  return "bg-gray-100 dark:bg-gray-800";
+export function getPopupCategoryBg(): string {
+  // 카테고리마다 다르던 파스텔 배경을 연한 회색 하나로 통일했어요.
+  return "bg-gray-100 dark:bg-[#282B32]";
 }

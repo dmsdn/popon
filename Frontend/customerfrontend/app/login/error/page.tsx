@@ -1,5 +1,7 @@
 "use client";
 
+// 소셜 로그인 실패 시 보여주는 에러 안내 페이지.
+
 import { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";

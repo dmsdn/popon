@@ -1,5 +1,7 @@
 "use client";
 
+// 회원가입 완료 후 관심사 선택(preferences) 페이지로 보내는 리다이렉트 전용 페이지.
+
 import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LoadingState } from "@/components/ui/EmptyState";
