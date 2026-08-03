@@ -1,5 +1,7 @@
 "use client";
 
+// 검색 필터 패널 - 카테고리/지역/상태/별점을 고르는 바텀시트.
+
 import { useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -141,7 +143,7 @@ export function FilterPanel({
           {tab === "카테고리" && (
             <div className="grid grid-cols-2 gap-3">
               {categories.map((c) => (
-                <label key={c} className="flex items-center gap-2.5 text-base">
+                <label key={c} className="flex items-center gap-2.5 text-base font-medium">
                   <input
                     type="checkbox"
                     checked={draftCategories.includes(c)}
@@ -156,7 +158,7 @@ export function FilterPanel({
           {tab === "지역" && (
             <div className="grid grid-cols-2 gap-3">
               {regions.map((r) => (
-                <label key={r} className="flex items-center gap-2.5 text-base">
+                <label key={r} className="flex items-center gap-2.5 text-base font-medium">
                   <input
                     type="checkbox"
                     checked={draftRegions.includes(r)}
@@ -171,7 +173,7 @@ export function FilterPanel({
           {tab === "운영여부" && (
             <div className="grid grid-cols-2 gap-3">
               {statuses.map((s) => (
-                <label key={s} className="flex items-center gap-2.5 text-base">
+                <label key={s} className="flex items-center gap-2.5 text-base font-medium">
                   <input
                     type="checkbox"
                     checked={draftStatuses.includes(s)}
@@ -186,7 +188,7 @@ export function FilterPanel({
           {tab === "별점" && (
             <div className="flex flex-col gap-3">
               {RATING_OPTIONS.map(({ label, value }) => (
-                <label key={value} className="flex items-center gap-2.5 text-base">
+                <label key={value} className="flex items-center gap-2.5 text-base font-medium">
                   <input
                     type="checkbox"
                     checked={draftMinRating === value}

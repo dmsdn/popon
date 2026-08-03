@@ -179,14 +179,14 @@ export default function SearchPage({
               >
                 {label}
                 {count > 0 && ` (${count})`}
-                <span className="text-sm">⌄</span>
+                <img src="/icons/ui/chevron_down.svg" alt="" width={14} height={14} className="dark:invert" />
               </button>
             ))}
             <Link
               href="/map"
               className="flex-none flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-[#282B32] rounded-full px-3 py-1.5"
             >
-              <img src="/Icon/pin.svg" alt="" width={13} height={13} className="text-gray-500" />
+              <img src="/icons/ui/pin.svg" alt="" width={13} height={13} className="text-gray-500 dark:invert" />
               지도에서 찾기
             </Link>
           </div>
@@ -223,7 +223,7 @@ export default function SearchPage({
             className="flex items-center gap-3 border border-gray-200 dark:border-[#282B32] rounded-xl px-4 py-4 mx-4 mobile:mx-0 mb-4"
           >
             <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-[#282B32] flex items-center justify-center flex-none">
-              <img src="/Icon/pin.svg" alt="" className="text-gray-500" width={18} height={18}  />
+              <img src="/icons/ui/pin.svg" alt="" className="text-gray-500 dark:invert" width={18} height={18} />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold">지도로 팝업 찾기</p>

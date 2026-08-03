@@ -1,5 +1,7 @@
 "use client";
 
+// 예약 목록 페이지.
+
 import { useState } from "react";
 import { Header } from "@/components/layout/Header";
 import { MobileHeader } from "@/components/layout/MobileHeader";
@@ -64,7 +66,7 @@ export default function ReservationsPage() {
                   </p>
                 </div>
                 <div className="text-right flex-none">
-                  <span className="text-3xl font-bold">{waiting.myOrder}</span>
+                  <span className="text-4xl font-semibold">{waiting.myOrder}</span>
                   <span className="text-sm text-gray-500 ml-0.5">번째</span>
                 </div>
               </div>

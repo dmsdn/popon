@@ -1,5 +1,7 @@
 "use client";
 
+// 후기(또는 방문 미인증 댓글) 작성/수정 페이지.
+
 import { use, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createReview, updateReview, getMyReviews } from "@/lib/api/reviews";
@@ -160,7 +162,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
     setImageUrls((prev) => prev.filter((u) => u !== url));
   };
 
-  // [수정] 상단 <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} /> 버튼도 제출 성공 시와 동일하게 back()을 씁니다.
+  // [수정] 상단 <img src="/icons/ui/back_arrow.svg" alt="" width={24} height={24} className="dark:invert" /> 버튼도 제출 성공 시와 동일하게 back()을 씁니다.
   // 이전엔 <Link href={`/popup/${id}`}>라서 뒤로가기 버튼을 눌러도 "새 이동(push)"이
   // 일어났어요. 그러면 히스토리가 [..., 상세, 후기작성, 상세(새로 push)]가 되어,
   // 방금 뒤로가기로 나간 상세페이지에서 또 뒤로가기를 누르면 원래 오던 곳이 아니라
@@ -241,7 +243,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
           aria-label="뒤로가기"
           className="text-lg text-gray-500"
         >
-          <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
+          <img src="/icons/ui/back_arrow.svg" alt="" width={24} height={24} className="dark:invert" />
         </button>
         <h1 className="text-lg font-bold">{editId ? "후기 수정하기" : isVisited ? "후기 작성하기" : "댓글 작성하기"}</h1>
       </div>

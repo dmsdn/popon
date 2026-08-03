@@ -1,3 +1,6 @@
+// components/popup/LiveCongestion.tsx
+// 혼잡도 표시 컴포넌트 - 가로 3등분 바(여유=포인트컬러/보통=+노랑/혼잡=+빨강), 작은 버전(Mini)도 같이 export해요.
+
 import type { PopupLiveStatus } from "@/lib/api/popups";
 
 const LABEL_COLOR: Record<PopupLiveStatus["congestionLabel"], string> = {
