@@ -107,7 +107,13 @@ export function PromoCarousel() {
   return (
     <div className="mb-14 mobile:mb-16 min-[700px]:px-4">
       <div className="overflow-hidden" ref={emblaRef}>
-        <div className="flex gap-4">
+        {/* [수정] 마지막 이미지 → 첫 이미지로 돌아가는 루프 지점에서 간격이 다른
+            슬라이드 사이 간격보다 좁아 보이는 문제 - flexbox의 gap 속성은 Embla가
+            loop 모드에서 슬라이드를 다시 배치할 때 그 간격까지 정확히 계산에
+            반영하지 못해서 이런 차이가 생겨요. gap 대신 각 슬라이드에 왼쪽
+            padding을 주고 컨테이너에 그만큼 음수 margin을 줘서, 루프 지점을
+            포함한 모든 슬라이드 사이 간격이 항상 똑같이 16px이 되도록 했어요. */}
+        <div className="flex -ml-4">
           {showRealBanners
             ? validBanners.map((banner, index) => {
                 // [수정] linkUrl이 있어도 "/"나 "http"로 시작하지 않으면 정상적인
@@ -120,9 +126,15 @@ export function PromoCarousel() {
                 // [수정] 600px 미만: 높이 고정 300px(600의 절반) + 좌우 꽉 채움.
                 // 600px 이상: 가운데 정렬로 바뀌면서 양옆 카드가 살짝 보이도록
                 // 폭을 조금 줄이고, 안 보이는 카드는 어둡게 눌러줘요.
-                const sizeClass =
-                  "relative flex-[0_0_100%] h-[400px] min-[700px]:flex-[0_0_520px] min-[700px]:h-[520px] min-[700px]:rounded-2xl";
+                const slideClass = "flex-[0_0_100%] min-[700px]:flex-[0_0_520px] pl-4";
+                const cardClass =
+                  "relative block h-[400px] min-[700px]:h-[520px] min-[700px]:rounded-2xl overflow-hidden bg-gray-50";
                 const isActive = active === index;
+                // [신규] 실제 배너엔 지금까지 이미지만 있고 제목이 화면에
+                // 전혀 안 보였어요 - 아래 목업 카드(fallbackCards)처럼 좌하단에
+                // 제목을 겹쳐 보여줘요. 날짜·지역도 같이 보여달라는 요청이 있었는데,
+                // 배너 API(BannerResponse)에 아직 지역 필드가 없어서 우선 지금
+                // 있는 제목만 반영했어요 - 지역이 추가되면 이 자리에 같이 넣으면 돼요.
                 const content = (
                   <>
                     <ImageWithFallback src={banner.imageUrl} className="w-full h-full object-cover" />
@@ -132,35 +144,43 @@ export function PromoCarousel() {
                         isActive ? "opacity-0" : "opacity-50"
                       }`}
                     />
+                    {banner.title && (
+                      <p className="absolute left-4 bottom-4 right-4 z-10 text-white text-base mobile:text-lg font-semibold drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)]">
+                        {banner.title}
+                      </p>
+                    )}
                   </>
                 );
-                return href ? (
-                  <Link key={banner.id} href={href} className={`${sizeClass} overflow-hidden bg-gray-50`}>
-                    {content}
-                  </Link>
-                ) : (
-                  <div key={banner.id} className={`${sizeClass} overflow-hidden bg-gray-50`}>
-                    {content}
+                return (
+                  <div key={banner.id} className={slideClass}>
+                    {href ? (
+                      <Link href={href} className={cardClass}>
+                        {content}
+                      </Link>
+                    ) : (
+                      <div className={cardClass}>{content}</div>
+                    )}
                   </div>
                 );
               })
             : fallbackCards.map((card, index) => {
                 const isActive = active === index;
                 return (
-                  <Link
-                    key={card.id}
-                    href={`/popup/${card.id}`}
-                    className="relative flex-[0_0_100%] h-[400px] min-[700px]:flex-[0_0_520px] min-[700px]:h-[520px] min-[700px]:rounded-2xl overflow-hidden bg-gray-50 flex items-end p-4"
-                  >
-                    <span className="relative z-10 text-sm mobile:text-base font-medium text-gray-700 dark:text-gray-300">
-                      {card.name}
-                    </span>
-                    <div
-                      className={`absolute inset-0 bg-black transition-opacity duration-300 pointer-events-none ${
-                        isActive ? "opacity-0" : "opacity-50"
-                      }`}
-                    />
-                  </Link>
+                  <div key={card.id} className="flex-[0_0_100%] min-[700px]:flex-[0_0_520px] pl-4">
+                    <Link
+                      href={`/popup/${card.id}`}
+                      className="relative block h-[400px] min-[700px]:h-[520px] min-[700px]:rounded-2xl overflow-hidden bg-gray-50 flex items-end p-4"
+                    >
+                      <span className="relative z-10 text-sm mobile:text-base font-medium text-gray-700 dark:text-gray-300">
+                        {card.name}
+                      </span>
+                      <div
+                        className={`absolute inset-0 bg-black transition-opacity duration-300 pointer-events-none ${
+                          isActive ? "opacity-0" : "opacity-50"
+                        }`}
+                      />
+                    </Link>
+                  </div>
                 );
               })}
         </div>

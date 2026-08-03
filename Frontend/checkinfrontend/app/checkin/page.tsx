@@ -9,6 +9,7 @@
 
 import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { consumerReservationUrl } from "@/lib/siteUrls";
 
 // [참고] customerfrontend의 lib/utils/formatPhone.ts와 완전히 동일한 로직이에요.
 // 프로젝트가 분리되어 있어서 그대로 복사해왔어요 - 소비자 앱에서 이 파일을
@@ -168,6 +169,132 @@ interface BoardResponse {
   waitingList: { partySize: number }[];
 }
 
+// [신규] "외국어는 한중일영으로 하자"는 요청을 반영했어요 - 한국어/영어 두
+// 언어였던 걸 중국어·일본어까지 더해 4개 언어로 늘렸어요. 이 화면은 손님이
+// 직접 입력하는 셀프 등록 화면이라, 화면에 보이는 문구 전체를 4개 언어로
+// 준비해두고 우측 상단 선택 메뉴로 바로 전환할 수 있게 했어요. 새 번역
+// 라이브러리를 추가하는 대신 이 파일 안에 작은 사전 하나로 충분해서 이렇게 뒀어요.
+const TEXT = {
+  ko: {
+    langLabel: "한국어",
+    currentWaitingTeams: "현재 대기 팀",
+    teamUnit: "팀",
+    estimatedWait: "예상 대기시간",
+    minuteUnit: "분",
+    howManyPeople: "몇 분이서 오셨나요?",
+    selectPartySize: "인원수를 선택해주세요",
+    maxPartyNote: (max: number) => `한 팀 최대 ${max}명까지 가능해요`,
+    next: "다음",
+    waitingRegisterTitle: "웨이팅 등록",
+    waitingRegisterDesc: "전화번호와 이메일 중 하나를 입력하고 등록해주세요",
+    changePartySize: (n: number) => `${n}명 변경`,
+    emailLabel: "이메일",
+    phoneLabel: "전화번호",
+    phonePlaceholder: "010-0000-0000",
+    privacyAgree: "개인정보 수집 및 이용에 동의합니다.",
+    submitting: "등록하는 중...",
+    submit: "웨이팅하기",
+    confirmTitle: "웨이팅 등록 완료",
+    waitingNumberLabel: "대기번호",
+    numberSuffix: "번",
+    confirmDesc: "순서가 되면 문자로 안내해드려요.",
+    confirmOk: "확인",
+    noPopupTitle: "팝업이 선택되지 않았어요",
+    goSelectPopup: "팝업 선택 화면으로",
+    reservationQrTitle: "사전 예약은 QR로",
+    reservationQrDesc: "이 QR을 스캔하면 예약 화면으로 바로 연결돼요.",
+  },
+  en: {
+    langLabel: "English",
+    currentWaitingTeams: "Teams waiting",
+    teamUnit: "teams",
+    estimatedWait: "Estimated wait",
+    minuteUnit: "min",
+    howManyPeople: "How many in your group?",
+    selectPartySize: "Please select your party size",
+    maxPartyNote: (max: number) => `Up to ${max} people per group`,
+    next: "Next",
+    waitingRegisterTitle: "Join the Waitlist",
+    waitingRegisterDesc: "Enter your phone number or email to register",
+    changePartySize: (n: number) => `Change (${n})`,
+    emailLabel: "Email",
+    phoneLabel: "Phone Number",
+    phonePlaceholder: "010-0000-0000",
+    privacyAgree: "I agree to the collection and use of personal information.",
+    submitting: "Submitting...",
+    submit: "Join Waitlist",
+    confirmTitle: "You're on the list!",
+    waitingNumberLabel: "Your number",
+    numberSuffix: "",
+    confirmDesc: "We'll text you when it's your turn.",
+    confirmOk: "OK",
+    noPopupTitle: "No popup selected",
+    goSelectPopup: "Go to popup selection",
+    reservationQrTitle: "Reserve ahead via QR",
+    reservationQrDesc: "Scan this QR code to go straight to the reservation screen.",
+  },
+  zh: {
+    langLabel: "中文",
+    currentWaitingTeams: "当前等待组数",
+    teamUnit: "组",
+    estimatedWait: "预计等待时间",
+    minuteUnit: "分钟",
+    howManyPeople: "请问一共几位？",
+    selectPartySize: "请选择人数",
+    maxPartyNote: (max: number) => `每组最多 ${max} 人`,
+    next: "下一步",
+    waitingRegisterTitle: "登记排队",
+    waitingRegisterDesc: "请输入电话号码或邮箱其中一项进行登记",
+    changePartySize: (n: number) => `修改人数（${n}人）`,
+    emailLabel: "邮箱",
+    phoneLabel: "电话号码",
+    phonePlaceholder: "010-0000-0000",
+    privacyAgree: "我同意收集和使用个人信息。",
+    submitting: "登记中...",
+    submit: "登记排队",
+    confirmTitle: "登记完成",
+    waitingNumberLabel: "排队号码",
+    numberSuffix: "号",
+    confirmDesc: "轮到您时会通过短信通知您。",
+    confirmOk: "确认",
+    noPopupTitle: "尚未选择快闪店",
+    goSelectPopup: "前往选择快闪店",
+    reservationQrTitle: "扫码提前预约",
+    reservationQrDesc: "扫描此二维码可直接进入预约页面。",
+  },
+  ja: {
+    langLabel: "日本語",
+    currentWaitingTeams: "現在の待ち組数",
+    teamUnit: "組",
+    estimatedWait: "予想待ち時間",
+    minuteUnit: "分",
+    howManyPeople: "何名様ですか？",
+    selectPartySize: "人数を選択してください",
+    maxPartyNote: (max: number) => `1組最大 ${max}名まで`,
+    next: "次へ",
+    waitingRegisterTitle: "ウェイティング登録",
+    waitingRegisterDesc: "電話番号かメールアドレスのいずれかを入力して登録してください",
+    changePartySize: (n: number) => `人数を変更（${n}名）`,
+    emailLabel: "メールアドレス",
+    phoneLabel: "電話番号",
+    phonePlaceholder: "010-0000-0000",
+    privacyAgree: "個人情報の収集及び利用に同意します。",
+    submitting: "登録中...",
+    submit: "ウェイティング登録",
+    confirmTitle: "登録が完了しました",
+    waitingNumberLabel: "待ち番号",
+    numberSuffix: "番",
+    confirmDesc: "順番が来たらSMSでお知らせします。",
+    confirmOk: "確認",
+    noPopupTitle: "ポップアップが選択されていません",
+    goSelectPopup: "ポップアップ選択画面へ",
+    reservationQrTitle: "QRで事前予約",
+    reservationQrDesc: "このQRコードをスキャンすると予約画面に直接移動します。",
+  },
+} as const;
+type Lang = keyof typeof TEXT;
+const LANG_ORDER: Lang[] = ["ko", "en", "zh", "ja"];
+
 function CheckinPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -193,6 +320,9 @@ function CheckinPageInner() {
   const [error, setError] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [teamNumber, setTeamNumber] = useState<number | null>(null);
+  // [신규] 외국인 손님을 위한 언어 선택 (한국어/영어).
+  const [lang, setLang] = useState<Lang>("ko");
+  const t = TEXT[lang];
 
   // 현재 대기 팀 수를 주기적으로 새로고침 (현장 태블릿이라 계속 켜져있을 걸 가정)
   useEffect(() => {
@@ -296,18 +426,22 @@ function CheckinPageInner() {
     return (
       <main className="h-full flex items-center justify-center px-8 text-center">
         <div className="flex flex-col items-center gap-4">
-          <p className="text-lg font-bold">팝업이 선택되지 않았어요</p>
+          <p className="text-lg font-bold">{t.noPopupTitle}</p>
           <button
             type="button"
             onClick={() => router.push("/select-popup")}
             className="rounded-full px-6 py-3 text-base font-bold bg-point text-gray-900"
           >
-            팝업 선택 화면으로
+            {t.goSelectPopup}
           </button>
         </div>
       </main>
     );
   }
+
+  const reservationQrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
+    consumerReservationUrl(popupId)
+  )}`;
 
   return (
     <main className="h-full flex flex-col landscape:flex-row relative overflow-y-auto landscape:overflow-hidden scrollbar-hide">
@@ -320,37 +454,72 @@ function CheckinPageInner() {
         className="absolute top-4 left-4 w-16 h-auto z-10 landscape:top-6 landscape:left-6 landscape:w-24"
       />
 
-      {/* 왼쪽(가로)/위(세로): 현황 */}
-      <section className="w-full landscape:w-[38%] landscape:h-full flex flex-col items-center justify-center gap-6 bg-card px-8 py-10 pt-16 landscape:py-8 landscape:pt-8 flex-none">
-        {/* [수정] 팝업 이름 한 단계 굵게 (font-normal → font-semibold) */}
-        {popupTitle && <p className="text-xl font-semibold text-gray-300 text-center">{popupTitle}</p>}
+      {/* [수정] 외국인 손님을 위한 언어 선택을 한/영 2개에서 한/중/일/영
+          4개로 늘렸어요. */}
+      <div className="absolute top-4 right-4 z-10 landscape:top-6 landscape:right-6 flex bg-card rounded-full p-1 gap-0.5">
+        {LANG_ORDER.map((l) => (
+          <button
+            key={l}
+            type="button"
+            onClick={() => setLang(l)}
+            className={`text-sm px-3 py-1.5 rounded-full font-semibold whitespace-nowrap ${
+              lang === l ? "bg-point text-gray-900" : "text-gray-400"
+            }`}
+          >
+            {TEXT[l].langLabel}
+          </button>
+        ))}
+      </div>
 
-        <div className="flex flex-col items-center gap-1 mt-4">
-          <span className="text-sm text-gray-400">현재 대기 팀</span>
-          {/* [수정] 굵기를 extrabold(800)에서 중간 정도(semibold, 600)로,
-              크기는 더 키우고, "팀"을 아래 대신 숫자 옆에 붙였어요. */}
-          <span className="flex items-baseline gap-2">
-            <span className="text-7xl landscape:text-8xl font-semibold text-point">
-              {totalWaitingTeams === null ? "-" : totalWaitingTeams}
+      {/* 왼쪽(가로)/위(세로): 현황 */}
+      <section className="w-full landscape:w-[38%] landscape:h-full flex flex-col items-center gap-6 bg-card px-8 py-10 pt-16 landscape:py-8 landscape:pt-8 flex-none">
+        {/* [수정] QR 블록을 하단에 고정하면서 justify-between을 쓰다 보니 위쪽
+            내용(팝업 이름·대기 현황)이 화면 맨 위로 붙어버렸어요. 이 블록에
+            flex-1 + justify-center를 줘서, QR 블록 위 남은 공간 안에서 다시
+            세로 가운데로 오도록 했어요. */}
+        <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-6">
+          {/* [수정] 팝업 이름 한 단계 굵게 (font-normal → font-semibold) */}
+          {popupTitle && <p className="text-xl font-semibold text-gray-300 text-center">{popupTitle}</p>}
+
+          <div className="flex flex-col items-center gap-1 mt-4">
+            <span className="text-sm text-gray-400">{t.currentWaitingTeams}</span>
+            {/* [수정] 굵기를 extrabold(800)에서 중간 정도(semibold, 600)로,
+                크기는 더 키우고, "팀"을 아래 대신 숫자 옆에 붙였어요. */}
+            <span className="flex items-baseline gap-2">
+              <span className="text-7xl landscape:text-8xl font-semibold text-point">
+                {totalWaitingTeams === null ? "-" : totalWaitingTeams}
+              </span>
+              <span className="text-xl text-gray-400">{t.teamUnit}</span>
             </span>
-            <span className="text-xl text-gray-400">팀</span>
-          </span>
+          </div>
+
+          {/* [수정] 실제 백엔드 공식(정원 기준 배치 회전)으로 계산해요:
+              대기시간(분) = 체류시간 × (⌈대기인원/정원⌉ - 1) / 2
+              정원(capacity) 정보가 없는 팝업은 정확한 계산이 안 돼서 안 보여줘요. */}
+          {totalWaitingPeople !== null && avgExperienceMinutes != null && capacity != null && capacity > 0 && (
+            <div className="flex items-baseline gap-2 mt-2">
+              <span className="text-sm text-gray-400">{t.estimatedWait}</span>
+              <span className="text-3xl font-semibold text-point">
+                {totalWaitingPeople <= capacity
+                  ? 0
+                  : Math.round((avgExperienceMinutes * (Math.ceil(totalWaitingPeople / capacity) - 1)) / 2)}
+              </span>
+              <span className="text-base text-gray-400">{t.minuteUnit}</span>
+            </div>
+          )}
         </div>
 
-        {/* [수정] 실제 백엔드 공식(정원 기준 배치 회전)으로 계산해요:
-            대기시간(분) = 체류시간 × (⌈대기인원/정원⌉ - 1) / 2
-            정원(capacity) 정보가 없는 팝업은 정확한 계산이 안 돼서 안 보여줘요. */}
-        {totalWaitingPeople !== null && avgExperienceMinutes != null && capacity != null && capacity > 0 && (
-          <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-sm text-gray-400">예상 대기시간</span>
-            <span className="text-3xl font-semibold text-point">
-              {totalWaitingPeople <= capacity
-                ? 0
-                : Math.round((avgExperienceMinutes * (Math.ceil(totalWaitingPeople / capacity) - 1)) / 2)}
-            </span>
-            <span className="text-base text-gray-400">분</span>
+        {/* [신규] 사전 예약 QR - 아직 등록 안 한 손님이 자기 휴대폰으로
+            스캔하면 소비자 앱의 예약 화면으로 바로 연결돼요. 설명은 QR
+            오른쪽에 둬요. (입장 QR 스캔은 /checkin/scan 화면으로 분리했어요.) */}
+        <div className="w-full flex items-center gap-4 bg-[#17181a] rounded-xl px-4 py-4 flex-none">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={reservationQrSrc} alt="" width={90} height={90} className="rounded-md flex-none bg-white" />
+          <div className="text-left min-w-0">
+            <p className="text-sm font-semibold text-white">{t.reservationQrTitle}</p>
+            <p className="text-sm text-gray-400 mt-1 leading-relaxed">{t.reservationQrDesc}</p>
           </div>
-        )}
+        </div>
       </section>
 
       {/* 오른쪽(가로)/아래(세로): 등록 폼 */}
@@ -360,8 +529,8 @@ function CheckinPageInner() {
           // 고르고 나서 연락처 입력 단계로 넘어가요.
           <div className="w-full max-w-md flex flex-col items-center gap-10">
             <div className="text-center">
-              <p className="text-xl font-bold">몇 분이서 오셨나요?</p>
-              <p className="text-sm text-gray-400 mt-1">인원수를 선택해주세요</p>
+              <p className="text-xl font-bold">{t.howManyPeople}</p>
+              <p className="text-sm text-gray-400 mt-1">{t.selectPartySize}</p>
             </div>
             <div className="flex items-center gap-8">
               <button
@@ -385,14 +554,14 @@ function CheckinPageInner() {
               </button>
             </div>
             {maxPartySize != null && (
-              <p className="text-sm text-gray-500">한 팀 최대 {maxPartySize}명까지 가능해요</p>
+              <p className="text-sm text-gray-500">{t.maxPartyNote(maxPartySize)}</p>
             )}
             <button
               type="button"
               onClick={() => setStep("contact")}
               className="w-full rounded-full py-4 text-lg font-bold bg-point text-gray-900"
             >
-              다음
+              {t.next}
             </button>
           </div>
         ) : (
@@ -401,8 +570,8 @@ function CheckinPageInner() {
               입력해도 등록할 수 있다는 걸 안내에 반영했어요. */}
           <div className="text-left mb-2 flex items-center justify-between">
             <div>
-              <p className="text-xl font-bold">웨이팅 등록</p>
-              <p className="text-sm text-gray-400 mt-1">전화번호와 이메일 중 하나를 입력하고 등록해주세요</p>
+              <p className="text-xl font-bold">{t.waitingRegisterTitle}</p>
+              <p className="text-sm text-gray-400 mt-1">{t.waitingRegisterDesc}</p>
             </div>
             {/* [신규] 인원 선택 단계로 돌아가서 다시 고를 수 있게 */}
             <button
@@ -410,23 +579,23 @@ function CheckinPageInner() {
               onClick={() => setStep("party")}
               className="flex-none text-sm text-gray-400 border border-gray-700 rounded-full px-3 py-1.5"
             >
-              {partySize}명 변경
+              {t.changePartySize(partySize)}
             </button>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">이메일</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">{t.emailLabel}</label>
             <EmailInput value={email} onChange={setEmail} />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">전화번호</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">{t.phoneLabel}</label>
             <input
               type="tel"
               inputMode="numeric"
               value={phone}
               onChange={(e) => setPhone(formatPhoneInput(e.target.value))}
-              placeholder="010-0000-0000"
+              placeholder={t.phonePlaceholder}
               className="w-full bg-card text-white border border-transparent rounded-xl px-4 py-4 text-lg outline-none focus:ring-2 focus:ring-point"
             />
           </div>
@@ -440,7 +609,7 @@ function CheckinPageInner() {
                   onChange={(e) => setAgreed(e.target.checked)}
                   className="w-5 h-5 accent-point"
                 />
-                개인정보 수집 및 이용에 동의합니다.
+                {t.privacyAgree}
               </label>
               {/* [신규] 옆에 화살표를 눌러서 실제 개인정보처리방침 내용을 볼 수 있게 */}
               <button
@@ -467,7 +636,7 @@ function CheckinPageInner() {
             disabled={!canSubmit}
             className="w-full rounded-full py-4 text-lg font-bold bg-point text-gray-900 disabled:opacity-40"
           >
-            {submitting ? "등록하는 중..." : "웨이팅하기"}
+            {submitting ? t.submitting : t.submit}
           </button>
         </div>
         )}
@@ -480,19 +649,19 @@ function CheckinPageInner() {
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-point/20 flex items-center justify-center text-point text-3xl">
               ✓
             </div>
-            <p className="text-2xl font-bold mb-2">웨이팅 등록 완료</p>
+            <p className="text-2xl font-bold mb-2">{t.confirmTitle}</p>
             {teamNumber !== null && (
               <p className="text-lg text-gray-300 mb-1">
-                대기번호 <span className="text-point font-bold">{teamNumber}</span>번
+                {t.waitingNumberLabel} <span className="text-point font-bold">{teamNumber}</span>{t.numberSuffix}
               </p>
             )}
-            <p className="text-sm text-gray-400 mb-6">순서가 되면 문자로 안내해드려요.</p>
+            <p className="text-sm text-gray-400 mb-6">{t.confirmDesc}</p>
             <button
               type="button"
               onClick={resetForm}
               className="w-full rounded-full py-3.5 text-base font-medium bg-point text-gray-900"
             >
-              확인
+              {t.confirmOk}
             </button>
           </div>
         </div>
