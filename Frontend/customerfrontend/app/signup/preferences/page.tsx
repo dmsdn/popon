@@ -1,5 +1,7 @@
 "use client";
 
+// 가입 직후 관심 카테고리·관심 지역을 선택하는 온보딩 페이지.
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getKeywords, type Keyword } from "@/lib/api/customer";

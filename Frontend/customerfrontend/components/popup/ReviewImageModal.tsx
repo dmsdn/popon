@@ -1,5 +1,7 @@
 "use client";
 
+// 팝업 상세페이지 후기 사진을 크게 보는 모달.
+
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ReviewItem } from "@/data/mockPopups";

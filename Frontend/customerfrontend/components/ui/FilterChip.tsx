@@ -1,4 +1,6 @@
 "use client";
+
+// 선택 가능한 칩(알약 모양 버튼) 컴포넌트.
 import { useState } from "react";
 
 export function FilterChip({ options }: { options: string[] }) {

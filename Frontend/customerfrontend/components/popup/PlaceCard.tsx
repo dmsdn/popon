@@ -1,3 +1,6 @@
+// components/popup/PlaceCard.tsx
+// 핫플레이스(주변 카페/공원 등) 카드 컴포넌트.
+
 import Link from "next/link";
 import { getCategoryIcon } from "@/lib/utils/categoryIcon";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";

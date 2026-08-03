@@ -10,8 +10,10 @@ import { BottomTabBar } from "@/components/layout/BottomTabBar";
 import { getNotifications, markNotificationRead, type AppNotification, type NotificationType } from "@/lib/api/notifications";
 import { LoadingState, EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { getMyReservations } from "@/lib/api/reservations";
+import { getMyWaitingIds, getMyWaitingStatus } from "@/lib/api/waiting";
 
-const TABS: ("전체" | NotificationType)[] = ["전체", "공지", "예약/웨이팅", "찜"];
+const TABS: ("전체" | NotificationType)[] = ["전체", "공지", "웨이팅/예약", "찜"];
 
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -24,9 +26,9 @@ function timeAgo(iso: string): string {
 }
 
 const TYPE_ICON: Record<NotificationType, string> = {
-  공지: "/Icon/notice.svg",
-  찜: "/Icon/heart.svg",
-  "예약/웨이팅": "/Icon/alarm.svg",
+  공지: "/icons/ui/notice.svg",
+  찜: "/icons/ui/heart.svg",
+  "웨이팅/예약": "/icons/ui/alarm.svg",
 };
 
 export default function NotificationsPage() {
@@ -51,8 +53,58 @@ export default function NotificationsPage() {
   // [신규] 알림을 누르면 읽음 처리 - 화면은 먼저 바꾸고(낙관적 업데이트), 실패해도
   // 사용자 경험엔 큰 영향 없어서 조용히 무시해요.
   const handleReadNotification = (id: string) => {
+    if (!customer) return;
     setNotifications((prev) => prev?.map((n) => (n.id === id ? { ...n, read: true } : n)) ?? prev);
-    markNotificationRead(id).catch((err) => console.error("알림 읽음 처리 실패", err));
+    markNotificationRead(id, customer.id).catch((err) => console.error("알림 읽음 처리 실패", err));
+  };
+
+  // [신규] 알림 내용을 누르면 관련 화면으로 이동해요.
+  // - 공지: 해당 공지 상세페이지로
+  // - 찜: 해당 팝업 상세페이지로
+  // - 웨이팅/예약: 같은 팝업의 내 예약/웨이팅 중 하나를 찾아서 그 상세페이지로
+  //   (여러 개면 가장 최근 걸로 이동, 못 찾으면 팝업 상세로 대체)
+  // router.push로 이동하니 뒤로가기를 누르면 자연스럽게 다시 이 알림 목록으로 돌아와요.
+  const handleNotificationClick = async (item: AppNotification) => {
+    if (!item.read) handleReadNotification(item.id);
+
+    if (item.type === "공지") {
+      router.push(`/notice/${item.noticeId}`);
+      return;
+    }
+
+    if (item.type === "찜") {
+      if (item.popupId) router.push(`/popup/${item.popupId}`);
+      return;
+    }
+
+    // 웨이팅/예약
+    if (!item.popupId || !customer) return;
+    try {
+      const [reservations, waitingIds] = await Promise.all([
+        getMyReservations(customer.id).catch(() => []),
+        Promise.resolve(getMyWaitingIds()),
+      ]);
+      const matchedReservation = reservations
+        .filter((r) => r.popupId === item.popupId)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+      if (matchedReservation) {
+        router.push(`/reservations/${matchedReservation.id}`);
+        return;
+      }
+      const waitings = await Promise.all(waitingIds.map((id) => getMyWaitingStatus(id).catch(() => null)));
+      const matchedWaiting = waitings
+        .filter((w): w is NonNullable<typeof w> => w !== null && w.popupId === item.popupId)
+        .sort((a, b) => new Date(b.registeredAt).getTime() - new Date(a.registeredAt).getTime())[0];
+      if (matchedWaiting) {
+        router.push(`/waiting/${matchedWaiting.id}`);
+        return;
+      }
+      // 매칭되는 웨이팅/예약을 못 찾으면 팝업 상세로 대체
+      router.push(`/popup/${item.popupId}`);
+    } catch (err) {
+      console.error("알림 관련 웨이팅/예약 조회 실패", err);
+      router.push(`/popup/${item.popupId}`);
+    }
   };
 
   const filtered = (notifications ?? []).filter((n) => tab === "전체" || n.type === tab);
@@ -66,7 +118,7 @@ export default function NotificationsPage() {
       <div className="block mobile:hidden">
         <div className="flex items-center gap-2 h-14 px-4 border-b border-gray-100 dark:border-[#282B32]">
           <button type="button" onClick={() => router.back()} aria-label="뒤로가기" className="text-lg text-gray-500">
-            <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
+            <img src="/icons/ui/back_arrow.svg" alt="" width={24} height={24} className="dark:invert" />
           </button>
           <h1 className="text-lg font-bold">알림</h1>
         </div>
@@ -83,8 +135,10 @@ export default function NotificationsPage() {
             key={t}
             type="button"
             onClick={() => setTab(t)}
-            className={`flex-none px-3 py-1.5 rounded-full text-sm ${
-              tab === t ? "bg-gray-900 text-white font-medium" : "text-gray-500"
+            className={`flex-none px-3 py-1.5 rounded-full text-sm border ${
+              tab === t
+                ? "border-gray-900 dark:border-white text-gray-900 dark:text-white font-medium"
+                : "border-gray-200 dark:border-[#282B32] text-gray-500"
             }`}
           >
             {t}
@@ -102,9 +156,9 @@ export default function NotificationsPage() {
             <button
               key={item.id}
               type="button"
-              onClick={() => !item.read && handleReadNotification(item.id)}
+              onClick={() => handleNotificationClick(item)}
               className={`flex items-start gap-3 py-4 border-b border-gray-50 dark:border-[#282B32] text-left w-full ${
-                item.read ? "" : "bg-gray-50/60"
+                item.read ? "" : "bg-gray-50 dark:bg-[#282B32]/60"
               }`}
             >
               <span className="text-lg flex-none">
@@ -113,7 +167,7 @@ export default function NotificationsPage() {
               </span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 mb-0.5">
-                  {!item.read && <span className="w-1.5 h-1.5 rounded-full bg-gray-900 flex-none" />}
+                  {!item.read && <span className="w-1.5 h-1.5 rounded-full bg-point flex-none" />}
                   <p className="text-sm font-semibold truncate">{item.title}</p>
                 </div>
                 <p className="text-sm text-gray-500 leading-relaxed">{item.message}</p>

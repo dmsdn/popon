@@ -1,5 +1,7 @@
 "use client";
 
+// 내 정보 수정 페이지 - 닉네임/전화번호/이메일/생년월일/성별/프로필사진 편집.
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -8,6 +10,7 @@ import { submitPreferences } from "@/lib/api/auth";
 import { getRegions, getMyRegions, saveMyRegions, type Region } from "@/lib/api/regions";
 import { formatPhoneInput, isValidPhone } from "@/lib/utils/formatPhone";
 import { BirthDatePicker } from "@/components/ui/BirthDatePicker";
+import { EmailInput } from "@/components/ui/EmailInput";
 import { ImageCropModal } from "@/components/popup/ImageCropModal";
 import { uploadFile } from "@/lib/api/upload";
 
@@ -152,7 +155,7 @@ export default function EditProfilePage() {
   return (
     <main className="w-full mobile:max-w-[600px] mobile:mx-auto min-h-screen flex flex-col px-6 py-10">
       <button type="button" onClick={() => router.back()} className="self-start text-sm text-gray-500 mb-6">
-        <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
+        <img src="/icons/ui/back_arrow.svg" alt="" width={24} height={24} className="dark:invert" />
           <span>뒤로</span>
       </button>
 
@@ -175,7 +178,7 @@ export default function EditProfilePage() {
             )}
           </div>
           <span className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-gray-900 dark:bg-[#282B32] border-2 border-white dark:border-[#282B32] flex items-center justify-center">
-            <img src="/Icon/picture.svg" alt="" width={14} height={14} className="invert" />
+            <img src="/icons/ui/picture.svg" alt="" width={14} height={14} className="invert" />
           </span>
           <input
             type="file"
@@ -233,13 +236,7 @@ export default function EditProfilePage() {
           <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             이메일 <span className="text-gray-400 font-normal">(선택)</span>
           </span>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="000@example.com"
-            className="w-full bg-gray-100 dark:bg-[#282B32] text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none"
-          />
+          <EmailInput value={email} onChange={setEmail} />
         </label>
 
         <div>

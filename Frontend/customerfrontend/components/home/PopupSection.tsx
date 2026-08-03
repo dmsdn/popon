@@ -1,3 +1,6 @@
+// components/home/PopupSection.tsx
+// "제목 + 더보기 링크 + 가로 캐러셀" 패턴을 재사용하는 공용 섹션 래퍼.
+
 import Link from "next/link";
 import { PopupItem } from "@/data/mockPopups";
 import { PopupCard } from "./PopupCard";
@@ -24,10 +27,10 @@ export function PopupSection({
         <h3 className="text-base mobile:text-lg font-semibold">{title}</h3>
         {moreHref ? (
           <Link href={moreHref} className="text-sm mobile:text-base text-gray-400">
-            더보기 ›
+            더보기
           </Link>
         ) : (
-          <span className="text-sm mobile:text-base text-gray-300">더보기 ›</span>
+          <span className="text-sm mobile:text-base text-gray-300">더보기</span>
         )}
       </div>
       <HorizontalCarousel>

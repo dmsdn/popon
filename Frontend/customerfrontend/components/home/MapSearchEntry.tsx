@@ -1,3 +1,6 @@
+// components/home/MapSearchEntry.tsx
+// 홈 화면의 "지도로 찾기" 진입 배너.
+
 import Link from "next/link";
 
 /**
@@ -12,7 +15,7 @@ export function MapSearchEntry() {
       >
         <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-none">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/Icon/pin.svg" alt="" width={20} height={20} />
+          <img src="/icons/ui/pin.svg" alt="" width={20} height={20} className="dark:invert" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold">지도로 팝업 찾기</p>

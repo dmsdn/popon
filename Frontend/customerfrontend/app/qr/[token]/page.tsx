@@ -1,5 +1,7 @@
 "use client";
 
+// 웨이팅 등록 시 문자로 오는 입장 QR 페이지 - 로그인 없이 토큰만으로 내 대기 상태를 확인할 수 있어요.
+
 // 입장 QR 페이지 (7/31 신설)
 //
 // 웨이팅을 접수하면 백엔드가 문자·메일로 이 주소를 보낸다.
@@ -109,11 +111,11 @@ export default function EntryQrPage({ params }: { params: Promise<{ token: strin
           {status && (
             <section className="w-full max-w-sm grid grid-cols-2 gap-3">
               <div className="rounded-xl border border-gray-200 dark:border-gray-800 p-4 text-center">
-                <p className="text-xs text-gray-400">내 대기번호</p>
+                <p className="text-sm text-gray-400">내 대기번호</p>
                 <p className="text-xl font-semibold mt-0.5">{status.teamNumber ?? "-"}</p>
               </div>
               <div className="rounded-xl border border-gray-200 dark:border-gray-800 p-4 text-center">
-                <p className="text-xs text-gray-400">앞에 남은 팀</p>
+                <p className="text-sm text-gray-400">앞에 남은 팀</p>
                 <p className="text-xl font-semibold mt-0.5">
                   {status.status === "WAITING" ? (status.teamsAhead ?? "-") : "-"}
                 </p>
@@ -124,18 +126,18 @@ export default function EntryQrPage({ params }: { params: Promise<{ token: strin
           {/* 카메라가 없거나 QR 이미지가 안 뜨는 환경(오프라인 등)을 위한 폴백.
               직원 화면에는 토큰을 손으로 입력하는 칸이 있으므로 이 값만 불러 주면 입장할 수 있다. */}
           <section className="w-full max-w-sm">
-            <p className="text-xs text-gray-400 mb-1.5">
+            <p className="text-sm text-gray-400 mb-1.5">
               QR이 안 보이면 아래 번호를 직원에게 알려 주세요.
             </p>
             <p
-              className="text-xs break-all rounded-lg border border-gray-200 dark:border-gray-800 px-3 py-2.5 text-gray-500"
+              className="text-sm break-all rounded-lg border border-gray-200 dark:border-gray-800 px-3 py-2.5 text-gray-500"
               style={{ fontFamily: "monospace" }}
             >
               {token}
             </p>
           </section>
 
-          <ul className="w-full max-w-sm flex flex-col gap-2 text-xs text-gray-400">
+          <ul className="w-full max-w-sm flex flex-col gap-2 text-sm text-gray-400">
             <li>· 이 화면은 로그인 없이 열 수 있습니다.</li>
             <li>· 입장 처리가 끝나면 이 화면이 자동으로 바뀝니다.</li>
             {notFound && <li className="text-amber-500">· 대기 정보를 불러오지 못했습니다. QR은 그대로 사용할 수 있습니다.</li>}

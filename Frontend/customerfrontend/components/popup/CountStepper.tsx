@@ -1,5 +1,7 @@
 "use client";
 
+// 인원수 +/- 조절 스테퍼 (예약/웨이팅 모달에서 사용).
+
 interface CountStepperProps {
   value: number;
   onChange: (value: number) => void;

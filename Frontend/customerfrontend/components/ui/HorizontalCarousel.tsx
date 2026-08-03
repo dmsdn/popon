@@ -1,5 +1,7 @@
 "use client";
 
+// 가로 스크롤 캐러셀 공용 래퍼.
+
 import { ReactNode } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 

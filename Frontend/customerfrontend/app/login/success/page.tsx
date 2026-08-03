@@ -1,5 +1,7 @@
 "use client";
 
+// 소셜 로그인 성공 후 리다이렉트되는 콜백 페이지 - 토큰을 저장하고 원래 가려던 곳으로 보내요.
+
 import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { setToken } from "@/lib/api/client";
