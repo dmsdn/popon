@@ -27,6 +27,92 @@ import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 // 끔(진행중만 표시) + 토글 버튼으로 켤 수 있게 해뒀어요.
 const DEFAULT_SHOW_UPCOMING = false;
 
+// [신규] 같은 건물처럼 좌표가 사실상 같은 팝업이 여러 개 있으면 핀이 완전히
+// 겹쳐서 뒤에 있는 핀은 누를 수가 없었어요. 좌표를 살짝 반올림해서 그룹으로
+// 묶고, 한 그룹에 2개 이상이면 주변에 무작위로 흩어 놓아서 각각 보이고
+// 눌리게 만들었어요. (매번 다른 위치로 튀면 헷갈리니까, 같은 항목은 항상
+// 같은 자리에 오도록 좌표 기반으로 "고정된" 무작위값을 만들어요.)
+function seededRandom(seed: string): number {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash << 5) - hash + seed.charCodeAt(i);
+    hash |= 0;
+  }
+  return (Math.abs(hash) % 10000) / 10000;
+}
+
+function spreadOverlappingPositions<T extends { latitude: number; longitude: number }>(
+  items: T[]
+): (T & { displayLat: number; displayLng: number })[] {
+  const groups = new Map<string, T[]>();
+  for (const item of items) {
+    // 소수점 4자리 ≈ 약 11m 반경 - 이 정도면 "같은 건물"로 취급해도 될 거리예요.
+    const key = `${item.latitude.toFixed(4)},${item.longitude.toFixed(4)}`;
+    const group = groups.get(key) ?? [];
+    group.push(item);
+    groups.set(key, group);
+  }
+
+  const result: (T & { displayLat: number; displayLng: number })[] = [];
+  for (const [key, group] of groups) {
+    if (group.length === 1) {
+      result.push({ ...group[0], displayLat: group[0].latitude, displayLng: group[0].longitude });
+      continue;
+    }
+    // 여러 개면 반경 약 9~22m 사이 랜덤한 거리·방향으로 흩어 놔요. 원형으로
+    // 가지런히 배치하면 너무 기계적으로 보인다는 피드백이 있어서, 대신
+    // 자연스럽게 흩뿌려진 느낌이 나도록 바꿨어요.
+    group.forEach((item, i) => {
+      const seed = `${key}_${i}`;
+      const angle = seededRandom(`${seed}_angle`) * 2 * Math.PI;
+      const radius = 0.00008 + seededRandom(`${seed}_radius`) * 0.00012;
+      result.push({
+        ...item,
+        displayLat: item.latitude + radius * Math.sin(angle),
+        displayLng: item.longitude + radius * Math.cos(angle),
+      });
+    });
+  }
+  return result;
+}
+
+// [신규] 화면이 조금만 줄어들어도(축소돼도) 핀들이 서로 겹쳐서 원하는 팝업을
+// 고르기 어렵다는 피드백을 반영했어요. 위/경도 거리가 아니라 "지금 화면에
+// 실제로 보이는 픽셀 거리"를 기준으로 가까운 핀들을 하나의 클러스터(숫자
+// 뱃지)로 묶고, 그 뱃지를 누르면 그 위치로 확대해서 각 핀이 다시 따로
+// 눌릴 수 있게 퍼지도록 했어요. 지도를 옮기거나 확대/축소할 때마다(idle
+// 이벤트) 다시 계산돼요.
+const CLUSTER_PIXEL_SIZE = 60;
+
+function clusterByScreenDistance<T extends { displayLat: number; displayLng: number }>(
+  items: T[],
+  map: any
+): { items: T[]; centerLat: number; centerLng: number }[] {
+  const projection = map.getProjection();
+  const buckets = new Map<string, { items: T[]; sumLat: number; sumLng: number }>();
+
+  items.forEach((item) => {
+    const offset = projection.fromCoordToOffset(
+      new window.naver.maps.LatLng(item.displayLat, item.displayLng)
+    );
+    // 픽셀 좌표를 CLUSTER_PIXEL_SIZE 크기의 격자로 나눠서, 같은 칸에 들어오면
+    // 같은 클러스터로 묶어요. 격자 방식이라 아주 드물게 경계에 걸친 두 핀이
+    // 다른 칸으로 나뉠 수 있지만, 대부분의 경우엔 충분히 잘 묶여요.
+    const key = `${Math.floor(offset.x / CLUSTER_PIXEL_SIZE)}_${Math.floor(offset.y / CLUSTER_PIXEL_SIZE)}`;
+    const bucket = buckets.get(key) ?? { items: [], sumLat: 0, sumLng: 0 };
+    bucket.items.push(item);
+    bucket.sumLat += item.displayLat;
+    bucket.sumLng += item.displayLng;
+    buckets.set(key, bucket);
+  });
+
+  return Array.from(buckets.values()).map((bucket) => ({
+    items: bucket.items,
+    centerLat: bucket.sumLat / bucket.items.length,
+    centerLng: bucket.sumLng / bucket.items.length,
+  }));
+}
+
 declare global {
   interface Window {
     naver: any;
@@ -64,6 +150,15 @@ export default function MapPage() {
   }, [selected]);
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  // [신규] 검색 결과 목록을 바텀시트로 보여줄지 여부. 검색어를 입력하면 자동으로
+  // 열리고, 목록에서 팝업을 고르거나 지도에서 마커를 누르면 닫혀요(그 팝업
+  // 카드만 보여주기 위해). X 버튼으로 직접 닫을 수도 있어요.
+  const [showSearchSheet, setShowSearchSheet] = useState(false);
+  // [신규] 지도를 옮기거나(드래그) 확대/축소할 때마다 값이 바뀌어서, 아래
+  // 마커/클러스터 렌더링 이펙트가 다시 실행되게 만드는 트리거예요. 데이터
+  // 자체는 안 바뀌지만 "화면에서 핀들이 얼마나 가까워 보이는지"는 바뀌니까
+  // 클러스터를 다시 계산해야 해요.
+  const [viewTick, setViewTick] = useState(0);
 
   const clientId = process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID;
 
@@ -78,6 +173,19 @@ export default function MapPage() {
   const q = query.trim().toLowerCase();
   const visibleOpen = q ? openPopups.filter((p) => p.title.toLowerCase().includes(q)) : openPopups;
   const visibleUpcoming = q ? upcomingPopups.filter((p) => p.title.toLowerCase().includes(q)) : upcomingPopups;
+
+  // [신규] 검색어를 입력하면 바텀시트를 열고, 특정 팝업 선택은 해제해요
+  // (검색 중엔 "이 검색어에 맞는 전체 목록"을 보여주는 게 우선이라).
+  // 검색어를 지우면 바텀시트도 같이 닫혀요.
+  useEffect(() => {
+    if (q) {
+      setShowSearchSheet(true);
+      setSelected(null);
+    } else {
+      setShowSearchSheet(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q]);
 
   useEffect(() => {
     let cancelled = false;
@@ -120,6 +228,10 @@ export default function MapPage() {
         ? new window.naver.maps.LatLng(openPopups[0].latitude, openPopups[0].longitude)
         : new window.naver.maps.LatLng(37.5665, 126.978); // 기본값: 서울시청 근방
     mapInstance.current = new window.naver.maps.Map(mapRef.current, { center, zoom: 14 });
+    // [신규] 드래그/확대/축소가 끝날 때마다(idle) 클러스터를 다시 계산해요.
+    window.naver.maps.Event.addListener(mapInstance.current, "idle", () => {
+      setViewTick((v) => v + 1);
+    });
   }, [sdkReady, openPopups]);
 
   // 마커 렌더링 - 진행중(검정 핀)이 우선, 운영예정(회색 핀)은 토글 켰을 때만.
@@ -129,13 +241,48 @@ export default function MapPage() {
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
 
-    const targets = [
+    const targets = spreadOverlappingPositions([
       ...visibleOpen.map((p) => ({ popup: p, active: true })),
       ...(showUpcoming ? visibleUpcoming.map((p) => ({ popup: p, active: false })) : []),
-    ];
+    ].map((t) => ({ ...t, latitude: t.popup.latitude!, longitude: t.popup.longitude! })));
 
-    targets.forEach(({ popup, active }) => {
-      const position = new window.naver.maps.LatLng(popup.latitude, popup.longitude);
+    // [신규] 좌표만으로는 "화면에서 얼마나 가까워 보이는지"를 알 수 없어서,
+    // 실제 픽셀 거리로 다시 그룹을 묶어요. 한 그룹에 핀이 1개뿐이면 지금까지
+    // 처럼 이름표 붙은 핀으로, 2개 이상이면 숫자 뱃지(클러스터)로 보여줘요.
+    const clusters = clusterByScreenDistance(targets, mapInstance.current);
+
+    clusters.forEach((cluster) => {
+      if (cluster.items.length > 1) {
+        const containsSelected = cluster.items.some((t) => t.popup.id === selected?.id);
+        const clusterMarker = new window.naver.maps.Marker({
+          position: new window.naver.maps.LatLng(cluster.centerLat, cluster.centerLng),
+          map: mapInstance.current,
+          zIndex: containsSelected ? 250 : 150,
+          icon: {
+            content: `
+              <div style="
+                width:40px; height:40px; border-radius:50%;
+                display:flex; align-items:center; justify-content:center;
+                background:#111827; border:3px solid white;
+                box-shadow:0 2px 6px rgba(0,0,0,0.35);
+                color:#ffffff; font-size:14px; font-weight:700;
+              ">${cluster.items.length}</div>`,
+            anchor: new window.naver.maps.Point(20, 20),
+          },
+        });
+        // 클러스터를 누르면 그 위치로 확대해서 핀들이 각자 눌릴 수 있을
+        // 만큼 퍼지게 해요. (선택 자체는 하지 않고, 확대까지만.)
+        window.naver.maps.Event.addListener(clusterMarker, "click", () => {
+          const map = mapInstance.current;
+          map.setCenter(new window.naver.maps.LatLng(cluster.centerLat, cluster.centerLng));
+          map.setZoom(Math.min(map.getZoom() + 3, 21));
+        });
+        markersRef.current.push(clusterMarker);
+        return;
+      }
+
+      const { popup, active, displayLat, displayLng } = cluster.items[0];
+      const position = new window.naver.maps.LatLng(displayLat, displayLng);
       const isSelected = selected?.id === popup.id;
       const dotColor = active ? "#5bce41" : "#9ca3af";
       const label = popup.title.length > 8 ? `${popup.title.slice(0, 8)}…` : popup.title;
@@ -143,38 +290,54 @@ export default function MapPage() {
       const marker = new window.naver.maps.Marker({
         position,
         map: mapInstance.current,
+        // [수정] 검색 시 겹쳐있던 마커들 사이에서 선택된 마커가 다른 마커에
+        // 가려지던 문제 - 렌더링 순서에만 의존하지 않고 zIndex를 명시적으로
+        // 줘서, 선택된 마커가 항상 맨 위에 그려지도록 했어요.
+        zIndex: isSelected ? 200 : active ? 100 : 50,
         icon: {
           content: `
             <div style="display:flex;flex-direction:column;align-items:center;transform:translateY(-8px);">
               <div style="
-                font-size:10px; font-weight:${isSelected ? 700 : 500};
+                font-size:13px; font-weight:${isSelected ? 700 : 500};
                 color:${isSelected ? "#ffffff" : "#111827"};
                 background:${isSelected ? "#111827" : "#ffffff"};
                 border:1px solid ${isSelected ? "#111827" : "#e5e7eb"};
-                border-radius:999px; padding:2px 7px; margin-bottom:3px;
+                border-radius:999px; padding:8px 16px; margin-bottom:3px;
                 white-space:nowrap; box-shadow:0 1px 3px rgba(0,0,0,0.15);
               ">${label}</div>
               <div style="
-                width:${isSelected ? 18 : 14}px; height:${isSelected ? 18 : 14}px; border-radius:50%;
-                background:${dotColor}; border:2px solid white;
-                box-shadow:0 1px 3px rgba(0,0,0,0.3);
+                width:${isSelected ? 26 : 20}px; height:${isSelected ? 26 : 20}px; border-radius:50%;
+                background:${dotColor}; border:3px solid white;
+                box-shadow:0 1px 4px rgba(0,0,0,0.35);
               "></div>
             </div>`,
-          anchor: new window.naver.maps.Point(isSelected ? 9 : 7, isSelected ? 26 : 22),
+          anchor: new window.naver.maps.Point(isSelected ? 13 : 10, isSelected ? 50 : 44),
         },
       });
-      window.naver.maps.Event.addListener(marker, "click", () => setSelected(popup));
+      window.naver.maps.Event.addListener(marker, "click", () => {
+        setSelected(popup);
+        setShowSearchSheet(false);
+      });
       markersRef.current.push(marker);
     });
+  }, [sdkReady, visibleOpen, visibleUpcoming, showUpcoming, selected?.id, viewTick]);
 
-    // 검색어가 있고 결과가 있으면 첫 결과로 지도 중심 이동 + 자동 선택
-    if (q && targets.length > 0) {
-      const first = targets[0].popup;
-      mapInstance.current.setCenter(new window.naver.maps.LatLng(first.latitude, first.longitude));
-      mapInstance.current.setZoom(16);
-      setSelected(first);
-    }
-  }, [sdkReady, visibleOpen, visibleUpcoming, showUpcoming, q, selected?.id]);
+  // [수정] "팝업을 선택하면 지도가 축소된다"는 문제의 원인을 찾았어요 - 검색 시
+  // 지도 중심을 옮기는 코드가 마커 렌더링 이펙트 안에 있었는데, 그 이펙트가
+  // selected?.id 변화에도 다시 실행되고 있었어요. 그래서 검색어를 입력해둔
+  // 상태에서 마커/목록을 눌러 "선택"만 해도 이 블록이 다시 돌면서 확대 수준을
+  // 강제로 15로 되돌리고 있었던 거예요. 이제 검색어(q) 자체가 바뀔 때만
+  // 실행되는 별도 이펙트로 분리해서, 팝업을 선택하는 동작은 지도 확대/위치에
+  // 전혀 영향을 안 주도록 했어요.
+  useEffect(() => {
+    if (!sdkReady || !window.naver?.maps || !mapInstance.current || !q) return;
+    const targets = [...visibleOpen, ...(showUpcoming ? visibleUpcoming : [])];
+    if (targets.length === 0) return;
+    const first = targets[0];
+    mapInstance.current.setCenter(new window.naver.maps.LatLng(first.latitude, first.longitude));
+    mapInstance.current.setZoom(15);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sdkReady, q]);
 
   if (!clientId) {
     return (
@@ -239,6 +402,57 @@ export default function MapPage() {
           운영예정 {showUpcoming ? "숨기기" : "함께 보기"}
         </button>
       </div>
+
+      {/* [신규] 검색 결과 바텀시트 - 검색어에 맞는 팝업이 여러 개면 전체를
+          목록으로 보여줘요. 화면을 꽉 채우지 않고 아래에서 올라오는 시트로만. */}
+      {showSearchSheet && (
+        <div className="absolute bottom-0 left-0 right-0 max-h-[55vh] flex flex-col bg-white dark:bg-[#282B32] rounded-t-2xl shadow-[0_-4px_16px_rgba(0,0,0,0.15)]">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-[#17181a] flex-none">
+            <p className="text-base font-semibold">
+              &quot;{query}&quot; <span className="text-gray-400 font-normal">({visibleOpen.length + (showUpcoming ? visibleUpcoming.length : 0)})</span>
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowSearchSheet(false)}
+              aria-label="닫기"
+              className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 text-base"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="overflow-y-auto scrollbar-hide">
+            {[...visibleOpen, ...(showUpcoming ? visibleUpcoming : [])].length === 0 ? (
+              <p className="text-base text-gray-400 text-center py-8">검색 결과가 없어요.</p>
+            ) : (
+              [...visibleOpen, ...(showUpcoming ? visibleUpcoming : [])].map((popup) => {
+                const item = toPopupItem(popup);
+                return (
+                  <button
+                    key={popup.id}
+                    type="button"
+                    onClick={() => {
+                      setSelected(popup);
+                      setShowSearchSheet(false);
+                      // [수정] 여기서도 setCenter/setZoom을 강제로 걸고 있어서,
+                      // 목록에서 팝업을 고르기만 해도 지도가 축소/이동됐어요.
+                      // 이제 선택은 지도 확대/위치에 전혀 영향을 안 줘요 - 보고
+                      // 있던 화면 그대로 유지돼요.
+                    }}
+                    className="w-full flex flex-col items-start gap-1 px-4 py-3 border-b border-gray-50 dark:border-[#17181a] text-left"
+                  >
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <StatusBadge status={item.status} />
+                      {item.location && <span className="text-sm text-gray-500">{item.location}</span>}
+                    </div>
+                    <p className="text-base font-medium truncate w-full">{popup.title}</p>
+                    {item.dateRange && <p className="text-sm text-gray-400">{item.dateRange}</p>}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 선택된 팝업 카드 - 카드 전체를 누르면 상세페이지로 이동 */}
       {selected && selectedItem && (
