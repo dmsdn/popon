@@ -267,7 +267,7 @@ export default function PopupRegister() {
   // 표시만 하고 변경은 마이페이지에서 하도록 안내한다 (7/29 — 그 전에는 value조차 없는 빈 칸이었다).
   const [companyName, setCompanyName] = useState("");
   // 서버는 capacity·areaSqm 둘 다 없으면 400이므로 (PopupService.create) 최대 정원은 필수 입력·전송
-  const [maxCapacity, setMaxCapacity] = useState(120); // 동시 수용 정원
+  const [maxCapacity, setMaxCapacity] = useState(10); // 동시 수용 정원 (8/3 기본값 120→10, 서버 capacity 기본값과 일치)
   const [slotProgress, setSlotProgress] = useState(""); // 자동 생성 진행 안내
   const [directAddress, setDirectAddress] = useState("");
 
@@ -549,8 +549,8 @@ export default function PopupRegister() {
       endDate: `${endDate}T${latestClose}:00`,
       operatingHours, // 7/30 jsw — 요일별 운영시간·휴무 실저장
       notice: notice.trim() || undefined, // 유의사항 (소비자 상세 안내)
-      // 현장 웨이팅 팀당 최대 인원 — 웨이팅을 받는 운영 방식일 때만 의미가 있다
-      ...(opsMode !== "RESERVATION" && maxPartyPerTeam !== "" ? { maxPartySizePerTeam: Number(maxPartyPerTeam) } : {}),
+      // 팀당 최대 인원 — 8/3 예약·웨이팅 공통 한도로 확장 (사전예약만 방식에서도 전송)
+      ...(maxPartyPerTeam !== "" ? { maxPartySizePerTeam: Number(maxPartyPerTeam) } : {}),
       // 서버가 capacity·areaSqm 둘 다 없으면 400을 던지므로 (PopupService.create) capacity는 필수 전송
       capacity: maxCapacity,
       // 7/27 jmy 해시태그 — 화면의 태그 입력을 서버에 실저장 (소비자 검색 노출)
@@ -595,6 +595,13 @@ export default function PopupRegister() {
       }
       // 임시저장으로 시작한 등록이 서버에 들어갔으면 초안은 소임을 다했다 — 목록에 유령으로 남지 않게 제거
       if (activeDraftId) removeDraft(activeDraftId);
+      // 8/3 — 이미 승인받은 팝업(게시중·오픈예정·종료·게시중지)의 수정은 심사를 다시 받지 않는다
+      // (payload가 status를 안 보내 상태 유지). 그런데 "승인 요청이 접수되었습니다" 화면이 떠서
+      // 재심사로 오해하게 했다 → 완료 화면 없이 팝업 조회/수정 목록으로 바로 돌려보낸다.
+      if (editId && editStatus && editStatus !== "PENDING" && editStatus !== "REJECTED") {
+        navigate("/seller/popups");
+        return;
+      }
       setSubmitted(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "등록에 실패했습니다.");
@@ -1089,20 +1096,24 @@ export default function PopupRegister() {
                 className={inputCls}
               />
             </div>
-            {/* 7/30 — 백엔드 maxPartySizePerTeam 연동. 웨이팅을 받는 방식일 때만 의미가 있어 조건부 노출 */}
-            {opsMode !== "RESERVATION" && (
-              <div>
-                <label className={labelCls}>
-                  웨이팅 팀당 최대 인원 <span className="font-normal text-muted-foreground">(선택 — 비우면 제한 없음)</span>
-                </label>
-                <input
-                  type="number" min={1} value={maxPartyPerTeam}
-                  onChange={(e) => setMaxPartyPerTeam(e.target.value === "" ? "" : Number(e.target.value))}
-                  className={inputCls}
-                  placeholder="예: 4"
-                />
-              </div>
-            )}
+            {/* 7/30 — 백엔드 maxPartySizePerTeam 연동.
+                8/3 — 예약을 받는 방식(사전예약만·둘 다)에도 노출. 예약·웨이팅 공통 한도라 라벨만 방식에 맞춘다 */}
+            <div>
+              <label className={labelCls}>
+                {opsMode === "RESERVATION"
+                  ? "팀당 최대 예약 가능 인원"
+                  : opsMode === "WALKIN"
+                    ? "웨이팅 팀당 최대 인원"
+                    : "팀당 최대 인원 (예약·웨이팅 공통)"}{" "}
+                <span className="font-normal text-muted-foreground">(선택 — 비우면 제한 없음)</span>
+              </label>
+              <input
+                type="number" min={1} value={maxPartyPerTeam}
+                onChange={(e) => setMaxPartyPerTeam(e.target.value === "" ? "" : Number(e.target.value))}
+                className={inputCls}
+                placeholder="예: 4"
+              />
+            </div>
           </div>
           {useReservation && (
             <div className="p-4 bg-secondary/60 rounded-sm">

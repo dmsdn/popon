@@ -163,6 +163,19 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* ── 스크롤바 (8/3) ────────────────────────────────────────────────────
+   랜딩·콘솔 공통. 기본 회색 막대 대신 가늘고 반투명한 썸으로.
+   --foreground 를 섞어 쓰므로 다크 화면에선 밝게, .theme-light 안에선
+   어둡게 — 어느 배경 위에서도 따로 손볼 필요가 없다.
+   (표준 scrollbar-* 속성: Chrome 121+·Edge·Firefox 지원) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--foreground) 26%, transparent) transparent;
+}
+*:hover {
+  scrollbar-color: color-mix(in srgb, var(--foreground) 38%, transparent) transparent;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

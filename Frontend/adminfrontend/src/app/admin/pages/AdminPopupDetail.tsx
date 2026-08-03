@@ -381,6 +381,24 @@ export default function AdminPopupDetail() {
                 ))}
               </div>
             )}
+            {/* 8/3 — 이미지 원본 URL 목록. 심사·CS 대응 때 경로를 그대로 복사·공유할 수 있게 텍스트로도 노출 */}
+            <div className="border border-border rounded-sm divide-y divide-border">
+              {[
+                ...(popup.thumbnailImages ?? []).map((url) => ({ url, type: "썸네일" })),
+                ...(popup.detailImages ?? []).map((url) => ({ url, type: "상세" })),
+              ].map(({ url, type }, i) => (
+                <div key={`${url}-${i}`} className="px-3 py-1.5 flex items-center gap-2 text-[11px]">
+                  <span className="shrink-0 w-11 text-muted-foreground">{type}</span>
+                  <a
+                    href={url} target="_blank" rel="noreferrer"
+                    className="truncate text-accent hover:underline underline-offset-2"
+                    style={{ fontFamily: "'DM Mono', monospace" }}
+                  >
+                    {url}
+                  </a>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

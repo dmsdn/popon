@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Outlet, NavLink, Link, Navigate, useLocation, ScrollRestoration } from "react-router";
 import {
   LayoutDashboard, KeyRound, Database, Megaphone,
-  LineChart, Newspaper, Headphones, Bell, ExternalLink, Users, LogIn, LogOut, Store, Building2, X, Clock3, FileSignature,
+  LineChart, Newspaper, Headphones, Bell, ExternalLink, Users, LogIn, LogOut, Store, Building2, X, Clock3,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { getToken, getPopups, getAdminCsList, getAdminInquiries, getAdminReports, Popup } from "../lib/api";
@@ -23,7 +23,7 @@ const MENU = [
     // 7/30 라벨 정정 — 이 화면이 관리하는 건 소비자 홈의 메인 배너 + 공지 배너다.
     // "콘텐츠"는 무엇을 다루는지 알기 어려워 실제 대상으로 바꿨다.
     { to: "/admin/content", icon: Newspaper, label: "배너·공지 관리" },
-    { to: "/admin/terms", icon: FileSignature, label: "약관 관리" }, // 7/29 신설 — PUT /api/admin/terms
+    // 8/3 — 약관 관리 폐지 (본문은 회원가입 모달에 프론트 내장)
   ]},
   { group: "계정 관리", items: [
     { to: "/admin/accounts", icon: KeyRound, label: "관리자 계정 리스트" },
