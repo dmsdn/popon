@@ -45,7 +45,16 @@ export default function StaffLoginPage() {
         throw new Error(body.message || `로그인에 실패했어요. (${res.status})`);
       }
       const data = await res.json();
-      saveSession({ accessToken: data.accessToken, businessId: data.businessId, companyName: data.companyName });
+      // [신규] 계정 탭용 이메일/로고 이미지 - 백엔드 응답 필드명이 아직 확정 전이라
+      // email/logoImageUrl/profileImageUrl 등 흔히 쓰는 이름들을 순서대로 찾아보고,
+      // 없으면 입력했던 이메일로 대체해요(이미지는 없으면 이니셜 아바타로 대체).
+      saveSession({
+        accessToken: data.accessToken,
+        businessId: data.businessId,
+        companyName: data.companyName,
+        email: data.email ?? email,
+        profileImageUrl: data.profileImageUrl ?? data.logoImageUrl ?? data.logoUrl,
+      });
       router.replace("/select-popup");
     } catch (err) {
       setError(err instanceof Error ? err.message : "로그인에 실패했어요.");
@@ -58,7 +67,7 @@ export default function StaffLoginPage() {
     <main className="h-full flex flex-col items-center justify-center gap-8 px-8">
       <div className="flex flex-col items-center gap-3">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/icons/LOGO.svg" alt="POP-ON" className="w-40 h-auto" />
+        <img src="/icons/LOGO_Dark.svg" alt="POP-ON" className="w-40 h-auto" />
         <p className="text-lg font-bold text-gray-300">현장 웨이팅</p>
       </div>
 

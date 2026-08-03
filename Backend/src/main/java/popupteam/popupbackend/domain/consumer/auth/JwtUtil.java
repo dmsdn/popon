@@ -47,15 +47,20 @@ public class JwtUtil {
       // id 값이 작으면 JJWT/Jackson이 Integer로 역직렬화해버려서 claims.get("id", Long.class)가
       // RequiredTypeException을 던짐. Number로 받아서 안전하게 long으로 변환.
       Number id = claims.get("id", Number.class);
-      // 8/3 — id 클레임이 없으면 null을 돌려준다 (그전에는 여기서 NPE가 났다).
+      // 8/3 — "id" 클레임이 없는 토큰이 들어오면 예전엔 여기서 NPE가 나 그대로 500으로 튀었다.
+      // (주최자·관리자 토큰은 security/JwtUtil이 발급하며 id 없이 subject에 이메일만 담는다.
+      //  당시엔 두 발급기가 jwt.secret 하나를 공유해서 **서명 검증이 통과**했고, 그래서
+      //  "우리 토큰이 아니면 파싱에서 예외가 난다"는 전제가 무너져 있었다. 위 consumer-secret
+      //  분리로 그 전제는 복구됐지만, 이 검사는 방어선으로 남긴다.)
       //
-      // 주최자·관리자 토큰은 security/JwtUtil이 발급하는데 형태가 다르다 — id 없이
-      // subject에 이메일만 담는다. 그런데 **두 발급기가 같은 jwt.secret으로 서명**해서
-      // 이 파서에 넣어도 서명 검증이 통과해 버린다. 즉 "우리 토큰이 아니면 파싱에서
-      // 예외가 난다"는 전제가 성립하지 않는다.
-      // 호출부는 전부 소비자 전용 경로라 정상 흐름에서 null이 나올 일은 없고,
-      // 이 null은 "소비자 토큰이 아니다"라는 신호로만 쓰인다 (CustomerAuthCheckFilter).
-      return id == null ? null : id.longValue();
+      // null 반환이 아니라 IllegalArgumentException을 던지는 쪽을 택했다 —
+      // 호출부(CustomerAuthCheckFilter 등)의 기존 catch (JwtException | IllegalArgumentException)가
+      // 그대로 받아 주고, 나머지 소비자 컨트롤러 15곳도 null이 findById로 흘러드는 대신
+      // GlobalExceptionHandler에서 깔끔히 처리된다.
+      if (id == null) {
+         throw new IllegalArgumentException("토큰에 customer id(\"id\") 클레임이 없습니다.");
+      }
+      return id.longValue();
    }
 
    /**
