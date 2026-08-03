@@ -106,6 +106,11 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   const [images, setImages] = useState<PopupImage[]>([]);
   const [waitingTeams, setWaitingTeams] = useState<number | null>(null);
   const [wishlistCount, setWishlistCount] = useState<number | undefined>(undefined);
+  // [신규] 별점을 누르거나 "댓글만 남기기"를 눌렀을 때, 이미 이 팝업에 후기/댓글을
+  // 남긴 상태라면 후기 작성 페이지로 넘어가지 않고 바로 안내 팝업을 띄워요.
+  // (예전엔 페이지로 넘어가서 내용까지 다 쓰고 등록 버튼을 눌러야만 "이미 남겼다"는
+  // 걸 알 수 있었고, 그때 쓴 내용은 사라졌어요.)
+  const [showAlreadyReviewedNotice, setShowAlreadyReviewedNotice] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -470,31 +475,44 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* [수정] 상세주소 대신 진짜 태그(지역/카테고리/해시태그)를 가져와요.
             [수정] keywordNames/hashtags가 응답에 없어도(undefined) 죽지 않게 방어 코드 추가 -
-            이게 없으면 여기서 에러가 나서 페이지 전체가 안 그려질 수 있었어요. */}
+            이게 없으면 여기서 에러가 나서 페이지 전체가 안 그려질 수 있었어요.
+            [수정] 태그를 눌러도 아무 반응이 없었어요 - 누르면 해당 키워드로
+            검색한 결과 화면으로 넘어가도록 링크를 걸었어요. */}
         {(popup.regionName || (popup.keywordNames ?? []).length > 0 || (popup.hashtags ?? []).length > 0) && (
           <div className="flex flex-wrap gap-2 mb-6">
             {popup.regionName && (
-              <span className="text-sm border border-gray-200 dark:border-[#282B32] rounded-full px-3 py-1 text-gray-600 dark:text-gray-400">
+              <Link
+                href={`/search?region=${encodeURIComponent(popup.regionName)}`}
+                className="text-sm border border-gray-200 dark:border-[#282B32] rounded-full px-3 py-1 text-gray-600 dark:text-gray-400"
+              >
                 #{popup.regionName}
-              </span>
+              </Link>
             )}
             {(popup.keywordNames ?? []).map((name) => (
-              <span key={name} className="text-sm border border-gray-200 dark:border-[#282B32] rounded-full px-3 py-1 text-gray-600 dark:text-gray-400">
+              <Link
+                key={name}
+                href={`/search?q=${encodeURIComponent(name)}`}
+                className="text-sm border border-gray-200 dark:border-[#282B32] rounded-full px-3 py-1 text-gray-600 dark:text-gray-400"
+              >
                 #{name}
-              </span>
+              </Link>
             ))}
             {(popup.hashtags ?? []).map((tag) => (
-              <span key={tag} className="text-sm border border-gray-200 dark:border-[#282B32] rounded-full px-3 py-1 text-gray-600 dark:text-gray-400">
+              <Link
+                key={tag}
+                href={`/search?q=${encodeURIComponent(tag)}`}
+                className="text-sm border border-gray-200 dark:border-[#282B32] rounded-full px-3 py-1 text-gray-600 dark:text-gray-400"
+              >
                 #{tag}
-              </span>
+              </Link>
             ))}
           </div>
         )}
 
-        {/* [수정] 실시간 혼잡도 + 예상 대기시간을 하나의 카드로 합쳤어요. 브랜드
-            문의하기 버튼도 여기 같이 넣었어요 - 기존 1:1 문의(마이페이지)를
-            재사용하되, 어떤 팝업/브랜드에 대한 문의인지 제목에 미리 채워서
-            보내요. */}
+        {/* [수정] 실시간 혼잡도 + 예상 대기시간을 하나의 카드로 합쳤어요. "전화로
+            문의하기" 버튼도 여기 같이 넣었어요 - 기존 1:1 문의(마이페이지) 폼 대신,
+            주최자 전화번호(businessPhone)로 바로 통화 연결돼요. 전화번호가 없으면
+            버튼을 숨겨요. */}
         <div className="border border-gray-200 dark:border-[#282B32] rounded-lg px-4 py-4 mb-8 flex flex-col gap-4">
           {liveStatus ? (
             <LiveCongestionPanel status={liveStatus} />
@@ -529,14 +547,15 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
               원래 예약/웨이팅 버튼이 뜨던 자리라, 그 자리가 비어보이지 않게요. */}
           {(popup.queueMode === "PRERESERVATION_ONLY" ||
             popup.queueMode === "ONSITE_WAITING_ONLY" ||
-            popup.queueMode === "BOTH") && (
-            <Link
-              href={`/mypage?menu=1:1 문의&prefillTitle=${encodeURIComponent(`[${popup.companyName}] ${popup.title} 관련 문의`)}`}
-              className="w-full text-center text-sm font-medium border border-gray-300 dark:border-[#282B32] text-gray-700 dark:text-gray-300 rounded-full py-2.5"
-            >
-              문의하기
-            </Link>
-          )}
+            popup.queueMode === "BOTH") &&
+            popup.businessPhone && (
+              <a
+                href={`tel:${popup.businessPhone}`}
+                className="w-full text-center text-sm font-medium border border-gray-300 dark:border-[#282B32] text-gray-700 dark:text-gray-300 rounded-full py-2.5"
+              >
+                전화로 문의하기
+              </a>
+            )}
         </div>
 
         {showReservation && (
@@ -649,6 +668,29 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
             initialPhotoIndex={imageModal.photoIndex}
             onClose={() => setImageModal(null)}
           />
+        )}
+
+        {/* [신규] 별점/댓글 버튼을 눌렀는데 이미 이 팝업에 후기·댓글을 남긴 경우 -
+            후기 작성 페이지로 보내지 않고 여기서 바로 알려줘요. */}
+        {showAlreadyReviewedNotice && (
+          <div
+            className="fixed inset-0 bg-black/40 flex items-center justify-center px-6 z-50"
+            onClick={() => setShowAlreadyReviewedNotice(false)}
+          >
+            <div
+              className="bg-white dark:bg-[#282B32] rounded-xl px-6 py-6 w-full max-w-xs text-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className="text-sm font-medium mb-6">이미 리뷰 / 댓글을 남겼습니다.</p>
+              <button
+                type="button"
+                onClick={() => setShowAlreadyReviewedNotice(false)}
+                className="w-full rounded-full py-3 text-sm font-medium bg-gray-900 text-white"
+              >
+                확인
+              </button>
+            </div>
+          </div>
         )}
 
         {/* 탭 */}
@@ -771,6 +813,12 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                       router.push("/login");
                       return;
                     }
+                    // [수정] 이미 후기/댓글을 남긴 경우, 후기 작성 페이지로 넘어가지
+                    // 않고 여기서 바로 안내해요.
+                    if (myReviewsForPopup.length > 0) {
+                      setShowAlreadyReviewedNotice(true);
+                      return;
+                    }
                     router.push(`/popup/${id}/review?rating=${v}`);
                   }}
                   size={48}
@@ -784,6 +832,12 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                   if (!customer) {
                     saveRedirectTarget(`/popup/${id}`);
                     router.push("/login");
+                    return;
+                  }
+                  // [수정] 이미 후기/댓글을 남긴 경우, 후기 작성 페이지로 넘어가지
+                  // 않고 여기서 바로 안내해요.
+                  if (myReviewsForPopup.length > 0) {
+                    setShowAlreadyReviewedNotice(true);
                     return;
                   }
                   router.push(`/popup/${id}/review`);
@@ -936,7 +990,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         hasSlots={slots.length > 0}
         waitingTeams={waitingTeams}
         wishlistCount={wishlistCount}
-        inquiryHref={`/mypage?menu=1:1 문의&prefillTitle=${encodeURIComponent(`[${popup.companyName}] ${popup.title} 관련 문의`)}`}
+        businessPhone={popup.businessPhone}
         onWishlistToggle={(nextActive) => {
           setWishlistCount((prev) => (prev === undefined ? prev : Math.max(0, prev + (nextActive ? 1 : -1))));
         }}

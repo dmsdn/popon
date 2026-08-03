@@ -63,6 +63,9 @@ export interface PopupDetail {
     closed: boolean;
   }[];
   wishlistCount?: number; // [신규] 찜한 수 - 백엔드 필드명이 다르면 알려주세요
+  // [신규] 소비자 상세페이지 "전화로 문의하기" 버튼용 - 백엔드가 상세조회
+  // (findById → fromDetail)에서만 채워줘요. 목록 조회에는 절대 안 실려요.
+  businessPhone?: string | null;
 }
 
 export interface SnsLink {

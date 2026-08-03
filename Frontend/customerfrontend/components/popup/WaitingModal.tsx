@@ -37,9 +37,12 @@ export function WaitingModal({ popupName, dateRange, location, notice, capacity,
       onClick={onClose}
     >
       <div
-        className="w-full mobile:max-w-md max-h-[85vh] overflow-y-auto scrollbar-hide bg-white dark:bg-[#282B32] rounded-t-2xl mobile:rounded-2xl px-6 pt-6 pb-8"
+        className="w-full mobile:max-w-md max-h-[85vh] flex flex-col bg-white dark:bg-[#282B32] rounded-t-2xl mobile:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* [수정] 웨이팅하기 버튼을 스크롤 영역 밖으로 빼서 모달 하단에 항상
+            고정되도록 했어요 (예약 모달과 동일하게). */}
+        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6 pt-6">
         <div className="flex items-center justify-between mb-5">
           <p className="text-base font-semibold">웨이팅 등록</p>
           <button type="button" onClick={onClose} aria-label="닫기" className="text-gray-400 text-lg">
@@ -48,7 +51,8 @@ export function WaitingModal({ popupName, dateRange, location, notice, capacity,
         </div>
 
         <div className="border border-gray-200 dark:border-[#282B32] rounded-lg px-4 py-3 mb-8">
-          <p className="text-sm font-semibold mb-1">{popupName}</p>
+          {/* [수정] 팝업 이름이 잘 안 보인다는 피드백 - text-sm → text-base로 키웠어요. */}
+          <p className="text-base font-bold mb-1">{popupName}</p>
           {(dateRange || location) && (
             <p className="text-sm text-gray-400">
               {dateRange}
@@ -62,7 +66,12 @@ export function WaitingModal({ popupName, dateRange, location, notice, capacity,
           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
             인원 <span className="text-sm text-gray-400 font-normal">(최대 {Math.max(1, capacity ?? 10)}명)</span>
           </span>
-          <CountStepper value={count} onChange={setCount} max={Math.max(1, capacity ?? 10)} />
+          <CountStepper
+            value={count}
+            onChange={setCount}
+            max={Math.max(1, capacity ?? 10)}
+            onExceedMax={(max) => alert(`이 팝업에 웨이팅 등록할 수 있는 최대 인원(${max}명)을 넘었어요.`)}
+          />
         </div>
 
         {/* [신규] 인원 설정 아래에 웨이팅 전용 이용 안내사항을 넣었어요. */}
@@ -78,7 +87,9 @@ export function WaitingModal({ popupName, dateRange, location, notice, capacity,
             </ul>
           )}
         </div>
+        </div>
 
+        <div className="flex-none px-6 pt-3 pb-8 border-t border-gray-100 dark:border-[#17181a]">
         <button
           type="button"
           onClick={() => onSubmit(count)}
@@ -86,6 +97,7 @@ export function WaitingModal({ popupName, dateRange, location, notice, capacity,
         >
           웨이팅하기
         </button>
+        </div>
       </div>
     </div>
   );

@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Header } from "@/components/layout/Header";
 import { MobileHeader } from "@/components/layout/MobileHeader";
 import { Footer } from "@/components/layout/Footer";
@@ -27,9 +28,20 @@ function timeAgo(iso: string): string {
 
 const TYPE_ICON: Record<NotificationType, string> = {
   공지: "/icons/ui/notice.svg",
-  찜: "/icons/ui/heart.svg",
+  찜: "/icons/ui/heart_alarm.svg",
   "웨이팅/예약": "/icons/ui/alarm.svg",
 };
+
+// [신규] 알림 목록 → 알림 설정 화면으로 이동하는 톱니바퀴 아이콘. 별도 svg
+// 파일 없이 인라인으로 그려서 새 아이콘 파일 추가 없이 바로 쓸 수 있게 했어요.
+function SettingsGearIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  );
+}
 
 export default function NotificationsPage() {
   const router = useRouter();
@@ -120,12 +132,20 @@ export default function NotificationsPage() {
           <button type="button" onClick={() => router.back()} aria-label="뒤로가기" className="text-lg text-gray-500">
             <img src="/icons/ui/back_arrow.svg" alt="" width={24} height={24} className="dark:invert" />
           </button>
-          <h1 className="text-lg font-bold">알림</h1>
+          <h1 className="text-lg font-bold flex-1">알림</h1>
+          {/* [신규] 알림 목록에서 바로 알림 설정 화면으로 갈 수 있도록 톱니바퀴
+              아이콘을 넣었어요. */}
+          <Link href="/mypage?menu=알림 설정" aria-label="알림 설정" className="text-gray-500 dark:text-gray-400">
+            <SettingsGearIcon />
+          </Link>
         </div>
       </div>
 
-      <div className="hidden mobile:block px-8 pt-4">
+      <div className="hidden mobile:flex items-center justify-between px-8 pt-4">
         <h1 className="text-lg font-bold">알림</h1>
+        <Link href="/mypage?menu=알림 설정" aria-label="알림 설정" className="text-gray-500 dark:text-gray-400">
+          <SettingsGearIcon />
+        </Link>
       </div>
 
       {/* 탭 - 실제로 눌러서 필터링됩니다 */}
@@ -163,7 +183,7 @@ export default function NotificationsPage() {
             >
               <span className="text-lg flex-none">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={TYPE_ICON[item.type]} alt="" width={16} height={16} />
+                <img src={TYPE_ICON[item.type]} alt="" width={24} height={24} />
               </span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 mb-0.5">

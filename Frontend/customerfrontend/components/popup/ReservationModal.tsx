@@ -138,6 +138,15 @@ export function ReservationModal({
   }, [selectedDate]);
 
   const selectedSlot = slotsForSelectedDay.find((s) => s.id === selectedSlotId);
+
+  // [신규] 날짜는 지난 날짜가 막히는데 시간대(슬롯)는 그대로 선택 가능했던
+  // 문제 - 오늘 날짜를 골랐을 때, 이미 지나간 시작 시각의 슬롯은 막아요.
+  const isPastSlot = (slot: PopupSlot): boolean => {
+    if (!selectedDate || selectedDate.getTime() !== today.getTime()) return false;
+    const now = new Date();
+    const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:00`;
+    return slot.startTime <= nowTime;
+  };
   // [수정] 시간대(슬롯)를 아직 안 골랐을 때 무조건 "최대 1명"으로 떠서
   // 마치 정원이 1명인 것처럼 보였어요. 슬롯을 고르기 전엔 팝업 전체 정원을
   // 기본으로 보여주고, 슬롯을 고르면 그 시간대의 실제 잔여 인원으로 좁혀요.
@@ -183,13 +192,18 @@ export function ReservationModal({
       onClick={onClose}
     >
       <div
-        className={`w-full bg-white dark:bg-[#282B32] overflow-y-auto scrollbar-hide px-6 pt-6 pb-8 mobile:max-w-lg mobile:rounded-2xl mobile:max-h-[85vh] ${
+        className={`w-full flex flex-col bg-white dark:bg-[#282B32] mobile:max-w-lg mobile:rounded-2xl mobile:max-h-[85vh] ${
           expanded ? "h-full rounded-none" : "rounded-t-2xl max-h-[85vh]"
         }`}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* [수정] 예약하기 버튼이 스크롤 영역 맨 아래에 있어서, 날짜/시간대가
+            많아 내용이 길어지면 버튼을 보려고 끝까지 스크롤해야 했어요. 버튼을
+            스크롤 영역 밖으로 빼서 모달 하단에 항상 고정되도록 했어요. */}
+        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6 pt-6">
         <div className="flex items-center justify-between mb-5">
-          <p className="text-base font-semibold">{popupName}</p>
+          {/* [수정] 팝업 이름이 잘 안 보인다는 피드백 - text-base → text-lg로 키웠어요. */}
+          <p className="text-lg font-bold">{popupName}</p>
           <button type="button" onClick={onClose} aria-label="닫기" className="text-gray-400 text-lg">
             ✕
           </button>
@@ -302,15 +316,16 @@ export function ReservationModal({
                 <div className="grid grid-cols-4 gap-2">
                   {slotsForSelectedDay.map((slot) => {
                     const isFull = slot.remaining <= 0;
+                    const isPast = isPastSlot(slot);
                     const isSelected = selectedSlotId === slot.id;
                     return (
                       <button
                         key={slot.id}
                         type="button"
-                        disabled={isFull}
+                        disabled={isFull || isPast}
                         onClick={() => setSelectedSlotId(slot.id)}
                         className={`rounded-lg py-2 text-sm border ${
-                          isFull
+                          isFull || isPast
                             ? "border-gray-100 dark:border-[#282B32] text-gray-300 line-through"
                             : isSelected
                             ? "bg-gray-900 text-white border-gray-900 font-medium"
@@ -319,6 +334,7 @@ export function ReservationModal({
                       >
                         {formatTime(slot.startTime)}
                         {isFull && <span className="block text-sm mt-0.5">마감</span>}
+                        {!isFull && isPast && <span className="block text-sm mt-0.5">마감</span>}
                       </button>
                     );
                   })}
@@ -357,7 +373,12 @@ export function ReservationModal({
           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
             인원 <span className="text-sm text-gray-400 font-normal">(최대 {maxCount}명)</span>
           </span>
-          <CountStepper value={count} onChange={setCount} max={maxCount} />
+          <CountStepper
+            value={count}
+            onChange={setCount}
+            max={maxCount}
+            onExceedMax={(max) => alert(`이 팝업에 예약할 수 있는 최대 인원(${max}명)을 넘었어요.`)}
+          />
         </div>
 
         {/* [신규] 인원 설정 아래에 예약 전용 이용 안내사항을 넣었어요. */}
@@ -373,15 +394,19 @@ export function ReservationModal({
             </ul>
           )}
         </div>
+        </div>
 
+        {/* [수정] 스크롤 영역 밖, 모달 하단에 항상 보이도록 고정한 예약하기 버튼. */}
+        <div className="flex-none px-6 pt-3 pb-8 border-t border-gray-100 dark:border-[#17181a]">
         <button
           type="button"
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="w-full rounded-full py-3.5 text-base font-medium bg-gray-100 text-gray-900 dark:text-white disabled:opacity-60 enabled:bg-gray-900 enabled:text-white"
+          className="w-full rounded-full py-3.5 text-base font-medium bg-gray-100 dark:bg-[#17181a] text-gray-900 dark:text-white disabled:opacity-60 enabled:bg-point"
         >
           {buttonLabel}
         </button>
+        </div>
       </div>
     </div>
   );
