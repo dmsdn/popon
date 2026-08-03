@@ -41,13 +41,18 @@ public class CorsConfig {
                 "http://localhost:5173",   // 소비자 (customerfrontend)
                 "http://localhost:5174",   // 주최자 (popupfrontend)
                 "http://localhost:5175",   // 관리자 (adminfrontend)
+                "http://localhost:5176",   // 현장 태블릿 웨이팅 등록 (checkinfrontend, 8/3 신설)
                 // ── 배포 (EC2 3.35.16.87 · nip.io + Let's Encrypt) ──
                 "https://3.35.16.87.nip.io",          // 소비자
                 "https://seller.3.35.16.87.nip.io",   // 주최자
                 "https://admin.3.35.16.87.nip.io",    // 관리자
                 "http://3.35.16.87.nip.io",
                 "http://seller.3.35.16.87.nip.io",
-                "http://admin.3.35.16.87.nip.io"
+                "http://admin.3.35.16.87.nip.io",
+                // 현장 태블릿 웨이팅 등록 (8/3 신설). 로그인이 POST라 여기 빠지면
+                // 「목록은 되는데 로그인만 실패」가 난다 — 7/31에 주최자·관리자에서 겪은 그 증상.
+                "https://checkin.3.35.16.87.nip.io",
+                "http://checkin.3.35.16.87.nip.io"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
