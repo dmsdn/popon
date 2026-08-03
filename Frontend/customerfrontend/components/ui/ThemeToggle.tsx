@@ -1,5 +1,7 @@
 "use client";
 
+// 다크모드/라이트모드 전환 토글 스위치.
+
 import { useTheme } from "@/lib/theme/ThemeContext";
 
 export function ThemeToggle() {

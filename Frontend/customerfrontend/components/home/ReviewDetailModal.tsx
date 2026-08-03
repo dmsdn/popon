@@ -1,5 +1,7 @@
 "use client";
 
+// 후기 카드를 눌렀을 때 뜨는 "크게 보기" 모달 - 사진 위주로 넘겨보는 뷰어.
+
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";

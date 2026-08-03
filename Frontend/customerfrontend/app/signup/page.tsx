@@ -1,5 +1,7 @@
 "use client";
 
+// 회원가입 페이지 - 닉네임/전화번호/이메일/생년월일/성별 입력과 약관 동의.
+
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { submitSignupInfo } from "@/lib/api/auth";
@@ -8,6 +10,7 @@ import { TERMS_SECTIONS } from "@/data/termsContent";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { formatPhoneInput, isValidPhone } from "@/lib/utils/formatPhone";
 import { BirthDatePicker } from "@/components/ui/BirthDatePicker";
+import { EmailInput } from "@/components/ui/EmailInput";
 import { LoadingState } from "@/components/ui/EmptyState";
 import { setToken } from "@/lib/api/client";
 import { decodeJwtPayload } from "@/lib/utils/decodeJwtPayload";
@@ -199,13 +202,7 @@ function SignupPageInner() {
           <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             이메일 <span className="text-gray-400 font-normal">(선택)</span>
           </span>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="000@example.com"
-            className="w-full bg-gray-100 dark:bg-[#282B32] text-gray-900 dark:text-white rounded-lg px-4 py-3 text-sm outline-none"
-          />
+          <EmailInput value={email} onChange={setEmail} />
         </label>
 
         <div className="block">
@@ -316,8 +313,8 @@ function SignupPageInner() {
                         className="w-full flex items-center justify-between text-left"
                       >
                         <span className="text-sm font-semibold">{section.title}</span>
-                        <span className={`text-sm text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`}>
-                          ⌄
+                        <span className={`transition-transform ${isOpen ? "rotate-180" : ""}`}>
+                          <img src="/icons/ui/chevron_down.svg" alt="" width={14} height={14} className="dark:invert" />
                         </span>
                       </button>
                       {isOpen && (

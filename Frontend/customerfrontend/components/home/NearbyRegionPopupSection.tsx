@@ -1,5 +1,7 @@
 "use client";
 
+// "지금 근처" 섹션 - 내 위치(또는 관심지역) 기준으로 가까운 팝업을 보여줘요.
+
 import { useEffect, useState } from "react";
 import { findNearestRegion } from "@/data/hotplaces";
 import { searchPopups } from "@/lib/api/popups";
