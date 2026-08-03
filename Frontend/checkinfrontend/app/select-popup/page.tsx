@@ -53,16 +53,6 @@ function statusBadgeClass(status: RawStatus): string {
   }
 }
 
-const FILTER_TABS: { key: "전체" | RawStatus; label: string }[] = [
-  { key: "전체", label: "전체" },
-  { key: "OPEN", label: "진행중" },
-  { key: "BEFOR", label: "오픈예정" },
-  { key: "CLOSED", label: "종료" },
-  { key: "PENDING", label: "심사중" },
-  { key: "REJECTED", label: "반려됨" },
-  { key: "SUSPENDED", label: "운영중단" },
-];
-
 // [신규] 계정 탭 - 브랜드 로고 이미지 + 아이디(이메일) + 로그아웃 버튼을 한 덩어리로
 // 묶어서 팝업 목록과 시각적으로 구분해요. 이미지 로드에 실패하거나 아직 없으면
 // 회사명 첫 글자로 된 이니셜 아바타로 대체돼요.
@@ -115,14 +105,19 @@ export default function SelectPopupPage() {
   const router = useRouter();
   const [popups, setPopups] = useState<MyPopup[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"전체" | RawStatus>("전체");
-  // [신규] "진행중인거" 우선 정렬(기존 기본값)과 "최신순"(시작일 최근 순) 중 고를 수 있게.
-  const [sortMode, setSortMode] = useState<"진행중" | "최신순">("진행중");
+  // [신규] 웨이팅/예약할지 정말지 지금 진행중(OPEN)인 팝업 아니면 애초에 필요가
+  // 없다는 피드백 - 오픈예정/종료/심사중 등은 목록에서 아예 빼고, 상태 필터
+  // 탭도 통째로 없앴어요(고를 상태가 하나뿐이라 필터가 무의미해졌어요). 정렬은
+  // 사용자가 고르는 대신 이름 가나다순 → 같은 이름이면 시작일 순으로 고정했어요.
   // [신규] "웨이팅 시작하기"를 눌렀을 때 비밀번호를 한 번 더 확인받기 위한 상태.
   // 브랜드 계정 비밀번호(로그인할 때 쓴 것과 동일)로 확인해요 - 실제로는
   // 로그인 API에 같은 이메일+새로 입력한 비밀번호로 다시 호출해서, 성공하면
   // 맞는 비밀번호라고 판단해요(새 검증 API를 따로 안 만들어도 돼요).
   const [pendingPopup, setPendingPopup] = useState<MyPopup | null>(null);
+  // [신규] "웨이팅 시작하기"(손님 셀프 등록 화면)와 "QR 입장 찍기"(직원 QR
+  // 스캔 화면)를 별도 버튼·별도 화면으로 나눴어요. 비밀번호 확인은 공통으로
+  // 거치되, 확인 후 어느 화면으로 보낼지만 이 값으로 구분해요.
+  const [pendingTarget, setPendingTarget] = useState<"/checkin" | "/checkin/scan">("/checkin");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [confirmSubmitting, setConfirmSubmitting] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
@@ -168,8 +163,9 @@ export default function SelectPopupPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleStart = (popup: MyPopup) => {
+  const handleStart = (popup: MyPopup, target: "/checkin" | "/checkin/scan") => {
     setPendingPopup(popup);
+    setPendingTarget(target);
     setConfirmPassword("");
     setConfirmError(null);
   };
@@ -193,7 +189,7 @@ export default function SelectPopupPage() {
         return;
       }
       saveSelectedPopup({ id: pendingPopup.id, title: pendingPopup.title });
-      router.push(`/checkin?popupId=${pendingPopup.id}`);
+      router.push(`${pendingTarget}?popupId=${pendingPopup.id}`);
     } catch {
       setConfirmError("서버에 연결할 수 없어요.");
     } finally {
@@ -206,25 +202,15 @@ export default function SelectPopupPage() {
     router.replace("/");
   };
 
-  // [신규] 진행중(OPEN)인 팝업을 가장 위로 올리는 정렬과, 시작일이 최근인 순
-  // 정렬을 선택할 수 있어요. 필터 탭으로 상태별로 좁혀볼 수도 있어요.
+  // [수정] 상태 필터·정렬 선택 UI를 없애고, "진행중(OPEN)"만 남긴 뒤 이름
+  // 가나다순 → 같은 이름이면 시작일이 빠른 순으로 고정 정렬했어요.
   const filteredPopups = (popups ?? [])
-    .filter((p) => filter === "전체" || p.status === filter)
+    .filter((p) => p.status === "OPEN")
     .sort((a, b) => {
-      if (sortMode === "진행중") {
-        if (a.status === "OPEN" && b.status !== "OPEN") return -1;
-        if (a.status !== "OPEN" && b.status === "OPEN") return 1;
-      }
-      // 최신순(시작일이 가까운/최근인 순) - "진행중" 모드에서도 같은 상태 안에서는
-      // 이 기준으로 정렬해요.
-      return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
+      const byTitle = a.title.localeCompare(b.title, "ko");
+      if (byTitle !== 0) return byTitle;
+      return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
     });
-
-  // [신규] 필터 탭 옆에 개수를 보여주기 위한 상태별 집계.
-  const countByStatus = (popups ?? []).reduce<Record<string, number>>((acc, p) => {
-    acc[p.status] = (acc[p.status] ?? 0) + 1;
-    return acc;
-  }, {});
 
   return (
     <main className="h-full flex flex-col px-6 py-6 landscape:px-10 landscape:py-8 overflow-y-auto scrollbar-hide">
@@ -242,50 +228,13 @@ export default function SelectPopupPage() {
 
       {error && <p className="text-sm text-red-400 mb-4">{error}</p>}
 
-      {/* [신규] 상태별 필터 탭(개수 포함) + 오른쪽 정렬 선택 */}
-      {popups !== null && popups.length > 0 && (
-        <div className="flex items-center justify-between gap-3 mb-5">
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-            {FILTER_TABS.map((tab) => {
-              const count = tab.key === "전체" ? popups.length : countByStatus[tab.key] ?? 0;
-              return (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setFilter(tab.key)}
-                  className={`flex-none text-sm px-3.5 py-1.5 rounded-full border whitespace-nowrap ${
-                    filter === tab.key ? "border-point text-point" : "border-gray-700 text-gray-400"
-                  }`}
-                >
-                  {tab.label} ({count})
-                </button>
-              );
-            })}
-          </div>
-          {/* [신규] 진행중 우선 / 최신순 정렬 선택 */}
-          <div className="flex-none flex gap-1 bg-card rounded-full p-1">
-            {(["진행중", "최신순"] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => setSortMode(mode)}
-                className={`text-sm px-3 py-1 rounded-full whitespace-nowrap ${
-                  sortMode === mode ? "bg-point text-gray-900 font-semibold" : "text-gray-400"
-                }`}
-              >
-                {mode}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {popups === null ? (
         <p className="text-sm text-gray-400">불러오는 중...</p>
       ) : popups.length === 0 ? (
         <p className="text-sm text-gray-400">운영중인 팝업이 없어요.</p>
       ) : filteredPopups.length === 0 ? (
-        <p className="text-sm text-gray-400">해당하는 팝업이 없어요.</p>
+        <p className="text-sm text-gray-400">지금 진행중인 팝업이 없어요.</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {filteredPopups.map((popup) => (
@@ -299,24 +248,41 @@ export default function SelectPopupPage() {
               <p className="text-sm text-gray-400">
                 {popup.startDate} ~ {popup.endDate}
               </p>
-              <button
-                type="button"
-                onClick={() => handleStart(popup)}
-                className="mt-2 w-full rounded-full py-3 text-base font-bold bg-point text-gray-900"
-              >
-                웨이팅 시작하기
-              </button>
+              {/* [수정] "웨이팅 시작하기"(손님 셀프 등록 화면)와 "QR 입장 찍기"
+                  (직원 QR 스캔 화면)를 한 버튼에 몰아넣지 않고 각각 눌러서
+                  원하는 화면으로 바로 갈 수 있게 나눴어요. */}
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleStart(popup, "/checkin")}
+                  className="flex-1 rounded-full py-3 text-base font-bold bg-point text-gray-900"
+                >
+                  웨이팅 시작하기
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleStart(popup, "/checkin/scan")}
+                  className="flex-1 rounded-full py-3 text-base font-bold border-2 border-point text-white"
+                >
+                  QR 입장 찍기
+                </button>
+              </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* [신규] 웨이팅 시작하기 전 비밀번호 확인 모달 */}
+      {/* [신규] 웨이팅 시작하기/QR 입장 찍기 전 비밀번호 확인 모달 - 어느
+          버튼을 눌렀는지에 따라 안내 문구와 확인 버튼 문구가 달라져요. */}
       {pendingPopup && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center px-8 z-50">
           <div className="bg-card rounded-2xl px-8 py-8 w-full max-w-sm">
             <p className="text-lg font-bold mb-1">{pendingPopup.title}</p>
-            <p className="text-sm text-gray-400 mb-5">비밀번호를 입력하고 웨이팅을 시작해주세요</p>
+            <p className="text-sm text-gray-400 mb-5">
+              {pendingTarget === "/checkin"
+                ? "비밀번호를 입력하고 웨이팅을 시작해주세요"
+                : "비밀번호를 입력하고 QR 입장 화면을 열어주세요"}
+            </p>
             <input
               type="password"
               value={confirmPassword}
@@ -341,7 +307,7 @@ export default function SelectPopupPage() {
                 disabled={!confirmPassword || confirmSubmitting}
                 className="flex-1 rounded-full py-3 text-sm font-bold bg-point text-gray-900 disabled:opacity-40"
               >
-                {confirmSubmitting ? "확인하는 중..." : "웨이팅 시작하기"}
+                {confirmSubmitting ? "확인하는 중..." : pendingTarget === "/checkin" ? "웨이팅 시작하기" : "QR 입장 찍기"}
               </button>
             </div>
           </div>

@@ -28,7 +28,9 @@ export function PopupCard({
         )}
         {rank ? (
           <span
-            className="absolute bottom-1 left-2 text-6xl font-bold text-white leading-none"
+            className={`absolute bottom-1 left-2 text-6xl font-bold leading-none ${
+              rank <= 4 ? "text-point" : "text-white"
+            }`}
             style={{ textShadow: "0 2px 8px rgba(0,0,0,0.55)" }}
           >
             {rank}
@@ -48,7 +50,8 @@ export function PopupCard({
         <StatusBadge status={status} className="self-start mb-0.5" />
         <p className="text-base font-medium text-gray-900 dark:text-white truncate">{name}</p>
         {dateRange && <p className="text-sm text-gray-400">{dateRange}</p>}
-        {location && <p className="text-sm text-gray-400">{location}</p>}
+        {/* [수정] 지역 글자가 다른 회색 텍스트(날짜 등)와 구분이 잘 안 됐어요 - 포인트 컬러로 눈에 띄게 했어요. */}
+        {location && <p className="text-sm text-point">{location}</p>}
       </div>
     </Link>
   );

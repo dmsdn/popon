@@ -11,10 +11,20 @@
       "static/chunks/main-app.js",
       "static/chunks/app/checkin/page.js"
     ],
+    "/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/page.js"
+    ],
     "/select-popup/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/select-popup/page.js"
+    ],
+    "/checkin/scan/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/checkin/scan/page.js"
     ]
   }
 }

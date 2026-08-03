@@ -1,6 +1,6 @@
 "use client";
 
-// 마이페이지 - 찜/웨이팅·예약/쿠폰함/다녀간 팝업/알림 설정/화면 설정을 모아둔 메인 허브. 이 프로젝트에서 가장 큰 파일이에요.
+// 마이페이지 - 찜/웨이팅·예약/다녀간 팝업/알림 설정/화면 설정을 모아둔 메인 허브. 이 프로젝트에서 가장 큰 파일이에요.
 
 import { Suspense, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -33,7 +33,6 @@ type MenuKey =
   | "내 정보"
   | "찜 목록"
   | "웨이팅 / 예약"
-  | "쿠폰함"
   | "다녀간 팝업"
   | "알림 설정"
   | "화면 설정"
@@ -43,7 +42,7 @@ type MenuKey =
   | "약관";
 
 const PUBLIC_MENU: MenuKey[] = ["공지사항", "1:1 문의", "Q&A", "약관"];
-const PRIVATE_MENU: MenuKey[] = ["찜 목록", "웨이팅 / 예약", "쿠폰함", "다녀간 팝업", "알림 설정", "화면 설정"];
+const PRIVATE_MENU: MenuKey[] = ["찜 목록", "웨이팅 / 예약", "다녀간 팝업", "알림 설정", "화면 설정"];
 const SIDEBAR_MENU: MenuKey[] = [...PRIVATE_MENU, ...PUBLIC_MENU];
 
 const PROVIDER_LABEL = {
@@ -55,7 +54,6 @@ const PROVIDER_LABEL = {
 const FAQS = [
   { q: "웨이팅은 어떻게 신청하나요?", a: "팝업 상세페이지의 '웨이팅' 버튼에서 카카오 로그인으로 바로 신청할 수 있어요." },
   { q: "예약 취소는 어디서 하나요?", a: "마이페이지 > 웨이팅 / 예약에서 취소할 예약을 선택해 취소할 수 있어요." },
-  { q: "쿠폰은 어떻게 받나요?", a: "일부 팝업은 사전 예약/방문 인증 시 쿠폰함에 자동으로 지급돼요." },
 ];
 
 function calculateAge(birthDate: string | null): string {
@@ -584,12 +582,14 @@ function MyPageContent() {
 
               {/* [수정] 예전엔 웨이팅/예약이 합쳐진 카드 하나만 있어서 찜한 개수는
                   아예 안 보였어요. 찜 / 웨이팅·예약을 각각 개수와 함께 보여주는
-                  카드 2개로 나눴어요. 개수가 0이어도 카드 자체는 보여주되(눌러서
-                  둘러볼 수 있게), "N개"는 1개 이상일 때만 붙여요.
+                  카드 2개로 나눴어요.
                   [수정] 웹(넓은 화면)에서는 카드 그리드 대신, 라벨은 왼쪽/개수는
                   오른쪽에 붙는 한 줄짜리 리스트로 따로 보여줘요. */}
               {/* [수정] 참고 이미지처럼 박스 하나 안에 세로 구분선(|)으로 나눈
-                  두 칸으로 합쳤어요. 숫자는 가운데 정렬, "개"는 뺐어요. */}
+                  두 칸으로 합쳤어요. 숫자는 가운데 정렬, "개"는 뺐어요.
+                  [수정] 개수가 0일 때 "둘러보기"라고 대신 표시하던 걸 없애고,
+                  다른 숫자와 마찬가지로 그냥 0으로 보여줘요 - 실제 개수를
+                  정확하게 보여주는 게 우선이라고 판단했어요. */}
               <div className="mobile:hidden grid grid-cols-2 rounded-xl bg-gray-100 dark:bg-[#282B32] mx-4 mb-4 divide-x divide-gray-200 dark:divide-[#17181a]">
                 <button
                   type="button"
@@ -600,7 +600,7 @@ function MyPageContent() {
                       거의 안 보였어요. 라벨보다 눈에 띄도록 크고 굵게, 다크모드에서도
                       확실히 밝게 나오도록 고쳤어요. */}
                   <span className="text-3xl font-semibold text-gray-900 dark:text-white">
-                    {wishlistIds.size > 0 ? wishlistIds.size : "둘러보기"}
+                    {wishlistIds.size}
                   </span>
                   <span className="text-sm text-gray-500 dark:text-gray-400 mt-1">찜</span>
                 </button>
@@ -610,7 +610,7 @@ function MyPageContent() {
                   className="flex flex-col items-center py-4"
                 >
                   <span className="text-3xl font-semibold text-gray-900 dark:text-white">
-                    {activeCount > 0 ? activeCount : "둘러보기"}
+                    {activeCount}
                   </span>
                   <span className="text-sm text-gray-500 dark:text-gray-400 mt-1">웨이팅 · 예약</span>
                 </button>
@@ -940,7 +940,6 @@ function MyPageContent() {
             </div>
           )}
 
-          {activeMenu === "쿠폰함" && <EmptyState message="보유한 쿠폰이 없어요." />}
           {activeMenu === "다녀간 팝업" &&
             (myReviews === null || myReservations === null ? (
               <LoadingState />
@@ -1050,45 +1049,54 @@ function MyPageContent() {
             ))}
 
           {activeMenu === "알림 설정" && (
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center justify-between py-4 border-b border-gray-50 dark:border-[#282B32]">
+            <div className="flex flex-col gap-6">
+              {/* [수정] "전체" 토글을 카드 형태로 분리해서, 아래 상세 항목별
+                  토글과 한눈에 구분되게 했어요. */}
+              <div className="flex items-center justify-between rounded-xl bg-gray-50 dark:bg-[#1c1d20] px-4 py-4">
                 <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">전체</span>
+                {/* [수정] 켰을 때(ON) 회색이라 눈에 잘 안 띄던 문제 - 포인트 컬러로
+                    바꾸고, 원(thumb)이 오른쪽으로 확실히 이동하도록 고쳤어요.
+                    (예전엔 ON이 0.5px, OFF가 -20px로 반대로/거의 안 움직였어요.) */}
                 <button
                   type="button"
                   onClick={toggleAllNotif}
                   aria-pressed={allNotifEnabled}
                   className={`w-11 h-6 rounded-full relative transition-colors ${
-                    allNotifEnabled ? "bg-gray-200" : "bg-gray-600"
+                    allNotifEnabled ? "bg-point" : "bg-gray-300 dark:bg-gray-600"
                   }`}
                 >
                   <span
-                    className={`absolute top-0.5 w-5 h-5 rounded-full transition-all ${
-                      allNotifEnabled ? "translate-x-[0.5px] bg-white" : "translate-x-[-20px] bg-gray-300"
+                    className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+                      allNotifEnabled ? "translate-x-5" : "translate-x-0"
                     }`}
                   />
                 </button>
               </div>
-              {notifSettings.map((item) => (
-                <div key={item.id} className="flex items-center justify-between py-4 border-b border-gray-50 dark:border-[#282B32]">
-                  <span className="text-sm text-gray-700 dark:text-gray-300">{item.label}</span>
-                  <button
-                    type="button"
-                    onClick={() => toggleNotif(item.id)}
-                    aria-pressed={item.enabled}
-                    className={`w-11 h-6 rounded-full relative transition-colors ${
-                      item.enabled ? "bg-gray-200" : "bg-gray-600"
-                    }`}
-                  >
-                  <span
-                    className={`absolute top-0.5 w-5 h-5 rounded-full transition-all ${
-                      item.enabled
-                      ? "translate-x-[0.5px] bg-white"      // ON일 때: 오른쪽 이동 (22px) + 흰색 원
-                      : "translate-x-[-20px] bg-gray-300"      // OFF일 때: 왼쪽 밀착 (2px) + 회색 원 (원하는 색상으로 변경 가능)
-                    }`}
-                  />
-                  </button>
+
+              <div>
+                <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-1">상세 설정</p>
+                <div className="flex flex-col">
+                  {notifSettings.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between py-4 border-b border-gray-50 dark:border-[#282B32]">
+                      <span className="text-sm text-gray-700 dark:text-gray-300">{item.label}</span>
+                      <button
+                        type="button"
+                        onClick={() => toggleNotif(item.id)}
+                        aria-pressed={item.enabled}
+                        className={`w-11 h-6 rounded-full relative transition-colors ${
+                          item.enabled ? "bg-point" : "bg-gray-300 dark:bg-gray-600"
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+                            item.enabled ? "translate-x-5" : "translate-x-0"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
             </div>
           )}
 
@@ -1115,7 +1123,7 @@ function MyPageContent() {
                     href={`/notice/${notice.id}`}
                     className="block py-4 border-b border-gray-50 dark:border-[#282B32]"
                   >
-                    <p className="text-sm text-gray-800">{notice.title}</p>
+                    <p className="text-sm text-gray-800 dark:text-white">{notice.title}</p>
                     <p className="text-sm text-gray-400 mt-1">
                       {new Date(notice.createdAt).toLocaleDateString("ko-KR")}
                     </p>
@@ -1219,10 +1227,10 @@ function MyPageContent() {
                     onClick={() => setOpenFaq(openFaq === index ? null : index)}
                     className="w-full flex items-center justify-between py-4 text-left"
                   >
-                    <span className="text-sm text-gray-800">{faq.q}</span>
+                    <span className="text-sm text-gray-800 dark:text-white">{faq.q}</span>
                     <span className="text-sm text-gray-400">{openFaq === index ? "−" : "+"}</span>
                   </button>
-                  {openFaq === index && <p className="text-sm text-gray-500 pb-4">{faq.a}</p>}
+                  {openFaq === index && <p className="text-sm text-gray-500 dark:text-gray-400 pb-4">{faq.a}</p>}
                 </div>
               ))}
             </div>

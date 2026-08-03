@@ -285,7 +285,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
         {visitDate && (
           <div className="block">
             <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">다녀간 날짜</span>
-            <div className="w-full bg-gray-100 rounded-lg px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+            <div className="w-full bg-gray-100 dark:bg-[#282B32] rounded-lg px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
               {visitDate}
             </div>
             <p className="text-sm text-gray-400 mt-1.5">예약/웨이팅 방문 기록에서 자동으로 채워졌어요.</p>
@@ -293,7 +293,9 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
         )}
 
         <label className="block">
-          <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">후기 내용</span>
+          <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {isVisited ? "후기 내용" : "댓글 내용"}
+          </span>
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
@@ -350,9 +352,9 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
           type="button"
           onClick={handleSubmit}
           disabled={submitting || uploading}
-          className="w-full rounded-full py-3.5 text-base font-medium bg-gray-900 text-white disabled:opacity-60"
+          className="w-full rounded-full py-3.5 text-base font-medium bg-point text-gray-900 dark:text-white disabled:opacity-60 disabled:bg-gray-300 dark:disabled:bg-gray-700"
         >
-          {submitting ? "저장하는 중..." : editId ? "수정 완료" : "후기 등록하기"}
+          {submitting ? "저장하는 중..." : editId ? "수정 완료" : isVisited ? "후기 등록하기" : "댓글 등록하기"}
         </button>
       </div>
 
