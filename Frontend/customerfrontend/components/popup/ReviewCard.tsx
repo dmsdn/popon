@@ -1,5 +1,7 @@
 "use client";
 
+// 팝업 상세페이지의 개별 후기 카드 - 별점(또는 방문 미인증 댓글), 사진, 500px 확장/스크롤, 수정·삭제 버튼.
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ReviewItem } from "@/data/mockPopups";
@@ -88,14 +90,21 @@ export function ReviewCard({
           </div>
           <div className="min-w-0">
             <p className="text-sm font-medium truncate">{nickname}</p>
-            <p className="text-sm text-gray-400">{date}</p>
+            <p className="flex items-center gap-1.5 text-sm text-gray-400">
+              {date}
+              {/* [신규] 예약/웨이팅으로 실제 방문 인증된 후기에만 붙는 문구 */}
+              {rating != null && <span className="text-point">· 방문 인증</span>}
+            </p>
           </div>
         </div>
         <div className="flex flex-col items-end gap-1.5 flex-none">
-          {/* [수정] 별점이 너무 작다는 피드백 - 12→16으로 키웠어요. */}
-          <span className="flex items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300">
-            <StarRatingDisplay rating={rating} size={16} /> {rating}
-          </span>
+          {/* [수정] 별점이 너무 작다는 피드백 - 12→16으로 키웠어요.
+              [수정] 방문 미인증 댓글은 별점이 없어요 - 있을 때만 표시해요. */}
+          {rating != null && (
+            <span className="flex items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+              <StarRatingDisplay rating={rating} size={16} /> {rating}
+            </span>
+          )}
           {isMine && (
             <div className="flex items-center gap-2.5">
               <button type="button" onClick={handleEdit} className="text-base font-medium text-gray-500">
@@ -109,7 +118,11 @@ export function ReviewCard({
         </div>
       </div>
 
-      <p className={`text-sm text-gray-700 dark:text-gray-300 leading-relaxed ${!expanded && isLong ? "line-clamp-2" : ""}`}>
+      <p
+        className={`text-sm text-gray-700 dark:text-gray-300 leading-relaxed ${
+          !expanded && isLong ? "line-clamp-2" : expanded ? "max-h-[500px] overflow-y-auto" : ""
+        }`}
+      >
         {content}
       </p>
       {isLong && (

@@ -1,12 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+// 웨이팅 등록 모달 - 인원, 이용안내를 포함해요.
+
+import { useState } from "react";
 import { CountStepper } from "./CountStepper";
+import { WAITING_USAGE_GUIDE } from "@/lib/usageGuide";
+import { useScrollLock } from "@/lib/useScrollLock";
 
 interface WaitingModalProps {
   popupName: string;
   dateRange?: string;
   location?: string;
+  notice?: string | null;
+  /** [신규] 팝업 정원 - 웨이팅 인원 스테퍼의 최대값으로 써요. 없으면
+      기본값(10명)을 써요. */
+  capacity?: number;
   onClose: () => void;
   onSubmit: (count: number) => void;
 }
@@ -16,18 +24,12 @@ interface WaitingModalProps {
  * 이미지 자체를 없애고 팝업 이름/기간/장소를 간단한 카드로 정리해서 보여줘요.
  * (예약 모달 ReservationModal 상단에도 똑같은 카드를 넣었어요)
  */
-export function WaitingModal({ popupName, dateRange, location, onClose, onSubmit }: WaitingModalProps) {
+export function WaitingModal({ popupName, dateRange, location, notice, capacity, onClose, onSubmit }: WaitingModalProps) {
   const [count, setCount] = useState(1);
 
-  // [신규] 모달이 열려있는 동안 뒤에 있는 팝업 상세 화면이 스크롤되던 문제 -
-  // body에 overflow: hidden을 걸어서 배경 스크롤을 막아요.
-  useEffect(() => {
-    const original = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = original;
-    };
-  }, []);
+  // [수정] 단순 overflow:hidden만으로는 모바일 터치 스크롤이 새는 경우가 있어서,
+  // body를 고정하는 더 확실한 방식으로 바꿨어요.
+  useScrollLock();
 
   return (
     <div
@@ -35,7 +37,7 @@ export function WaitingModal({ popupName, dateRange, location, onClose, onSubmit
       onClick={onClose}
     >
       <div
-        className="w-full mobile:max-w-md bg-white dark:bg-[#282B32] rounded-t-2xl mobile:rounded-2xl px-6 pt-6 pb-8"
+        className="w-full mobile:max-w-md max-h-[85vh] overflow-y-auto scrollbar-hide bg-white dark:bg-[#282B32] rounded-t-2xl mobile:rounded-2xl px-6 pt-6 pb-8"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
@@ -57,8 +59,24 @@ export function WaitingModal({ popupName, dateRange, location, onClose, onSubmit
         </div>
 
         <div className="flex items-center justify-between mb-8">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">인원</span>
-          <CountStepper value={count} onChange={setCount} />
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            인원 <span className="text-sm text-gray-400 font-normal">(최대 {Math.max(1, capacity ?? 10)}명)</span>
+          </span>
+          <CountStepper value={count} onChange={setCount} max={Math.max(1, capacity ?? 10)} />
+        </div>
+
+        {/* [신규] 인원 설정 아래에 웨이팅 전용 이용 안내사항을 넣었어요. */}
+        <div className="mb-8">
+          <p className="text-sm font-semibold mb-2">이용 안내사항</p>
+          {notice ? (
+            <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{notice}</p>
+          ) : (
+            <ul className="text-sm text-gray-600 dark:text-gray-400 list-disc pl-4 flex flex-col gap-1.5">
+              {WAITING_USAGE_GUIDE.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          )}
         </div>
 
         <button

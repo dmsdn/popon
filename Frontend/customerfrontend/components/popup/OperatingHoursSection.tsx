@@ -86,7 +86,9 @@ export function OperatingHoursSection({ hours }: { hours: PopupDetail["operating
                 {DAY_LABEL[todayKey]} {formatRange(today)}
               </span>
             )}
-            <span className={`text-xs transition-transform ${expanded ? "rotate-180" : ""}`}>⌄</span>
+            <span className={`transition-transform ${expanded ? "rotate-180" : ""}`}>
+              <img src="/icons/ui/chevron_down.svg" alt="" width={14} height={14} className="dark:invert" />
+            </span>
           </button>
 
           {expanded && (

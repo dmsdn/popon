@@ -10,7 +10,7 @@ export function StarRatingDisplay({ rating, size = 14 }: { rating: number; size?
         // eslint-disable-next-line @next/next/no-img-element
         <img
           key={n}
-          src={n <= rounded ? "/Icon/star_active.svg" : "/Icon/star_inactive.svg"}
+          src={n <= rounded ? "/icons/ui/star_active.svg" : "/icons/ui/star_inactive.svg"}
           alt=""
           width={size}
           height={size}

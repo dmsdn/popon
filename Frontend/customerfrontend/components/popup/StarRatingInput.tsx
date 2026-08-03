@@ -1,5 +1,7 @@
 "use client";
 
+// 별점을 직접 매기는 입력용 별 5개 컴포넌트 (후기 작성 시 사용).
+
 import { useState } from "react";
 
 /**
@@ -38,7 +40,7 @@ export function StarRatingInput({
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={filled ? "/Icon/star_active.svg" : "/Icon/star_inactive.svg"}
+              src={filled ? "/icons/ui/star_active.svg" : "/icons/ui/star_inactive.svg"}
               alt=""
               width={size}
               height={size}

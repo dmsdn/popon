@@ -1,5 +1,7 @@
 "use client";
 
+// 마이페이지 - 찜/웨이팅·예약/쿠폰함/다녀간 팝업/알림 설정/화면 설정을 모아둔 메인 허브. 이 프로젝트에서 가장 큰 파일이에요.
+
 import { Suspense, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -21,6 +23,7 @@ import { getKeywords, getMyInterests, withdrawCustomer } from "@/lib/api/custome
 import {
   subscribeWishlist,
   getWishlistSnapshot,
+  getServerWishlistSnapshot,
   ensureWishlistLoaded,
   toggleWishlist,
 } from "@/lib/wishlistStore";
@@ -29,7 +32,7 @@ import { LoadingState, EmptyState } from "@/components/ui/EmptyState";
 type MenuKey =
   | "내 정보"
   | "찜 목록"
-  | "예약 / 웨이팅"
+  | "웨이팅 / 예약"
   | "쿠폰함"
   | "다녀간 팝업"
   | "알림 설정"
@@ -40,7 +43,7 @@ type MenuKey =
   | "약관";
 
 const PUBLIC_MENU: MenuKey[] = ["공지사항", "1:1 문의", "Q&A", "약관"];
-const PRIVATE_MENU: MenuKey[] = ["찜 목록", "예약 / 웨이팅", "쿠폰함", "다녀간 팝업", "알림 설정", "화면 설정"];
+const PRIVATE_MENU: MenuKey[] = ["찜 목록", "웨이팅 / 예약", "쿠폰함", "다녀간 팝업", "알림 설정", "화면 설정"];
 const SIDEBAR_MENU: MenuKey[] = [...PRIVATE_MENU, ...PUBLIC_MENU];
 
 const PROVIDER_LABEL = {
@@ -51,7 +54,7 @@ const PROVIDER_LABEL = {
 
 const FAQS = [
   { q: "웨이팅은 어떻게 신청하나요?", a: "팝업 상세페이지의 '웨이팅' 버튼에서 카카오 로그인으로 바로 신청할 수 있어요." },
-  { q: "예약 취소는 어디서 하나요?", a: "마이페이지 > 예약 / 웨이팅에서 취소할 예약을 선택해 취소할 수 있어요." },
+  { q: "예약 취소는 어디서 하나요?", a: "마이페이지 > 웨이팅 / 예약에서 취소할 예약을 선택해 취소할 수 있어요." },
   { q: "쿠폰은 어떻게 받나요?", a: "일부 팝업은 사전 예약/방문 인증 시 쿠폰함에 자동으로 지급돼요." },
 ];
 
@@ -153,7 +156,7 @@ function MyPageContent() {
   }, [isLoggedIn]);
 
   // 찜 목록
-  const wishlistIds = useSyncExternalStore(subscribeWishlist, getWishlistSnapshot, () => new Set<number>());
+  const wishlistIds = useSyncExternalStore(subscribeWishlist, getWishlistSnapshot, getServerWishlistSnapshot);
   const [wishlistPopups, setWishlistPopups] = useState<Record<number, PopupDetail>>({});
   // [신규] "다녀간 팝업" 탭에서 후기를 누르면 크게 보여줄 모달 상태
   const [openVisitedReview, setOpenVisitedReview] = useState<Extract<VisitedItem, { type: "review" }> | null>(null);
@@ -186,7 +189,7 @@ function MyPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wishlistIds]);
 
-  // 예약 / 웨이팅
+  // 웨이팅 / 예약
   const [myReservations, setMyReservations] = useState<Reservation[] | null>(null);
   const [myWaitings, setMyWaitings] = useState<Waiting[]>([]);
   const [reservationPopupTitles, setReservationPopupTitles] = useState<Record<number, string>>({});
@@ -358,25 +361,30 @@ function MyPageContent() {
 
   // /mypage?menu=공지사항 처럼 쿼리로 들어오면 해당 메뉴가 바로 선택된 상태로 열립니다.
   const queryMenu = searchParams.get("menu");
-const [syncedQueryMenu, setSyncedQueryMenu] = useState<string | null>(null);
 
-if (queryMenu !== syncedQueryMenu) {
-  setSyncedQueryMenu(queryMenu);
-  if (queryMenu && (VALID_MENUS as string[]).includes(queryMenu)) {
+  // [수정] 렌더링 도중(컴포넌트 함수 본문)에서 setState를 호출하던 방식이었는데,
+  // loading이 true인 동안 한 번 처리되고 나면 나중에 loading이 풀려도 다시 안
+  // 돌아서, 새로고침 시 비로그인 사용자가 로그인 필요한 탭에 잠깐 들어가 있는 등
+  // 불안정했어요. 정식 useEffect로 바꾸고, loading 상태도 deps에 포함시켜서
+  // loading이 풀리는 시점에 다시 한번 정확히 확인하도록 했어요.
+  useEffect(() => {
+    if (!queryMenu) {
+      // 뒤로가기 등으로 menu 쿼리파라미터가 사라지면(브라우저 히스토리를 실제로
+      // 되돌아온 경우) 목록 화면으로 돌아가요.
+      setMobileView("list");
+      return;
+    }
+    if (!(VALID_MENUS as string[]).includes(queryMenu)) return;
+
     const isPrivate = (PRIVATE_MENU as string[]).includes(queryMenu) || queryMenu === "내 정보";
     if (isPrivate && !loading && !isLoggedIn) {
       router.replace("/login");
-    } else {
-      setActiveMenu(queryMenu as MenuKey);
-      setMobileView("detail");
+      return;
     }
-  } else if (!queryMenu) {
-    // [신규] 뒤로가기 등으로 menu 쿼리파라미터가 사라지면(브라우저 히스토리를
-    // 실제로 되돌아온 경우) 목록 화면으로 돌아가요 - 이전엔 이 경우를 처리 안 해서
-    // 뒤로가기를 눌러도 눌렀던 탭이 계속 선택된 채로 남아있었어요.
-    setMobileView("list");
-  }
-}
+    if (loading) return; // 아직 로그인 여부를 모르면 판단을 미뤄요 - 확정되면 이 effect가 다시 돌아요.
+    setActiveMenu(queryMenu as MenuKey);
+    setMobileView("detail");
+  }, [queryMenu, loading, isLoggedIn, router]);
 
   // 비로그인 상태로 들어왔는데 아직 기본값(내 정보)이면, 로그인 없이도 볼 수 있는
   // 메뉴로 기본 선택을 바꿔줍니다.
@@ -386,7 +394,6 @@ if (queryMenu !== syncedQueryMenu) {
     }
   }, [loading, isLoggedIn, activeMenu]);
 
-  if (loading) return null;
 
   const handleSelectMenu = (menu: MenuKey) => {
     const isPrivate = (PRIVATE_MENU as string[]).includes(menu) || menu === "내 정보";
@@ -394,13 +401,25 @@ if (queryMenu !== syncedQueryMenu) {
       router.push("/login");
       return;
     }
-    // [수정] 로컬 state만 바꾸던 것에서 실제 URL(히스토리 엔트리)을 남기도록
-    // 바꿨어요 - 그래야 뒤로가기를 눌렀을 때 브라우저가 "이전 화면(목록)"으로
-    // 정확히 되돌아갈 수 있어요.
-    router.push(`/mypage?menu=${encodeURIComponent(menu)}`);
+    // [수정] 탭을 여러 개 옮겨다니면 push()가 매번 히스토리를 쌓아서, 뒤로가기를
+    // 눌렀을 때 "마이페이지 진입 전"이 아니라 "직전에 봤던 탭들"을 하나씩
+    // 거쳐가는 문제가 있었어요. replace()로 바꿔서 마이페이지 안에서 탭을
+    // 아무리 옮겨다녀도 히스토리 엔트리가 하나만 남게 했어요 - 뒤로가기 한 번에
+    // 바로 마이페이지 진입 전 화면으로 나가요.
+    setActiveMenu(menu);
+    setMobileView("detail");
+    router.replace(`/mypage?menu=${encodeURIComponent(menu)}`);
   };
 
-  const handleBackToList = () => router.back();
+  // [수정] 목록↔상세 전환은 이제 URL/히스토리와 무관한 순수 로컬 상태예요 -
+  // router.back()을 쓰면 (탭 전환이 이제 replace라) 마이페이지 밖으로
+  // 나가버려서, 그냥 상태만 되돌려요.
+  const handleBackToList = () => {
+    setMobileView("list");
+    // URL의 menu 파라미터도 같이 지워요 - 안 지우면 목록 화면에서 새로고침했을 때
+    // 여전히 남아있는 ?menu=X 때문에 다시 상세 화면으로 돌아가버려요.
+    router.replace("/mypage");
+  };
 
   const handleConfirmLogout = () => {
     logout();
@@ -462,7 +481,7 @@ if (queryMenu !== syncedQueryMenu) {
         popupId: number;
         title: string;
         date: string;
-        rating: number;
+        rating: number | null;
         content: string;
         photos: string[];
         visitDate: string | null;
@@ -519,6 +538,12 @@ if (queryMenu !== syncedQueryMenu) {
     );
   }, [myReviews, myReservations, myWaitings, popupTitles, reservationPopupTitles]);
 
+  // [수정] 이 조기 return이 이전엔 hooks 중간에 있어서 "Rendered more hooks than
+  // during the previous render" 에러가 났었어요. 모든 useState/useEffect/useMemo가
+  // 끝난 뒤, 화면을 그리기 직전으로 옮겼어요 - React 훅은 매 렌더링마다 정확히
+  // 같은 순서로 호출돼야 해서, 훅들 사이에 조건부 return이 끼어있으면 안 돼요.
+  if (loading) return null;
+
   return (
     <main className="min-h-screen flex flex-col w-full mobile:max-w-[1000px] mobile:mx-auto">
       <div
@@ -532,7 +557,7 @@ if (queryMenu !== syncedQueryMenu) {
           aria-label="뒤로가기"
           className="text-lg text-gray-500"
         >
-          <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
+          <img src="/icons/ui/back_arrow.svg" alt="" width={24} height={24} className="dark:invert" />
         </button>
         <h1 className="text-lg font-bold">내 정보</h1>
       </div>
@@ -560,27 +585,53 @@ if (queryMenu !== syncedQueryMenu) {
               {/* [수정] 예전엔 웨이팅/예약이 합쳐진 카드 하나만 있어서 찜한 개수는
                   아예 안 보였어요. 찜 / 웨이팅·예약을 각각 개수와 함께 보여주는
                   카드 2개로 나눴어요. 개수가 0이어도 카드 자체는 보여주되(눌러서
-                  둘러볼 수 있게), "N개"는 1개 이상일 때만 붙여요. */}
-              <div className="grid grid-cols-2 gap-3 mx-4 mb-4">
+                  둘러볼 수 있게), "N개"는 1개 이상일 때만 붙여요.
+                  [수정] 웹(넓은 화면)에서는 카드 그리드 대신, 라벨은 왼쪽/개수는
+                  오른쪽에 붙는 한 줄짜리 리스트로 따로 보여줘요. */}
+              {/* [수정] 참고 이미지처럼 박스 하나 안에 세로 구분선(|)으로 나눈
+                  두 칸으로 합쳤어요. 숫자는 가운데 정렬, "개"는 뺐어요. */}
+              <div className="mobile:hidden grid grid-cols-2 rounded-xl bg-gray-100 dark:bg-[#282B32] mx-4 mb-4 divide-x divide-gray-200 dark:divide-[#17181a]">
                 <button
                   type="button"
                   onClick={() => handleSelectMenu("찜 목록")}
-                  className="flex flex-col items-start rounded-xl border border-gray-200 dark:border-[#282B32] px-4 py-3 text-left"
+                  className="flex flex-col items-center py-4"
                 >
-                  <span className="text-sm text-gray-400 mb-1">찜</span>
-                  <span className="text-sm font-semibold text-gray-800">
-                    {wishlistIds.size > 0 ? `${wishlistIds.size}개` : "둘러보기"}
+                  {/* [수정] text-gray-800에 dark: 짝이 없어서 다크모드에서 숫자가
+                      거의 안 보였어요. 라벨보다 눈에 띄도록 크고 굵게, 다크모드에서도
+                      확실히 밝게 나오도록 고쳤어요. */}
+                  <span className="text-3xl font-semibold text-gray-900 dark:text-white">
+                    {wishlistIds.size > 0 ? wishlistIds.size : "둘러보기"}
                   </span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400 mt-1">찜</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleSelectMenu("예약 / 웨이팅")}
-                  className="flex flex-col items-start rounded-xl border border-gray-200 dark:border-[#282B32] px-4 py-3 text-left"
+                  onClick={() => handleSelectMenu("웨이팅 / 예약")}
+                  className="flex flex-col items-center py-4"
                 >
-                  <span className="text-sm text-gray-400 mb-1">웨이팅 · 예약</span>
-                  <span className="text-sm font-semibold text-gray-800">
-                    {activeCount > 0 ? `${activeCount}개` : "둘러보기"}
+                  <span className="text-3xl font-semibold text-gray-900 dark:text-white">
+                    {activeCount > 0 ? activeCount : "둘러보기"}
                   </span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400 mt-1">웨이팅 · 예약</span>
+                </button>
+              </div>
+
+              <div className="hidden mobile:flex flex-col gap-1 px-6 mb-4">
+                <button
+                  type="button"
+                  onClick={() => handleSelectMenu("찜 목록")}
+                  className="flex items-center justify-between rounded-lg px-2 py-2 text-left bg-gray-50 dark:bg-[#282B32]"
+                >
+                  <span className="text-sm text-gray-700 dark:text-gray-300">찜</span>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{wishlistIds.size}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSelectMenu("웨이팅 / 예약")}
+                  className="flex items-center justify-between rounded-lg px-2 py-2 text-left bg-gray-50 dark:bg-[#282B32]"
+                >
+                  <span className="text-sm text-gray-700 dark:text-gray-300">웨이팅 · 예약</span>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{activeCount}</span>
                 </button>
               </div>
             </>
@@ -605,7 +656,9 @@ if (queryMenu !== syncedQueryMenu) {
                 type="button"
                 onClick={() => handleSelectMenu(menu)}
                 className={`w-full text-left px-4 mobile:px-6 py-3.5 text-sm ${
-                  activeMenu === menu ? "font-semibold text-gray-900 dark:text-white bg-gray-50 dark:bg-[#282B32]" : "text-gray-700 dark:text-gray-300"
+                  activeMenu === menu && mobileView === "detail"
+                    ? "font-semibold text-gray-900 dark:text-white bg-gray-50 dark:bg-[#282B32]"
+                    : "text-gray-700 dark:text-gray-300 mobile:hover:bg-gray-50 dark:mobile:hover:bg-[#282B32]"
                 }`}
               >
                 {menu}
@@ -629,7 +682,7 @@ if (queryMenu !== syncedQueryMenu) {
             onClick={handleBackToList}
             className="mobile:hidden flex items-center gap-2 mb-4"
           >
-            <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
+            <img src="/icons/ui/back_arrow.svg" alt="" width={24} height={24} className="dark:invert" />
             <span className="text-lg font-bold">{activeMenu}</span>
           </button>
 
@@ -654,15 +707,15 @@ if (queryMenu !== syncedQueryMenu) {
                 <span className="text-sm text-gray-700 dark:text-gray-300">연결된 로그인</span>
                 <span
                   className={`flex items-center gap-1.5 text-sm font-medium rounded-full px-3 py-1.5 ${
-                    customer.provider === "KAKAO" ? "bg-[#FEE500]" : "bg-gray-100 dark:bg-[#282B32] text-gray-700 dark:text-gray-300"
+                    customer.provider === "KAKAO" ? "bg-[#FEE500] text-gray-900" : "bg-gray-100 dark:bg-[#282B32] text-gray-700 dark:text-gray-300"
                   }`}
                 >
                   {customer.provider === "KAKAO" ? (
-                    <img src="/Icon/kakao.svg" alt="Kakao" className="w-4 h-4" />
+                    <img src="/icons/ui/kakao.svg" alt="Kakao" className="w-4 h-4" />
                   ) : customer.provider === "GOOGLE" ? (
-                    <img src="/Icon/google.svg" alt="Google" className="w-4 h-4" />
+                    <img src="/icons/ui/google.svg" alt="Google" className="w-4 h-4" />
                   ) : (
-                    <img src="/Icon/admin.svg" alt="Admin" className="w-4 h-4" />
+                    <img src="/icons/ui/admin.svg" alt="Admin" className="w-4 h-4" />
                   )}{" "}
                   {PROVIDER_LABEL[customer.provider]}
                 </span>
@@ -797,7 +850,7 @@ if (queryMenu !== syncedQueryMenu) {
               </div>
             ))}
 
-          {activeMenu === "예약 / 웨이팅" && (
+          {activeMenu === "웨이팅 / 예약" && (
             <div className="flex flex-col gap-10">
               <section>
                 <h2 className="text-sm font-semibold mb-3">웨이팅</h2>
@@ -831,7 +884,7 @@ if (queryMenu !== syncedQueryMenu) {
                             </p>
                           </div>
                           <div className="text-right flex-none">
-                            <span className="text-2xl font-bold">{w.teamNumber}</span>
+                            <span className="text-3xl font-semibold">{w.teamNumber}</span>
                             <span className="text-sm text-gray-500 ml-0.5">번째</span>
                           </div>
                         </div>
@@ -909,7 +962,7 @@ if (queryMenu !== syncedQueryMenu) {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
                           <span className="text-sm font-medium bg-gray-100 dark:bg-[#282B32] text-gray-500 rounded px-1.5 py-0.5">
-                            {item.type === "review" ? "후기" : item.type === "reservation" ? "예약" : "웨이팅"}
+                            {item.type === "review" ? "댓글/후기" : item.type === "reservation" ? "예약" : "웨이팅"}
                           </span>
                           <p className="text-sm font-semibold truncate">{item.title}</p>
                         </div>
@@ -926,7 +979,13 @@ if (queryMenu !== syncedQueryMenu) {
                         className="block w-full text-left px-4 pb-3"
                       >
                         <p className="flex items-center gap-1 text-sm text-gray-500 mb-1">
-                          <StarRatingDisplay rating={item.rating} size={12} /> {item.rating}
+                          {item.rating != null ? (
+                            <>
+                              <StarRatingDisplay rating={item.rating} size={12} /> {item.rating}
+                            </>
+                          ) : (
+                            <span className="text-gray-400">방문 미인증 댓글</span>
+                          )}
                           {item.visitDate && <span className="text-gray-400">· {item.visitDate} 다녀옴</span>}
                         </p>
                         <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-2">{item.content}</p>
@@ -943,7 +1002,13 @@ if (queryMenu !== syncedQueryMenu) {
                         )}
                       </button>
                     ) : (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 px-4 pb-3">방문 완료 · 아직 후기를 남기지 않았어요</p>
+                      <Link
+                        href={`/popup/${item.popupId}/review`}
+                        className="flex items-center justify-between px-4 pb-3 text-sm"
+                      >
+                        <span className="text-gray-600 dark:text-gray-400">방문 완료 · 아직 댓글/후기를 남기지 않았어요</span>
+                        <span className="text-gray-900 dark:text-white font-medium flex-none ml-2">후기 남기기 ›</span>
+                      </Link>
                     )}
 
                     {/* [신규] 후기에도 수정/삭제 버튼 + 추천받은 수를 보여줘요. */}
@@ -1241,7 +1306,13 @@ if (queryMenu !== syncedQueryMenu) {
             </div>
             <div className="overflow-y-auto px-5 py-4">
               <p className="flex items-center gap-1.5 text-sm text-gray-500 mb-3">
-                <StarRatingDisplay rating={openVisitedReview.rating} size={16} /> {openVisitedReview.rating}
+                {openVisitedReview.rating != null ? (
+                  <>
+                    <StarRatingDisplay rating={openVisitedReview.rating} size={16} /> {openVisitedReview.rating}
+                  </>
+                ) : (
+                  <span className="text-gray-400">방문 미인증 댓글</span>
+                )}
                 {openVisitedReview.visitDate && (
                   <span className="text-gray-400">· {openVisitedReview.visitDate} 다녀옴</span>
                 )}

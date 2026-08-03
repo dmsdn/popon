@@ -1,3 +1,6 @@
+// components/home/PopupCard.tsx
+// 팝업 카드 컴포넌트 - 여러 섹션(캐러셀, 검색 결과 등)에서 재사용되는 기본 카드. 순위 배지, 찜 버튼 포함.
+
 import Link from "next/link";
 import { PopupItem } from "@/data/mockPopups";
 import { HeartButton } from "@/components/ui/HeartButton";
@@ -25,7 +28,7 @@ export function PopupCard({
         )}
         {rank ? (
           <span
-            className="absolute bottom-1 left-2 text-5xl font-extrabold text-white leading-none"
+            className="absolute bottom-1 left-2 text-6xl font-bold text-white leading-none"
             style={{ textShadow: "0 2px 8px rgba(0,0,0,0.55)" }}
           >
             {rank}

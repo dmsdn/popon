@@ -1,9 +1,12 @@
 "use client";
 
+// "바로가기" 페이지 - 카테고리별/지역별 바로가기 목록 (하단바의 바로가기 탭).
+
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Footer } from "@/components/layout/Footer";
+import { BottomTabBar } from "@/components/layout/BottomTabBar";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { getKeywords, getMyInterests, type Keyword } from "@/lib/api/customer";
 import { getRegions, getMyRegions, type Region } from "@/lib/api/regions";
@@ -68,9 +71,9 @@ export default function MorePage() {
           aria-label="뒤로가기"
           className="text-lg text-gray-500"
         >
-          <img src="/Icon/back_arrow.svg" alt="" width={48} height={48} />
+          <img src="/icons/ui/back_arrow.svg" alt="" width={24} height={24} className="dark:invert" />
         </button>
-        <h1 className="text-lg font-bold">더보기</h1>
+        <h1 className="text-lg font-bold">바로가기</h1>
       </div>
 
       {/* 내 계정 정보 */}
@@ -101,13 +104,13 @@ export default function MorePage() {
       {/* 카테고리별 바로가기 - 관심 카테고리로 설정해둔 게 있으면 맨 위로 */}
       {sortedKeywords.length > 0 && (
         <section className="px-4 mobile:px-8 py-2 border-b border-gray-100 dark:border-[#282B32]">
-          <h2 className="text-sm font-semibold mb-1 mt-4">카테고리별 바로가기</h2>
+          <h2 className="text-sm font-semibold mb-1 mt-4 text-gray-400">카테고리별 바로가기</h2>
           <nav className="flex flex-col">
             {sortedKeywords.map((kw, i) => (
               <Link
                 key={kw.id}
                 href={`/search?q=${encodeURIComponent(kw.name)}`}
-                className={`flex items-center justify-between py-3.5 text-sm text-gray-700 dark:text-gray-300 ${
+                className={`flex items-center py-3.5 text-base text-gray-700 dark:text-gray-300 ${
                   i < sortedKeywords.length - 1 ? "border-b border-gray-50 dark:border-[#282B32]" : ""
                 }`}
               >
@@ -117,7 +120,6 @@ export default function MorePage() {
                     <span className="text-sm text-gray-400">관심</span>
                   )}
                 </span>
-                <span className="text-gray-300">›</span>
               </Link>
             ))}
           </nav>
@@ -126,13 +128,13 @@ export default function MorePage() {
 
       {/* 지역별 보기 - 관심 지역으로 설정해둔 게 있으면 맨 위로 */}
       <section className="px-4 mobile:px-8 py-2">
-        <h2 className="text-sm font-semibold mb-1 mt-4">지역별 보기</h2>
+        <h2 className="text-sm font-semibold mb-1 mt-4 text-gray-400">지역별 보기</h2>
         <nav className="flex flex-col">
           {sortedRegions.map((region, i) => (
             <Link
               key={region.id}
               href={`/search?q=${encodeURIComponent(region.name)}`}
-              className={`flex items-center justify-between py-3.5 text-sm text-gray-700 dark:text-gray-300 ${
+              className={`flex items-center py-3.5 text-base text-gray-700 dark:text-gray-300 ${
                 i < sortedRegions.length - 1 ? "border-b border-gray-50 dark:border-[#282B32]" : ""
               }`}
             >
@@ -142,7 +144,6 @@ export default function MorePage() {
                   <span className="text-sm text-gray-400">관심</span>
                 )}
               </span>
-              <span className="text-gray-300">›</span>
             </Link>
           ))}
         </nav>
@@ -151,6 +152,9 @@ export default function MorePage() {
       </div>
 
       <Footer />
+      <div className="block mobile:hidden">
+        <BottomTabBar />
+      </div>
     </main>
   );
 }

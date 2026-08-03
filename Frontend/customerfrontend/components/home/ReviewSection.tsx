@@ -1,5 +1,7 @@
 "use client";
 
+// "실시간 후기 모음" 섹션 전체 - 여러 팝업의 최신 후기를 모아 보여줘요.
+
 import { useEffect, useState } from "react";
 import { getRecentReviews } from "@/lib/api/reviews";
 import { getPopup, type PopupDetail } from "@/lib/api/popups";

@@ -1,5 +1,8 @@
 "use client";
 
+// 팝업 상세페이지 하단 고정 액션바 - 찜/사전예약/웨이팅/문의하기 버튼.
+
+import Link from "next/link";
 import { HeartButton } from "@/components/ui/HeartButton";
 import type { PopupItem } from "@/data/mockPopups";
 
@@ -18,6 +21,7 @@ export function StickyActionBar({
   onWishlistToggle,
   onReserve,
   onWaiting,
+  inquiryHref,
 }: {
   popupId: number;
   /** 팝업 진행 상태 - 웨이팅은 "진행중"일 때만, 예약은 "종료" 전까지 열어둬요.
@@ -37,6 +41,9 @@ export function StickyActionBar({
   onWishlistToggle?: (nextActive: boolean) => void;
   onReserve: () => void;
   onWaiting: () => void;
+  /** [신규] 예약/웨이팅을 둘 다 지원 안 하는 팝업이면, 그 자리에 대신
+      "문의하기" 버튼을 띄워요 - 정보탭에 있던 문의하기를 여기로 옮긴 거예요. */
+  inquiryHref?: string;
 }) {
   const supportsWaiting = queueMode === "ONSITE_WAITING_ONLY" || queueMode === "BOTH";
   const noSlotsYet = reservationMode === "SLOT" && !hasSlots;
@@ -45,7 +52,7 @@ export function StickyActionBar({
   const reservationEnabled = supportsReservation && (popupStatus === "진행중" || popupStatus === "예정");
 
   return (
-    <div className="fixed bottom-14 mobile:bottom-0 left-0 right-0 z-40 bg-white dark:bg-[#282B32] border-t border-gray-100 dark:border-[#282B32]">
+    <div className="fixed bottom-14 mobile:bottom-0 left-0 right-0 z-40 bg-white dark:bg-[#17181a] shadow-[0_-2px_8px_rgba(0,0,0,0.06)] dark:shadow-[0_-2px_8px_rgba(0,0,0,0.3)]">
       <div className="w-full mobile:max-w-[1000px] mobile:mx-auto flex items-center gap-3 px-4 mobile:px-8 py-3">
         <div className="flex flex-col items-center flex-none">
           <HeartButton popupId={popupId} className="w-11 h-11" onToggle={onWishlistToggle} />
@@ -58,7 +65,7 @@ export function StickyActionBar({
             type="button"
             onClick={onReserve}
             disabled={!reservationEnabled}
-            className="flex-1 rounded-full py-3 text-base font-medium border border-gray-900 dark:border-gray-600 text-gray-900 dark:text-white disabled:opacity-40 disabled:border-gray-300 dark:disabled:border-gray-700"
+            className="flex-1 rounded-full py-3 text-base font-medium bg-gray-100 dark:bg-[#282B32] text-gray-900 dark:text-white disabled:opacity-40"
           >
             {reservationEnabled ? "사전 예약" : "예약 준비중"}
           </button>
@@ -78,6 +85,15 @@ export function StickyActionBar({
               ? `웨이팅 · ${waitingTeams}팀 대기중`
               : "웨이팅"}
           </button>
+        )}
+        {/* [신규] 예약/웨이팅 둘 다 지원 안 하면 그 자리에 문의하기를 대신 띄워요. */}
+        {!supportsReservation && !supportsWaiting && inquiryHref && (
+          <Link
+            href={inquiryHref}
+            className="flex-1 text-center rounded-full py-3 text-base font-medium border border-point text-gray-900 dark:text-white"
+          >
+            문의하기
+          </Link>
         )}
       </div>
     </div>

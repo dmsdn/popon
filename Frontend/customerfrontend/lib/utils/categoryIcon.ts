@@ -8,23 +8,23 @@
 // 반환하도록 바꿨어요. (요청: "아이콘은 svg 파일로 저장해서 넣어줘")
 
 const ICON_RULES: [string[], string][] = [
-  [["카페"], "/icons/cafe.svg"],
-  [["음식점"], "/icons/food.svg"],
-  [["전시"], "/icons/art.svg"],
-  [["공원"], "/icons/park.svg"],
-  [["아쿠아리움"], "/icons/aquarium.svg"],
-  [["쇼핑", "컨벤션"], "/icons/shopping.svg"],
-  [["야구장"], "/icons/sports.svg"],
-  [["도서관"], "/icons/book.svg"],
-  [["야경"], "/icons/moon.svg"],
-  [["테마파크"], "/icons/ferris-wheel.svg"],
-  [["체험관"], "/icons/idea.svg"],
-  [["거리"], "/icons/walk.svg"],
+  [["카페"], "/icons/hotplace/cafe.svg"],
+  [["음식점"], "/icons/hotplace/food.svg"],
+  [["전시"], "/icons/hotplace/art.svg"],
+  [["공원"], "/icons/hotplace/park.svg"],
+  [["아쿠아리움"], "/icons/hotplace/aquarium.svg"],
+  [["쇼핑", "컨벤션"], "/icons/hotplace/shopping.svg"],
+  [["야구장"], "/icons/hotplace/sports.svg"],
+  [["도서관"], "/icons/hotplace/book.svg"],
+  [["야경"], "/icons/hotplace/moon.svg"],
+  [["테마파크"], "/icons/hotplace/ferris-wheel.svg"],
+  [["체험관"], "/icons/hotplace/idea.svg"],
+  [["거리"], "/icons/hotplace/walk.svg"],
 ];
 
 export function getCategoryIcon(category: string): string {
   for (const [keywords, path] of ICON_RULES) {
     if (keywords.some((kw) => category.includes(kw))) return path;
   }
-  return "/Icon/pin.svg";
+  return "/icons/ui/pin.svg";
 }

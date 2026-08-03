@@ -1,5 +1,7 @@
 "use client";
 
+// "내 주변 핫플" 섹션 - 팝업 근처의 카페/공원 등 핫플레이스 추천.
+
 import { useEffect, useState } from "react";
 import { getHotPlacesForRegion, findNearestRegion, type HotPlace } from "@/data/hotplaces";
 import { HorizontalCarousel } from "@/components/ui/HorizontalCarousel";

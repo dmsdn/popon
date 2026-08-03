@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
-import { getToken, setToken, clearToken } from "@/lib/api/client";
+import { getToken, setToken, clearToken, registerForceLogoutHandler } from "@/lib/api/client";
 import { getMyInfo, type CustomerInfo } from "@/lib/api/customer";
 import { resetWishlistStore } from "@/lib/wishlistStore";
 
@@ -145,6 +145,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCustomer(null);
     resetWishlistStore();
   };
+
+  // [신규] apiFetch가 401을 받으면(토큰 자체가 무효/만료됐거나, 계정이 이미
+  // 탈퇴된 경우 등) 여기 등록해둔 핸들러가 불려서, localStorage 토큰뿐 아니라
+  // React의 customer 상태·찜 목록 캐시까지 한 번에 정리하고 로그인 화면으로
+  // 보내요. (참고: 탈퇴한 계정의 예전 토큰 자체는 서명/만료 여부만 검증되고
+  // "계정이 실제로 존재하는지"는 백엔드가 아직 확인 안 하고 있어서, 이 힘만으론
+  // 다른 기기의 세션이 "즉시" 끊기진 않아요 - 그 부분은 백엔드에서 JWT
+  // 검증 시 계정 존재 여부까지 확인하도록 고쳐주셔야 완전히 해결돼요.)
+  useEffect(() => {
+    registerForceLogoutHandler(() => {
+      logout();
+      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+        alert("로그인이 만료되었거나 계정 정보가 변경됐어요. 다시 로그인해주세요.");
+        window.location.href = "/login";
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loginAsTestUser = () => {
     setToken(MOCK_TOKEN);

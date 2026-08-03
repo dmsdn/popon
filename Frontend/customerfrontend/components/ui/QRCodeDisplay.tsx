@@ -26,7 +26,12 @@ export function QRCodeDisplay({ qrToken, size = 200 }: { qrToken: string; size?:
   // 토큰만 담으면 SSR 문제도 사라지고 QR도 짧아져 스캔이 쉬워진다.
   //
   // 주최자 스캐너는 옛 형식(주소)도 계속 받아 준다 — 이미 발송된 문자·메일이 남아 있으므로.
-  const src = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(
+  //
+  // ※ 7/31 재적용. 이 파일이 한 번 주소 방식(`${origin}/qr/${token}`)으로 되돌아갔었다.
+  //   되돌린 쪽 주석은 "qr-base-url이 아직 placeholder라 여기서 origin을 써야 한다"고
+  //   했는데, 그건 그 시점에 이미 사실이 아니었다 — 배포 서버의 qr-base-url은 실제
+  //   주소로 설정돼 있다. 토큰 방식이 실물 스캔까지 검증된 형태라 그대로 유지한다.
+  const src =`https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(
     qrToken
   )}`;
 
