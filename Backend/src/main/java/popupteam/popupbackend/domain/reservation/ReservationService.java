@@ -36,6 +36,11 @@ public class ReservationService {
         Customer customer = customerRepository.findById(customerId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 소비자입니다."));
 
+        if (popup.getMaxPartySizePerTeam() != null && request.getPartySize() > popup.getMaxPartySizePerTeam()) {
+            throw new IllegalArgumentException(
+                    "팀당 최대 인원은 " + popup.getMaxPartySizePerTeam() + "명입니다. 입력하신 인원(" + request.getPartySize() + "명)이 초과되었습니다.");
+        }
+
         Reservation reservation = new Reservation();
         reservation.setPopup(popup);
         reservation.setCustomer(customer);
@@ -49,7 +54,6 @@ public class ReservationService {
         reservation.setSlot(null);
         reservation.setReservationDate(request.getReservationDate());
         reservation.setReservationTime(request.getReservationTime());
-
 
         if (popup.getReservationMode() == ReservationMode.SLOT) {
             if (request.getSlotId() == null) {
@@ -115,6 +119,10 @@ public class ReservationService {
         int newPartySize = (request.getPartySize() != null) ? request.getPartySize() : reservation.getPartySize();
         if (newPartySize < 1) {
             throw new IllegalArgumentException("인원수는 1명 이상이어야 합니다.");
+        }
+        if (popup.getMaxPartySizePerTeam() != null && newPartySize > popup.getMaxPartySizePerTeam()) {
+            throw new IllegalArgumentException(
+                    "팀당 최대 인원은 " + popup.getMaxPartySizePerTeam() + "명입니다. 입력하신 인원(" + newPartySize + "명)이 초과되었습니다.");
         }
 
         if (popup.getReservationMode() == ReservationMode.SLOT) {
