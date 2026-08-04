@@ -1,6 +1,7 @@
 package popupteam.popupbackend.domain.popup;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
@@ -35,6 +36,11 @@ public interface PopupRepository extends JpaRepository<Popup, Long> {
     @Query("SELECT p FROM Popup p JOIN FETCH p.business WHERE " +
             "p.addressKeyword.id = :regionId ORDER BY p.createdAt DESC")
     List<Popup> findByAddressKeywordIdOrderByCreatedAtDesc(@Param("regionId") Long regionId);
+
+    // 지역 강제 삭제용: 이 지역을 참조하던 팝업들의 address_keyword를 null로 비움 (팝업 자체는 유지)
+    @Modifying
+    @Query("UPDATE Popup p SET p.addressKeyword = null WHERE p.addressKeyword.id = :regionId")
+    void clearAddressKeywordByRegionId(@Param("regionId") Long regionId);
 
     // 혼잡 알림 스케줄러용 - 진행중인 팝업만 체크
     @Query("SELECT p FROM Popup p JOIN FETCH p.business LEFT JOIN FETCH p.addressKeyword WHERE p.status = :status")
