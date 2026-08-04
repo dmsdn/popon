@@ -13,9 +13,9 @@ export function MapSearchEntry() {
         href="/map"
         className="flex items-center gap-3 border border-gray-200 dark:border-[#282B32] rounded-xl px-4 py-4"
       >
-        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-none">
+        <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-[#282B32] flex items-center justify-center flex-none">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/ui/pin.svg" alt="" width={20} height={20} className="dark:invert" />
+          <img src="/icons/ui/pin.svg" alt="" width={20} height={20} />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold">지도로 팝업 찾기</p>

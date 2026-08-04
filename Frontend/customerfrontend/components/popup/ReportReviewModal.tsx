@@ -8,6 +8,7 @@ import { createReport, type ReportReason } from "@/lib/api/reports";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { saveRedirectTarget } from "@/lib/postLoginRedirect";
 import { useRouter } from "next/navigation";
+import { appAlert } from "@/lib/ui/alertStore";
 
 const REASON_OPTIONS: { value: ReportReason; label: string }[] = [
   { value: "ABUSE", label: "욕설/비방" },
@@ -40,7 +41,7 @@ export function ReportReviewModal({ reviewId, onClose }: { reviewId: number; onC
       await createReport(customer.id, { reviewId, reason, detail: detail.trim() || undefined });
       setDone(true);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "신고 접수에 실패했어요. 잠시 후 다시 시도해주세요.");
+      await appAlert(err instanceof Error ? err.message : "신고 접수에 실패했어요. 잠시 후 다시 시도해주세요.");
     } finally {
       setSubmitting(false);
     }
