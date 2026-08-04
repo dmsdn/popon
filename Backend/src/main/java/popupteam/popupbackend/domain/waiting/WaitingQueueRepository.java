@@ -78,4 +78,12 @@ public interface WaitingQueueRepository extends JpaRepository<WaitingQueue, Long
                                            @Param("from") LocalDateTime from,
                                            @Param("to") LocalDateTime to);
 
+    // 연령/성별 통계용 - 회원 웨이팅 입장자의 customer id 목록 (비회원 제외, 전체 Customer 테이블 재조회에 사용)
+    @Query("SELECT w.customer.id FROM WaitingQueue w " +
+            "WHERE w.popup.id = :popupId AND w.status = 'ENTERED' AND w.customer IS NOT NULL")
+    List<Long> findMemberCustomerIdsOfEntered(@Param("popupId") Long popupId);
+
+    // 웨이팅 신청 수(누적, 인기도 판별용) - 취소돼도 차감 안 하고 그동안 신청된 전체 건수
+    long countByPopupId(Long popupId);
+
 }

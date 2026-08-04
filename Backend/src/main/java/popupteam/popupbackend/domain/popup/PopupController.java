@@ -21,6 +21,9 @@ public class PopupController {
     private final popupteam.popupbackend.domain.reservation.PopupVisitorAgeStatsService popupVisitorAgeStatsService;
     private final PopupImageRepository popupImageRepository;
     private final popupteam.popupbackend.domain.wishlist.PopupWishlistRepository popupWishlistRepository;
+    private final popupteam.popupbackend.domain.reservation.ReservationRepository reservationRepository;
+    private final popupteam.popupbackend.domain.waiting.WaitingQueueRepository waitingQueueRepository;
+
 
     private Long getBusinessId(Authentication authentication) {
         String email = authentication.getName();
@@ -95,6 +98,22 @@ public class PopupController {
     public ResponseEntity<java.util.Map<String, Long>> getWishlistCount(@PathVariable Long id) {
         long count = popupWishlistRepository.countByPopupId(id);
         return ResponseEntity.ok(java.util.Map.of("wishlistCount", count));
+    }
+
+    // 예약+웨이팅 신청 수(공개, 로그인 불필요) - 인기도 표시용, 취소돼도 차감 안 하는 누적 수치
+    // 예약은 CONFIRMED(취소 제외)만, 웨이팅은 전체 누적
+    @GetMapping("/{id}/application-count")
+    public ResponseEntity<java.util.Map<String, Long>> getApplicationCount(@PathVariable Long id) {
+        long reservationCount = reservationRepository.countByPopupIdAndStatus(
+                id, popupteam.popupbackend.domain.reservation.ReservationStatus.CONFIRMED);
+        long waitingCount = waitingQueueRepository.countByPopupId(id);
+        long total = reservationCount + waitingCount;
+
+        return ResponseEntity.ok(java.util.Map.of(
+                "reservationCount", reservationCount,
+                "waitingCount", waitingCount,
+                "totalApplicationCount", total
+        ));
     }
 
     @GetMapping("/my")
