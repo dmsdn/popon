@@ -357,14 +357,14 @@ export default function Masters() {
         )}
       </div>
 
-      <div className="flex items-start gap-1.5 px-4 py-3 bg-secondary/40 border border-border rounded-sm text-[11px] text-muted-foreground leading-relaxed">
-        <Info size={12} className="mt-0.5 shrink-0" />
-        <span>
-          <strong className="text-foreground">이름 수정 기능은 없습니다.</strong> 오타를 고치려고 삭제하면 그 {unit}을(를)
-          관심으로 고른 소비자의 설정까지 함께 지워집니다. 새로 추가하고 기존 것은 두는 편이 안전합니다.
-          {isRegion && " 또한 팝업이 사용 중인 지역은 삭제되지 않습니다."}
-        </span>
-      </div>
+      {/*<div className="flex items-start gap-1.5 px-4 py-3 bg-secondary/40 border border-border rounded-sm text-[11px] text-muted-foreground leading-relaxed">*/}
+      {/*  <Info size={12} className="mt-0.5 shrink-0" />*/}
+      {/*  <span>*/}
+      {/*    <strong className="text-foreground">이름 수정 기능은 없습니다.</strong> 오타를 고치려고 삭제하면 그 {unit}을(를)*/}
+      {/*    관심으로 고른 소비자의 설정까지 함께 지워집니다. 새로 추가하고 기존 것은 두는 편이 안전합니다.*/}
+      {/*    {isRegion && " 또한 팝업이 사용 중인 지역은 삭제되지 않습니다."}*/}
+      {/*  </span>*/}
+      {/*</div>*/}
     </div>
   );
 }
