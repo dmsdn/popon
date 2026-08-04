@@ -23,7 +23,8 @@ public class PopupCreateRequest {
 
     private Integer capacity;
 
-    private Long addressKeywordId; // 관심지역 매칭용 Region ID (선택입력)
+    @NotNull(message = "지역을 선택해주세요.")
+    private Long addressKeywordId; // 관심지역 매칭용 Region ID (필수입력)
 
     @NotBlank
     private String reservationMode; // "SLOT" 또는 "FREE"
