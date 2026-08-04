@@ -16,6 +16,21 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     List<Reservation> findBySlotIdAndStatus(Long slotId, ReservationStatus status);
     List<Reservation> findByPopupIdAndReservationDateAndStatus(Long popupId, LocalDate reservationDate, ReservationStatus status);
 
+    // 알림 #2 - 오늘이 예약 날짜인 전체 예약 (팝업 무관, 매일 스케줄러가 조회)
+    List<Reservation> findByReservationDateAndStatus(LocalDate reservationDate, ReservationStatus status);
+
+    // 알림 #3 - 예약 시간 임박 체크용. reservationTime이 있는 것만(FREE 모드 중 시간 지정) +
+    // SLOT 모드는 slot.startTime을 기준으로 별도 조회가 필요해서 여기선 reservationTime 있는 건만 다룸.
+    @Query("SELECT r FROM Reservation r WHERE r.reservationDate = :date AND r.status = :status " +
+            "AND r.reservationTime IS NOT NULL AND r.entryStatus = 'PENDING'")
+    List<Reservation> findFreeModeUpcomingToday(@Param("date") LocalDate date, @Param("status") ReservationStatus status);
+
+    // SLOT 모드는 슬롯의 시작 시각 기준으로 임박 여부를 판단해야 해서, 오늘 날짜의 확정된 SLOT 예약을 조회
+    @Query("SELECT r FROM Reservation r WHERE r.reservationDate = :date AND r.status = :status " +
+            "AND r.slot IS NOT NULL AND r.entryStatus = 'PENDING'")
+    List<Reservation> findSlotModeUpcomingToday(@Param("date") LocalDate date, @Param("status") ReservationStatus status);
+
+
     // 슬롯 삭제 가능 여부 판정용 (PopupSlotService.generate — 예약이 하나라도 있으면 슬롯 유지)
     boolean existsBySlotId(Long slotId);
 
@@ -74,21 +89,6 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     // 팝업 구분 없이 전체 체크인 상태(아직 퇴장 전) 조회 - 자동퇴장 스케줄러용
     List<Reservation> findByEntryStatusAndExitedAtIsNull(EntryStatus entryStatus);
-
-    // 그 날짜에 방문하기로 한 예약 전부 — 상태를 가리지 않는다 (8/4).
-    // 슬롯 예약은 슬롯 날짜, 날짜 예약은 reservationDate 기준. 관제 화면의 「그날 명단」용이라
-    // 입장·노쇼된 건도 함께 와야 처리 결과가 배지로 남는다.
-    @Query("SELECT r FROM Reservation r LEFT JOIN r.slot s WHERE r.popup.id = :popupId " +
-            "AND r.status = 'CONFIRMED' " +
-            "AND ((s IS NOT NULL AND s.slotDate = :date) OR (s IS NULL AND r.reservationDate = :date)) " +
-            "ORDER BY r.createdAt ASC")
-    List<Reservation> findDayRoster(@Param("popupId") Long popupId, @Param("date") LocalDate date);
-
-    // 자정 리셋 대상 — 그날 방문 예정이었는데 입장·노쇼 처리 없이 남은 예약 (8/4)
-    @Query("SELECT r FROM Reservation r LEFT JOIN r.slot s " +
-            "WHERE r.status = 'CONFIRMED' AND r.entryStatus = 'PENDING' " +
-            "AND ((s IS NOT NULL AND s.slotDate = :date) OR (s IS NULL AND r.reservationDate = :date))")
-    List<Reservation> findUnprocessedOfDay(@Param("date") LocalDate date);
 
     List<Reservation> findByPopupIdAndStatus(Long popupId, ReservationStatus status);
 

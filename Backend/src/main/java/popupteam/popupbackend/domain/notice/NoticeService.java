@@ -135,6 +135,69 @@ public class NoticeService {
         }
     }
 
+    // === 1. 예약 완료 시 인앱 알림함(Notice)에 쌓아주는 알림 ===
+    public void notifyReservationCreated(Reservation reservation) {
+        Popup popup = reservation.getPopup();
+        String when = reservation.getReservationTime() != null
+                ? reservation.getReservationDate() + " " + reservation.getReservationTime()
+                : reservation.getReservationDate().toString();
+
+        Notice notice = createNotice(popup, NoticeRecipientType.CUSTOMER, NoticeCategory.RESERVATION,
+                "예약이 완료되었습니다",
+                "\"" + popup.getTitle() + "\" 예약이 완료되었어요. 방문 예정: " + when,
+                "system", 1);
+        saveRecipients(notice, Set.of(reservation.getCustomer().getId()));
+    }
+
+    // === 2. 예약 날짜 당일 개인화 알림 (매일 스케줄러가 호출) ===
+    public void notifyReservationDayArrived(Reservation reservation) {
+        Popup popup = reservation.getPopup();
+        String when = reservation.getReservationTime() != null
+                ? " (" + reservation.getReservationTime() + ")" : "";
+
+        Notice notice = createNotice(popup, NoticeRecipientType.CUSTOMER, NoticeCategory.RESERVATION,
+                "오늘 예약하신 날이에요",
+                "오늘은 \"" + popup.getTitle() + "\" 예약하신 날" + when + "이에요. 즐거운 방문 되세요!",
+                "system", 1);
+        saveRecipients(notice, Set.of(reservation.getCustomer().getId()));
+    }
+
+    // === 3. 예약 시간 임박 알림 (스케줄러가 호출) ===
+    public void notifyReservationTimeApproaching(Reservation reservation, int minutesLeft) {
+        Popup popup = reservation.getPopup();
+
+        Notice notice = createNotice(popup, NoticeRecipientType.CUSTOMER, NoticeCategory.RESERVATION,
+                "예약 시간이 얼마 남지 않았어요",
+                "\"" + popup.getTitle() + "\" 예약 시간이 " + minutesLeft + "분 남았어요. 잊지 말고 방문해주세요!",
+                "system", 1);
+        saveRecipients(notice, Set.of(reservation.getCustomer().getId()));
+    }
+
+    // === 5. 웨이팅 등록 완료 시 인앱 알림함(Notice)에 쌓아주는 알림 ===
+    // (이메일/SMS QR은 WaitingQueueService에서 이미 보내고 있었음 - 여기선 인앱 알림함만 채움)
+    public void notifyWaitingRegistered(WaitingQueue waiting) {
+        if (waiting.getCustomer() == null) return; // 비회원 웨이팅은 알림함이 없음
+        Popup popup = waiting.getPopup();
+
+        Notice notice = createNotice(popup, NoticeRecipientType.CUSTOMER, NoticeCategory.WAITING,
+                "웨이팅 등록이 완료되었습니다",
+                "\"" + popup.getTitle() + "\" 웨이팅 " + waiting.getTeamNumber() + "번으로 등록되었어요.",
+                "system", 1);
+        saveRecipients(notice, Set.of(waiting.getCustomer().getId()));
+    }
+
+    // === 6. 웨이팅 호출(내 차례) 알림 - 인앱 알림함 ===
+    public void notifyWaitingCalled(WaitingQueue waiting) {
+        if (waiting.getCustomer() == null) return;
+        Popup popup = waiting.getPopup();
+
+        Notice notice = createNotice(popup, NoticeRecipientType.CUSTOMER, NoticeCategory.WAITING,
+                "지금 입장해주세요!",
+                "\"" + popup.getTitle() + "\" 웨이팅 " + waiting.getTeamNumber() + "번, 지금 입장 차례예요. 15분 내로 입장해주세요.",
+                "system", 1);
+        saveRecipients(notice, Set.of(waiting.getCustomer().getId()));
+    }
+
     // === 관리자 → 주최자 알림 ===
     public NoticeResponse sendToBusiness(Long businessId, Long popupId, String title, String content, String sentBy) {
         Popup popup = null;
