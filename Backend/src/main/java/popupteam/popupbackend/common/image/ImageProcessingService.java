@@ -55,6 +55,58 @@ public class ImageProcessingService {
         }
     }
 
+    /**
+     * 아이콘용 처리 (8/4 신설). 카테고리 아이콘처럼 <b>투명 배경을 살려야 하는</b> 이미지를 다룬다.
+     *
+     * <p>기존 resizeToJpeg는 두 가지 이유로 아이콘에 못 쓴다.
+     * <ul>
+     *   <li>JPEG은 알파 채널이 없다 — 투명 배경이 흰색으로 채워진다.
+     *       소비자 앱은 다크모드가 기본이라 카테고리 자리마다 흰 네모가 생긴다.</li>
+     *   <li>coverFitResize가 TYPE_INT_RGB로 그린다 — 원본이 PNG여도 그 단계에서 투명도가 날아간다.</li>
+     * </ul>
+     *
+     * <p>그래서 이 메서드는 <b>PNG로 저장하고, 비율을 유지한 채 여백을 투명으로 남긴다</b>(contain).
+     * 아이콘은 잘라내면(cover) 모양이 깨지므로 꽉 채우지 않는다.
+     *
+     * <p>SVG는 여기로 오지 않는다 — ImageIO가 못 읽으므로 호출부에서 원본 그대로 저장한다.
+     *
+     * @return PNG 바이트
+     */
+    public byte[] resizeToPng(MultipartFile file, int targetWidth, int targetHeight) {
+        validate(file);
+        try {
+            BufferedImage original = ImageIO.read(file.getInputStream());
+            if (original == null) {
+                throw new IllegalArgumentException("올바른 이미지 파일이 아닙니다.");
+            }
+            return toPngBytes(containFitResize(original, targetWidth, targetHeight));
+        } catch (IOException e) {
+            throw new RuntimeException("이미지 처리 실패: " + e.getMessage(), e);
+        }
+    }
+
+    /** 비율 유지 축소 + 가운데 정렬. 남는 여백은 투명 (아이콘용) */
+    private BufferedImage containFitResize(BufferedImage src, int targetWidth, int targetHeight) {
+        double scale = Math.min((double) targetWidth / src.getWidth(), (double) targetHeight / src.getHeight());
+        int w = Math.max(1, (int) Math.round(src.getWidth() * scale));
+        int h = Math.max(1, (int) Math.round(src.getHeight() * scale));
+
+        BufferedImage result = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = result.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g.drawImage(src.getScaledInstance(w, h, Image.SCALE_SMOOTH),
+                (targetWidth - w) / 2, (targetHeight - h) / 2, null);
+        g.dispose();
+        return result;
+    }
+
+    private byte[] toPngBytes(BufferedImage image) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ImageIO.write(image, "png", baos); // PNG는 품질 파라미터가 없다(무손실)
+        return baos.toByteArray();
+    }
+
     private BufferedImage coverFitResize(BufferedImage src, int targetWidth, int targetHeight) {
         double srcRatio = (double) src.getWidth() / src.getHeight();
         double targetRatio = (double) targetWidth / targetHeight;
