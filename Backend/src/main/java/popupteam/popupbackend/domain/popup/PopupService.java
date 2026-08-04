@@ -290,7 +290,7 @@ public class PopupService {
     public List<PopupImageResponse> getImages(Long popupId, PopupImageType type) {
         List<PopupImage> images = (type != null)
                 ? popupImageRepository.findByPopupIdAndTypeOrderBySortOrder(popupId, type)
-                : popupImageRepository.findByPopupIdOrderBySortOrder(popupId);
+                : popupImageRepository.findByPopupIdOrderByTypeThenSortOrder(popupId);
 
         return images.stream().map(PopupImageResponse::from).toList();
     }
