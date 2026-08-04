@@ -634,13 +634,24 @@ export function getKeywords() {
 // 마스터 화면이 목업으로 남아 있었다. 7/29 연동.
 // ⚠ 수정(PUT)은 백엔드에 없다 — 이름을 바꾸려면 삭제 후 재등록해야 하고, 그러면 그 항목을
 //   고른 소비자의 관심 설정이 함께 지워진다. 화면에서 이 점을 안내한다.
-export type MasterItem = { id: number; name: string; customerCount: number };
+// iconUrl은 카테고리(keyword)에만 있다 — 지역은 아이콘을 쓰지 않는다 (8/4)
+export type MasterItem = { id: number; name: string; customerCount: number; iconUrl?: string | null };
 
 export function getAdminKeywords() {
   return request<MasterItem[]>("/api/admin/keywords");
 }
-export function createAdminKeyword(name: string) {
-  return request<Region>("/api/admin/keywords", { method: "POST", body: JSON.stringify({ name }) });
+
+// 카테고리 등록 (8/4 — 아이콘 첨부 지원).
+//
+// 아이콘은 **선택**이다. 안 올리면 소비자 앱이 기존 lucide 아이콘 규칙으로 폴백한다
+// (customerfrontend/lib/utils/popupCategoryIcon.ts) — 기존 8개 카테고리가 그 경로를 쓴다.
+// 파일이 붙으므로 JSON이 아니라 multipart로 보낸다. request()는 FormData면
+// Content-Type을 직접 지정하지 않는다(경계 문자열은 브라우저가 붙여야 한다).
+export function createAdminKeyword(name: string, icon?: File | null) {
+  const form = new FormData();
+  form.append("name", name);
+  if (icon) form.append("icon", icon);
+  return request<MasterItem>("/api/admin/keywords", { method: "POST", body: form });
 }
 export function deleteAdminKeyword(id: number) {
   return request<{ success: boolean }>(`/api/admin/keywords/${id}`, { method: "DELETE" });

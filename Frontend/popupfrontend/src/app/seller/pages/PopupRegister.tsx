@@ -523,6 +523,8 @@ export default function PopupRegister() {
     if (!description.trim()) return setError("상세 설명을 입력해 주세요.");
     if (!startDate || !endDate) return setError("운영 기간(시작일·종료일)을 입력해 주세요.");
     if (!maxCapacity || maxCapacity < 1) return setError("최대 수용 정원을 입력해 주세요.");
+    // 8/4 — 지역 필수. 비어 있으면 소비자의 관심지역 필터·지역별 추천에서 이 팝업만 빠진다
+    if (regionId === "") return setError("지역을 선택해 주세요. 소비자의 지역 필터 노출에 사용됩니다.");
 
     // 요일별 운영시간 — 「모든 요일 동일」이면 7일 같은 값으로 펼쳐 전송한다.
     // startDate·endDate의 시각 부분은 슬롯 생성 창으로 쓰이므로, 요일별 시간이 갈릴 때는
@@ -752,13 +754,16 @@ export default function PopupRegister() {
               </div>
             </div>
             <div className="sm:w-44">
-              <label className={labelCls}>지역 <span className="font-normal text-muted-foreground">(소비자 지역 필터)</span></label>
+              {/* 8/4 — 필수로 바꿨다. 지역이 비면 소비자의 관심지역 필터·지역별 추천에서
+                  그 팝업만 통째로 빠지는데, 주최자는 그 사실을 알 방법이 없다.
+                  「선택 안 함」을 없애고 안내 문구만 남긴다 */}
+              <label className={labelCls}>지역 <Req /> <span className="font-normal text-muted-foreground">(소비자 지역 필터)</span></label>
               <select
                 value={regionId}
                 onChange={(e) => setRegionId(e.target.value === "" ? "" : Number(e.target.value))}
                 className={inputCls}
               >
-                <option value="">선택 안 함</option>
+                <option value="">지역을 선택하세요</option>
                 {regions.map((r) => (
                   <option key={r.id} value={r.id}>{r.name}</option>
                 ))}
