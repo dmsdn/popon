@@ -30,6 +30,12 @@ public class ReservationService {
     private final BusinessRepository businessRepository;
     private final popupteam.popupbackend.domain.popup.PopupOperatingHoursRepository popupOperatingHoursRepository;
     private final popupteam.popupbackend.domain.eventlog.TransactionEventLogService transactionEventLogService;
+    private final popupteam.popupbackend.domain.notice.NoticeService noticeService;
+    private final popupteam.popupbackend.common.notification.EmailNotificationService emailNotificationService;
+    private final popupteam.popupbackend.common.notification.SmsNotificationService smsNotificationService;
+
+    @org.springframework.beans.factory.annotation.Value("${app.qr-base-url}")
+    private String qrBaseUrl;
 
     // 그 날짜의 요일이 이 팝업의 휴무일로 설정되어 있는지 확인 (설정 자체가 없는 요일은 휴무 아님으로 간주)
     private void validateNotClosedDay(Long popupId, LocalDate date) {
@@ -120,7 +126,18 @@ public class ReservationService {
             reservation.setReservationDate(request.getReservationDate());
         }
 
-        return ReservationResponse.from(reservationRepository.save(reservation));
+        Reservation saved = reservationRepository.save(reservation);
+
+        // 알림 #1: 예약 완료 시 알림이 아예 없었던 부분 - 인앱 알림함 + QR 이메일/SMS 발송.
+        // 웨이팅은 이미 QR을 이메일/SMS로 보내고 있었는데 예약은 그조차 없었음.
+        noticeService.notifyReservationCreated(saved);
+        if (Boolean.TRUE.equals(customer.getReservationWaitingAgreed())) {
+            String qrMessage = "팝업스토어 입장 QR: " + qrBaseUrl + "/qr/" + saved.getQrToken();
+            emailNotificationService.sendQrCode(customer.getEmail(), "팝업스토어 예약 입장 QR 코드", qrMessage);
+            smsNotificationService.sendQrCode(customer.getPhone(), qrMessage);
+        }
+
+        return ReservationResponse.from(saved);
     }
 
     // 예약 변경 (다른 슬롯/날짜로), 소비자 본인만 가능

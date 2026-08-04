@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { MapPin, Tags, Loader2, Info, Plus, Trash2, Users } from "lucide-react";
+import { MapPin, Tags, Loader2, Info, Plus, Trash2, Users, Image as ImageIcon, X } from "lucide-react";
 import {
   getAdminKeywords, createAdminKeyword, deleteAdminKeyword,
   getAdminRegions, createAdminRegion, deleteAdminRegion,
@@ -36,6 +36,26 @@ export default function Masters() {
   const [busy, setBusy] = useState<string | null>(null); // "add" | "del:3"
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // 카테고리 아이콘 (8/4) — 선택 사항이다.
+  // 안 올리면 소비자 앱이 이름 규칙으로 lucide 아이콘을 고른다(popupCategoryIcon.ts).
+  // 기존 8개 카테고리가 그 폴백을 쓰고 있어서, 아이콘을 필수로 만들면 그것들만 빈칸이 된다.
+  const [iconFile, setIconFile] = useState<File | null>(null);
+  const [iconPreview, setIconPreview] = useState<string | null>(null);
+  const iconRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!iconFile) {
+      setIconPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(iconFile);
+    setIconPreview(url);
+    return () => URL.revokeObjectURL(url); // objectURL은 해제해야 메모리가 새지 않는다
+  }, [iconFile]);
+  const clearIcon = () => {
+    setIconFile(null);
+    if (iconRef.current) iconRef.current.value = ""; // 같은 파일을 다시 고를 수 있게 비운다
+  };
+
   useEffect(() => {
     Promise.all([getAdminRegions(), getAdminKeywords()])
       .then(([rs, ks]) => {
@@ -57,12 +77,18 @@ export default function Masters() {
     if (items.some((i) => i.name === name)) return alert(`이미 있는 ${unit}입니다.`);
     setBusy("add");
     try {
-      const created = isRegion ? await createAdminRegion(name) : await createAdminKeyword(name);
+      const created = isRegion ? await createAdminRegion(name) : await createAdminKeyword(name, iconFile);
       // 생성 응답에는 customerCount가 없다(방금 만들었으니 0) — 목록 모양을 맞춰 직접 채운다
-      const row: MasterItem = { id: created.id, name: created.name, customerCount: 0 };
+      const row: MasterItem = {
+        id: created.id,
+        name: created.name,
+        customerCount: 0,
+        iconUrl: (created as MasterItem).iconUrl ?? null,
+      };
       if (isRegion) setRegions((prev) => [...prev, row]);
       else setKeywords((prev) => [...prev, row]);
       setNewName("");
+      clearIcon();
       inputRef.current?.focus(); // 여러 개를 연달아 넣는 일이 많아 포커스를 남긴다
     } catch (e) {
       alert(e instanceof Error ? e.message : "등록에 실패했습니다.");
@@ -126,6 +152,37 @@ export default function Masters() {
             placeholder={isRegion ? "추가할 지역 이름 (예: 성수)" : "추가할 카테고리 이름 (예: 라이프스타일)"}
             className="flex-1 min-w-0 px-3 py-1.5 text-xs border border-border rounded-sm bg-card focus:outline-none focus:border-accent"
           />
+          {/* 아이콘은 카테고리에만 붙는다 — 지역은 소비자 화면에서 아이콘을 쓰지 않는다 (8/4) */}
+          {!isRegion && (
+            <>
+              <input
+                ref={iconRef}
+                type="file"
+                accept="image/png,image/jpeg,image/svg+xml"
+                onChange={(e) => setIconFile(e.target.files?.[0] ?? null)}
+                className="hidden"
+              />
+              {iconPreview ? (
+                <button
+                  type="button"
+                  onClick={clearIcon}
+                  title="아이콘 제거"
+                  className="flex items-center gap-1.5 text-xs px-2 py-1 border border-border rounded-sm hover:border-red-400 hover:text-red-500 shrink-0"
+                >
+                  <img src={iconPreview} alt="" className="w-5 h-5 object-contain" />
+                  <X size={11} />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => iconRef.current?.click()}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-sm hover:border-accent hover:text-accent shrink-0"
+                >
+                  <ImageIcon size={12} /> 아이콘 (선택)
+                </button>
+              )}
+            </>
+          )}
           <button
             onClick={add}
             disabled={busy === "add" || !newName.trim()}
@@ -134,6 +191,12 @@ export default function Masters() {
             {busy === "add" ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} 추가
           </button>
         </div>
+        {!isRegion && (
+          <div className="px-4 py-2 border-b border-border text-[11px] text-muted-foreground">
+            아이콘을 올리지 않으면 소비자 화면이 카테고리 이름에 맞는 기본 아이콘을 자동으로 고릅니다.
+            이름이 규칙에 없으면 「기타」 아이콘이 되므로, 새 카테고리는 아이콘을 함께 올리는 편이 좋습니다.
+          </div>
+        )}
 
         {loading ? (
           <div className="px-4 py-10 text-center text-xs text-muted-foreground">
@@ -149,6 +212,16 @@ export default function Masters() {
                 <span className="w-8 text-xs text-muted-foreground shrink-0" style={{ fontFamily: "'DM Mono', monospace" }}>
                   {item.id}
                 </span>
+                {/* 카테고리는 등록된 아이콘을 보여 준다 — 없으면 소비자 화면이 이름 규칙으로 폴백한다 (8/4) */}
+                {!isRegion && (
+                  item.iconUrl ? (
+                    <img src={item.iconUrl} alt="" className="w-6 h-6 object-contain shrink-0" />
+                  ) : (
+                    <span className="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center shrink-0" title="등록된 아이콘 없음 — 기본 아이콘으로 표시됩니다">
+                      <ImageIcon size={11} className="text-muted-foreground" />
+                    </span>
+                  )
+                )}
                 <span className="text-[13px] font-medium flex-1 min-w-0 truncate">{item.name}</span>
                 <span
                   className="flex items-center gap-1 text-[11px] text-muted-foreground shrink-0"

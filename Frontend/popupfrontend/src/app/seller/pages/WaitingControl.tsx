@@ -7,11 +7,12 @@ import { useAuth } from "../../context/AuthContext";
 import {
   getMyPopups, getSlots, getPopupReservations, checkinReservation, markNoShow,
   getQueueBoard, checkinUnifiedQr, exitUnifiedQr, registerWaiting, enterWaiting, cancelWaiting,
-  Popup, PopupSlot, ReservationDetail, UnifiedEntry,
+  Popup, PopupSlot, PopupStatusCode, ReservationDetail, UnifiedEntry,
 } from "../../lib/api";
 import {
   loadOpsMode, OpsMode,
 } from "../../lib/walkinQueue";
+import { isSuspended } from "../../lib/adminPopupMeta";
 import { CONSUMER_SIGNUP_URL } from "../../lib/siteUrls";
 
 // 대기열·인원 관제 — 예약·웨이팅 통합관리 (jsw waiting·unified queue 백엔드 실연동)
@@ -34,6 +35,16 @@ const DOW = ["일", "월", "화", "수", "목", "금", "토"];
 const dateLabel = (ymd: string) => {
   const d = new Date(`${ymd}T00:00:00`);
   return `${ymd.slice(5).replace("-", "/")} (${DOW[d.getDay()]})`;
+};
+
+// 팝업 선택 셀렉트의 상태 표기 (PopupList와 같은 규약)
+const STATUS_LABEL: Record<PopupStatusCode, string> = {
+  PENDING: "심사 대기",
+  REJECTED: "반려",
+  BEFOR: "오픈예정",
+  OPEN: "진행중",
+  CLOSED: "종료",
+  SUSPENDED: "게시중지",
 };
 
 const MODE_LABEL: Record<OpsMode, string> = {
@@ -291,11 +302,17 @@ export default function WaitingControl() {
     setDay(localDateStr(new Date()));
   }, [popupId]);
 
-  // ── 체류 인원: 서버 통합 보드의 입장완료(CHECKED_IN/ENTERED, 퇴장 전) 엔트리 — 7/23 전면 서버 기준 ──
+  // ── 체류 인원: 서버 통합 보드의 입장완료(CHECKED_IN/ENTERED) 중 **아직 퇴장하지 않은** 엔트리 ──
+  //
+  // 8/4 — exitedAt 조건이 빠져 이미 나간 사람이 체류 인원에 남는 사고가 있었다.
+  // 보드를 하루치 명단 전체로 바꾸면서(입장·노쇼 배지를 남기려고) 퇴장자까지 함께 오게 됐는데,
+  // entryStatus는 퇴장 후에도 CHECKED_IN 그대로라 이 필터만으로는 구분이 안 됐다.
+  // 증상: 7/31 손님이 며칠 뒤에도 체류 목록에 보이고, 퇴장을 누르면 서버가
+  //       「이미 퇴장 처리된 예약입니다」로 거절 (AutoExitScheduler가 30분 뒤 자동 퇴장시킨 건들).
   type StayRow = { key: string; source: "RESERVATION" | "ONSITE_WAITING"; refId: number; name: string; partySize: number; enteredAt: string | null; qrToken: string };
   const staying = useMemo<StayRow[]>(() => {
     return board
-      .filter((e) => e.entryStatus === "CHECKED_IN" || e.entryStatus === "ENTERED")
+      .filter((e) => (e.entryStatus === "CHECKED_IN" || e.entryStatus === "ENTERED") && !e.exitedAt)
       .map((e) => ({
         key: `${e.source}-${e.refId}`,
         source: e.source,
@@ -504,8 +521,14 @@ export default function WaitingControl() {
             onChange={(e) => setPopupId(Number(e.target.value))}
             className="px-3 py-2 text-[13px] border border-border rounded-sm bg-card focus:outline-none focus:border-accent"
           >
+            {/* 8/4 — 상태를 앞에 붙인다. 관제는 진행중 팝업에서 쓰는 화면인데 셀렉트에는
+                심사 대기·반려까지 전부 섞여 있어, 대기열이 비어 있을 때 그게 「손님이 없어서」인지
+                「아직 게시도 안 된 팝업이라서」인지 구분이 안 됐다.
+                게시중지는 status가 아니라 반려 마커로 표현된 옛 데이터가 있어 isSuspended로 판정한다. */}
             {popups.map((p) => (
-              <option key={p.id} value={p.id}>{p.title}</option>
+              <option key={p.id} value={p.id}>
+                [{isSuspended(p.status, p.rejectReason) ? "게시중지" : STATUS_LABEL[p.status]}] {p.title}
+              </option>
             ))}
           </select>
         )}
