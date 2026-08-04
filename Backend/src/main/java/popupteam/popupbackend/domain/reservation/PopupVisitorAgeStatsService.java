@@ -19,6 +19,7 @@ import java.util.Map;
 public class PopupVisitorAgeStatsService {
 
     private final ReservationRepository reservationRepository;
+    private final popupteam.popupbackend.domain.waiting.WaitingQueueRepository waitingQueueRepository;
     private final popupteam.popupbackend.domain.popup.PopupRepository popupRepository;
     private final popupteam.popupbackend.domain.popup.PopupClickLogRepository popupClickLogRepository;
 
@@ -86,22 +87,28 @@ public class PopupVisitorAgeStatsService {
     }
 
     // 최근 며칠간 날짜별 방문자 수 추이. 방문자가 0명인 날짜도 0으로 채워서 반환 (그래프 끊기지 않게)
+    // 예약 체크인 + 회원 웨이팅 입장(비회원 제외)을 합산한다
     public java.util.List<java.util.Map<String, Object>> getDailyVisitorTrend(Long popupId, int days) {
         LocalDate today = LocalDate.now();
         LocalDate fromDate = today.minusDays(days - 1);
+        java.time.LocalDateTime from = fromDate.atStartOfDay();
+        java.time.LocalDateTime to = today.plusDays(1).atStartOfDay();
 
-        List<Object[]> rows = reservationRepository.countDailyCheckedInVisitors(
-                popupId,
-                fromDate.atStartOfDay(),
-                today.plusDays(1).atStartOfDay()
-        );
+        List<Object[]> reservationRows = reservationRepository.countDailyCheckedInVisitors(popupId, from, to);
+        List<Object[]> waitingRows = waitingQueueRepository.countDailyMemberEntered(popupId, from, to);
 
         Map<LocalDate, Long> countsByDate = new LinkedHashMap<>();
-        for (Object[] row : rows) {
+        for (Object[] row : reservationRows) {
             LocalDate date = (row[0] instanceof LocalDate)
                     ? (LocalDate) row[0]
                     : ((java.sql.Date) row[0]).toLocalDate();
-            countsByDate.put(date, (Long) row[1]);
+            countsByDate.merge(date, (Long) row[1], Long::sum);
+        }
+        for (Object[] row : waitingRows) {
+            LocalDate date = (row[0] instanceof LocalDate)
+                    ? (LocalDate) row[0]
+                    : ((java.sql.Date) row[0]).toLocalDate();
+            countsByDate.merge(date, (Long) row[1], Long::sum);
         }
 
         java.util.List<java.util.Map<String, Object>> trend = new java.util.ArrayList<>();
@@ -115,9 +122,11 @@ public class PopupVisitorAgeStatsService {
         return trend;
     }
 
-    // 누적 방문자 + 일평균 방문자. 일평균 = 누적 / (팝업 시작일부터 오늘까지 경과일, 최소 1일)
+    // 누적 방문자 + 일평균 방문자. 예약 체크인 + 회원 웨이팅 입장(비회원 제외)을 합산한다.
+    // 일평균 = 누적 / (팝업 시작일부터 오늘까지 경과일, 최소 1일)
     public Map<String, Object> getTotalVisitorStats(Long popupId) {
-        Long total = reservationRepository.sumVisitorsOfCheckedIn(popupId);
+        long total = reservationRepository.sumVisitorsOfCheckedIn(popupId)
+                + waitingQueueRepository.sumMemberVisitorsOfEntered(popupId);
 
         popupteam.popupbackend.domain.popup.Popup popup = popupRepository.findById(popupId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 팝업입니다."));
@@ -159,12 +168,19 @@ public class PopupVisitorAgeStatsService {
     }
 
     // 오늘 방문자 수(QR 체크인 기준) - 대시보드용 서버 사이드 집계.
-    // checkedInAt이 오늘인 예약들의 partySize 합. countDailyCheckedInVisitors를 오늘 하루 범위로 재사용.
+    // 예약 체크인 + 회원 웨이팅 입장(비회원 제외)을 합산한다.
     public long getTodayVisitorCount(Long popupId) {
         LocalDate today = LocalDate.now();
-        List<Object[]> rows = reservationRepository.countDailyCheckedInVisitors(
-                popupId, today.atStartOfDay(), today.plusDays(1).atStartOfDay());
-        return rows.isEmpty() ? 0L : (Long) rows.get(0)[1];
+        java.time.LocalDateTime from = today.atStartOfDay();
+        java.time.LocalDateTime to = today.plusDays(1).atStartOfDay();
+
+        List<Object[]> reservationRows = reservationRepository.countDailyCheckedInVisitors(popupId, from, to);
+        long reservationVisitors = reservationRows.isEmpty() ? 0L : (Long) reservationRows.get(0)[1];
+
+        List<Object[]> waitingRows = waitingQueueRepository.countDailyMemberEntered(popupId, from, to);
+        long waitingVisitors = waitingRows.isEmpty() ? 0L : (Long) waitingRows.get(0)[1];
+
+        return reservationVisitors + waitingVisitors;
     }
 
     // 오늘 예약 요약(건수 + 인원 합) - 대시보드용 서버 사이드 집계
