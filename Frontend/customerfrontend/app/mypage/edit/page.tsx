@@ -178,8 +178,9 @@ export default function EditProfilePage() {
               </div>
             )}
           </div>
-          <span className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-gray-500 dark:bg-gray-600 border-2 border-white dark:border-[#17181a] flex items-center justify-center">
-            <img src="/icons/ui/picture.svg" alt="" width={14} height={14} className="invert" />
+          <span className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-point border-2 border-white dark:border-[#17181a] flex items-center justify-center">
+            <img src="/icons/ui/edit.svg" alt="" width={16} height={16} className="dark:hidden" />
+            <img src="/icons/ui/edit_Dark.svg" alt="" width={16} height={16} className="hidden dark:block" />
           </span>
           <input
             type="file"
