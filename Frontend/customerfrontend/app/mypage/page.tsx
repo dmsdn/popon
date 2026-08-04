@@ -158,7 +158,9 @@ function MyPageContent() {
   const wishlistIds = useSyncExternalStore(subscribeWishlist, getWishlistSnapshot, getServerWishlistSnapshot);
   const [wishlistPopups, setWishlistPopups] = useState<Record<number, PopupDetail>>({});
   // [신규] "다녀간 팝업" 탭에서 후기를 누르면 크게 보여줄 모달 상태
-  const [openVisitedReview, setOpenVisitedReview] = useState<Extract<VisitedItem, { type: "review" }> | null>(null);
+  const [openVisitedReview, setOpenVisitedReview] = useState<
+    (VisitedItem & { review: NonNullable<VisitedItem["review"]> }) | null
+  >(null);
   // [신규] 게시중지(SUSPENDED)/승인대기/반려된 팝업은 찜·예약·웨이팅 목록에서도
   // 똑같이 숨겨요 - 게시중지되면 알림이 이미 가니까, 목록에는 안 보여도 괜찮다고
   // 하셨어요. 팝업을 조회할 때마다 여기 기록해두고, 세 목록 렌더링에서 공통으로 걸러내요.
@@ -492,71 +494,86 @@ function MyPageContent() {
   // 웨이팅 + 예약을 합친 총 "대기중" 건수 - 프로필 아래 바로가기 카드 분기에 씁니다.
   const activeCount = myWaitings.length + (myReservations?.length ?? 0);
 
-  // "다녀간 팝업" = 후기를 남긴 것 + 실제로 입장(체크인) 처리된 예약/웨이팅
-  // (예약은 entryStatus, 웨이팅은 enteredAt으로 "실제 방문 여부"를 판단해요)
-  type VisitedItem =
-    | {
-        type: "review";
-        id: string;
-        reviewId: number;
-        popupId: number;
-        title: string;
-        date: string;
-        rating: number | null;
-        content: string;
-        photos: string[];
-        visitDate: string | null;
-        likeCount: number;
-      }
-    | { type: "reservation" | "waiting"; id: string; popupId: number; title: string; date: string };
+  // "다녀간 팝업" - 예전엔 후기/예약/웨이팅을 각각 따로 카드로 만들어서, 예약해서
+  // 다녀온 뒤 후기까지 쓴 팝업이 "예약(방문 완료·후기 남기기)" 카드랑 "후기" 카드
+  // 두 개로 중복돼서 보였어요(후기를 썼는데도 "아직 후기를 안 남겼다"는 카드가
+  // 안 사라지는 문제였어요). 이제 팝업 하나당 카드 하나로 합쳤어요:
+  // - 어떻게 이용했는지(visitMethod)는 "예약" 또는 "웨이팅" 둘 중 하나만 표시하고,
+  //   앱으로 방문한 기록 없이 댓글만 남긴 경우는 아예 표시 안 해요.
+  // - 후기(review)가 있으면 후기 내용을, 없으면 "후기 남기기" 유도를 보여줘요.
+  type VisitedItem = {
+    id: string;
+    popupId: number;
+    title: string;
+    visitMethod: "reservation" | "waiting" | null;
+    visitDate: string | null; // 다녀온 날짜
+    review: {
+      reviewId: number;
+      rating: number | null;
+      content: string;
+      photos: string[];
+      likeCount: number;
+      createdAt: string; // 작성한 날짜
+    } | null;
+  };
 
   const visitedItems: VisitedItem[] = useMemo(() => {
-    const reviewItems: VisitedItem[] = (myReviews ?? []).map((r) => ({
-      type: "review",
-      id: `review-${r.id}`,
-      reviewId: r.id,
-      popupId: r.popupId,
-      title: popupTitles[r.popupId] ?? `팝업 #${r.popupId}`,
-      date: r.createdAt,
-      rating: r.rating,
-      content: r.content,
-      photos: r.imageUrls,
-      visitDate: r.visitDate,
-      likeCount: r.likeCount,
-    }));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const byPopup = new Map<number, VisitedItem>();
+    const ensure = (popupId: number, title: string) => {
+      let entry = byPopup.get(popupId);
+      if (!entry) {
+        entry = { id: `visited-${popupId}`, popupId, title, visitMethod: null, visitDate: null, review: null };
+        byPopup.set(popupId, entry);
+      }
+      return entry;
+    };
+    const titleFor = (popupId: number) =>
+      reservationPopupTitles[popupId] ?? popupTitles[popupId] ?? `팝업 #${popupId}`;
 
     // [수정] 이전엔 entryStatus가 "CHECKED_IN"(직원이 직접 체크인 처리)인 예약만 다녀간
     // 걸로 쳤어요. 근데 체크인 처리를 안 해도 예약 날짜 자체가 지났으면 "다녀간" 걸로
     // 보는 게 자연스러워서, 취소되지 않은 예약 중 날짜가 지난 것도 포함시켰어요.
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const visitedReservations: VisitedItem[] = (myReservations ?? [])
-      .filter((r) => {
-        if (r.status === "CANCELLED") return false;
-        if (r.entryStatus === "CHECKED_IN") return true;
-        return !!r.reservationDate && new Date(r.reservationDate) < today;
-      })
-      .map((r) => ({
-        type: "reservation",
-        id: `reservation-${r.id}`,
-        popupId: r.popupId,
-        title: reservationPopupTitles[r.popupId] ?? `팝업 #${r.popupId}`,
-        date: r.createdAt,
-      }));
+    (myReservations ?? []).forEach((r) => {
+      if (r.status === "CANCELLED") return;
+      const visited = r.entryStatus === "CHECKED_IN" || (!!r.reservationDate && new Date(r.reservationDate) < today);
+      if (!visited) return;
+      const entry = ensure(r.popupId, titleFor(r.popupId));
+      entry.visitMethod = "reservation";
+      if (!entry.visitDate) entry.visitDate = r.reservationDate ?? null;
+    });
 
-    const visitedWaitings: VisitedItem[] = myWaitings
+    myWaitings
       .filter((w) => !!w.enteredAt)
-      .map((w) => ({
-        type: "waiting",
-        id: `waiting-${w.id}`,
-        popupId: w.popupId,
-        title: reservationPopupTitles[w.popupId] ?? `팝업 #${w.popupId}`,
-        date: w.enteredAt as string,
-      }));
+      .forEach((w) => {
+        const entry = ensure(w.popupId, titleFor(w.popupId));
+        // 한 팝업에 예약·웨이팅 기록이 둘 다 있는 드문 경우엔 예약 쪽을 우선해요.
+        if (!entry.visitMethod) entry.visitMethod = "waiting";
+        if (!entry.visitDate && w.enteredAt) entry.visitDate = (w.enteredAt as string).slice(0, 10);
+      });
 
-    return [...reviewItems, ...visitedReservations, ...visitedWaitings].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
+    (myReviews ?? []).forEach((r) => {
+      const entry = ensure(r.popupId, popupTitles[r.popupId] ?? titleFor(r.popupId));
+      entry.review = {
+        reviewId: r.id,
+        rating: r.rating,
+        content: r.content,
+        photos: r.imageUrls,
+        likeCount: r.likeCount,
+        createdAt: r.createdAt,
+      };
+      // 후기 자체에 방문일이 찍혀있으면(백엔드가 방문 기록에서 자동으로 채워줘요)
+      // 그걸 다녀온 날짜로 보강해요.
+      if (!entry.visitDate && r.visitDate) entry.visitDate = r.visitDate;
+    });
+
+    return [...byPopup.values()].sort((a, b) => {
+      const aDate = a.review?.createdAt ?? a.visitDate ?? "";
+      const bDate = b.review?.createdAt ?? b.visitDate ?? "";
+      return new Date(bDate).getTime() - new Date(aDate).getTime();
+    });
   }, [myReviews, myReservations, myWaitings, popupTitles, reservationPopupTitles]);
 
   // [수정] 이 조기 return이 이전엔 hooks 중간에 있어서 "Rendered more hooks than
@@ -971,8 +988,10 @@ function MyPageContent() {
             ) : (
               <div className="flex flex-col gap-3">
                 {visitedItems.map((item) => (
-                  <div key={`${item.type}-${item.id}`} className="border border-gray-200 dark:border-[#282B32] rounded-xl overflow-hidden">
-                    {/* [신규] 팝업 카드 - 썸네일 + 이름, 누르면 팝업 상세페이지로 이동 */}
+                  <div key={item.id} className="border border-gray-200 dark:border-[#282B32] rounded-xl overflow-hidden">
+                    {/* [신규] 팝업 카드 - 썸네일 + 이름, 누르면 팝업 상세페이지로 이동.
+                        [수정] 배지는 "예약"/"웨이팅" 둘 중 하나만(방문 방법이 없으면
+                        아예 안 보여줘요), 다녀온 날짜는 이름 아래에 표시해요. */}
                     <Link href={`/popup/${item.popupId}`} className="flex items-center gap-3 p-4 pb-3">
                       <div className="w-16 h-16 flex-none bg-gray-100 dark:bg-[#282B32] rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-sm">
                         {reservationPopupImages[item.popupId] ? (
@@ -983,37 +1002,41 @@ function MyPageContent() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-sm font-medium bg-gray-100 dark:bg-[#282B32] text-gray-500 rounded px-1.5 py-0.5">
-                            {item.type === "review" ? "댓글/후기" : item.type === "reservation" ? "예약" : "웨이팅"}
-                          </span>
+                          {item.visitMethod && (
+                            <span className="text-sm font-medium bg-gray-100 dark:bg-[#282B32] text-gray-500 rounded px-1.5 py-0.5 flex-none">
+                              {item.visitMethod === "reservation" ? "예약" : "웨이팅"}
+                            </span>
+                          )}
                           <p className="text-sm font-semibold truncate">{item.title}</p>
                         </div>
-                        <span className="text-sm text-gray-400">{toDisplayDate(item.date)}</span>
+                        {item.visitDate && (
+                          <span className="text-sm text-gray-400">{item.visitDate} 다녀옴</span>
+                        )}
                       </div>
                     </Link>
 
                     {/* [수정] 후기 본문은 팝업 카드와 분리해서, 누르면 큰 화면으로
-                        내가 쓴 후기를 볼 수 있게 했어요. */}
-                    {item.type === "review" ? (
+                        내가 쓴 후기를 볼 수 있게 했어요. 작성한 날짜는 별점 옆에 둬요. */}
+                    {item.review ? (
                       <button
                         type="button"
-                        onClick={() => setOpenVisitedReview(item)}
+                        onClick={() => setOpenVisitedReview({ ...item, review: item.review! })}
                         className="block w-full text-left px-4 pb-3"
                       >
                         <p className="flex items-center gap-1 text-sm text-gray-500 mb-1">
-                          {item.rating != null ? (
+                          {item.review.rating != null ? (
                             <>
-                              <StarRatingDisplay rating={item.rating} size={12} /> {item.rating}
+                              <StarRatingDisplay rating={item.review.rating} size={12} /> {item.review.rating}
                             </>
                           ) : (
                             <span className="text-gray-400">방문 미인증 댓글</span>
                           )}
-                          {item.visitDate && <span className="text-gray-400">· {item.visitDate} 다녀옴</span>}
+                          <span className="text-gray-400">· {toDisplayDate(item.review.createdAt)} 작성</span>
                         </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-2">{item.content}</p>
-                        {item.photos.length > 0 && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-2">{item.review.content}</p>
+                        {item.review.photos.length > 0 && (
                           <div className="flex gap-1.5">
-                            {item.photos.slice(0, 4).map((photo) => (
+                            {item.review.photos.slice(0, 4).map((photo) => (
                               <ImageWithFallback
                                 key={photo}
                                 src={photo}
@@ -1034,15 +1057,15 @@ function MyPageContent() {
                     )}
 
                     {/* [신규] 후기에도 수정/삭제 버튼 + 추천받은 수를 보여줘요. */}
-                    {item.type === "review" && (
+                    {item.review && (
                       <div className="flex items-center justify-between px-4 py-2.5 border-t border-gray-50 dark:border-[#17181a]">
                         <span className="text-sm text-gray-400">
-                          추천 {item.likeCount > 0 ? item.likeCount : 0}
+                          추천 {item.review.likeCount > 0 ? item.review.likeCount : 0}
                         </span>
                         <div className="flex items-center gap-2.5">
                           <button
                             type="button"
-                            onClick={() => router.push(`/popup/${item.popupId}/review?editId=${item.reviewId}`)}
+                            onClick={() => router.push(`/popup/${item.popupId}/review?editId=${item.review!.reviewId}`)}
                             className="text-sm font-medium text-gray-500"
                           >
                             수정
@@ -1052,8 +1075,8 @@ function MyPageContent() {
                             onClick={async () => {
                               if (!(await appConfirm("이 후기를 삭제할까요?"))) return;
                               try {
-                                await deleteReview(item.reviewId);
-                                handleDeleteVisitedReview(item.reviewId);
+                                await deleteReview(item.review!.reviewId);
+                                handleDeleteVisitedReview(item.review!.reviewId);
                               } catch (err) {
                                 console.error("후기 삭제 실패", err);
                                 await appAlert("삭제에 실패했어요. 잠시 후 다시 시도해주세요.");
@@ -1337,20 +1360,19 @@ function MyPageContent() {
             </div>
             <div className="overflow-y-auto px-5 py-4">
               <p className="flex items-center gap-1.5 text-sm text-gray-500 mb-3">
-                {openVisitedReview.rating != null ? (
+                {openVisitedReview.review.rating != null ? (
                   <>
-                    <StarRatingDisplay rating={openVisitedReview.rating} size={16} /> {openVisitedReview.rating}
+                    <StarRatingDisplay rating={openVisitedReview.review.rating} size={16} /> {openVisitedReview.review.rating}
                   </>
                 ) : (
                   <span className="text-gray-400">방문 미인증 댓글</span>
                 )}
-                {openVisitedReview.visitDate && (
-                  <span className="text-gray-400">· {openVisitedReview.visitDate} 다녀옴</span>
-                )}
+                {/* [수정] 작성한 날짜를 별점 옆에 표시해요. */}
+                <span className="text-gray-400">· {toDisplayDate(openVisitedReview.review.createdAt)} 작성</span>
               </p>
-              {openVisitedReview.photos.length > 0 && (
+              {openVisitedReview.review.photos.length > 0 && (
                 <div className="flex gap-2 overflow-x-auto mb-4">
-                  {openVisitedReview.photos.map((photo) => (
+                  {openVisitedReview.review.photos.map((photo) => (
                     <ImageWithFallback
                       key={photo}
                       src={photo}
@@ -1360,7 +1382,7 @@ function MyPageContent() {
                 </div>
               )}
               <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                {openVisitedReview.content}
+                {openVisitedReview.review.content}
               </p>
             </div>
           </div>

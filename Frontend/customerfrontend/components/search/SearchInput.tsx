@@ -28,9 +28,15 @@ export function SearchInput({
 
   function handleSearch() {
     const trimmed = value.trim();
-    if (!trimmed) return;
-    addRecentSearch(trimmed);
     onFocusChange?.(false);
+    // [수정] 검색어가 없으면 아예 아무 반응이 없었어요 - 이제 검색어 없이
+    // 눌러도 "전체 보기"로 검색 결과 화면에 들어갈 수 있게 했어요. 최근검색어에는
+    // 실제로 입력한 검색어가 있을 때만 남겨요.
+    if (!trimmed) {
+      router.push(`/search?all=1`);
+      return;
+    }
+    addRecentSearch(trimmed);
     router.push(`/search?q=${encodeURIComponent(trimmed)}`);
   }
 

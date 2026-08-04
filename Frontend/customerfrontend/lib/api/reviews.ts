@@ -11,7 +11,7 @@
 //
 // lib/auth/AuthContext.tsx의 loginAsTestUser / getMyInfo 실패 시 mock 대체 패턴과 동일합니다.
 
-import { apiFetch, ApiError } from "./client";
+import { apiFetch, ApiError, getToken } from "./client";
 
 export interface Review {
   id: number;
@@ -27,6 +27,12 @@ export interface Review {
   visitDate: string | null; // "YYYY-MM-DD", 다녀간 날짜 (예약/웨이팅 방문 기록에서 자동 채움)
   createdAt: string; // ISO datetime
   updatedAt: string; // ISO datetime
+  // [수정] mock(localStorage) 저장소에서만 쓰는 내부 필드예요. 실 API 응답엔 없어요.
+  // "내가 쓴 리뷰"와 "이미 이 팝업에 리뷰를 남겼는지"를 로그인 계정(토큰) 기준으로
+  // 정확히 가려내려고 추가했어요. (예전엔 이 구분이 없어서 mock 저장소에 저장된
+  // 리뷰가 "누구 것이든" 전부 내 리뷰처럼 취급됐고, 그래서 seed 데이터가 있는
+  // 팝업에서는 처음 남기는 사람도 "이미 리뷰를 작성하셨어요" 오류를 봤어요.)
+  ownerToken?: string;
 }
 
 export interface ReviewCreatePayload {
@@ -120,9 +126,12 @@ function mockCreateReview(payload: ReviewCreatePayload): Review {
   validateImageCount(payload.imageUrls);
 
   const reviews = readMockReviews();
+  const ownerToken = getToken() ?? "anonymous";
 
-  // 백엔드와 동일하게 "이미 이 팝업에 리뷰를 남겼는지" 체크합니다.
-  if (reviews.some((r) => r.popupId === payload.popupId)) {
+  // 백엔드와 동일하게 "내가 이미 이 팝업에 리뷰를 남겼는지"만 체크합니다.
+  // [수정] 이전엔 작성자 구분 없이 "이 팝업에 리뷰가 하나라도 있는지"를 봐서,
+  // seed 데이터 등 다른 사람 리뷰가 있으면 나는 처음 남기는데도 막혔어요.
+  if (reviews.some((r) => r.popupId === payload.popupId && r.ownerToken === ownerToken)) {
     throw new Error("이미 이 팝업에 리뷰를 작성하셨어요.");
   }
 
@@ -138,6 +147,7 @@ function mockCreateReview(payload: ReviewCreatePayload): Review {
     visitDate: payload.visitDate ?? null,
     createdAt: now,
     updatedAt: now,
+    ownerToken,
   };
 
   writeMockReviews([review, ...reviews]);
@@ -145,9 +155,13 @@ function mockCreateReview(payload: ReviewCreatePayload): Review {
 }
 
 function mockGetMyReviews(): Review[] {
-  return [...readMockReviews()].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  // [수정] 저장소에 있는 리뷰 전부가 아니라, 지금 로그인한 계정(토큰)이 작성한
+  // 것만 "내 리뷰"로 걸러요. (예전엔 전부 다 "내 리뷰"로 취급돼서, 다른 팝업의
+  // seed 리뷰까지 내가 이미 쓴 것처럼 보였어요.)
+  const ownerToken = getToken();
+  return readMockReviews()
+    .filter((r) => r.ownerToken === ownerToken)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 function mockGetPopupReviews(popupId: number): Review[] {

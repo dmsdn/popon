@@ -113,7 +113,7 @@ export function ImageCropModal({
         <p className="text-sm text-gray-400 mb-4">드래그해서 위치를 옮기고, 슬라이더로 확대/축소할 수 있어요.</p>
 
         <div
-          className="relative mx-auto overflow-hidden rounded-lg bg-gray-100 touch-none select-none"
+          className="relative mx-auto overflow-hidden rounded-lg bg-gray-100 dark:bg-[#17181a] touch-none select-none"
           style={{ width: VIEWPORT_SIZE, height: VIEWPORT_SIZE }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
@@ -162,7 +162,7 @@ export function ImageCropModal({
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 rounded-full py-3 text-base font-medium bg-gray-100 text-gray-700 dark:text-gray-300"
+            className="flex-1 rounded-full py-3 text-base font-medium bg-gray-100 dark:bg-[#17181a] text-gray-700 dark:text-gray-300"
           >
             취소
           </button>
@@ -170,7 +170,7 @@ export function ImageCropModal({
             type="button"
             onClick={handleConfirm}
             disabled={processing || !imgUrl}
-            className="flex-1 rounded-full py-3 text-base font-medium bg-gray-900 text-white disabled:opacity-50"
+            className="flex-1 rounded-full py-3 text-base font-medium bg-point text-gray-900 dark:text-white disabled:opacity-50"
           >
             {processing ? "처리 중..." : "확인"}
           </button>

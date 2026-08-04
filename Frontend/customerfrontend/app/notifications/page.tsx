@@ -89,6 +89,16 @@ export default function NotificationsPage() {
       return;
     }
 
+    // [신규] "찜한/예약한/웨이팅 중인 팝업 정보 변경" 알림(NoticeService.notifyPopupUpdated)은
+    // 카테고리가 웨이팅/예약이어도, 예약·웨이팅 상태 자체가 아니라 "팝업 내용이
+    // 바뀌었다"는 안내라서 예약/웨이팅 상세 대신 팝업 상세페이지로 바로 보내는 게
+    // 맞아요. 반면 순번 알림("5번째가 됐어요" 등)처럼 진짜 웨이팅/예약 상태에 대한
+    // 알림은 계속 그 예약/웨이팅 상세로 보내야 해서, 제목으로 구분해요.
+    if (item.type === "웨이팅/예약" && item.title.includes("정보 변경")) {
+      if (item.popupId) router.push(`/popup/${item.popupId}`);
+      return;
+    }
+
     // 웨이팅/예약
     if (!item.popupId || !customer) return;
     try {
@@ -189,11 +199,11 @@ export default function NotificationsPage() {
                   {/* [수정] 읽은 알림은 안 읽은 알림과 구분되게 글자색을 옅게
                       죽였어요. 안 읽은 알림의 회색 배경은 뺐어요 - 점 표시만으로도
                       구분이 충분했고, 다크모드에서 특히 배경이 지저분해 보였어요. */}
-                  <p className={`text-sm font-semibold truncate ${item.read ? "text-gray-400" : ""}`}>
+                  <p className={`text-sm font-semibold truncate ${item.read ? "text-gray-300 dark:text-gray-600" : ""}`}>
                     {item.title}
                   </p>
                 </div>
-                <p className={`text-sm leading-relaxed ${item.read ? "text-gray-400" : "text-gray-500"}`}>
+                <p className={`text-sm leading-relaxed ${item.read ? "text-gray-300 dark:text-gray-600" : "text-gray-500"}`}>
                   {item.message}
                 </p>
               </div>
