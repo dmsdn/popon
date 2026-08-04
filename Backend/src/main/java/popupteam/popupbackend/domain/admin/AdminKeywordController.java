@@ -38,6 +38,42 @@ public class AdminKeywordController {
         }
     }
 
+    private static final long MAX_ICON_SIZE = 2 * 1024 * 1024; // 2MB — 아이콘에 그 이상은 필요 없다
+
+    /**
+     * 카테고리 아이콘 저장 (8/4 개정) — PNG·SVG만 받고 <b>투명 배경을 살린다</b>.
+     *
+     * <p>그전에는 배너와 같은 resizeToJpeg를 썼는데 아이콘에는 맞지 않았다.
+     * JPEG은 알파 채널이 없어 투명 배경이 흰색으로 채워지고, 소비자 앱은 다크모드가 기본이라
+     * 카테고리 자리마다 흰 네모가 생긴다. 아이콘은 배경이 비어 있어야 하는 이미지다.
+     *
+     * <p>SVG는 ImageIO가 읽지 못하므로(래스터 디코더뿐이다) 리사이즈하지 않고 원본 그대로 저장한다.
+     * 벡터라 어차피 크기를 잃지 않고, 128px로 굳힐 이유도 없다.
+     *
+     * <p>업로드 주체가 관리자뿐이라 SVG 안의 스크립트는 신뢰 경계 안에 있다고 본다.
+     * (소비자 화면은 &lt;img&gt;로 렌더하므로 스크립트가 실행되지 않는다.)
+     */
+    private String storeIcon(MultipartFile icon) {
+        if (icon.getSize() > MAX_ICON_SIZE) {
+            throw new IllegalArgumentException("아이콘은 2MB 이하만 업로드할 수 있습니다.");
+        }
+        String contentType = icon.getContentType();
+        String type = (contentType == null) ? "" : contentType.toLowerCase();
+
+        if (type.startsWith("image/svg")) {
+            // SVG는 ImageIO의 허용 목록(래스터 전용) 밖이라 validate를 타지 않고 여기서 바로 저장한다
+            try {
+                return fileStorageService.storeBytes(icon.getBytes(), ".svg");
+            } catch (java.io.IOException e) {
+                throw new IllegalArgumentException("아이콘 파일을 읽지 못했습니다.");
+            }
+        }
+        if (!type.equals("image/png")) {
+            throw new IllegalArgumentException("카테고리 아이콘은 PNG 또는 SVG만 등록할 수 있습니다. (투명 배경이 필요합니다)");
+        }
+        return fileStorageService.storeBytes(imageProcessingService.resizeToPng(icon, 128, 128), ".png");
+    }
+
     // 관리자용 전체 목록 (몇 명이 골랐는지 개수 포함)
     // HashMap 사용 - Map.of는 iconUrl이 null인 카테고리(아이콘 미등록)에서 NPE가 나서 못 씀
     @GetMapping
@@ -71,9 +107,7 @@ public class AdminKeywordController {
 
         Keyword keyword = new Keyword(name);
         if (icon != null && !icon.isEmpty()) {
-            // 아이콘은 정사각형 소형(128x128)으로 리사이즈 - BannerService와 동일한 재사용 패턴
-            byte[] resized = imageProcessingService.resizeToJpeg(icon, 128, 128, 0.9f);
-            keyword.setIconUrl(fileStorageService.storeBytes(resized, ".jpg"));
+            keyword.setIconUrl(storeIcon(icon));
         }
 
         Keyword saved = keywordRepository.save(keyword);
@@ -103,8 +137,7 @@ public class AdminKeywordController {
         }
 
         if (icon != null && !icon.isEmpty()) {
-            byte[] resized = imageProcessingService.resizeToJpeg(icon, 128, 128, 0.9f);
-            keyword.setIconUrl(fileStorageService.storeBytes(resized, ".jpg"));
+            keyword.setIconUrl(storeIcon(icon));
         }
 
         Keyword saved = keywordRepository.save(keyword);

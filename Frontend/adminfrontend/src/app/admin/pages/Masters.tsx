@@ -44,8 +44,10 @@ export default function Masters() {
   // 기존 10개에 아이콘이 없어 그 폴백을 쓰는 중이라, 지금 필수로 만들면 그것들만 빈칸이 된다.
   // 10개를 다 채운 뒤 필수로 바꾸고 폴백 파일을 지우는 순서로 간다.
   //
-  // ⚠ 서버가 ImageIO로 읽어 128x128 JPEG으로 저장한다 — SVG는 못 받고, 투명 배경은 흰색이 된다.
-  //   accept에서 SVG를 뺀 이유다. 투명 아이콘이 필요하면 백엔드가 PNG 보존으로 바꿔야 한다.
+  // PNG·SVG만 받는다 (8/4 백엔드 함께 개정). 아이콘은 배경이 비어 있어야 하는 이미지인데,
+  // 그전 경로는 배너와 같은 JPEG 변환이라 투명 배경이 흰색으로 채워졌다 — 다크모드 기본인
+  // 소비자 홈에서 카테고리마다 흰 네모가 생긴다. 이제 PNG는 알파를 살려 128px로 줄이고,
+  // SVG는 벡터라 원본 그대로 저장한다.
   const [iconFile, setIconFile] = useState<File | null>(null);
   const [iconPreview, setIconPreview] = useState<string | null>(null);
   const iconRef = useRef<HTMLInputElement>(null);
@@ -215,7 +217,7 @@ export default function Masters() {
               <input
                 ref={iconRef}
                 type="file"
-                accept="image/png,image/jpeg,image/gif,image/bmp"
+                accept="image/png,image/svg+xml"
                 onChange={(e) => setIconFile(e.target.files?.[0] ?? null)}
                 className="hidden"
               />
@@ -235,7 +237,7 @@ export default function Masters() {
                   onClick={() => iconRef.current?.click()}
                   className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-sm hover:border-accent hover:text-accent shrink-0"
                 >
-                  <ImageIcon size={12} /> 아이콘 (선택)
+                  <ImageIcon size={12} /> 아이콘 (선택 · PNG·SVG)
                 </button>
               )}
             </>
@@ -306,7 +308,7 @@ export default function Masters() {
                     <input
                       ref={editIconRef}
                       type="file"
-                      accept="image/png,image/jpeg,image/gif,image/bmp"
+                      accept="image/png,image/svg+xml"
                       onChange={(e) => setEditIcon(e.target.files?.[0] ?? null)}
                       className="hidden"
                     />
