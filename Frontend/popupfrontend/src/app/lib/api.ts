@@ -433,7 +433,7 @@ export function generateSlots(popupId: number | string, perSlotCapacity?: number
 
 // ── 현장 웨이팅 (jsw waiting 도메인) ──
 
-export type WaitingStatusCode = "WAITING" | "CALLED" | "ENTERED" | "CANCELLED";
+export type WaitingStatusCode = "WAITING" | "CALLED" | "ENTERED" | "CANCELLED" | "NO_SHOW";
 
 export type WaitingItem = {
   id: number;
@@ -481,6 +481,12 @@ export function cancelWaiting(id: number) {
   return request<WaitingItem>(`/api/waiting/${id}/cancel`, { method: "PATCH" });
 }
 
+// 노쇼 처리 (8/4 신설) — 예약의 markNoShow와 대칭. 그전에는 웨이팅에 노쇼 상태가 없어
+// 취소 API로 대신 처리했는데, 손님 본인 취소와 구분이 안 돼 분리됐다.
+export function noShowWaiting(id: number) {
+  return request<WaitingItem>(`/api/waiting/${id}/no-show`, { method: "PATCH" });
+}
+
 // ── 통합 대기열 (사전예약 + 현장 웨이팅) ──
 
 export type UnifiedEntry = {
@@ -490,8 +496,8 @@ export type UnifiedEntry = {
   phoneNumber: string | null;
   partySize: number;
   qrToken: string;
-  entryStatus: string; // PENDING/CHECKED_IN/NO_SHOW(예약) · WAITING/ENTERED/CANCELLED(웨이팅)
-  cancelReason?: string | null; // 웨이팅 취소 사유 (8/4) — 자정 리셋분은 "미입장"
+  entryStatus: string; // PENDING/CHECKED_IN/NO_SHOW(예약) · WAITING/ENTERED/CANCELLED/NO_SHOW(웨이팅)
+  // cancelReason 필드는 폐기(8/4) — 미입장이 별도 상태(NO_SHOW)가 되면서 사유 문자열 구분이 필요 없어졌다
   // 퇴장 시각 (8/4). null이면 아직 체류 중.
   // entryStatus는 퇴장 후에도 CHECKED_IN/ENTERED 그대로라, 체류 여부는 이 값으로 판단해야 한다.
   exitedAt?: string | null;

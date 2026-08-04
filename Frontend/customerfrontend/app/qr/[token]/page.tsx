@@ -41,8 +41,8 @@ export default function EntryQrPage({ params }: { params: Promise<{ token: strin
         if (!alive) return;
         setStatus(s);
         setNotFound(false);
-        // 입장·취소로 끝난 대기는 더 물어볼 이유가 없다 — 폴링을 멈춘다.
-        if (s.status === "ENTERED" || s.status === "CANCELLED") return;
+        // 입장·취소·미입장으로 끝난 대기는 더 물어볼 이유가 없다 — 폴링을 멈춘다.
+        if (s.status === "ENTERED" || s.status === "CANCELLED" || s.status === "NO_SHOW") return;
       } catch {
         // 없는 토큰이거나 서버가 잠깐 죽은 경우. 화면은 QR을 계속 보여 주고
         // (직원이 스캔하는 데는 서버 응답이 필요 없다) 안내만 바꾼다.
@@ -60,13 +60,15 @@ export default function EntryQrPage({ params }: { params: Promise<{ token: strin
 
   const entered = status?.status === "ENTERED";
   const cancelled = status?.status === "CANCELLED";
+  // 미입장(8/4) — 직원 노쇼 처리 또는 자정 리셋. 자정을 넘겨 페이지를 켜 둔 경우에 온다.
+  const noShow = status?.status === "NO_SHOW";
   const called = status?.status === "CALLED";
 
   return (
     <main className="px-6 py-10 flex flex-col items-center gap-6">
       <div className="text-center">
         <h1 className="text-lg font-semibold">
-          {entered ? "입장 완료" : cancelled ? "취소된 대기" : "입장 QR"}
+          {entered ? "입장 완료" : cancelled ? "취소된 대기" : noShow ? "미입장 처리" : "입장 QR"}
         </h1>
         {status?.popupTitle && (
           <p className="text-sm text-gray-400 mt-1">{status.popupTitle}</p>
@@ -93,8 +95,17 @@ export default function EntryQrPage({ params }: { params: Promise<{ token: strin
         </section>
       )}
 
+      {noShow && (
+        <section className="w-full max-w-sm rounded-xl border border-gray-300 dark:border-gray-700 p-6 text-center">
+          <p className="text-base font-semibold text-gray-500">미입장 처리된 대기입니다</p>
+          <p className="text-sm text-gray-400 mt-2">
+            운영일이 지나 대기가 마감됐어요. 재방문 시 새로 웨이팅을 등록해 주세요.
+          </p>
+        </section>
+      )}
+
       {/* ── 아직 입장 전 — QR과 순번 ── */}
-      {!entered && !cancelled && (
+      {!entered && !cancelled && !noShow && (
         <>
           {called && (
             <section className="w-full max-w-sm rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-center">

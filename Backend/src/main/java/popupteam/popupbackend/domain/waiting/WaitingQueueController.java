@@ -77,6 +77,15 @@ public class WaitingQueueController {
         return ResponseEntity.ok(waitingQueueService.enterByQr(qrToken, popupId, name, isAdmin));
     }
 
+    // 주최자/관리자: 노쇼 처리 (8/4 신설) — 예약의 PATCH /api/reservations/{id}/no-show와 대칭.
+    // 그전에는 웨이팅에 노쇼 상태가 없어 관제 화면이 취소 API로 대신 처리했는데,
+    // 그러면 손님 본인 취소와 구분이 안 돼 노쇼율을 집계할 수 없었다.
+    @PatchMapping("/api/waiting/{id}/no-show")
+    public ResponseEntity<?> noShow(@PathVariable Long id, Authentication authentication) {
+        requireStaff(authentication);
+        return ResponseEntity.ok(waitingQueueService.noShow(id));
+    }
+
     // 주최자/관리자: 수동 취소 (customerId 넘기면 소비자 본인취소 경로로 대신 처리)
     @PatchMapping("/api/waiting/{id}/cancel")
     public ResponseEntity<?> cancel(@PathVariable Long id,
