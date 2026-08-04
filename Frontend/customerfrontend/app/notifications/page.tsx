@@ -157,7 +157,7 @@ export default function NotificationsPage() {
             onClick={() => setTab(t)}
             className={`flex-none px-3 py-1.5 rounded-full text-sm border ${
               tab === t
-                ? "border-gray-900 dark:border-white text-gray-900 dark:text-white font-medium"
+                ? "border-point text-point font-medium"
                 : "border-gray-200 dark:border-[#282B32] text-gray-500"
             }`}
           >
@@ -177,9 +177,7 @@ export default function NotificationsPage() {
               key={item.id}
               type="button"
               onClick={() => handleNotificationClick(item)}
-              className={`flex items-start gap-3 py-4 border-b border-gray-50 dark:border-[#282B32] text-left w-full ${
-                item.read ? "" : "bg-gray-50 dark:bg-[#282B32]/60"
-              }`}
+              className="flex items-start gap-3 py-4 border-b border-gray-50 dark:border-[#282B32] text-left w-full"
             >
               <span className="text-lg flex-none">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -188,9 +186,16 @@ export default function NotificationsPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 mb-0.5">
                   {!item.read && <span className="w-1.5 h-1.5 rounded-full bg-point flex-none" />}
-                  <p className="text-sm font-semibold truncate">{item.title}</p>
+                  {/* [수정] 읽은 알림은 안 읽은 알림과 구분되게 글자색을 옅게
+                      죽였어요. 안 읽은 알림의 회색 배경은 뺐어요 - 점 표시만으로도
+                      구분이 충분했고, 다크모드에서 특히 배경이 지저분해 보였어요. */}
+                  <p className={`text-sm font-semibold truncate ${item.read ? "text-gray-400" : ""}`}>
+                    {item.title}
+                  </p>
                 </div>
-                <p className="text-sm text-gray-500 leading-relaxed">{item.message}</p>
+                <p className={`text-sm leading-relaxed ${item.read ? "text-gray-400" : "text-gray-500"}`}>
+                  {item.message}
+                </p>
               </div>
               <span className="text-sm text-gray-400 flex-none">{timeAgo(item.createdAt)}</span>
             </button>

@@ -13,6 +13,7 @@ import { BirthDatePicker } from "@/components/ui/BirthDatePicker";
 import { EmailInput } from "@/components/ui/EmailInput";
 import { ImageCropModal } from "@/components/popup/ImageCropModal";
 import { uploadFile } from "@/lib/api/upload";
+import { appAlert } from "@/lib/ui/alertStore";
 
 export default function EditProfilePage() {
   const router = useRouter();
@@ -143,7 +144,7 @@ export default function EditProfilePage() {
       if (message.includes("닉네임")) {
         setNicknameError(message);
       } else {
-        alert(message);
+        await appAlert(message);
       }
     } finally {
       setSubmitting(false);
