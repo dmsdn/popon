@@ -7,6 +7,7 @@ import { Header } from "@/components/layout/Header";
 import { MobileHeader } from "@/components/layout/MobileHeader";
 import { Footer } from "@/components/layout/Footer";
 import { BottomTabBar } from "@/components/layout/BottomTabBar";
+import { appAlert, appConfirm } from "@/lib/ui/alertStore";
 
 // TODO: 실제로는 백엔드 API(getMyWaiting, getMyReservations)로 대체
 const mockWaiting = {
@@ -27,15 +28,15 @@ const mockReservations = [
 export default function ReservationsPage() {
   const [waiting, setWaiting] = useState<typeof mockWaiting | null>(mockWaiting);
 
-  const handleCancelWaiting = () => {
-    if (!confirm("웨이팅을 취소할까요?")) return;
+  const handleCancelWaiting = async () => {
+    if (!(await appConfirm("웨이팅을 취소할까요?"))) return;
     // TODO: 실제 취소 API 연결
     setWaiting(null);
   };
 
-  const handlePostponeWaiting = () => {
+  const handlePostponeWaiting = async () => {
     // TODO: 실제 미루기 API 연결
-    alert("웨이팅 순서를 미뤘어요.");
+    await appAlert("웨이팅 순서를 미뤘어요.");
   };
 
   return (

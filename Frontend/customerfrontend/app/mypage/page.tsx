@@ -2,7 +2,7 @@
 
 // 마이페이지 - 찜/웨이팅·예약/다녀간 팝업/알림 설정/화면 설정을 모아둔 메인 허브. 이 프로젝트에서 가장 큰 파일이에요.
 
-import { Suspense, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -28,6 +28,7 @@ import {
   toggleWishlist,
 } from "@/lib/wishlistStore";
 import { LoadingState, EmptyState } from "@/components/ui/EmptyState";
+import { appAlert, appConfirm } from "@/lib/ui/alertStore";
 
 type MenuKey =
   | "내 정보"
@@ -323,7 +324,7 @@ function MyPageContent() {
       setCsContent("");
     } catch (err) {
       console.error("문의 등록 실패", err);
-      alert(err instanceof Error ? err.message : "문의 등록에 실패했어요. 잠시 후 다시 시도해주세요.");
+      await appAlert(err instanceof Error ? err.message : "문의 등록에 실패했어요. 잠시 후 다시 시도해주세요.");
     } finally {
       setCsSubmitting(false);
     }
@@ -359,6 +360,18 @@ function MyPageContent() {
 
   // /mypage?menu=공지사항 처럼 쿼리로 들어오면 해당 메뉴가 바로 선택된 상태로 열립니다.
   const queryMenu = searchParams.get("menu");
+
+  // [신규] "/mypage?menu=알림 설정"처럼 알림 목록의 톱니바퀴 아이콘 같은
+  // 외부 링크에서 특정 메뉴로 바로 들어온 경우, 뒤로가기를 누르면 원래 있던
+  // 화면(예: 알림 목록)으로 돌아가야 자연스러워요. 근데 지금까지는 마이페이지
+  // 안에서 탭을 이동한 것과 똑같이 취급해서 "마이페이지 목록 화면"으로만
+  // 보내고 있었어요 - 그 목록 화면 헤더가 "내 정보"라고 적혀있어서 마치
+  // "내 정보로 이동한 것"처럼 보였던 거예요.
+  // 이 컴포넌트가 처음 그려질 때 이미 menu 쿼리파라미터가 있었는지를 기억해뒀다가,
+  // 그런 경우에만 뒤로가기가 진짜 브라우저 back(=진입 전 화면으로)이 되도록 했어요.
+  // 마이페이지 안에서 직접 다른 메뉴를 눌러 이동하면(handleSelectMenu) 이 플래그를
+  // 꺼서, 그 다음부터는 기존처럼 "마이페이지 목록 화면"으로 돌아가요.
+  const cameFromExternalLink = useRef(queryMenu !== null);
 
   // [수정] 렌더링 도중(컴포넌트 함수 본문)에서 setState를 호출하던 방식이었는데,
   // loading이 true인 동안 한 번 처리되고 나면 나중에 loading이 풀려도 다시 안
@@ -404,6 +417,9 @@ function MyPageContent() {
     // 거쳐가는 문제가 있었어요. replace()로 바꿔서 마이페이지 안에서 탭을
     // 아무리 옮겨다녀도 히스토리 엔트리가 하나만 남게 했어요 - 뒤로가기 한 번에
     // 바로 마이페이지 진입 전 화면으로 나가요.
+    // [신규] 이제부터는 마이페이지 "안에서" 옮겨다니는 거니까, 외부 링크로
+    // 들어왔었다는 플래그는 꺼요 - 이 다음 뒤로가기는 마이페이지 목록 화면으로.
+    cameFromExternalLink.current = false;
     setActiveMenu(menu);
     setMobileView("detail");
     router.replace(`/mypage?menu=${encodeURIComponent(menu)}`);
@@ -412,7 +428,14 @@ function MyPageContent() {
   // [수정] 목록↔상세 전환은 이제 URL/히스토리와 무관한 순수 로컬 상태예요 -
   // router.back()을 쓰면 (탭 전환이 이제 replace라) 마이페이지 밖으로
   // 나가버려서, 그냥 상태만 되돌려요.
+  // [신규] 단, 알림 목록 등 외부 링크에서 특정 메뉴로 바로 들어온 경우엔 예외 -
+  // 그때는 뒤로가기를 누르면 마이페이지 목록이 아니라 원래 있던 화면(예: 알림
+  // 목록)으로 돌아가야 하니, 진짜 브라우저 back을 써요.
   const handleBackToList = () => {
+    if (cameFromExternalLink.current) {
+      router.back();
+      return;
+    }
     setMobileView("list");
     // URL의 menu 파라미터도 같이 지워요 - 안 지우면 목록 화면에서 새로고침했을 때
     // 여전히 남아있는 ?menu=X 때문에 다시 상세 화면으로 돌아가버려요.
@@ -439,7 +462,7 @@ function MyPageContent() {
       router.push("/");
     } catch (err) {
       console.error("회원탈퇴 실패", err);
-      alert("탈퇴 처리에 실패했어요. 잠시 후 다시 시도해주세요.");
+      await appAlert("탈퇴 처리에 실패했어요. 잠시 후 다시 시도해주세요.");
       setWithdrawing(false);
     }
   };
@@ -1027,13 +1050,13 @@ function MyPageContent() {
                           <button
                             type="button"
                             onClick={async () => {
-                              if (!confirm("이 후기를 삭제할까요?")) return;
+                              if (!(await appConfirm("이 후기를 삭제할까요?"))) return;
                               try {
                                 await deleteReview(item.reviewId);
                                 handleDeleteVisitedReview(item.reviewId);
                               } catch (err) {
                                 console.error("후기 삭제 실패", err);
-                                alert("삭제에 실패했어요. 잠시 후 다시 시도해주세요.");
+                                await appAlert("삭제에 실패했어요. 잠시 후 다시 시도해주세요.");
                               }
                             }}
                             className="text-sm font-medium text-gray-500"

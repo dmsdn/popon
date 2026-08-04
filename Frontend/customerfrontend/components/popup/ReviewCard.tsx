@@ -11,6 +11,7 @@ import { ReportReviewModal } from "@/components/popup/ReportReviewModal";
 import { likeReview, unlikeReview, deleteReview } from "@/lib/api/reviews";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { saveRedirectTarget } from "@/lib/postLoginRedirect";
+import { appAlert, appConfirm } from "@/lib/ui/alertStore";
 
 const CONTENT_PREVIEW_LENGTH = 60;
 
@@ -66,14 +67,14 @@ export function ReviewCard({
   };
 
   const handleDelete = async () => {
-    if (!confirm("이 후기를 삭제할까요?")) return;
+    if (!(await appConfirm("이 후기를 삭제할까요?"))) return;
     setDeleting(true);
     try {
       await deleteReview(reviewId);
       onDelete?.(reviewId);
     } catch (err) {
       console.error("후기 삭제 실패", err);
-      alert("삭제에 실패했어요. 잠시 후 다시 시도해주세요.");
+      await appAlert("삭제에 실패했어요. 잠시 후 다시 시도해주세요.");
       setDeleting(false);
     }
   };

@@ -93,7 +93,7 @@ function RankingListInner() {
               onClick={() => setKeyword(k)}
               className={`flex-none text-sm px-3 py-1.5 rounded-full border ${
                 keyword === k
-                  ? "border-gray-900 dark:border-white text-gray-900 dark:text-white font-medium"
+                  ? "border-point text-point font-medium"
                   : "border-gray-200 dark:border-[#282B32] text-gray-500"
               }`}
             >
@@ -116,7 +116,7 @@ function RankingListInner() {
               >
                 <span
                   className={`w-6 text-center font-bold flex-none ${
-                    index < 5 ? "text-base text-gray-900 dark:text-white" : "text-sm text-gray-400"
+                    index < 5 ? "text-base text-point" : "text-sm text-gray-400"
                   }`}
                 >
                   {index + 1}
