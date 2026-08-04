@@ -66,6 +66,10 @@ export default function Performance() {
   }, [popupId]);
 
   const selected = popups.find((p) => p.id === popupId) ?? null;
+  // 사전예약을 아예 안 받는 팝업 (8/4). 등록 시점에 따라 두 필드로 표현돼 있어 둘 다 본다 —
+  // queueMode는 7/24 신설이고, 그 이전 팝업은 reservationMode=FREE로만 남아 있다.
+  const walkinOnly =
+    selected?.queueMode === "ONSITE_WAITING_ONLY" || selected?.reservationMode === "FREE";
 
   // 차트용 변환 — 날짜는 MM-DD로, 두 추이를 날짜 기준으로 병합
   const trendChart = visitTrend.map((v) => ({
@@ -131,11 +135,19 @@ export default function Performance() {
                 value: `${totalVisitorsInTrend.toLocaleString()}명`,
                 sub: `예약 ${totalReservationsInTrend.toLocaleString()}건`,
               },
-              {
-                label: "예약 전환율",
-                value: `${(conversion?.conversionRate ?? 0).toFixed(1)}%`,
-                sub: `클릭 ${(conversion?.clickCount ?? 0).toLocaleString()} → 예약 ${(conversion?.reservationCount ?? 0).toLocaleString()}`,
-              },
+              // 예약 전환율 = 상세 클릭 대비 예약. 사전예약을 안 받는 팝업은 분자가 늘 0이라
+              // 0.0%가 「전환이 안 된다」로 오해된다 — 애초에 집계 대상이 아님을 밝힌다 (8/4)
+              walkinOnly
+                ? {
+                    label: "예약 전환율",
+                    value: "—",
+                    sub: "현장 웨이팅만 운영하는 팝업은 집계되지 않습니다",
+                  }
+                : {
+                    label: "예약 전환율",
+                    value: `${(conversion?.conversionRate ?? 0).toFixed(1)}%`,
+                    sub: `클릭 ${(conversion?.clickCount ?? 0).toLocaleString()} → 예약 ${(conversion?.reservationCount ?? 0).toLocaleString()}`,
+                  },
               {
                 label: "팝업 상태",
                 value: selected.status === "OPEN" ? "진행중" : selected.status === "BEFOR" ? "오픈예정" : selected.status === "CLOSED" ? "종료" : selected.status === "PENDING" ? "심사 대기" : "반려",
