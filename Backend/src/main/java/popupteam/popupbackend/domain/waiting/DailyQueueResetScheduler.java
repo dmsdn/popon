@@ -53,10 +53,12 @@ public class DailyQueueResetScheduler {
         LocalDateTime dayStart = yesterday.atStartOfDay();
         LocalDateTime dayEnd = yesterday.plusDays(1).atStartOfDay();
 
-        // ① 현장 웨이팅 — 대기중 그대로 남은 건. 예약의 EntryStatus.NO_SHOW와 같은 사건이므로
-        //    같은 상태값(NO_SHOW)으로 확정한다. (CANCELLED+사유 문자열로 구분하던 우회는 8/4 당일 폐기)
-        List<WaitingQueue> staleWaiting =
-                waitingQueueRepository.findUnprocessedOfDay(WaitingStatus.WAITING, dayStart, dayEnd);
+        // ① 현장 웨이팅 — 대기중(WAITING) 또는 호출만 받고 끝난(CALLED) 건.
+        //    예약의 EntryStatus.NO_SHOW와 같은 사건이므로 같은 상태값(NO_SHOW)으로 확정한다.
+        //    (CANCELLED+사유 문자열로 구분하던 우회는 8/4 당일 폐기)
+        //    CALLED가 대상에 포함돼야 호출 기능(8/4 저녁 부활)이 대기열 리셋에 구멍을 내지 않는다.
+        List<WaitingQueue> staleWaiting = waitingQueueRepository.findUnprocessedOfDay(
+                List.of(WaitingStatus.WAITING, WaitingStatus.CALLED), dayStart, dayEnd);
         for (WaitingQueue w : staleWaiting) {
             w.setStatus(WaitingStatus.NO_SHOW);
             transactionEventLogService.log(w.getPopup().getId(), "WAITING", w.getId(),

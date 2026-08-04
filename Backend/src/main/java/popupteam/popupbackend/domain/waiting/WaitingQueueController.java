@@ -42,19 +42,20 @@ public class WaitingQueueController {
         return ResponseEntity.ok(waitingQueueService.getMyStatus(id));
     }
 
-    // 주최자/관리자: 호출 — 기능 탈락 (8/4).
+    // 주최자/관리자: 호출 — 부활 (8/4 저녁).
     //
-    // 호출은 기획에서 폐지되어 어느 화면도 이 API를 부르지 않는다. 그런데 API가 열려 있는 한
-    // CALLED 상태가 만들어질 수 있고, 그러면 자정 리셋(DailyQueueResetScheduler)이 WAITING만
-    // 보므로 그 건은 어디서도 정리되지 않은 채 남는다. 대기열의 하루 단위 정합을 지키려면
-    // 상태를 만드는 경로 자체를 막아야 해서 주석 처리한다. 되살릴 때는 자정 리셋 대상에
-    // CALLED를 함께 넣을 것.
+    // 오전에 「호출 기능 폐지」 판단으로 잠시 닫았다가, 호출 시 이메일·SMS·인앱 알림을 보내는
+    // 구현(WaitingQueueService.call의 알림 #5)이 들어오면서 되살렸다. 닫아 둔 채로는 그 알림이
+    // 영영 발송되지 않는 죽은 코드였다.
     //
-    // @PatchMapping("/api/waiting/{id}/call")
-    // public ResponseEntity<?> call(@PathVariable Long id, Authentication authentication) {
-    //     requireStaff(authentication);
-    //     return ResponseEntity.ok(waitingQueueService.call(id));
-    // }
+    // 닫았던 이유였던 「CALLED 건이 자정 리셋에서 빠진다」는 문제는 리셋 대상에 CALLED를
+    // 함께 넣어 해소했다(DailyQueueResetScheduler). 다만 호출 후 15분이 지나도 자동 취소되지는
+    // 않는다 — 그 스케줄러는 폐지됐고, 정리는 하루 단위 리셋이 맡는다.
+    @PatchMapping("/api/waiting/{id}/call")
+    public ResponseEntity<?> call(@PathVariable Long id, Authentication authentication) {
+        requireStaff(authentication);
+        return ResponseEntity.ok(waitingQueueService.call(id));
+    }
 
     // 주최자/관리자: 수동 입장 확인 (버튼으로)
     @PatchMapping("/api/waiting/{id}/enter")
