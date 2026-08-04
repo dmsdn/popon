@@ -62,13 +62,17 @@ public class AdminRegionController {
         return ResponseEntity.status(201).body(Map.of("id", saved.getId(), "name", saved.getName()));
     }
 
-    // 지역 삭제. popup.address_keyword가 이 지역을 참조 중이면 FK 제약 때문에 삭제가 막힘 (의도된 동작 - 먼저 팝업 지역을 바꾸거나 정리해야 함)
+    // 지역 삭제. 팝업이 사용 중이어도 강제 삭제 가능 - popup.address_keyword를 null로 비운 뒤 지역을 지운다
+    // (팝업 자체는 삭제되지 않고 지역 정보만 없어짐). 소비자가 관심지역으로 찜해뒀어도 customer_region
+    // 매핑을 지워서 자동 해지되게 한다.
     @DeleteMapping("/{id}")
+    @org.springframework.transaction.annotation.Transactional
     public Map<String, Object> delete(Authentication authentication, @PathVariable Long id) {
         requireAdmin(authentication);
         if (!regionRepository.existsById(id)) {
             throw new IllegalArgumentException("존재하지 않는 지역이에요.");
         }
+        popupRepository.clearAddressKeywordByRegionId(id);
         customerRegionRepository.deleteByRegionId(id);
         regionRepository.deleteById(id);
         return Map.of("success", true);
