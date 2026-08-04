@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { MapPin, Tags, Loader2, Info, Plus, Trash2, Users, Image as ImageIcon, X } from "lucide-react";
+import { MapPin, Tags, Loader2, Info, Plus, Trash2, Users, Image as ImageIcon, X, Pencil, Check } from "lucide-react";
 import {
-  getAdminKeywords, createAdminKeyword, deleteAdminKeyword,
+  getAdminKeywords, createAdminKeyword, updateAdminKeyword, deleteAdminKeyword,
   getAdminRegions, createAdminRegion, deleteAdminRegion,
   MasterItem,
 } from "../../lib/api";
@@ -16,8 +16,11 @@ import {
 // 그래서 삭제는 조용히 넘어가면 안 되는 동작이다. 몇 명이 그 항목을 관심으로 골랐는지(customerCount)를
 // 같이 보여주고, 삭제 확인창에 그 숫자를 넣는다.
 //
-// ⚠ 백엔드에 수정(PUT)이 없다. 이름을 바꾸려면 삭제 후 재등록해야 하는데 삭제 시 소비자의
-//   관심 선택도 함께 정리되므로, 오타 수정 목적으로 지우면 안 된다. 화면 하단에 그 점을 적어둔다.
+// 8/4 — 카테고리에 아이콘(icon_url)과 수정 API(PATCH)가 생겼다(jmy).
+//   그전에는 수정이 없어서 오타 하나 고치려 해도 삭제 후 재등록뿐이었고, 그러면 그 카테고리를
+//   관심으로 골라둔 소비자 설정과 팝업 매핑까지 함께 날아갔다. 이제 매핑을 유지한 채
+//   이름·아이콘만 갈아끼울 수 있다.
+// ⚠ 지역(region)은 아직 수정 API가 없다 — 삭제 후 재등록뿐이라 경고를 유지한다.
 
 type Tab = "regions" | "categories";
 
@@ -36,9 +39,13 @@ export default function Masters() {
   const [busy, setBusy] = useState<string | null>(null); // "add" | "del:3"
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // 카테고리 아이콘 (8/4) — 선택 사항이다.
+  // 카테고리 아이콘 (8/4) — 지금은 선택이다.
   // 안 올리면 소비자 앱이 이름 규칙으로 lucide 아이콘을 고른다(popupCategoryIcon.ts).
-  // 기존 8개 카테고리가 그 폴백을 쓰고 있어서, 아이콘을 필수로 만들면 그것들만 빈칸이 된다.
+  // 기존 10개에 아이콘이 없어 그 폴백을 쓰는 중이라, 지금 필수로 만들면 그것들만 빈칸이 된다.
+  // 10개를 다 채운 뒤 필수로 바꾸고 폴백 파일을 지우는 순서로 간다.
+  //
+  // ⚠ 서버가 ImageIO로 읽어 128x128 JPEG으로 저장한다 — SVG는 못 받고, 투명 배경은 흰색이 된다.
+  //   accept에서 SVG를 뺀 이유다. 투명 아이콘이 필요하면 백엔드가 PNG 보존으로 바꿔야 한다.
   const [iconFile, setIconFile] = useState<File | null>(null);
   const [iconPreview, setIconPreview] = useState<string | null>(null);
   const iconRef = useRef<HTMLInputElement>(null);
@@ -97,11 +104,61 @@ export default function Masters() {
     }
   };
 
+  // ── 인라인 수정 (8/4, 카테고리 전용) ──
+  // 삭제 후 재등록을 대체한다. 이름만 바꾸든 아이콘만 바꾸든, 보낸 값만 서버가 갈아끼우고
+  // 팝업·관심 매핑은 그대로 유지된다.
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editIcon, setEditIcon] = useState<File | null>(null);
+  const editIconRef = useRef<HTMLInputElement>(null);
+
+  const startEdit = (item: MasterItem) => {
+    setEditId(item.id);
+    setEditName(item.name);
+    setEditIcon(null);
+  };
+  const cancelEdit = () => {
+    setEditId(null);
+    setEditName("");
+    setEditIcon(null);
+  };
+
+  const saveEdit = async (item: MasterItem) => {
+    const name = editName.trim();
+    if (!name) return alert("이름을 입력해 주세요.");
+    // 바뀐 게 없으면 서버를 부르지 않는다
+    if (name === item.name && !editIcon) return cancelEdit();
+    if (name !== item.name && items.some((i) => i.id !== item.id && i.name === name)) {
+      return alert(`이미 있는 ${unit}입니다.`);
+    }
+    setBusy(`edit:${item.id}`);
+    try {
+      const updated = await updateAdminKeyword(item.id, {
+        name: name !== item.name ? name : undefined,
+        icon: editIcon,
+      });
+      setKeywords((prev) =>
+        prev.map((k) =>
+          k.id === item.id ? { ...k, name: updated.name, iconUrl: updated.iconUrl ?? null } : k,
+        ),
+      );
+      cancelEdit();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "수정에 실패했습니다.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const remove = async (item: MasterItem) => {
     const warn = item.customerCount > 0
       ? `\n\n이 ${unit}을(를) 관심으로 선택한 소비자 ${item.customerCount}명의 설정도 함께 지워집니다.`
       : "";
-    if (!window.confirm(`「${item.name}」을(를) 삭제할까요?${warn}\n\n이름만 바꾸려는 거라면 삭제하지 마세요 — 되돌릴 수 없습니다.`)) return;
+    // 카테고리는 8/4부터 수정이 되므로 「삭제 말고 수정」으로 안내가 갈린다 (지역은 여전히 수정 API 없음)
+    const hint = isRegion
+      ? "\n\n이름만 바꾸려는 거라면 삭제하지 마세요 — 되돌릴 수 없습니다."
+      : "\n\n이름이나 아이콘만 바꾸려는 거라면 연필 버튼으로 수정하세요.";
+    if (!window.confirm(`「${item.name}」을(를) 삭제할까요?${warn}${hint}`)) return;
     setBusy(`del:${item.id}`);
     try {
       if (isRegion) await deleteAdminRegion(item.id);
@@ -158,7 +215,7 @@ export default function Masters() {
               <input
                 ref={iconRef}
                 type="file"
-                accept="image/png,image/jpeg,image/svg+xml"
+                accept="image/png,image/jpeg,image/gif,image/bmp"
                 onChange={(e) => setIconFile(e.target.files?.[0] ?? null)}
                 className="hidden"
               />
@@ -222,13 +279,68 @@ export default function Masters() {
                     </span>
                   )
                 )}
-                <span className="text-[13px] font-medium flex-1 min-w-0 truncate">{item.name}</span>
+                {/* 수정 중인 행은 이름 입력으로 바뀐다 (8/4 PATCH 연동) */}
+                {editId === item.id ? (
+                  <input
+                    autoFocus
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") saveEdit(item);
+                      if (e.key === "Escape") cancelEdit();
+                    }}
+                    className="flex-1 min-w-0 px-2 py-1 text-[13px] border border-accent rounded-sm bg-card focus:outline-none"
+                  />
+                ) : (
+                  <span className="text-[13px] font-medium flex-1 min-w-0 truncate">{item.name}</span>
+                )}
                 <span
                   className="flex items-center gap-1 text-[11px] text-muted-foreground shrink-0"
                   title="이 항목을 관심으로 선택한 소비자 수"
                 >
                   <Users size={11} /> {item.customerCount}
                 </span>
+                {/* 카테고리만 수정 가능 — 지역은 아직 백엔드 PATCH가 없다 (8/4) */}
+                {!isRegion && (editId === item.id ? (
+                  <>
+                    <input
+                      ref={editIconRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/gif,image/bmp"
+                      onChange={(e) => setEditIcon(e.target.files?.[0] ?? null)}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => editIconRef.current?.click()}
+                      title="아이콘 교체"
+                      className={`shrink-0 text-[11px] px-2 py-1 border rounded-sm ${
+                        editIcon ? "border-accent text-accent" : "border-border text-muted-foreground hover:border-accent"
+                      }`}
+                    >
+                      {editIcon ? "아이콘 변경됨" : "아이콘 교체"}
+                    </button>
+                    <button
+                      onClick={() => saveEdit(item)}
+                      disabled={busy === `edit:${item.id}`}
+                      title="저장"
+                      className="shrink-0 text-accent hover:opacity-70 disabled:opacity-40"
+                    >
+                      {busy === `edit:${item.id}` ? <Loader2 size={13} className="animate-spin" /> : <Check size={14} />}
+                    </button>
+                    <button onClick={cancelEdit} title="취소" className="shrink-0 text-muted-foreground hover:text-foreground">
+                      <X size={14} />
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => startEdit(item)}
+                    title="이름·아이콘 수정"
+                    className="shrink-0 text-muted-foreground hover:text-accent"
+                  >
+                    <Pencil size={13} />
+                  </button>
+                ))}
                 <button
                   onClick={() => remove(item)}
                   disabled={busy === `del:${item.id}`}
