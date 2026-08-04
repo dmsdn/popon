@@ -21,6 +21,7 @@ public class PopupSlotService {
     private final PopupSlotRepository popupSlotRepository;
     private final PopupRepository popupRepository;
     private final ReservationRepository reservationRepository;
+    private final PopupOperatingHoursRepository popupOperatingHoursRepository;
 
     public PopupSlotResponse create(Long popupId, Long businessId, PopupSlotCreateRequest request) {
         Popup popup = popupRepository.findById(popupId)
@@ -97,7 +98,18 @@ public class PopupSlotService {
         record ExpectedSlot(LocalDate date, LocalTime start, LocalTime end) {}
         List<ExpectedSlot> expected = new ArrayList<>();
 
+        // 버그 수정: 요일별 휴무 설정(PopupOperatingHours.closed)을 무시하고 기간 내 모든 날짜에
+        // 슬롯을 생성하고 있었음. 휴무 요일은 슬롯 자체를 만들지 않도록 미리 걸러낸다.
+        List<PopupOperatingHours> operatingHours = popupOperatingHoursRepository.findByPopupIdOrderByDayOfWeek(popupId);
+        Set<java.time.DayOfWeek> closedDays = operatingHours.stream()
+                .filter(PopupOperatingHours::isClosed)
+                .map(PopupOperatingHours::getDayOfWeek)
+                .collect(Collectors.toSet());
+
         for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+            if (closedDays.contains(date.getDayOfWeek())) {
+                continue;
+            }
             LocalTime cursor = dailyStart;
             while (true) {
                 LocalTime slotEnd = cursor.plusMinutes(slotMinutes);
