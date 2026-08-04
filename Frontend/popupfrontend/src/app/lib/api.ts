@@ -490,14 +490,17 @@ export type UnifiedEntry = {
   phoneNumber: string | null;
   partySize: number;
   qrToken: string;
-  entryStatus: string; // PENDING/CHECKED_IN/NO_SHOW(예약) · WAITING/CALLED/ENTERED/CANCELLED(웨이팅)
-  joinedAt: string; // 예약=슬롯 시작시각, 웨이팅=등록시각
+  entryStatus: string; // PENDING/CHECKED_IN/NO_SHOW(예약) · WAITING/ENTERED/CANCELLED(웨이팅)
+  cancelReason?: string | null; // 웨이팅 취소 사유 (8/4) — 자정 리셋분은 "미입장"
+  joinedAt: string; // 예약=슬롯 시작시각, 웨이팅=등록시각 (입장 후에는 둘 다 입장시각)
 };
 
-// 통합 대기열 보드 — 슬롯 시작이 지난 사전예약자 + 대기중 웨이팅 (서버가 자동 편입·정렬)
-export function getQueueBoard(popupId: number | string) {
+// 통합 대기열 보드 — 하루치 명단 (8/4).
+// date를 주면 그날, 안 주면 오늘. 처리된 건(입장·노쇼·취소)도 함께 오므로 화면은 행을 지우는
+// 대신 상태 배지를 붙인다 — 명단이 곧 그날의 기록지다.
+export function getQueueBoard(popupId: number | string, date?: string) {
   return request<{ popupId: number; totalCount: number; entries: UnifiedEntry[] }>(
-    `/api/popups/${popupId}/queue/board`,
+    `/api/popups/${popupId}/queue/board${date ? `?date=${date}` : ""}`,
   );
 }
 

@@ -75,6 +75,21 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     // 팝업 구분 없이 전체 체크인 상태(아직 퇴장 전) 조회 - 자동퇴장 스케줄러용
     List<Reservation> findByEntryStatusAndExitedAtIsNull(EntryStatus entryStatus);
 
+    // 그 날짜에 방문하기로 한 예약 전부 — 상태를 가리지 않는다 (8/4).
+    // 슬롯 예약은 슬롯 날짜, 날짜 예약은 reservationDate 기준. 관제 화면의 「그날 명단」용이라
+    // 입장·노쇼된 건도 함께 와야 처리 결과가 배지로 남는다.
+    @Query("SELECT r FROM Reservation r LEFT JOIN r.slot s WHERE r.popup.id = :popupId " +
+            "AND r.status = 'CONFIRMED' " +
+            "AND ((s IS NOT NULL AND s.slotDate = :date) OR (s IS NULL AND r.reservationDate = :date)) " +
+            "ORDER BY r.createdAt ASC")
+    List<Reservation> findDayRoster(@Param("popupId") Long popupId, @Param("date") LocalDate date);
+
+    // 자정 리셋 대상 — 그날 방문 예정이었는데 입장·노쇼 처리 없이 남은 예약 (8/4)
+    @Query("SELECT r FROM Reservation r LEFT JOIN r.slot s " +
+            "WHERE r.status = 'CONFIRMED' AND r.entryStatus = 'PENDING' " +
+            "AND ((s IS NOT NULL AND s.slotDate = :date) OR (s IS NULL AND r.reservationDate = :date))")
+    List<Reservation> findUnprocessedOfDay(@Param("date") LocalDate date);
+
     List<Reservation> findByPopupIdAndStatus(Long popupId, ReservationStatus status);
 
     // 진짜 방문객(체크인 완료)의 연령 분포 통계용 - 예약만 하고 안 온 사람은 제외

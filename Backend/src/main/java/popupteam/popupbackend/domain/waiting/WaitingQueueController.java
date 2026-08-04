@@ -42,12 +42,19 @@ public class WaitingQueueController {
         return ResponseEntity.ok(waitingQueueService.getMyStatus(id));
     }
 
-    // 주최자/관리자: 호출
-    @PatchMapping("/api/waiting/{id}/call")
-    public ResponseEntity<?> call(@PathVariable Long id, Authentication authentication) {
-        requireStaff(authentication);
-        return ResponseEntity.ok(waitingQueueService.call(id));
-    }
+    // 주최자/관리자: 호출 — 기능 탈락 (8/4).
+    //
+    // 호출은 기획에서 폐지되어 어느 화면도 이 API를 부르지 않는다. 그런데 API가 열려 있는 한
+    // CALLED 상태가 만들어질 수 있고, 그러면 자정 리셋(DailyQueueResetScheduler)이 WAITING만
+    // 보므로 그 건은 어디서도 정리되지 않은 채 남는다. 대기열의 하루 단위 정합을 지키려면
+    // 상태를 만드는 경로 자체를 막아야 해서 주석 처리한다. 되살릴 때는 자정 리셋 대상에
+    // CALLED를 함께 넣을 것.
+    //
+    // @PatchMapping("/api/waiting/{id}/call")
+    // public ResponseEntity<?> call(@PathVariable Long id, Authentication authentication) {
+    //     requireStaff(authentication);
+    //     return ResponseEntity.ok(waitingQueueService.call(id));
+    // }
 
     // 주최자/관리자: 수동 입장 확인 (버튼으로)
     @PatchMapping("/api/waiting/{id}/enter")

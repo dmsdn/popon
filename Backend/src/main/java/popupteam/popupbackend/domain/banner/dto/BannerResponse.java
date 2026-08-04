@@ -10,6 +10,7 @@ public class BannerResponse {
     private String title;
     private String imageUrl;
     private String linkUrl;
+    private Long popupId;
     private Integer sortOrder;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
@@ -21,6 +22,7 @@ public class BannerResponse {
                 .title(b.getTitle())
                 .imageUrl(b.getImageUrl())
                 .linkUrl(b.getLinkUrl())
+                .popupId(b.getPopupId())
                 .sortOrder(b.getSortOrder())
                 .startDate(b.getStartDate())
                 .endDate(b.getEndDate())

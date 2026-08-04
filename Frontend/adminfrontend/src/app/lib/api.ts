@@ -775,9 +775,29 @@ export function checkinByQr(qrToken: string, popupId?: number | string) {
 export type Banner = {
   id: number; title: string; imageUrl: string; linkUrl: string | null;
   sortOrder: number; startDate: string | null; endDate: string | null; active: boolean;
+  popupId?: number | null; // 8/4 — 팝업 연동 배너면 그 팝업 id, 외부 URL 배너면 null
 };
 export function getAdminBanners() {
   return request<Banner[]>("/api/admin/banners");
+}
+
+// ── 팝업 연동 배너 (jsw 8/4 신설) ──
+// 관리자가 승인된 팝업을 고르면 이미지·링크를 서버가 팝업에서 직접 가져와 배너를 만든다.
+// 이미지를 다시 업로드할 필요가 없고, 링크 형식(customer-base-url + /popup/{id})도 서버가 단일 관리한다.
+export type EligiblePopup = {
+  id: number;
+  title: string;
+  status: "OPEN" | "BEFOR";
+  thumbnailImageUrl: string | null; // null이면 썸네일이 없는 팝업 — 배너로 만들 수 없다
+};
+export function getBannerEligiblePopups() {
+  return request<EligiblePopup[]>("/api/admin/banners/eligible-popups");
+}
+export function createBannerFromPopup(popupId: number, title: string, sortOrder?: number) {
+  return request<Banner>("/api/admin/banners/from-popup", {
+    method: "POST",
+    body: JSON.stringify({ popupId, title, sortOrder }),
+  });
 }
 // 7/29 — 배너 등록·수정은 JSON이 아니라 multipart/form-data다.
 // 백엔드(BannerController)는 @RequestParam("file") MultipartFile을 받고 imageUrl은 서버가 만들어 돌려준다.
