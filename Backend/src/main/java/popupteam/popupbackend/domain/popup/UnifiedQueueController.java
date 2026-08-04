@@ -12,9 +12,14 @@ public class UnifiedQueueController {
     private final UnifiedQueueService unifiedQueueService;
 
     // 통합 대기열 현황판 (사전예약자 + 현장웨이팅자)
+    // date를 주면 그날의 명단, 없으면 오늘 (8/4 — 하루 단위로 끊어 지난 날짜 기록도 조회 가능)
     @GetMapping("/api/popups/{popupId}/queue/board")
-    public ResponseEntity<UnifiedQueueBoardResponse> getBoard(@PathVariable Long popupId) {
-        return ResponseEntity.ok(unifiedQueueService.getBoard(popupId));
+    public ResponseEntity<UnifiedQueueBoardResponse> getBoard(
+            @PathVariable Long popupId,
+            @RequestParam(required = false)
+            @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+            java.time.LocalDate date) {
+        return ResponseEntity.ok(unifiedQueueService.getBoard(popupId, date));
     }
 
     // 통합 QR 체크인 (예약이든 현장웨이팅이든 하나의 엔드포인트로 처리)

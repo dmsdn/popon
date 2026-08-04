@@ -50,6 +50,7 @@ import { StarRatingInput } from "@/components/popup/StarRatingInput";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 import { type PopupItem, type ReviewItem } from "@/data/mockPopups";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { appAlert, appChoice } from "@/lib/ui/alertStore";
 
 const TABS = ["정보", "후기"] as const;
 
@@ -485,7 +486,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                 href={`/search?region=${encodeURIComponent(popup.regionName)}`}
                 className="text-sm border border-gray-200 dark:border-[#282B32] rounded-full px-3 py-1 text-gray-600 dark:text-gray-400"
               >
-                #{popup.regionName}
+                {popup.regionName}
               </Link>
             )}
             {(popup.keywordNames ?? []).map((name) => (
@@ -494,7 +495,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                 href={`/search?q=${encodeURIComponent(name)}`}
                 className="text-sm border border-gray-200 dark:border-[#282B32] rounded-full px-3 py-1 text-gray-600 dark:text-gray-400"
               >
-                #{name}
+                {name}
               </Link>
             ))}
             {(popup.hashtags ?? []).map((tag) => (
@@ -503,7 +504,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                 href={`/search?q=${encodeURIComponent(tag)}`}
                 className="text-sm border border-gray-200 dark:border-[#282B32] rounded-full px-3 py-1 text-gray-600 dark:text-gray-400"
               >
-                #{tag}
+                {tag}
               </Link>
             ))}
           </div>
@@ -590,7 +591,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                     (r.reservationTime ?? null) === (time ?? null)
                 );
                 if (duplicate) {
-                  alert("이미 같은 시간대에 예약이 있어요.");
+                  await appAlert("이미 같은 시간대에 예약이 있어요.");
                   return;
                 }
               } catch (err) {
@@ -605,10 +606,21 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                   partySize: count,
                 });
                 setShowReservation(false);
-                router.push(`/reservations/${reservation.id}`);
+                // [신규] 예약이 끝나자마자 바로 예약 상세로 튕겨버려서, 이
+                // 팝업을 더 둘러보고 싶어도 뒤로가기를 눌러야 했어요. 완료
+                // 안내와 함께 "예약 상세 보기 / 계속 둘러보기"를 선택하게
+                // 했어요.
+                const goToDetail = await appChoice(
+                  "예약이 완료됐어요!",
+                  "예약 확인하기",
+                  "계속 둘러보기"
+                );
+                if (goToDetail) {
+                  router.push(`/reservations/${reservation.id}`);
+                }
               } catch (err) {
                 console.error("예약 실패", err);
-                alert(err instanceof Error ? err.message : "예약에 실패했어요. 잠시 후 다시 시도해주세요.");
+                await appAlert(err instanceof Error ? err.message : "예약에 실패했어요. 잠시 후 다시 시도해주세요.");
               }
             }}
           />
@@ -629,7 +641,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                 return;
               }
               if (!customer.phone) {
-                alert("웨이팅 등록에는 전화번호가 필요해요. 마이페이지 > 내 정보에서 먼저 등록해주세요.");
+                await appAlert("웨이팅 등록에는 전화번호가 필요해요. 마이페이지 > 내 정보에서 먼저 등록해주세요.");
                 return;
               }
               // [수정] 여러 팝업에 동시에 대기하는 건 이제 허용해요 - 대신 "같은 팝업"에
@@ -638,7 +650,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                 const activeWaitings = await getMyActiveWaitings(customer.id);
                 const already = activeWaitings.find((w) => w.popupId === popup.id);
                 if (already) {
-                  alert("이미 이 팝업에 웨이팅 중이에요.");
+                  await appAlert("이미 이 팝업에 웨이팅 중이에요.");
                   return;
                 }
               } catch (err) {
@@ -651,11 +663,20 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                   partySize: count,
                 });
                 addMyWaitingId(waiting.id);
-                alert(`웨이팅 ${count}명 등록됐어요.`);
                 setShowWaiting(false);
+                // [신규] 예약과 동일하게, 웨이팅 등록 후에도 웨이팅 상세로
+                // 바로 이동할지 이 팝업을 계속 둘러볼지 선택하게 했어요.
+                const goToDetail = await appChoice(
+                  `웨이팅 ${count}명 등록됐어요!`,
+                  "웨이팅 확인하기",
+                  "계속 둘러보기"
+                );
+                if (goToDetail) {
+                  router.push(`/waiting/${waiting.id}`);
+                }
               } catch (err) {
                 console.error("웨이팅 등록 실패", err);
-                alert(err instanceof Error ? err.message : "웨이팅 등록에 실패했어요. 잠시 후 다시 시도해주세요.");
+                await appAlert(err instanceof Error ? err.message : "웨이팅 등록에 실패했어요. 잠시 후 다시 시도해주세요.");
               }
             }}
           />
@@ -994,7 +1015,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         onWishlistToggle={(nextActive) => {
           setWishlistCount((prev) => (prev === undefined ? prev : Math.max(0, prev + (nextActive ? 1 : -1))));
         }}
-        onReserve={() => {
+        onReserve={async () => {
           // [수정] 이전엔 로그인 여부 확인 없이 바로 모달이 열려서, 폼을 다 채운 뒤에야
           // (제출 시점에) 로그인하라고 튕겨서 입력한 내용이 다 날아갔어요. 버튼을
           // 누르는 즉시 확인하도록 앞으로 옮겼어요.
@@ -1008,7 +1029,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         // "slotId를 입력해주세요" 에러가 나는 문제가 있었어요. 슬롯이 실제로 없는
         // 경우엔 애초에 예약할 수 없는 상태라, 모달을 열지 않고 바로 안내해요.
         if (popup.reservationMode === "SLOT" && slots.length === 0) {
-          alert("아직 예약 가능한 시간대가 등록되지 않았어요. 잠시 후 다시 시도해주세요.");
+          await appAlert("아직 예약 가능한 시간대가 등록되지 않았어요. 잠시 후 다시 시도해주세요.");
           return;
         }
         setShowReservation(true);

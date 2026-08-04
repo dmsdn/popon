@@ -1,6 +1,7 @@
 package popupteam.popupbackend.domain.popup;
 
 import popupteam.popupbackend.domain.popup.dto.*;
+import popupteam.popupbackend.domain.reservation.EntryStatus;
 import popupteam.popupbackend.domain.reservation.Reservation;
 import popupteam.popupbackend.domain.reservation.ReservationRepository;
 import popupteam.popupbackend.domain.waiting.WaitingQueue;
@@ -22,17 +23,42 @@ public class UnifiedQueueService {
     private final WaitingQueueRepository waitingQueueRepository;
 
     public UnifiedQueueBoardResponse getBoard(Long popupId) {
+        return getBoard(popupId, null);
+    }
+
+    /**
+     * 하루치 대기열 명단 (8/4 개편).
+     *
+     * 그전에는 날짜 개념이 없어서 「상태가 안 바뀐 것 전부」를 돌려줬다. 그래서 어제·그제 손님이
+     * 오늘 보드에 계속 쌓였고, 화면이 그걸 걸러낼 방법도 없었다(응답에 날짜가 없었다).
+     *
+     * 이제 하루를 단위로 끊는다. date가 그날의 명단 전체를 결정하고, 처리된 건(입장·노쇼·취소)도
+     * 함께 돌려준다 — 화면은 행을 지우는 대신 상태 배지를 붙이므로 명단이 곧 그날의 기록지가 된다.
+     * 지난 날짜를 넘기면 그날 장부를 그대로 다시 볼 수 있다.
+     *
+     * @param date null이면 오늘 (기존 호출부 호환)
+     */
+    public UnifiedQueueBoardResponse getBoard(Long popupId, LocalDate date) {
+        LocalDate target = (date != null) ? date : LocalDate.now();
+        LocalDateTime dayStart = target.atStartOfDay();
+        LocalDateTime dayEnd = target.plusDays(1).atStartOfDay();
+        boolean isToday = target.equals(LocalDate.now());
+        LocalDateTime now = LocalDateTime.now();
+
         List<UnifiedQueueEntryResponse> entries = new ArrayList<>();
 
-        // 1. 사전예약자 중 슬롯시작(또는 당일)이 지난 사람들
-        List<Reservation> arrived = reservationRepository
-                .findArrivedPreReservations(popupId, LocalDateTime.now(), LocalDate.now());
-
-        for (Reservation r : arrived) {
-            LocalDateTime joinedAt = (r.getSlot() != null)
+        // 1. 그날 방문 예정인 사전예약 전부 (입장·노쇼된 건 포함)
+        for (Reservation r : reservationRepository.findDayRoster(popupId, target)) {
+            LocalDateTime slotStart = (r.getSlot() != null)
                     ? r.getSlot().getSlotDate().atTime(r.getSlot().getStartTime())
                     : r.getReservationDate().atStartOfDay();
 
+            // 오늘 보드에서는 아직 시작 전인 회차를 감춘다 — 시작 시각이 되면 자동 편입되는
+            // 기존 동작 그대로다. 지난 날짜는 이미 다 지났으므로 전부 보여준다.
+            if (isToday && r.getEntryStatus() == EntryStatus.PENDING && slotStart.isAfter(now)) {
+                continue;
+            }
+
             entries.add(UnifiedQueueEntryResponse.builder()
                     .source("RESERVATION")
                     .refId(r.getId())
@@ -41,15 +67,13 @@ public class UnifiedQueueService {
                     .partySize(r.getPartySize())
                     .qrToken(r.getQrToken())
                     .entryStatus(r.getEntryStatus().name())
-                    .joinedAt(joinedAt)
+                    // 입장한 건은 입장 시각으로 줄을 세워야 체류 순서가 맞는다
+                    .joinedAt(r.getCheckedInAt() != null ? r.getCheckedInAt() : slotStart)
                     .build());
         }
 
-        // 2. 현장웨이팅자 (WAITING 또는 CALLED 상태만, 등록 순서대로)
-        List<WaitingQueue> waitingList = waitingQueueRepository
-                .findByPopupIdAndStatusOrderByRegisteredAtAsc(popupId, WaitingStatus.WAITING);
-
-        for (WaitingQueue w : waitingList) {
+        // 2. 그날 등록된 현장 웨이팅 전부 (입장·취소된 건 포함)
+        for (WaitingQueue w : waitingQueueRepository.findDayRoster(popupId, dayStart, dayEnd)) {
             String displayName = (w.getCustomer() != null)
                     ? maskName(w.getCustomer().getNickname())
                     : maskName(w.getName());
@@ -62,53 +86,18 @@ public class UnifiedQueueService {
                     .partySize(w.getPartySize())
                     .qrToken(w.getQrToken())
                     .entryStatus(w.getStatus().name())
-                    .joinedAt(w.getRegisteredAt())
+                    .cancelReason(w.getCancelReason())
+                    .joinedAt(w.getEnteredAt() != null ? w.getEnteredAt() : w.getRegisteredAt())
                     .build());
         }
 
-        // 3. 현재 체류중(입장완료, 아직 퇴장 전) 예약자
-        List<Reservation> insideReservations = reservationRepository.findCurrentlyInsideByPopupId(popupId);
-        for (Reservation r : insideReservations) {
-            entries.add(UnifiedQueueEntryResponse.builder()
-                    .source("RESERVATION")
-                    .refId(r.getId())
-                    .displayName(maskName(r.getCustomer().getNickname()))
-                    .phoneNumber(null)
-                    .partySize(r.getPartySize())
-                    .qrToken(r.getQrToken())
-                    .entryStatus(r.getEntryStatus().name())
-                    .joinedAt(r.getCheckedInAt())
-                    .build());
-        }
-
-        // 4. 현재 체류중(입장완료, 아직 퇴장 전) 현장웨이팅자
-        List<WaitingQueue> insideWaiting = waitingQueueRepository.findCurrentlyInsideByPopupId(popupId);
-        for (WaitingQueue w : insideWaiting) {
-            String displayName = (w.getCustomer() != null)
-                    ? maskName(w.getCustomer().getNickname())
-                    : maskName(w.getName());
-
-            entries.add(UnifiedQueueEntryResponse.builder()
-                    .source("ONSITE_WAITING")
-                    .refId(w.getId())
-                    .displayName(displayName)
-                    .phoneNumber(w.getPhoneNumber())
-                    .partySize(w.getPartySize())
-                    .qrToken(w.getQrToken())
-                    .entryStatus(w.getStatus().name())
-                    .joinedAt(w.getEnteredAt())
-                    .build());
-        }
-
-        // 5. 합류시각(joinedAt) 기준 정렬 — 사전예약자 먼저, 그 다음 현장웨이팅 순서 유지
+        // 3. 합류시각 기준 정렬
         entries.sort((a, b) -> a.getJoinedAt().compareTo(b.getJoinedAt()));
         return UnifiedQueueBoardResponse.builder()
                 .popupId(popupId)
                 .totalCount(entries.size())
                 .entries(entries)
                 .build();
-
-
     }
 
     // 스캐너가 지금 열어 둔 팝업과 QR의 팝업이 같은지 확인한다 (7/31 추가).

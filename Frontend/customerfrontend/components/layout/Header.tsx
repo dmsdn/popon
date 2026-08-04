@@ -46,7 +46,21 @@ export function Header({ initialQuery = "" }: { initialQuery?: string }) {
       </div>
 
       <Link href="/mypage?menu=웨이팅 / 예약" aria-label="웨이팅/예약" className="relative">
-        <Image src="/icons/ui/Bar_Calender.svg" alt="웨이팅/예약" width={24} height={24} className="dark:invert" />
+        <>
+          <Image src="/icons/ui/Bar_Calender_active.svg" alt="웨이팅/예약" width={24} height={24} className="dark:hidden" />
+          <Image
+            src="/icons/ui/Bar_Calender_active_Dark.svg"
+            alt="웨이팅/예약"
+            width={24}
+            height={24}
+            className="hidden dark:block"
+            onError={(e) => {
+              const img = e.currentTarget as HTMLImageElement;
+              img.src = "/icons/ui/Bar_Calender_active.svg";
+              img.classList.add("invert");
+            }}
+          />
+        </>
         {/* [신규] 활성 웨이팅/예약 개수를 동그란 말풍선 배지로 - 다른 말풍선처럼
             살짝 동동 뜨는 애니메이션을 넣었어요. */}
         {activeQueueCount > 0 && (
@@ -74,7 +88,21 @@ export function Header({ initialQuery = "" }: { initialQuery?: string }) {
             className="rounded-full object-cover"
           />
         ) : (
-          <Image src="/icons/ui/Bar_User.svg" alt="마이페이지" width={24} height={24} className="dark:invert" />
+          <>
+            <Image src="/icons/ui/Bar_User_active.svg" alt="마이페이지" width={24} height={24} className="dark:hidden" />
+            <Image
+              src="/icons/ui/Bar_User_active_Dark.svg"
+              alt="마이페이지"
+              width={24}
+              height={24}
+              className="hidden dark:block"
+              onError={(e) => {
+                const img = e.currentTarget as HTMLImageElement;
+                img.src = "/icons/ui/Bar_User_active.svg";
+                img.classList.add("invert");
+              }}
+            />
+          </>
         )}
       </Link>
     </header>
