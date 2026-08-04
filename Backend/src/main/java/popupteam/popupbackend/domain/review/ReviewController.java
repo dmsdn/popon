@@ -123,6 +123,25 @@ public class ReviewController {
                 .toList();
     }
 
+    // 특정 팝업 후기 개수 (공개, 로그인 불필요 - 카드/상세페이지에서 "후기 12개" 같은 뱃지용)
+    @GetMapping("/popup/{popupId}/count")
+    public Map<String, Object> getPopupReviewCount(@PathVariable Long popupId) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("popupId", popupId);
+        result.put("reviewCount", reviewRepository.countByPopupId(popupId));
+        return result;
+    }
+
+    // 여러 팝업의 후기 개수를 한 번에 (공개) - 목록/리스트 화면에서 팝업마다 개별 호출하지 않도록
+    @GetMapping("/counts")
+    public Map<Long, Long> getReviewCounts() {
+        Map<Long, Long> counts = new HashMap<>();
+        for (Object[] row : reviewRepository.countAllGroupByPopupId()) {
+            counts.put((Long) row[0], (Long) row[1]);
+        }
+        return counts;
+    }
+
     // 플랫폼 전체 최신 후기 (홈 화면 "실시간 후기 모음"용, 공개)
     @GetMapping("/recent")
     public List<ReviewResponse> getRecentReviews(@RequestParam(defaultValue = "10") int limit) {
