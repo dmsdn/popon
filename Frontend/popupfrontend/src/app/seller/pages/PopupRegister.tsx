@@ -242,6 +242,8 @@ export default function PopupRegister() {
   const [submitted, setSubmitted] = useState(false);
   const [sameHours, setSameHours] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  // 재진입 차단용 (8/4). state는 렌더용이라 반영이 한 박자 늦다 — handleSubmit 주석 참고
+  const submittingRef = useRef(false);
   const [error, setError] = useState("");
 
   // 백엔드 연동 필드
@@ -569,6 +571,17 @@ export default function PopupRegister() {
           : "BOTH") as "PRERESERVATION_ONLY" | "ONSITE_WAITING_ONLY" | "BOTH",
     };
 
+    // 중복 등록 차단 (8/4) — 은혼 팝업이 같은 내용으로 4개 만들어진 사고.
+    //
+    // disabled={submitting}만으로는 못 막는다. setSubmitting(true)는 **다음 렌더에서야**
+    // 반영되는데, 등록은 팝업 생성 → 이미지 업로드 루프 → 슬롯 수백 개 생성까지 이어져
+    // 응답이 느리다. 그래서 「안 눌렸나?」 하고 연타하면, 리렌더 전에 쌓인 클릭들이
+    // handleSubmit에 그대로 재진입한다. 버튼은 그때까지 멀쩡히 활성 상태다.
+    //
+    // ref는 동기적으로 즉시 바뀌므로 같은 틱에 들어온 두 번째 호출까지 확실히 막는다.
+    // state는 화면 표시(「전송 중…」)용으로 그대로 둔다 — 둘의 역할이 다르다.
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
     try {
       const popup = editId ? await updatePopup(editId, payload) : await createPopup(payload);
@@ -607,6 +620,9 @@ export default function PopupRegister() {
       setError(e instanceof Error ? e.message : "등록에 실패했습니다.");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } finally {
+      // 실패했을 때 다시 누를 수 있어야 하므로 ref도 함께 푼다.
+      // 성공 경로(게시중 수정)는 위에서 navigate로 빠져나가지만, finally는 그때도 실행된다.
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };

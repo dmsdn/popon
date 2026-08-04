@@ -291,11 +291,17 @@ export default function WaitingControl() {
     setDay(localDateStr(new Date()));
   }, [popupId]);
 
-  // ── 체류 인원: 서버 통합 보드의 입장완료(CHECKED_IN/ENTERED, 퇴장 전) 엔트리 — 7/23 전면 서버 기준 ──
+  // ── 체류 인원: 서버 통합 보드의 입장완료(CHECKED_IN/ENTERED) 중 **아직 퇴장하지 않은** 엔트리 ──
+  //
+  // 8/4 — exitedAt 조건이 빠져 이미 나간 사람이 체류 인원에 남는 사고가 있었다.
+  // 보드를 하루치 명단 전체로 바꾸면서(입장·노쇼 배지를 남기려고) 퇴장자까지 함께 오게 됐는데,
+  // entryStatus는 퇴장 후에도 CHECKED_IN 그대로라 이 필터만으로는 구분이 안 됐다.
+  // 증상: 7/31 손님이 며칠 뒤에도 체류 목록에 보이고, 퇴장을 누르면 서버가
+  //       「이미 퇴장 처리된 예약입니다」로 거절 (AutoExitScheduler가 30분 뒤 자동 퇴장시킨 건들).
   type StayRow = { key: string; source: "RESERVATION" | "ONSITE_WAITING"; refId: number; name: string; partySize: number; enteredAt: string | null; qrToken: string };
   const staying = useMemo<StayRow[]>(() => {
     return board
-      .filter((e) => e.entryStatus === "CHECKED_IN" || e.entryStatus === "ENTERED")
+      .filter((e) => (e.entryStatus === "CHECKED_IN" || e.entryStatus === "ENTERED") && !e.exitedAt)
       .map((e) => ({
         key: `${e.source}-${e.refId}`,
         source: e.source,
