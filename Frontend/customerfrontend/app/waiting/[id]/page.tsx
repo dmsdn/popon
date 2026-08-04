@@ -2,7 +2,7 @@
 
 // 웨이팅 상세 페이지 - 대기 순번, QR, 취소를 처리해요.
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -29,6 +29,28 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
   const { customer, loading: authLoading } = useAuth();
 
   const [waiting, setWaiting] = useState<Waiting | null>(null);
+  // [신규] "백엔드 없이 1등 되면 입장 알림을 줄 수 있어?"라는 요청 - 백엔드가
+  // 알림을 "보내주는" 방식(안 보고 있어도 알림함에 남는 방식)은 서버가 없으면
+  // 못 만들지만, 지금 이미 4초마다 내 순번을 다시 물어보고 있어서(아래
+  // useEffect), 그 값이 바뀌는 순간을 프론트에서 직접 감지해서 "지금 이 화면을
+  // 보고 있는 동안"만이라도 바로 모달을 띄워줄 수 있어요. 대신 이 화면을 나가
+  // 있으면(앱을 꺼두거나 다른 화면에 가 있으면) 못 띄워요 - 그런 경우까지
+  // 커버하려면 결국 서버가 실제로 알림을 만들어서 보내줘야 해요.
+  // teamsAhead가 0보다 컸다가(=아직 순서 아님) 0이 되는(=바로 다음 차례) 그
+  // "순간"만 딱 한 번 잡아내려고, 직전 값을 기억해뒀다가 비교해요.
+  const prevTeamsAheadRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!waiting || waiting.status !== "WAITING") return;
+    const prev = prevTeamsAheadRef.current;
+    prevTeamsAheadRef.current = waiting.teamsAhead;
+    if (prev !== null && prev > 0 && waiting.teamsAhead === 0) {
+      // 진동으로도 알려줘요 - 지원 안 하는 기기/브라우저면 조용히 무시돼요.
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+        navigator.vibrate?.([200, 100, 200]);
+      }
+      appAlert("다음 차례예요! 곧 입장하실 수 있어요.");
+    }
+  }, [waiting]);
 
   // [신규] 대기중/호출됨 상태일 때 입장 처리가 됐는지 몇 초마다 확인해서,
   // 처리되면 QR 대신 "입장 처리 완료" 안내로 자동 전환해요.
@@ -162,30 +184,19 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
           <Row label="등록 시간" value={new Date(waiting.registeredAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} />
         </section>
 
-        {/* [수정] 대기중(WAITING)일 때부터 QR을 그대로 보여주고 있었어요 -
-            아직 내 순서가 안 됐는데 입장 QR을 미리 보여주는 건 어색해서,
-            실제로 호출된(CALLED) 경우에만 QR을 보여주고 그 전엔 안내 문구로
-            바꿨어요. */}
-        {waiting.status === "CALLED" && (
+        {/* [수정] "내 순서가 됐을 때만(CALLED) QR을 보여준다"는 제한을 뺐어요 -
+            대기중(WAITING)이어도 언제든 입장 QR을 볼 수 있게 다시 열었어요. */}
+        {(waiting.status === "WAITING" || waiting.status === "CALLED") && (
           <section className="border border-gray-200 dark:border-[#282B32] rounded-xl p-5 flex flex-col items-center">
             <p className="text-sm font-semibold mb-3">입장 QR</p>
             <QRCodeDisplay qrToken={waiting.qrToken} />
           </section>
         )}
 
-        {waiting.status === "WAITING" && (
-          <section className="border border-gray-200 dark:border-[#282B32] rounded-xl p-5 flex flex-col items-center text-center">
-            <p className="text-sm font-medium mb-1">아직 순서가 되지 않았어요</p>
-            <p className="text-sm text-gray-400">
-              앞에 {waiting.teamsAhead}팀 있어요. 순서가 되면 입장 QR을 보여드려요.
-            </p>
-          </section>
-        )}
-
         {/* [신규] 방금 입장 처리가 된 경우 QR 대신 완료 안내를 보여줘요. */}
         {waiting.enteredAt && (
           <section className="border border-gray-200 dark:border-[#282B32] rounded-xl p-5 flex flex-col items-center">
-            <div className="w-16 h-16 mb-3 rounded-full bg-point/20 flex items-center justify-center text-point text-3xl">
+            <div className="w-16 h-16 mb-3 rounded-full border-2 border-point flex items-center justify-center text-point text-3xl">
               ✓
             </div>
             <p className="text-sm font-medium">입장 처리 됐어요. 즐거운 시간 보내세요!</p>

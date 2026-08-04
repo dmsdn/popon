@@ -217,6 +217,30 @@ export function getPopupWishlistCount(popupId: string | number) {
 // 게시중지된 팝업이 계속 보이던 문제의 원인 중 하나였어요.)
 export const HIDDEN_STATUSES = new Set(["PENDING", "REJECTED", "SUSPENDED"]);
 
+export interface PopularPopup {
+  popupId: number;
+  title: string;
+  companyName: string;
+  wishlistCount: number;
+  reviewCount: number;
+  clickCount: number;
+  totalScore: number;
+}
+
+// [신규 연결] GET /api/popups/popular?limit=&region= — 찜+후기+클릭수를 합산한
+// 진짜 인기순 랭킹이에요. 백엔드에 이미 있었는데(PopupPopularityService)
+// 프론트가 안 쓰고 있어서, 홈 화면 "인기 추천 팝업"이 사실은 그냥 진행중
+// 팝업을 순서대로 보여주는 가짜 인기순이었어요. 이 함수로 진짜 랭킹을 받아와요.
+// 이 응답엔 이미지/지역/날짜 등 카드에 필요한 나머지 정보가 없어서, 호출하는
+// 쪽에서 이미 불러온 팝업 목록과 popupId로 매칭해서 써야 해요.
+export function getPopularPopups(params?: { limit?: number; region?: string }) {
+  const query = new URLSearchParams();
+  if (params?.limit) query.set("limit", String(params.limit));
+  if (params?.region) query.set("region", params.region);
+  const qs = query.toString();
+  return apiFetch<PopularPopup[]>(`/api/popups/popular${qs ? `?${qs}` : ""}`);
+}
+
 export function searchPopups(params?: { location?: string; status?: string; keyword?: string }) {
   const query = new URLSearchParams();
   if (params?.location) query.set("location", params.location);
@@ -257,6 +281,12 @@ export interface PopupImage {
   id: number;
   imageUrl: string;
   sortOrder: number;
+  // [수정] 백엔드 PopupImageResponse엔 원래부터 있던 필드인데 프론트 타입에서
+  // 빠져 있었어요. 그래서 화면에서 썸네일/상세 이미지를 "배열 위치"로만
+  // 구분하고 있었고, sortOrder가 타입별로 각각 0부터 시작하다 보니 순서가
+  // 뒤섞이면 대표 이미지 자리에 상세 이미지가 뜨는 버그가 있었어요.
+  // (app/popup/[id]/page.tsx에서 type 기준으로 나누도록 같이 고쳤어요.)
+  type: "THUMBNAIL" | "DETAIL";
 }
 
 export function getPopupImages(popupId: string | number) {

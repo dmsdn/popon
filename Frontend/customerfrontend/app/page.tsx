@@ -28,7 +28,7 @@ import type { PopupItem } from "@/data/mockPopups";
 
 export default function Home() {
   const { customer } = useAuth();
-  const [openingSoon, setOpeningSoon] = useState<PopupItem[]>([]);
+  const [openPopups, setOpenPopups] = useState<PopupItem[]>([]);
   const [recentlyViewed, setRecentlyViewed] = useState<PopupItem[]>([]);
   const [allOpenPopups, setAllOpenPopups] = useState<PopupItem[]>([]);
   const [congestionItems, setCongestionItems] = useState<
@@ -43,15 +43,6 @@ export default function Home() {
 
   useEffect(() => {
     let cancelled = false;
-
-    searchPopups({ status: "BEFOR" })
-      .then((list) => {
-        if (!cancelled) setOpeningSoon(list.map(toPopupItem));
-      })
-      .catch((err) => console.error("오픈예정 팝업 조회 실패", err))
-      .finally(() => {
-        if (!cancelled) setLoaded(true);
-      });
 
     // "최근 본 팝업" - 이 브라우저에서 실제로 들어가봤던 팝업 상세페이지 기록 기준
     // (lib/recentlyViewed.ts, popup/[id]/page.tsx에서 방문 시 기록해요)
@@ -68,19 +59,30 @@ export default function Home() {
       }
     });
 
-    // "내 관심 지역"/"관심 카테고리"/"실시간 혼잡도" 섹션에서 같이 쓸 진행중 팝업 목록
+    // "내 관심 지역"/"관심 카테고리"/"실시간 혼잡도" 섹션 + [수정] "곧 오픈하는 팝업"
+    // 섹션이 예정 팝업은 아직 예약도 웨이팅도 열리지 않아 눌러도 할 게 없는 경우가
+    // 많았어요. 지금 바로 방문/예약 가능한 "진행중" 팝업으로 바꾸면서, 이미 같은
+    // status=OPEN으로 불러오고 있던 이 목록을 그대로 재사용해요 (중복 조회 방지).
     searchPopups({ status: "OPEN" })
       .then((list) => {
         if (cancelled) return;
         const items = list.map(toPopupItem);
         setAllOpenPopups(items);
+        setOpenPopups(items);
 
         // 실시간 혼잡도 - 진행중 팝업 중 앞쪽 8개만 골라서 개별 조회 (팝업별 API라 한 번에 못 가져옴)
         const targets = items.slice(0, 8);
         Promise.all(
           targets.map((item) =>
             Promise.all([getPopupLiveStatus(item.id), getPopupImages(item.id).catch(() => [])])
-              .then(([status, images]) => ({ item, status, imageUrl: images[0]?.imageUrl ?? null }))
+              .then(([status, images]) => ({
+                item,
+                status,
+                // [수정] 대표 이미지를 배열 맨 앞이 아니라 type === "THUMBNAIL"로 골라요.
+                // (상세 이미지만 있고 썸네일이 없는 팝업에서 배열 순서에 따라 상세
+                // 이미지가 대표 자리에 뜨는 버그 방지. 옛 데이터 대비 폴백은 유지)
+                imageUrl: (images.find((img) => img.type === "THUMBNAIL") ?? images[0])?.imageUrl ?? null,
+              }))
               .catch(() => null)
           )
         ).then((results) => {
@@ -105,7 +107,10 @@ export default function Home() {
           setEasyEntryItems(valid);
         });
       })
-      .catch((err) => console.error("진행중 팝업 조회 실패", err));
+      .catch((err) => console.error("진행중 팝업 조회 실패", err))
+      .finally(() => {
+        if (!cancelled) setLoaded(true);
+      });
 
     return () => {
       cancelled = true;
@@ -246,9 +251,9 @@ export default function Home() {
       )}
 
       <PopupSection
-        title="곧 오픈하는 팝업"
-        items={loaded ? openingSoon : []}
-        moreHref="/search?status=예정"
+        title="지금 진행중인 팝업"
+        items={loaded ? openPopups : []}
+        moreHref="/search?status=진행중"
       />
 
       {easyEntryPopupItems.length > 0 && (

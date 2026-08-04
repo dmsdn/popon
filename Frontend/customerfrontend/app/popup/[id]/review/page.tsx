@@ -5,7 +5,6 @@
 import { use, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createReview, updateReview, getMyReviews } from "@/lib/api/reviews";
-import { ApiError } from "@/lib/api/client";
 import { uploadFile } from "@/lib/api/upload";
 import { getPopup, getPopupImages, type PopupDetail } from "@/lib/api/popups";
 import { getMyReservations } from "@/lib/api/reservations";
@@ -76,7 +75,11 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
     // [신규] 상단에 대표 이미지를 보여주기 위한 조회
     getPopupImages(id)
       .then((images) => {
-        if (!cancelled) setMainImageUrl(images[0]?.imageUrl ?? null);
+        // [수정] 배열 맨 앞 대신 type === "THUMBNAIL"로 대표 이미지를 골라요.
+        // (상세 이미지만 있는 팝업에서 배열 순서에 따라 상세 이미지가 대표
+        // 자리에 뜨는 버그 방지. 옛 데이터 대비 폴백은 유지)
+        const cover = images.find((img) => img.type === "THUMBNAIL") ?? images[0];
+        if (!cancelled) setMainImageUrl(cover?.imageUrl ?? null);
       })
       .catch((err) => console.error("팝업 이미지 조회 실패", err));
     return () => {
@@ -220,13 +223,33 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
       router.replace(`/popup/${id}?tab=review`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "후기 등록에 실패했어요.";
-      // [수정] 문구 매칭만으로는 놓칠 수 있어서, 백엔드가 이 상황에 실제로 쓰는
-      // 400(Bad Request) 상태코드도 같이 확인해서 더 확실하게 판별해요.
-      const isDuplicate =
-        (err instanceof ApiError && err.status === 400 && message.includes("이미")) ||
-        (message.includes("이미") && (message.includes("작성") || message.includes("리뷰") || message.includes("후기")));
-      if (isDuplicate) {
-        setShowAlreadyReviewed(true);
+      // [수정] "후기를 이미 남겼습니다"를 감지하려고 message.includes("이미")로
+      // 검사하고 있었는데, "이미지"(image)라는 단어도 "이미"로 시작해서 - 사진
+      // 업로드 관련 에러(예: "이미지 크기가 너무 큽니다")가 나면 전혀 상관없는데도
+      // "이미 후기를 남겼다"는 안내가 잘못 떴어요. "이미 " (뒤에 띄어쓰기까지)로
+      // 검사해서 "이미지"와는 확실히 구분되게 했어요.
+      const looksLikeDuplicate =
+        message.includes("이미 ") &&
+        (message.includes("작성") || message.includes("리뷰") || message.includes("후기") || message.includes("댓글"));
+
+      if (looksLikeDuplicate) {
+        // [수정] "이미 작성했다"는 응답을 무조건 믿지 않고, 제출 실패 시점에 내 리뷰
+        // 목록을 다시 조회해서 진짜로 이 팝업에 내 리뷰가 있는지 한 번 더 확인해요.
+        // (실제로 이 팝업에 내 리뷰가 없는데도 이 오류가 뜨는 경우가 있었어요 - 이러면
+        // 사용자는 아무 안내도 없이 댓글을 영영 못 남기게 돼요. 진짜 중복일 때만
+        // "이미 남겼다" 안내를 띄우고, 아니면 다시 시도할 수 있게 일반 오류로 보여줘요.)
+        try {
+          const myReviews = await getMyReviews();
+          const reallyHasOne = myReviews.some((r) => r.popupId === popup.id);
+          if (reallyHasOne) {
+            setShowAlreadyReviewed(true);
+          } else {
+            setError("등록에 실패했어요. 잠시 후 다시 시도해주세요.");
+          }
+        } catch {
+          // 재확인 자체가 안 되면 원래 응답을 믿고 안내를 띄워요.
+          setShowAlreadyReviewed(true);
+        }
       } else {
         setError(message);
       }
@@ -366,7 +389,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
         />
       )}
 
-      {/* [신규] 이미 이 팝업에 후기/댓글을 남긴 경우 안내 팝업 */}
+      {/* [신규] 이미 이 팝업에 댓글/후기를 남긴 경우 안내 팝업 */}
       {showAlreadyReviewed && (
         <div
           className="fixed inset-0 bg-black/40 flex items-center justify-center px-6 z-50"
@@ -376,7 +399,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
             className="bg-white dark:bg-[#282B32] rounded-xl px-6 py-6 w-full max-w-xs text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="text-sm font-medium mb-6">이미 리뷰 / 댓글을 남겼습니다.</p>
+            <p className="text-sm font-medium mb-6">이미 댓글 / 후기를 남겼습니다.</p>
             <button
               type="button"
               onClick={() => router.replace(`/popup/${id}?tab=review`)}

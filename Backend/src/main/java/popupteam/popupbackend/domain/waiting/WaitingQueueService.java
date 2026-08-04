@@ -27,6 +27,7 @@ public class WaitingQueueService {
     private final popupteam.popupbackend.domain.eventlog.TransactionEventLogService transactionEventLogService;
     private final popupteam.popupbackend.domain.business.BusinessRepository businessRepository;
     private final popupteam.popupbackend.domain.popup.PopupOperatingHoursRepository popupOperatingHoursRepository;
+    private final popupteam.popupbackend.domain.notice.NoticeService noticeService;
 
     @org.springframework.beans.factory.annotation.Value("${app.qr-base-url}")
     private String qrBaseUrl;
@@ -87,6 +88,10 @@ public class WaitingQueueService {
         String qrMessage = "팝업스토어 입장 QR: " + qrBaseUrl + "/qr/" + saved.getQrToken();
         emailNotificationService.sendQrCode(saved.getEmail(), "팝업스토어 입장 QR 코드", qrMessage);
         smsNotificationService.sendQrCode(saved.getPhoneNumber(), qrMessage);
+
+        // 알림 #4 나머지 절반: 이메일/SMS는 이미 있었는데 인앱 알림함(Notice)엔 안 쌓이고 있었음
+        noticeService.notifyWaitingRegistered(saved);
+
         return WaitingResponse.from(saved, teamsAhead);
     }
 
@@ -132,7 +137,14 @@ public class WaitingQueueService {
 
         transactionEventLogService.log(w.getPopup().getId(), "WAITING", w.getId(), "CALLED", "system", null);
 
-        log.info("[카카오 알림 발송 대상] phone={}, teamNumber={}", w.getPhoneNumber(), w.getTeamNumber());
+        // 알림 #5 수정: 카카오 알림톡 연동 전이라 콘솔 로그만 찍고 실사용자에게는 아무것도 안 가던 부분.
+        // 카카오 알림톡이 준비되기 전까지는 기존에 이미 연동되어 있는 이메일/SMS로 대체 발송하고,
+        // 인앱 알림함에도 쌓아서 최소한 앱 안에서라도 "내 차례" 알림을 볼 수 있게 함.
+        String callMessage = "[" + w.getPopup().getTitle() + "] 웨이팅 " + w.getTeamNumber()
+                + "번, 지금 입장 차례입니다! 15분 내로 입장해주세요.";
+        emailNotificationService.sendQrCode(w.getEmail(), "지금 입장해주세요 - 웨이팅 " + w.getTeamNumber() + "번", callMessage);
+        smsNotificationService.sendQrCode(w.getPhoneNumber(), callMessage);
+        noticeService.notifyWaitingCalled(w);
 
         return WaitingResponse.from(w, 0L);
     }

@@ -129,14 +129,6 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
   }
 
   const isCancelled = reservation.status === "CANCELLED";
-  // [신규] QR 입장권을 예약 날짜 전에도 그냥 보여주고 있었어요 - 예약 당일에만
-  // 입장 QR을 받을 수 있어야 자연스러워서(그 전엔 어차피 입장 처리할 수도
-  // 없고), 오늘이 예약 날짜인지 따로 계산해서 아닐 땐 QR 대신 안내 문구를
-  // 보여주도록 했어요.
-  const reservationDateStr = reservation.slotId
-    ? slots.find((s) => s.id === reservation.slotId)?.slotDate ?? null
-    : reservation.reservationDate ?? null;
-  const isReservationDay = reservationDateStr === toLocalDateString(new Date());
   const dateTimeLabel = (() => {
     if (reservation.slotId) {
       const slot = slots.find((s) => s.id === reservation.slotId);
@@ -245,21 +237,14 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
             <p className="text-sm font-medium mb-4">{popup.title}</p>
             {reservation.entryStatus === "CHECKED_IN" ? (
               <>
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-point/20 flex items-center justify-center text-point text-3xl">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full border-2 border-point flex items-center justify-center text-point text-3xl">
                   ✓
                 </div>
                 <p className="text-sm font-medium mb-6">입장 처리 됐어요. 즐거운 시간 보내세요!</p>
               </>
-            ) : !isReservationDay ? (
-              // [신규] 예약 날짜 전에는 QR을 미리 보여주지 않고, 언제 볼 수
-              // 있는지 안내만 해요.
-              <>
-                <p className="text-sm font-medium mb-2">아직 예약 날짜가 아니에요</p>
-                <p className="text-sm text-gray-400 mb-6">
-                  {reservationDateStr}에 입장 QR을 확인할 수 있어요.
-                </p>
-              </>
             ) : (
+              // [수정] 예약 날짜 전엔 QR을 못 보게 막았었는데, 요청으로 다시
+              // 언제든(입장 처리 전까지) 볼 수 있게 열었어요.
               <>
                 <div className="flex justify-center mb-4">
                   <QRCodeDisplay qrToken={reservation.qrToken} />

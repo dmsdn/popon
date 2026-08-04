@@ -210,7 +210,11 @@ export default function MapPage() {
     let cancelled = false;
     getPopupImages(selected.id)
       .then((images) => {
-        if (!cancelled) setSelectedImageUrl(images[0]?.imageUrl ?? null);
+        // [수정] 배열 맨 앞 대신 type === "THUMBNAIL"로 대표 이미지를 골라요.
+        // (상세 이미지만 있는 팝업에서 배열 순서에 따라 상세 이미지가 대표
+        // 자리에 뜨는 버그 방지. 옛 데이터 대비 폴백은 유지)
+        const cover = images.find((img) => img.type === "THUMBNAIL") ?? images[0];
+        if (!cancelled) setSelectedImageUrl(cover?.imageUrl ?? null);
       })
       .catch(() => {
         if (!cancelled) setSelectedImageUrl(null);
@@ -263,9 +267,9 @@ export default function MapPage() {
               <div style="
                 width:40px; height:40px; border-radius:50%;
                 display:flex; align-items:center; justify-content:center;
-                background:#111827; border:3px solid white;
+                background:#5bce41; border:3px solid white;
                 box-shadow:0 2px 6px rgba(0,0,0,0.35);
-                color:#ffffff; font-size:14px; font-weight:700;
+                color:#111827; font-size:14px; font-weight:700;
               ">${cluster.items.length}</div>`,
             anchor: new window.naver.maps.Point(20, 20),
           },
@@ -396,7 +400,7 @@ export default function MapPage() {
           type="button"
           onClick={() => setShowUpcoming((v) => !v)}
           className={`flex-none whitespace-nowrap text-base px-3 py-1.5 rounded-full border ${
-            showUpcoming ? "bg-gray-900 text-white border-gray-900" : "border-gray-300 dark:border-[#282B32] text-gray-600 dark:text-gray-400"
+            showUpcoming ? "bg-point text-gray-900 dark:text-white border-point" : "border-gray-300 dark:border-[#282B32] text-gray-600 dark:text-gray-400"
           }`}
         >
           운영예정 {showUpcoming ? "숨기기" : "함께 보기"}
