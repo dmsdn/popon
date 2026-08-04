@@ -10,6 +10,9 @@ public interface BannerRepository extends JpaRepository<Banner, Long> {
 
     List<Banner> findAllByOrderBySortOrderAsc();
 
+    @Query("SELECT COALESCE(MAX(b.sortOrder), -1) FROM Banner b")
+    Integer findMaxSortOrder();
+
     @Query("SELECT b FROM Banner b WHERE b.active = true " +
             "AND (b.startDate IS NULL OR b.startDate <= :now) " +
             "AND (b.endDate IS NULL OR b.endDate >= :now) " +

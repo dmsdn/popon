@@ -7,8 +7,9 @@ import Link from "next/link";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import { getBanners, type Banner } from "@/lib/api/banners";
-import { searchPopups } from "@/lib/api/popups";
+import { searchPopups, getPopup } from "@/lib/api/popups";
 import { toPopupItem } from "@/lib/utils/popupMapper";
+import { toDisplayDate } from "@/lib/api/reviews";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 import type { PopupItem } from "@/data/mockPopups";
 
@@ -24,11 +25,26 @@ function normalizeLinkUrl(url: string): string {
 
 const PROMO_COUNT = 7;
 
+// ⚠️⚠️⚠️ [임시/디버그용 - 확인 끝나면 지워주세요] ⚠️⚠️⚠️
+// "날짜·지역이 실제로 어떻게 들어가는지 일단 눈으로 보고 싶다"고 하셔서,
+// 연결된 팝업 정보를 못 가져온 배너엔 이 더미 값을 대신 보여주도록 해뒀어요.
+// 레이아웃(제목 위 날짜·지역 줄) 확인용일 뿐, 실제 데이터가 아니에요.
+// 실제 연결이 잘 되는 게 확인되면(또는 원인을 고친 뒤) 아래 상수와
+// "?? TEMP_DEBUG_INFO" 부분을 지워서 원래대로("배너에 연결된 정보가 없으면
+// 그냥 아무것도 안 보여줌") 되돌리시면 돼요.
+const TEMP_DEBUG_INFO = { dateRange: "26.08.01 ~ 26.08.31", location: "성수" };
+
 // [수정] 관리자가 관리하는 실제 배너 API(GET /api/banners)가 생겨서 이제 그걸 우선
 // 써요. 아직 등록된 배너가 없으면(빈 배열) 기존처럼 진행중 팝업으로 대체합니다.
 export function PromoCarousel() {
   const [banners, setBanners] = useState<Banner[] | null>(null);
   const [fallbackCards, setFallbackCards] = useState<PopupItem[]>([]);
+  // [신규] 배너 API 자체엔 날짜/지역 필드가 없어서, 배너가 팝업 상세페이지로
+  // 연결돼있으면(linkUrl이 "/popup/{id}" 형태) 그 팝업의 실제 기간·지역
+  // 정보를 따로 가져와서 제목 위에 같이 보여줘요.
+  const [popupInfoByBannerId, setPopupInfoByBannerId] = useState<
+    Record<number, { dateRange: string; location: string | null }>
+  >({});
 
   useEffect(() => {
     let cancelled = false;
@@ -44,6 +60,58 @@ export function PromoCarousel() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!banners || banners.length === 0) return;
+    let cancelled = false;
+
+    // [수정] "^"로 문자열 맨 앞만 허용했었는데, linkUrl이 상대경로("/popup/13")가
+    // 아니라 도메인이 붙은 절대경로("https://.../popup/13")로 저장돼있으면 이
+    // 정규식이 하나도 안 걸려서 날짜·지역을 못 가져왔을 수 있어요. 문자열
+    // 안 어디에 있든 "/popup/숫자" 패턴만 찾도록 넓혔어요.
+    const targets = banners
+      .map((b) => {
+        const match = (b.linkUrl ?? "").match(/\/popups?\/(\d+)/);
+        return match ? { bannerId: b.id, popupId: Number(match[1]) } : null;
+      })
+      .filter((v): v is { bannerId: number; popupId: number } => v !== null);
+
+    // [신규] 디버깅용 - 배너에 linkUrl은 있는데 위 패턴과 안 맞아서 하나도
+    // 못 찾았으면, 실제 linkUrl 값이 뭔지 콘솔에 남겨요. 브라우저 개발자도구
+    // Console 탭에서 확인해보시면 원인 파악에 도움될 거예요.
+    if (targets.length === 0 && banners.some((b) => !!b.linkUrl)) {
+      console.warn(
+        "[PromoCarousel] 배너에 linkUrl은 있지만 '/popup/숫자' 패턴과 안 맞아서 날짜·지역을 못 가져왔어요. linkUrl 값:",
+        banners.map((b) => b.linkUrl)
+      );
+    }
+
+    Promise.all(
+      targets.map(({ bannerId, popupId }) =>
+        getPopup(popupId)
+          .then((p) => ({
+            bannerId,
+            dateRange: `${toDisplayDate(p.startDate)} ~ ${toDisplayDate(p.endDate)}`,
+            location: p.regionName ?? p.location ?? null,
+          }))
+          .catch((err) => {
+            console.error(`배너 연결 팝업(${popupId}) 조회 실패`, err);
+            return null;
+          })
+      )
+    ).then((results) => {
+      if (cancelled) return;
+      const next: Record<number, { dateRange: string; location: string | null }> = {};
+      results.forEach((r) => {
+        if (r) next[r.bannerId] = { dateRange: r.dateRange, location: r.location };
+      });
+      setPopupInfoByBannerId(next);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [banners]);
 
   useEffect(() => {
     if (banners === null) return;
@@ -132,23 +200,40 @@ export function PromoCarousel() {
                 const isActive = active === index;
                 // [신규] 실제 배너엔 지금까지 이미지만 있고 제목이 화면에
                 // 전혀 안 보였어요 - 아래 목업 카드(fallbackCards)처럼 좌하단에
-                // 제목을 겹쳐 보여줘요. 날짜·지역도 같이 보여달라는 요청이 있었는데,
-                // 배너 API(BannerResponse)에 아직 지역 필드가 없어서 우선 지금
-                // 있는 제목만 반영했어요 - 지역이 추가되면 이 자리에 같이 넣으면 돼요.
+                // 제목을 겹쳐 보여줘요. [수정] 제목 크기를 더 키우고(4xl) 굵기는
+                // 한 단계 낮췄어요(font-semibold → font-medium). 그 위에는 연결된
+                // 팝업의 날짜·지역을 회색으로 작게(예전 제목 크기만큼) 붙였어요.
+                // ⚠️ [임시/디버그용] 연결된 팝업 정보를 못 찾으면 더미 값을 보여줘요.
+                // 확인 끝나면 "?? TEMP_DEBUG_INFO" 지우고 원래대로 되돌려주세요.
+                const info = popupInfoByBannerId[banner.id] ?? TEMP_DEBUG_INFO;
                 const content = (
                   <>
                     <ImageWithFallback src={banner.imageUrl} className="w-full h-full object-cover" />
-                    {/* [신규] 가운데(선택된) 카드가 아니면 반투명 검은 막을 덮어서 눌러줘요 */}
+                    {(banner.title || info) && (
+                      <div className="absolute left-4 bottom-4 right-4">
+                        {info && (
+                          <p className="text-gray-300 text-base mobile:text-lg font-medium mb-1 drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)]">
+                            {info.dateRange}
+                            {info.location ? ` · ${info.location}` : ""}
+                          </p>
+                        )}
+                        {banner.title && (
+                          <p className="text-white text-3xl font-medium drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)]">
+                            {banner.title}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {/* [수정] 가운데(선택된) 카드가 아니면 반투명 검은 막을 덮어서
+                        눌러줘요 - 예전엔 이 막이 텍스트보다 아래(z-index)에 있어서
+                        이미지만 어두워지고 글자는 그대로 밝게 남아있었어요. 텍스트
+                        블록 뒤(DOM상 나중)로 옮겨서, 막이 텍스트까지 덮어 같이
+                        눌리도록 했어요. */}
                     <div
                       className={`absolute inset-0 bg-black transition-opacity duration-300 pointer-events-none ${
                         isActive ? "opacity-0" : "opacity-50"
                       }`}
                     />
-                    {banner.title && (
-                      <p className="absolute left-4 bottom-4 right-4 z-10 text-white text-base mobile:text-lg font-semibold drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)]">
-                        {banner.title}
-                      </p>
-                    )}
                   </>
                 );
                 return (
@@ -171,9 +256,11 @@ export function PromoCarousel() {
                       href={`/popup/${card.id}`}
                       className="relative block h-[400px] min-[700px]:h-[520px] min-[700px]:rounded-2xl overflow-hidden bg-gray-50 flex items-end p-4"
                     >
-                      <span className="relative z-10 text-sm mobile:text-base font-medium text-gray-700 dark:text-gray-300">
+                      <span className="relative text-sm mobile:text-base font-medium text-gray-700 dark:text-gray-300">
                         {card.name}
                       </span>
+                      {/* [수정] 위 실제 배너와 같은 이유로, 텍스트보다 나중(=위)에
+                          그려지도록 뒤로 옮겼어요. */}
                       <div
                         className={`absolute inset-0 bg-black transition-opacity duration-300 pointer-events-none ${
                           isActive ? "opacity-0" : "opacity-50"

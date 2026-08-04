@@ -95,8 +95,17 @@ app:
   # 개발용 로그인(소셜 없이 테스트 계정 발급) — 로컬에서만 true. 운영 배포 시 반드시 false/삭제.
   dev-login:
     enabled: true
-  # 웨이팅 등록 문자/메일에 넣는 입장 QR 링크의 앞부분 (WaitingQueueService가 주입 — ※ 없으면 부팅 실패)
-  qr-base-url: http://localhost:5173
+  # ⚠ 아래 두 값은 로컬에서도 **배포 주소**를 쓴다 — localhost 금지.
+  #   위 frontend-base-url은 내 브라우저로 돌아오는 리다이렉트라 localhost가 맞지만,
+  #   아래 둘은 공용 DB에 저장되거나(배너 링크) 손님에게 발송된다(입장 QR 문자·메일).
+  #   팀이 DB를 공유하므로 localhost를 넣으면 깨진 링크가 모두에게 보인다.
+  #
+  # 웨이팅 등록 문자/메일에 넣는 입장 QR 링크의 앞부분 (WaitingQueueService 주입 — 없으면 부팅 실패)
+  # 반드시 소비자 앱 origin — /qr/{token} 페이지가 거기에만 있다
+  qr-base-url: https://3.35.16.87.nip.io
+  # 팝업 연동 배너의 링크 앞부분 (BannerService 주입 — 없으면 부팅 실패, jsw 8/4 추가)
+  # customer-base-url + "/popup/" + popupId 로 이어 붙여 banner.link_url에 저장한다.
+  customer-base-url: https://3.35.16.87.nip.io
 
 # ── 개인 로컬 오버라이드 예시 ──
 # 이 파일을 같은 폴더에 application-local.yml 로 복사한 뒤 본인 값으로 수정하세요.

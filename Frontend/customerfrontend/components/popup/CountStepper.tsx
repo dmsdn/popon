@@ -50,7 +50,7 @@ export function CountStepper({ value, onChange, min = 1, max = 10, onExceedMax }
         onClick={() => onChange(Math.max(min, value - 1))}
         disabled={value <= min}
         aria-label="인원 줄이기"
-        className="w-8 h-8 rounded-full border border-gray-300 dark:border-[#282B32] flex items-center justify-center text-gray-600 dark:text-gray-400 disabled:opacity-30"
+        className="w-8 h-8 rounded-full border border-gray-300 dark:border-[#282B32] flex items-center justify-center text-gray-600 dark:text-gray-400 disabled:opacity-30 transition-transform active:scale-90 active:bg-gray-100 dark:active:bg-[#282B32] active:border-gray-400 dark:active:border-gray-500"
       >
         −
       </button>
@@ -89,7 +89,7 @@ export function CountStepper({ value, onChange, min = 1, max = 10, onExceedMax }
         onClick={() => onChange(Math.min(max, value + 1))}
         disabled={value >= max}
         aria-label="인원 늘리기"
-        className="w-8 h-8 rounded-full border border-gray-300 dark:border-[#282B32] flex items-center justify-center text-gray-600 dark:text-gray-400 disabled:opacity-30"
+        className="w-8 h-8 rounded-full border border-gray-300 dark:border-[#282B32] flex items-center justify-center text-gray-600 dark:text-gray-400 disabled:opacity-30 transition-transform active:scale-90 active:bg-gray-100 dark:active:bg-[#282B32] active:border-gray-400 dark:active:border-gray-500"
       >
         +
       </button>
