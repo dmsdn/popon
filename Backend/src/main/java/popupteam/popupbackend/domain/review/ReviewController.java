@@ -47,6 +47,14 @@ public class ReviewController {
         Long customerId = extractCustomerId(authHeader);
         validateImageCount(request.getImageUrls());
 
+        // 버그 수정: content가 비어있어도 DB NOT NULL 제약 위반(DataIntegrityViolationException)으로
+        // 떨어지는데, 그 예외를 무조건 "이미 리뷰를 작성하셨어요"로 바꿔버리고 있었음. 원인을 구분하지
+        // 않고 catch(DataIntegrityViolationException)에서 전부 중복 메시지로 뭉뚱그려진 게 문제였음 -
+        // 여기서 미리 걸러내면 그 catch 블록은 실제 중복(unique constraint) 케이스만 타게 된다.
+        if (request.getContent() == null || request.getContent().isBlank()) {
+            throw new IllegalArgumentException("내용을 입력해주세요.");
+        }
+
         // 방문 여부는 작성 가능 여부를 막는 조건이 아니라, 댓글 유형(방문자 후기/일반 댓글)을 구분하기 위한 값이다.
         // 방문자는 별점이 있는 "후기", 방문 안 한 사람은 별점이 없는 "댓글"로 취급한다.
         boolean visited = reservationRepository.existsByPopup_IdAndCustomer_IdAndEntryStatus(
@@ -179,6 +187,10 @@ public class ReviewController {
     ) {
         Long customerId = extractCustomerId(authHeader);
         validateImageCount(request.getImageUrls());
+
+        if (request.getContent() == null || request.getContent().isBlank()) {
+            throw new IllegalArgumentException("내용을 입력해주세요.");
+        }
 
         Review review = reviewRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("리뷰를 찾을 수 없어요."));
