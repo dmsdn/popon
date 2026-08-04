@@ -653,6 +653,18 @@ export function createAdminKeyword(name: string, icon?: File | null) {
   if (icon) form.append("icon", icon);
   return request<MasterItem>("/api/admin/keywords", { method: "POST", body: form });
 }
+
+// 카테고리 수정 (jmy 8/4 PATCH 신설) — 이름·아이콘 중 **보낸 값만** 부분 수정한다.
+//
+// 이게 생기기 전에는 오타 하나 고치려 해도 삭제 후 재등록뿐이었고, 그러면 그 카테고리를
+// 관심으로 골라둔 소비자 설정(customer_keyword)과 팝업 매핑까지 함께 지워졌다.
+// 이제 매핑을 유지한 채 이름·아이콘만 갈아끼울 수 있다.
+export function updateAdminKeyword(id: number, fields: { name?: string; icon?: File | null }) {
+  const form = new FormData();
+  if (fields.name) form.append("name", fields.name);
+  if (fields.icon) form.append("icon", fields.icon);
+  return request<MasterItem>(`/api/admin/keywords/${id}`, { method: "PATCH", body: form });
+}
 export function deleteAdminKeyword(id: number) {
   return request<{ success: boolean }>(`/api/admin/keywords/${id}`, { method: "DELETE" });
 }
