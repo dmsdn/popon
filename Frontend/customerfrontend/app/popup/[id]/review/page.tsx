@@ -389,7 +389,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
         />
       )}
 
-      {/* [신규] 이미 이 팝업에 후기/댓글을 남긴 경우 안내 팝업 */}
+      {/* [신규] 이미 이 팝업에 댓글/후기를 남긴 경우 안내 팝업 */}
       {showAlreadyReviewed && (
         <div
           className="fixed inset-0 bg-black/40 flex items-center justify-center px-6 z-50"
@@ -399,7 +399,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
             className="bg-white dark:bg-[#282B32] rounded-xl px-6 py-6 w-full max-w-xs text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="text-sm font-medium mb-6">이미 리뷰 / 댓글을 남겼습니다.</p>
+            <p className="text-sm font-medium mb-6">이미 댓글 / 후기를 남겼습니다.</p>
             <button
               type="button"
               onClick={() => router.replace(`/popup/${id}?tab=review`)}

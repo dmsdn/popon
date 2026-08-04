@@ -715,7 +715,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
           />
         )}
 
-        {/* [신규] 별점/댓글 버튼을 눌렀는데 이미 이 팝업에 후기·댓글을 남긴 경우 -
+        {/* [신규] 별점/댓글 버튼을 눌렀는데 이미 이 팝업에 댓글/후기를 남긴 경우 -
             후기 작성 페이지로 보내지 않고 여기서 바로 알려줘요. */}
         {showAlreadyReviewedNotice && (
           <div
@@ -726,7 +726,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
               className="bg-white dark:bg-[#282B32] rounded-xl px-6 py-6 w-full max-w-xs text-center"
               onClick={(e) => e.stopPropagation()}
             >
-              <p className="text-sm font-medium mb-6">이미 리뷰 / 댓글을 남겼습니다.</p>
+              <p className="text-sm font-medium mb-6">이미 댓글 / 후기를 남겼습니다.</p>
               <button
                 type="button"
                 onClick={() => setShowAlreadyReviewedNotice(false)}
