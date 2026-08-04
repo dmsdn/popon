@@ -84,6 +84,37 @@ public class AdminKeywordController {
         return ResponseEntity.status(201).body(result);
     }
 
+    // 카테고리 수정 - 이름/아이콘 중 보낸 값만 부분 수정. 팝업/찜 매핑은 그대로 유지되니
+    // 이름을 비슷한 단어로 바꾸거나 아이콘만 교체하고 싶을 때 삭제 후 재등록할 필요가 없다.
+    @PatchMapping(value = "/{id}", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Map<String, Object> update(Authentication authentication,
+                                       @PathVariable Long id,
+                                       @RequestParam(required = false) String name,
+                                       @RequestParam(required = false) MultipartFile icon) {
+        requireAdmin(authentication);
+        Keyword keyword = keywordRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 카테고리예요."));
+
+        if (name != null && !name.isBlank() && !name.equals(keyword.getName())) {
+            if (keywordRepository.existsByName(name)) {
+                throw new IllegalArgumentException("이미 있는 카테고리예요.");
+            }
+            keyword.setName(name);
+        }
+
+        if (icon != null && !icon.isEmpty()) {
+            byte[] resized = imageProcessingService.resizeToJpeg(icon, 128, 128, 0.9f);
+            keyword.setIconUrl(fileStorageService.storeBytes(resized, ".jpg"));
+        }
+
+        Keyword saved = keywordRepository.save(keyword);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("id", saved.getId());
+        result.put("name", saved.getName());
+        result.put("iconUrl", saved.getIconUrl());
+        return result;
+    }
+
     // 카테고리 삭제. 팝업이 사용 중이어도 강제 삭제 가능 - popup_keyword 매핑을 먼저 지우고,
     // 소비자가 관심 카테고리로 찜해뒀어도 customer_keyword 매핑을 지워서 자동 해지되게 한다.
     @DeleteMapping("/{id}")
