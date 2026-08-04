@@ -671,9 +671,8 @@ export type ReportItem = {
 export function getAdminReports(status?: "PENDING" | "PROCESSED") {
   return request<ReportItem[]>(`/api/admin/reports${status ? `?status=${status}` : ""}`);
 }
-export function processReport(id: number) {
-  return request<ReportItem>(`/api/admin/reports/${id}/process`, { method: "PATCH" });
-}
+// processReport는 8/4 삭제 — 존재하지 않는 /process 경로를 가리키던 죽은 함수.
+// 신고 처리는 7/30 개편으로 /reject·/hide-review 두 갈래가 됐고, 화면도 관리자 앱(5175)에 있다.
 
 // ── 공간(venue) 마스터 ──
 // ※ 7/28 정리: 파트너 공간 기능이 7/24 멘토 피드백으로 프론트에서 삭제되어 사용처 없음.
