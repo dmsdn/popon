@@ -2,7 +2,7 @@
 
 // 팝업 상세 페이지 - 정보/댓글·후기 탭, 예약·웨이팅 버튼, 상세이미지, SNS링크, 이용안내 등 팝업의 거의 모든 정보를 보여주는 핵심 페이지.
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Footer } from "@/components/layout/Footer";
@@ -46,11 +46,13 @@ import { toPopupItem } from "@/lib/utils/popupMapper";
 import { recordPopupView } from "@/lib/recentlyViewed";
 import { saveRedirectTarget } from "@/lib/postLoginRedirect";
 import { toLocalDateString } from "@/lib/utils/formatLocalDate";
+import { isTodayClosed, isDateClosed } from "@/lib/utils/operatingHours";
 import { StarRatingInput } from "@/components/popup/StarRatingInput";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 import { type PopupItem, type ReviewItem } from "@/data/mockPopups";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { appAlert, appChoice } from "@/lib/ui/alertStore";
+import { Checkbox } from "@/components/ui/Checkbox";
 
 const TABS = ["정보", "후기"] as const;
 
@@ -87,11 +89,16 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     searchParams.get("tab") === "review" ? "후기" : "정보"
   );
   const [myReviewsForPopup, setMyReviewsForPopup] = useState<Review[]>([]);
-  // [신규] 내가 쓴 후기 삭제 - 성공하면 화면에서도 바로 빼줘요.
+  const [popupReviews, setPopupReviews] = useState<Review[]>([]);
+  // [수정] 내가 쓴 후기 삭제 - 성공하면 화면에서도 바로 빼줘요.
+  // 이전엔 myReviewsForPopup에서만 지워서, popupReviews(전체 후기 목록)엔 그대로
+  // 남아있었어요. otherReviewsAsItems가 popupReviews를 "내 후기 id에 없는 것만"
+  // 걸러서 보여주다 보니, 방금 지운 후기가 오히려 "다른 사람 후기"인 것처럼
+  // 다시 나타나 보였고 새로고침(재조회)해야만 진짜로 사라졌어요.
   const handleDeleteReview = (reviewId: number) => {
     setMyReviewsForPopup((prev) => prev.filter((r) => r.id !== reviewId));
+    setPopupReviews((prev) => prev.filter((r) => r.id !== reviewId));
   };
-  const [popupReviews, setPopupReviews] = useState<Review[]>([]);
   const [reviewSort, setReviewSort] = useState<"latest" | "recommended">("latest");
   const [photoOnly, setPhotoOnly] = useState(false);
   // [수정] "방문 인증만" 체크박스 하나로는 "댓글만 보기"가 안 됐어요 - 전체/인증된
@@ -105,6 +112,16 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   const [waitTime, setWaitTime] = useState<PopupWaitTime | null>(null);
   const [queueCount, setQueueCount] = useState<number | null>(null);
   const [images, setImages] = useState<PopupImage[]>([]);
+  // [수정] 대표/상세 이미지를 "배열 순서"가 아니라 실제 type으로 갈라요.
+  // 상세 이미지 1장만 등록되고 대표(썸네일)가 비어있는 팝업에서, 그 상세
+  // 이미지가 대표 자리에 뜨고 정작 상세 섹션은 비어버리는 버그가 있었어요.
+  // (sortOrder가 THUMBNAIL/DETAIL 각각 0부터 시작해서, 대표를 images[0]로
+  // 잡으면 어느 쪽이 먼저 올지 id 순서에 좌우됐어요.)
+  const coverImage = useMemo(
+    () => images.find((img) => img.type === "THUMBNAIL") ?? images[0],
+    [images]
+  );
+  const detailImages = useMemo(() => images.filter((img) => img.type === "DETAIL"), [images]);
   const [waitingTeams, setWaitingTeams] = useState<number | null>(null);
   const [wishlistCount, setWishlistCount] = useState<number | undefined>(undefined);
   // [신규] 별점을 누르거나 "댓글만 남기기"를 눌렀을 때, 이미 이 팝업에 후기/댓글을
@@ -392,8 +409,8 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
           뺐어요. 높이는 450px 고정, 가운데 정렬(object-center)로 잘려요.
           찜 버튼은 하단바에 이미 있어서 여기서는 뺐어요. */}
       <div className="relative w-full h-[450px] bg-gray-100 dark:bg-[#282B32] overflow-hidden">
-        {images.length > 0 ? (
-          <ImageWithFallback src={images[0].imageUrl} className="w-full h-full object-contain" />
+        {coverImage ? (
+          <ImageWithFallback src={coverImage.imageUrl} className="w-full h-full object-contain" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
             등록된 이미지가 없어요
@@ -569,6 +586,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   minDate={new Date(popup.startDate)}
   maxDate={new Date(popup.endDate)}
   capacity={popup.capacity}
+  operatingHours={popup.operatingHours}
   onClose={() => setShowReservation(false)}
   onSubmit={async (date, count, slotId, time) => {
               if (!customer) {
@@ -580,6 +598,12 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
               // 같은 날 다른 시간대 예약까지 막혀버려서 요청과 안 맞았어요.
               // 진짜 막아야 하는 건 "완전히 같은 예약을 중복으로 넣는 것"이라,
               // 같은 팝업 + 같은 날짜 + 같은 시간대일 때만 막도록 좁혔어요.
+              // [신규] 달력에서 휴무 요일은 이미 선택 자체가 막혀있지만, 혹시 모를
+              // 이중 방어로 제출 시점에도 한 번 더 확인해요.
+              if (isDateClosed(popup.operatingHours, date)) {
+                await appAlert("휴무일에는 예약할 수 없어요. 다른 날짜를 선택해주세요.");
+                return;
+              }
               const targetDateStr = toLocalDateString(date);
               try {
                 const myReservations = await getMyReservations(customer.id);
@@ -760,14 +784,14 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                   전체를 하나로 묶어서 봤을 때 처음 200px 정도까지만 보이게 하고,
                   아래쪽에 그라데이션(위 투명 → 아래 흰색)과 "더보기" 버튼을 얹었어요.
                   누르면 전체가 펼쳐져요. */}
-              {images.length > 1 ? (
+              {detailImages.length > 0 ? (
                 <div className="relative">
                   <div
                     className="overflow-hidden transition-[max-height] duration-300 ease-in-out"
                     style={{ maxHeight: detailImagesExpanded ? 999999 : 200 }}
                   >
                     <div className="flex flex-col">
-                      {images.slice(1).map((img) => (
+                      {detailImages.map((img) => (
                         <ImageWithFallback key={img.id} src={img.imageUrl} className="w-full h-auto block" />
                       ))}
                     </div>
@@ -922,7 +946,9 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                         type="button"
                         onClick={() => setReviewFilter(value)}
                         className={`text-sm px-3 py-1.5 rounded-full ${
-                          reviewFilter === value ? "bg-gray-900 text-white" : "text-gray-500"
+                          reviewFilter === value
+                            ? "border border-point text-point font-medium"
+                            : "text-gray-500"
                         }`}
                       >
                         {label}
@@ -930,12 +956,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                     ))}
                   </div>
                   <label className="flex items-center gap-1.5 text-sm text-gray-500 flex-none ml-2">
-                    <input
-                      type="checkbox"
-                      checked={photoOnly}
-                      onChange={(e) => setPhotoOnly(e.target.checked)}
-                      className="w-3.5 h-3.5 accent-point"
-                    />
+                    <Checkbox size="sm" checked={photoOnly} onChange={() => setPhotoOnly(!photoOnly)} />
                     사진만
                   </label>
                 </div>
@@ -1012,6 +1033,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         waitingTeams={waitingTeams}
         wishlistCount={wishlistCount}
         businessPhone={popup.businessPhone}
+        todayClosed={isTodayClosed(popup.operatingHours)}
         onWishlistToggle={(nextActive) => {
           setWishlistCount((prev) => (prev === undefined ? prev : Math.max(0, prev + (nextActive ? 1 : -1))));
         }}
@@ -1038,6 +1060,12 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         if (!customer) {
           saveRedirectTarget(`/popup/${id}`);
           router.push("/login");
+          return;
+        }
+        // [신규] 버튼은 disabled로 막아뒀지만, 자정 넘어가는 시점 등 데이터가
+        // 잠깐 안 맞을 때를 대비한 이중 방어예요.
+        if (isTodayClosed(popup.operatingHours)) {
+          appAlert("오늘은 휴무일이라 웨이팅을 등록할 수 없어요.");
           return;
         }
         setShowWaiting(true);

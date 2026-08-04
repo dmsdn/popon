@@ -155,12 +155,12 @@ export default function EditProfilePage() {
 
   return (
     <main className="w-full mobile:max-w-[600px] mobile:mx-auto min-h-screen flex flex-col px-6 py-10">
-      <button type="button" onClick={() => router.back()} className="self-start text-sm text-gray-500 mb-6">
-        <img src="/icons/ui/back_arrow.svg" alt="" width={24} height={24} className="dark:invert" />
-          <span>뒤로</span>
-      </button>
-
-      <h1 className="text-lg font-bold mb-8">내 정보 수정</h1>
+      <div className="flex items-center gap-2 mb-8">
+        <button type="button" onClick={() => router.back()} aria-label="뒤로가기" className="text-gray-500 flex-none">
+          <img src="/icons/ui/back_arrow.svg" alt="" width={24} height={24} className="dark:invert" />
+        </button>
+        <h1 className="text-lg font-bold">내 정보 수정</h1>
+      </div>
 
       {/* [신규] 프로필 사진 수정 - 눌러서 파일 선택하면 정사각형으로 자른 뒤 업로드돼요. */}
       <div className="flex flex-col items-center mb-8">
@@ -178,7 +178,7 @@ export default function EditProfilePage() {
               </div>
             )}
           </div>
-          <span className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-gray-900 dark:bg-[#282B32] border-2 border-white dark:border-[#282B32] flex items-center justify-center">
+          <span className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-gray-500 dark:bg-gray-600 border-2 border-white dark:border-[#17181a] flex items-center justify-center">
             <img src="/icons/ui/picture.svg" alt="" width={14} height={14} className="invert" />
           </span>
           <input
@@ -253,15 +253,15 @@ export default function EditProfilePage() {
                 type="button"
                 onClick={() => setGender(value)}
                 className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-3 text-sm border ${
-                  gender === value ? "border-gray-900 text-gray-900 dark:text-white font-medium" : "border-gray-200 dark:border-[#282B32] text-gray-500"
+                  gender === value ? "border-point text-point font-medium" : "border-gray-200 dark:border-[#282B32] text-gray-500"
                 }`}
               >
                 <span
                   className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
-                    gender === value ? "border-gray-900 dark:border-white" : "border-gray-300 dark:border-[#282B32]"
+                    gender === value ? "border-point" : "border-gray-300 dark:border-[#282B32]"
                   }`}
                 >
-                  {gender === value && <span className="w-2 h-2 rounded-full bg-gray-900" />}
+                  {gender === value && <span className="w-2 h-2 rounded-full bg-point" />}
                 </span>
                 {label}
               </button>
@@ -293,7 +293,7 @@ export default function EditProfilePage() {
                 onClick={() => toggleKeyword(kw.id)}
                 className={`px-4 py-2 rounded-full text-sm border ${
                   selectedKeywordIds.includes(kw.id)
-                    ? "bg-gray-900 text-white border-gray-900"
+                    ? "border-point text-point"
                     : "border-gray-200 dark:border-[#282B32] text-gray-600 dark:text-gray-400"
                 }`}
               >
@@ -315,7 +315,7 @@ export default function EditProfilePage() {
                 onClick={() => toggleRegion(r.id)}
                 className={`px-4 py-2 rounded-full text-sm border ${
                   selectedRegionIds.includes(r.id)
-                    ? "bg-gray-900 text-white border-gray-900"
+                    ? "border-point text-point"
                     : "border-gray-200 dark:border-[#282B32] text-gray-600 dark:text-gray-400"
                 }`}
               >
@@ -329,7 +329,7 @@ export default function EditProfilePage() {
           type="button"
           onClick={handleSubmit}
           disabled={submitting || !canSubmit}
-          className="w-full rounded-full py-3.5 text-base font-medium bg-gray-900 text-white disabled:opacity-50 mt-4"
+          className="w-full rounded-full py-3.5 text-base font-medium bg-point text-gray-900 dark:text-white disabled:opacity-50 mt-4"
         >
           {submitting ? "저장하는 중..." : "저장하기"}
         </button>

@@ -54,6 +54,10 @@ export function withdrawCustomer() {
 export interface Keyword {
   id: number;
   name: string;
+  // [신규] 관리자가 카테고리별로 업로드하는 아이콘 이미지 - 백엔드가 아직
+  // 안 채워준 카테고리는 null/undefined로 와요(기존 8개 카테고리는 아이콘
+  // 파일이 없어요). 그런 경우 프론트에서 lucide 아이콘으로 대체해요.
+  iconUrl?: string | null;
 }
 
 export function getKeywords() {

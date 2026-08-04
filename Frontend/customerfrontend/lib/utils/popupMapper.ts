@@ -42,5 +42,7 @@ export function toPopupItem(popup: PopupDetail): PopupItem {
     // "이미지" 텍스트 placeholder 대신 진짜 이미지를 보여줄 수 있어요.
     imageUrl: popup.thumbnailImages?.[0],
     avgRating: popup.avgRating,
+    // [신규] 브랜드(주최사) 이름으로도 검색되게 - 백엔드가 companyName을 내려줘요.
+    brandName: popup.companyName,
   };
 }
