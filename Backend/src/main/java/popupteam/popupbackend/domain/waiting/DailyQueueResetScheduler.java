@@ -37,7 +37,7 @@ import java.util.List;
 @Slf4j
 public class DailyQueueResetScheduler {
 
-    /** 자정 리셋으로 넘어간 건임을 남기는 사유. 손님·직원이 직접 누른 취소(null)와 구분한다. */
+    /** 이벤트 로그에 남기는 사유 문구 (상태는 NO_SHOW enum으로 구분하므로 로그 전용) */
     public static final String REASON_NO_SHOW = "미입장";
 
     private final WaitingQueueRepository waitingQueueRepository;
@@ -53,12 +53,12 @@ public class DailyQueueResetScheduler {
         LocalDateTime dayStart = yesterday.atStartOfDay();
         LocalDateTime dayEnd = yesterday.plusDays(1).atStartOfDay();
 
-        // ① 현장 웨이팅 — 대기중 그대로 남은 건. 상태값을 늘리지 않고 CANCELLED + 사유로 구분한다.
+        // ① 현장 웨이팅 — 대기중 그대로 남은 건. 예약의 EntryStatus.NO_SHOW와 같은 사건이므로
+        //    같은 상태값(NO_SHOW)으로 확정한다. (CANCELLED+사유 문자열로 구분하던 우회는 8/4 당일 폐기)
         List<WaitingQueue> staleWaiting =
                 waitingQueueRepository.findUnprocessedOfDay(WaitingStatus.WAITING, dayStart, dayEnd);
         for (WaitingQueue w : staleWaiting) {
-            w.setStatus(WaitingStatus.CANCELLED);
-            w.setCancelReason(REASON_NO_SHOW);
+            w.setStatus(WaitingStatus.NO_SHOW);
             transactionEventLogService.log(w.getPopup().getId(), "WAITING", w.getId(),
                     "AUTO_NO_SHOW", "system", "자정 대기열 리셋 — " + REASON_NO_SHOW);
         }

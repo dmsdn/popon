@@ -6,7 +6,7 @@ import { Loader2, LogOut, QrCode, UserPlus, CheckCircle2, XCircle, Info, Clock3,
 import { useAuth } from "../../context/AuthContext";
 import {
   getMyPopups, getSlots, getPopupReservations, checkinReservation, markNoShow,
-  getQueueBoard, checkinUnifiedQr, exitUnifiedQr, registerWaiting, enterWaiting, cancelWaiting,
+  getQueueBoard, checkinUnifiedQr, exitUnifiedQr, registerWaiting, enterWaiting, noShowWaiting,
   Popup, PopupSlot, PopupStatusCode, ReservationDetail, UnifiedEntry,
 } from "../../lib/api";
 import {
@@ -219,8 +219,8 @@ export default function WaitingControl() {
     joinedAt: string | null; // 웨이팅 = 등록 시각 (예약은 서버가 다른 의미로 채워 표기에 안 씀)
     slotLabel: string;       // 사전예약의 예약 회차 "MM-DD HH:MM" (웨이팅은 "-")
     enteredAt: string | null;
-    // 8/4 — CANCELLED를 둘로 가른다. 직원·손님이 누른 취소와, 자정 리셋으로 넘어간
-    // 미입장은 운영상 의미가 달라 명단에서 구분돼야 한다(서버 cancelReason으로 판별).
+    // 8/4 — 미입장(노쇼 버튼·자정 리셋)은 취소와 별도 상태다.
+    // 웨이팅에도 NO_SHOW가 생겨 예약과 같은 문자열로 판별한다.
     status: "WAITING" | "ENTERED" | "NO_SHOW" | "CANCELLED";
   };
 
@@ -246,8 +246,8 @@ export default function WaitingControl() {
       enteredAt: entered ? ((detail?.checkedInAt ?? null) || e.joinedAt) : null,
       status: entered
         ? "ENTERED"
-        // 예약 NO_SHOW, 그리고 자정 리셋으로 미입장 처리된 웨이팅(cancelReason="미입장")이 「미입장」
-        : e.entryStatus === "NO_SHOW" || (e.entryStatus === "CANCELLED" && e.cancelReason)
+        // 예약·웨이팅 모두 NO_SHOW로 통일됨 (8/4) — cancelReason 분기 폐기
+        : e.entryStatus === "NO_SHOW"
           ? "NO_SHOW"
           : e.entryStatus === "CANCELLED"
             ? "CANCELLED"
@@ -364,11 +364,11 @@ export default function WaitingControl() {
 
   const handleNoShow = async (row: QueueRow) => {
     if (!popupId) return;
-    if (!window.confirm(`${row.name}님을 ${row.source === "RESERVATION" ? "노쇼" : "취소(노쇼)"}로 처리할까요?`)) return;
+    if (!window.confirm(`${row.name}님을 노쇼로 처리할까요?`)) return;
     setActingKey(row.key);
     try {
       if (row.source === "RESERVATION") await markNoShow(row.refId);
-      else await cancelWaiting(row.refId); // 웨이팅은 노쇼 상태가 없어 취소로 처리
+      else await noShowWaiting(row.refId); // 8/4 — 웨이팅도 전용 노쇼 API (취소와 분리)
       refreshBoard(popupId);
     } catch (e) {
       alert(e instanceof Error ? e.message : "처리에 실패했습니다.");

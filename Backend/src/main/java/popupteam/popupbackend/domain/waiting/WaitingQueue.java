@@ -59,9 +59,7 @@ public class WaitingQueue {
     // 퇴장 처리 시각 (null이면 아직 체류 중)
     private LocalDateTime exitedAt;
 
-    // 취소 사유 (8/4). CANCELLED가 어떤 취소인지 구분한다 —
-    // 손님·직원이 직접 누른 취소는 null, 자정 리셋으로 넘어간 건은 "미입장".
-    // 상태값을 늘리는 대신 사유로 구분한다(WaitingStatus는 jsw 도메인 enum이라 확장을 피했다).
-    @Column(name = "cancel_reason", length = 100)
-    private String cancelReason;
+    // cancel_reason 컬럼은 8/4 당일 폐기 — 미입장을 CANCELLED+사유 문자열로 구분하던 우회였는데,
+    // 「안 왔다」는 상태 그 자체이므로 WaitingStatus.NO_SHOW로 표현한다(예약의 EntryStatus.NO_SHOW와 동형).
+    // 폐기 시점에 이 컬럼에 저장된 데이터는 0건이었다. DB 컬럼은 남아 있어도 무해하다.
 }

@@ -55,7 +55,8 @@ export function getMyWaitingStatus(waitingId: number) {
 // app/qr/[token]/page.tsx가 3초마다 이걸 불러서 화면을 갱신해요.
 // 백엔드에 GET /api/waiting/qr/{token}이 7/31에 새로 생겼어요.
 export interface WaitingQrStatus {
-  status: "WAITING" | "CALLED" | "ENTERED" | "CANCELLED";
+  // NO_SHOW: 8/4 신설 — 직원 노쇼 처리 또는 자정 리셋으로 미입장 확정된 대기
+  status: "WAITING" | "CALLED" | "ENTERED" | "CANCELLED" | "NO_SHOW";
   popupTitle?: string;
   teamNumber?: number;
   teamsAhead?: number;

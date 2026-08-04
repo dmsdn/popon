@@ -177,12 +177,32 @@ public class WaitingQueueService {
         if (w.getStatus() == WaitingStatus.CANCELLED) {
             throw new IllegalArgumentException("취소된 대기입니다.");
         }
+        if (w.getStatus() == WaitingStatus.NO_SHOW) {
+            throw new IllegalArgumentException("미입장 처리된 대기입니다. 재방문 시 새로 웨이팅을 등록해 주세요.");
+        }
 
         w.setStatus(WaitingStatus.ENTERED);
         w.setEnteredAt(LocalDateTime.now());
         waitingQueueRepository.save(w);
 
         transactionEventLogService.log(w.getPopup().getId(), "WAITING", w.getId(), "ENTERED", "qr_scan", null);
+
+        return WaitingResponse.from(w, 0L);
+    }
+
+    // 주최자/관리자: 노쇼 처리 (8/4 신설). 예약의 markNoShow(EntryStatus.NO_SHOW)와 대칭 —
+    // 「안 왔다」는 취소가 아니라 별도 상태다. 노쇼율 집계가 취소와 섞이지 않게 한다.
+    public WaitingResponse noShow(Long waitingId) {
+        WaitingQueue w = waitingQueueRepository.findById(waitingId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 대기입니다."));
+
+        if (w.getStatus() == WaitingStatus.ENTERED) {
+            throw new IllegalArgumentException("이미 입장 처리된 대기는 노쇼로 바꿀 수 없습니다.");
+        }
+        w.setStatus(WaitingStatus.NO_SHOW);
+        waitingQueueRepository.save(w);
+
+        transactionEventLogService.log(w.getPopup().getId(), "WAITING", w.getId(), "NO_SHOW", "system", null);
 
         return WaitingResponse.from(w, 0L);
     }

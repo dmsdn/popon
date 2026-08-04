@@ -13,6 +13,7 @@ export const WAITING_STATUS_LABEL: Record<string, string> = {
   CALLED: "호출됨",
   ENTERED: "입장완료",
   CANCELLED: "취소됨",
+  NO_SHOW: "미입장", // 8/4 — 직원 노쇼 처리·자정 리셋. 예약의 entry_status NO_SHOW와 같은 사건
 };
 
 export const ENTRY_STATUS_LABEL: Record<string, string> = {

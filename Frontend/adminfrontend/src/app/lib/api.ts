@@ -370,7 +370,7 @@ export function generateSlots(popupId: number | string, perSlotCapacity?: number
 
 // ── 현장 웨이팅 (jsw waiting 도메인) ──
 
-export type WaitingStatusCode = "WAITING" | "CALLED" | "ENTERED" | "CANCELLED";
+export type WaitingStatusCode = "WAITING" | "CALLED" | "ENTERED" | "CANCELLED" | "NO_SHOW";
 
 export type WaitingItem = {
   id: number;
@@ -416,6 +416,11 @@ export function enterWaiting(id: number) {
 
 export function cancelWaiting(id: number) {
   return request<WaitingItem>(`/api/waiting/${id}/cancel`, { method: "PATCH" });
+}
+
+// 노쇼 처리 (8/4 신설) — 예약의 no-show와 대칭. 취소(본인 의사)와 미입장(안 옴)을 상태로 구분한다.
+export function noShowWaiting(id: number) {
+  return request<WaitingItem>(`/api/waiting/${id}/no-show`, { method: "PATCH" });
 }
 
 // ── 통합 대기열 (사전예약 + 현장 웨이팅) ──
