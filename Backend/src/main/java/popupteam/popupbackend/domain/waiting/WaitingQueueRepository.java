@@ -64,4 +64,18 @@ public interface WaitingQueueRepository extends JpaRepository<WaitingQueue, Long
     // 후기 작성 가능 여부 확인용 - 이 소비자가 이 팝업에 실제로 입장(ENTERED)한 웨이팅 기록이 있는지
     boolean existsByPopupIdAndCustomerIdAndStatus(Long popupId, Long customerId, WaitingStatus status);
 
+    // 누적 방문자 통계용 - 회원 웨이팅으로 입장한 인원만 (비회원은 정책상 통계 제외)
+    @Query("SELECT COALESCE(SUM(w.partySize), 0) FROM WaitingQueue w " +
+            "WHERE w.popup.id = :popupId AND w.status = 'ENTERED' AND w.customer IS NOT NULL")
+    long sumMemberVisitorsOfEntered(@Param("popupId") Long popupId);
+
+    // 일별 방문자 추이용 - 회원 웨이팅 입장자를 날짜별로 집계 (비회원 제외)
+    @Query("SELECT FUNCTION('DATE', w.enteredAt), COALESCE(SUM(w.partySize), 0) FROM WaitingQueue w " +
+            "WHERE w.popup.id = :popupId AND w.status = 'ENTERED' AND w.customer IS NOT NULL " +
+            "AND w.enteredAt >= :from AND w.enteredAt < :to " +
+            "GROUP BY FUNCTION('DATE', w.enteredAt) ORDER BY FUNCTION('DATE', w.enteredAt)")
+    List<Object[]> countDailyMemberEntered(@Param("popupId") Long popupId,
+                                           @Param("from") LocalDateTime from,
+                                           @Param("to") LocalDateTime to);
+
 }
