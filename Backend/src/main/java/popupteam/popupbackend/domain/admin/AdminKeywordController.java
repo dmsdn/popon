@@ -23,6 +23,7 @@ public class AdminKeywordController {
 
     private final KeywordRepository keywordRepository;
     private final CustomerKeywordRepository customerKeywordRepository;
+    private final popupteam.popupbackend.domain.popup.PopupKeywordRepository popupKeywordRepository;
 
     private void requireAdmin(Authentication authentication) {
         String name = authentication.getName();
@@ -61,13 +62,16 @@ public class AdminKeywordController {
         return ResponseEntity.status(201).body(Map.of("id", saved.getId(), "name", saved.getName()));
     }
 
-    // 카테고리 삭제. 이미 이걸 관심키워드로 고른 소비자가 있으면, 그 매핑도 같이 정리한다.
+    // 카테고리 삭제. 팝업이 사용 중이어도 강제 삭제 가능 - popup_keyword 매핑을 먼저 지우고,
+    // 소비자가 관심 카테고리로 찜해뒀어도 customer_keyword 매핑을 지워서 자동 해지되게 한다.
     @DeleteMapping("/{id}")
+    @org.springframework.transaction.annotation.Transactional
     public Map<String, Object> delete(Authentication authentication, @PathVariable Long id) {
         requireAdmin(authentication);
         if (!keywordRepository.existsById(id)) {
             throw new IllegalArgumentException("존재하지 않는 카테고리예요.");
         }
+        popupKeywordRepository.deleteByKeywordId(id);
         customerKeywordRepository.deleteByKeywordId(id);
         keywordRepository.deleteById(id);
         return Map.of("success", true);
