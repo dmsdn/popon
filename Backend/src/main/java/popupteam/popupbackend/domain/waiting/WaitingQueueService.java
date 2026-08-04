@@ -121,6 +121,17 @@ public class WaitingQueueService {
         return WaitingResponse.from(w, ahead);
     }
 
+    // QR 토큰으로 상태 조회 (7/31 신설 → 8/4 머지 유실 → 복구) — 손님의 /qr/{token} 화면이 폴링한다.
+    // 인증 없이 열리므로 개인정보를 담지 않는 전용 DTO를 쓴다 (WaitingQrStatusResponse 주석 참고).
+    public popupteam.popupbackend.domain.waiting.dto.WaitingQrStatusResponse getStatusByQr(String qrToken) {
+        WaitingQueue w = waitingQueueRepository.findByQrToken(qrToken)
+                .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 QR입니다."));
+        long ahead = w.getStatus() == WaitingStatus.WAITING
+                ? waitingQueueRepository.countAheadOf(w.getPopup().getId(), w.getId())
+                : 0;
+        return popupteam.popupbackend.domain.waiting.dto.WaitingQrStatusResponse.from(w, ahead);
+    }
+
     public WaitingResponse call(Long waitingId) {
         WaitingQueue w = waitingQueueRepository.findById(waitingId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 대기입니다."));
