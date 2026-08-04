@@ -67,7 +67,10 @@ export function StickyActionBar({
             disabled={!reservationEnabled}
             className="flex-1 rounded-full py-3 text-base font-medium border-2 border-point text-gray-900 dark:text-white disabled:opacity-40 disabled:border-gray-300 dark:disabled:border-gray-700"
           >
-            {reservationEnabled ? "사전 예약" : "예약 준비중"}
+            {/* [수정] 종료된 팝업인데 "예약 준비중"이라고 뜨면 마치 아직 시작
+                전인 것처럼 보여서 헷갈렸어요 - 종료된 경우엔 명확하게 종료
+                안내로 바꿨어요. */}
+            {reservationEnabled ? "사전 예약" : popupStatus === "종료" ? "종료된 팝업이에요" : "예약 준비중"}
           </button>
         )}
         {/* [수정] 웨이팅/예약을 아예 지원 안 하는 팝업(queueMode)이면 버튼 자체를
@@ -79,7 +82,9 @@ export function StickyActionBar({
             disabled={!waitingEnabled}
             className="flex-1 rounded-full py-3 text-base font-medium bg-point text-gray-900 dark:text-white disabled:opacity-40 disabled:bg-gray-300 dark:disabled:bg-gray-700"
           >
-            {!waitingEnabled
+            {popupStatus === "종료"
+              ? "종료된 팝업이에요"
+              : !waitingEnabled
               ? "웨이팅 준비중"
               : waitingTeams !== null && waitingTeams > 0
               ? `웨이팅 · ${waitingTeams}팀 대기중`

@@ -7,6 +7,7 @@ import { CountStepper } from "./CountStepper";
 import type { PopupSlot } from "@/lib/api/popups";
 import { RESERVATION_USAGE_GUIDE } from "@/lib/usageGuide";
 import { useScrollLock } from "@/lib/useScrollLock";
+import { appAlert } from "@/lib/ui/alertStore";
 
 interface ReservationModalProps {
   popupName: string;
@@ -294,7 +295,7 @@ export function ReservationModal({
                       disabled={!selectable}
                       onClick={() => setSelectedDate(cellDate)}
                       className={`w-7 h-7 mx-auto rounded-full text-sm flex items-center justify-center ${textClass} ${
-                        isSelected ? "bg-gray-900 !text-white font-medium" : ""
+                        isSelected ? "bg-point/25 !text-gray-900 dark:!text-white font-semibold" : ""
                       }`}
                     >
                       {day}
@@ -328,7 +329,7 @@ export function ReservationModal({
                           isFull || isPast
                             ? "border-gray-100 dark:border-[#282B32] text-gray-300 line-through"
                             : isSelected
-                            ? "bg-gray-900 text-white border-gray-900 font-medium"
+                            ? "bg-point/25 border-point text-gray-900 dark:text-white font-medium"
                             : "border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
                         }`}
                       >
@@ -356,7 +357,7 @@ export function ReservationModal({
                         isPast
                           ? "border-gray-100 dark:border-[#282B32] text-gray-300 line-through"
                           : selectedTime === time
-                          ? "bg-gray-900 text-white border-gray-900 font-medium"
+                          ? "bg-point/25 border-point text-gray-900 dark:text-white font-medium"
                           : "border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
                       }`}
                     >
@@ -377,7 +378,7 @@ export function ReservationModal({
             value={count}
             onChange={setCount}
             max={maxCount}
-            onExceedMax={(max) => alert(`이 팝업에 예약할 수 있는 최대 인원(${max}명)을 넘었어요.`)}
+            onExceedMax={(max) => appAlert(`이 팝업에 예약할 수 있는 최대 인원(${max}명)을 넘었어요.`)}
           />
         </div>
 

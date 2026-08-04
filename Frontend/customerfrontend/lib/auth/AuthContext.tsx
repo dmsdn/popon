@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, ReactNode, useCallback 
 import { getToken, setToken, clearToken, registerForceLogoutHandler } from "@/lib/api/client";
 import { getMyInfo, type CustomerInfo } from "@/lib/api/customer";
 import { resetWishlistStore } from "@/lib/wishlistStore";
+import { appAlert } from "@/lib/ui/alertStore";
 
 interface AuthContextValue {
   isLoggedIn: boolean;
@@ -157,8 +158,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     registerForceLogoutHandler(() => {
       logout();
       if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
-        alert("로그인이 만료되었거나 계정 정보가 변경됐어요. 다시 로그인해주세요.");
-        window.location.href = "/login";
+        // [수정] window.alert()는 동기라서 사용자가 확인을 누를 때까지 페이지
+        // 이동이 자동으로 미뤄졌는데, appAlert()는 비동기라 그냥 두면 모달이
+        // 뜨자마자 바로 로그인 화면으로 이동해버려요. .then()으로 모달을 닫은
+        // 뒤에 이동하도록 순서를 맞췄어요.
+        appAlert("로그인이 만료되었거나 계정 정보가 변경됐어요. 다시 로그인해주세요.").then(() => {
+          window.location.href = "/login";
+        });
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps

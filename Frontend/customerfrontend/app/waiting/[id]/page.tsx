@@ -16,6 +16,7 @@ import { getPopup, type PopupDetail } from "@/lib/api/popups";
 import { waitingStatusLabel } from "@/lib/utils/statusLabels";
 import { QRCodeDisplay } from "@/components/ui/QRCodeDisplay";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
+import { appAlert, appConfirm } from "@/lib/ui/alertStore";
 
 const POLICY = [
   "순서가 되면 카카오톡으로 알림을 보내드려요. 5분 내 미확인 시 다음 순번으로 넘어갈 수 있어요.",
@@ -71,25 +72,27 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
 
   const handleCancel = async () => {
     if (!waiting || !customer) return;
-    if (!confirm("웨이팅을 취소할까요?")) return;
+    if (!(await appConfirm("웨이팅을 취소할까요?"))) return;
     try {
       const updated = await cancelWaiting(waiting.id, customer.id);
       setWaiting(updated);
       removeMyWaitingId(waiting.id);
-      alert("웨이팅이 취소됐어요.");
+      await appAlert("웨이팅이 취소됐어요.");
       router.back();
     } catch (err) {
       console.error("웨이팅 취소 실패", err);
-      alert(err instanceof Error ? err.message : "웨이팅 취소에 실패했어요. 잠시 후 다시 시도해주세요.");
+      await appAlert(err instanceof Error ? err.message : "웨이팅 취소에 실패했어요. 잠시 후 다시 시도해주세요.");
     }
   };
 
   const handleShare = async () => {
     if (!popup) return;
+    // [수정] 예약 상세와 같은 문제 - 내 웨이팅 상세페이지 대신, 친구도 볼 수
+    // 있는 팝업 공개 페이지 링크를 보내요.
     const shareData = {
       title: popup.title,
-      text: `${popup.title} 웨이팅 현황을 공유해요.`,
-      url: window.location.href,
+      text: `${popup.title} 같이 갈래?`,
+      url: `${window.location.origin}/popup/${popup.id}`,
     };
     if (navigator.share) {
       try {
@@ -99,7 +102,7 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
       }
     } else {
       await navigator.clipboard.writeText(shareData.url);
-      alert("링크가 복사됐어요.");
+      await appAlert("링크가 복사됐어요.");
     }
   };
 
@@ -159,12 +162,23 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
           <Row label="등록 시간" value={new Date(waiting.registeredAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} />
         </section>
 
-        {/* [신규] 입장 전(대기중/호출됨)이면 QR을 보여줘요. 입장 완료/취소된
-            건은 더 이상 쓸 일이 없으니 숨겨요. */}
-        {(waiting.status === "WAITING" || waiting.status === "CALLED") && (
+        {/* [수정] 대기중(WAITING)일 때부터 QR을 그대로 보여주고 있었어요 -
+            아직 내 순서가 안 됐는데 입장 QR을 미리 보여주는 건 어색해서,
+            실제로 호출된(CALLED) 경우에만 QR을 보여주고 그 전엔 안내 문구로
+            바꿨어요. */}
+        {waiting.status === "CALLED" && (
           <section className="border border-gray-200 dark:border-[#282B32] rounded-xl p-5 flex flex-col items-center">
             <p className="text-sm font-semibold mb-3">입장 QR</p>
             <QRCodeDisplay qrToken={waiting.qrToken} />
+          </section>
+        )}
+
+        {waiting.status === "WAITING" && (
+          <section className="border border-gray-200 dark:border-[#282B32] rounded-xl p-5 flex flex-col items-center text-center">
+            <p className="text-sm font-medium mb-1">아직 순서가 되지 않았어요</p>
+            <p className="text-sm text-gray-400">
+              앞에 {waiting.teamsAhead}팀 있어요. 순서가 되면 입장 QR을 보여드려요.
+            </p>
           </section>
         )}
 
@@ -187,15 +201,19 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
           </ul>
         </section>
 
+        {/* [수정] 혼자 웨이팅한 경우엔 이 버튼을 숨기고, 취소 버튼보다 위로
+            옮겼어요. */}
+        {waiting.partySize > 1 && (
+          <button type="button" onClick={handleShare} className="w-full rounded-full py-3 text-base font-medium border border-gray-300 dark:border-[#282B32]">
+            함께 갈 친구에게 보내기
+          </button>
+        )}
+
         {isActive && (
           <button type="button" onClick={handleCancel} className="w-full rounded-full py-3 text-base font-medium bg-gray-100 dark:bg-[#282B32] text-gray-700 dark:text-gray-300">
             웨이팅 취소
           </button>
         )}
-
-        <button type="button" onClick={handleShare} className="w-full rounded-full py-3 text-base font-medium border border-gray-300 dark:border-[#282B32]">
-          함께 갈 친구에게 보내기
-        </button>
       </div>
     </main>
   );

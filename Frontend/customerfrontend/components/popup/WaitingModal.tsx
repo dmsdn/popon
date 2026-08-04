@@ -6,6 +6,7 @@ import { useState } from "react";
 import { CountStepper } from "./CountStepper";
 import { WAITING_USAGE_GUIDE } from "@/lib/usageGuide";
 import { useScrollLock } from "@/lib/useScrollLock";
+import { appAlert } from "@/lib/ui/alertStore";
 
 interface WaitingModalProps {
   popupName: string;
@@ -70,7 +71,7 @@ export function WaitingModal({ popupName, dateRange, location, notice, capacity,
             value={count}
             onChange={setCount}
             max={Math.max(1, capacity ?? 10)}
-            onExceedMax={(max) => alert(`이 팝업에 웨이팅 등록할 수 있는 최대 인원(${max}명)을 넘었어요.`)}
+            onExceedMax={(max) => appAlert(`이 팝업에 웨이팅 등록할 수 있는 최대 인원(${max}명)을 넘었어요.`)}
           />
         </div>
 
@@ -93,7 +94,7 @@ export function WaitingModal({ popupName, dateRange, location, notice, capacity,
         <button
           type="button"
           onClick={() => onSubmit(count)}
-          className="w-full rounded-full py-3.5 text-base font-medium bg-gray-900 text-white"
+          className="w-full rounded-full py-3.5 text-base font-medium bg-point text-gray-900 dark:text-white"
         >
           웨이팅하기
         </button>

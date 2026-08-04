@@ -13,6 +13,7 @@ import { BirthDatePicker } from "@/components/ui/BirthDatePicker";
 import { EmailInput } from "@/components/ui/EmailInput";
 import { LoadingState } from "@/components/ui/EmptyState";
 import { setToken } from "@/lib/api/client";
+import { appAlert } from "@/lib/ui/alertStore";
 import { decodeJwtPayload } from "@/lib/utils/decodeJwtPayload";
 
 const REQUIRED_TERMS = [
@@ -133,7 +134,7 @@ function SignupPageInner() {
     } catch (error) {
       console.warn("회원정보 제출 실패(개발 중 CORS 등으로 무시하고 진행)", error);
       if (process.env.NODE_ENV !== "development") {
-        alert("정보 저장에 실패했어요. 잠시 후 다시 시도해 주세요.");
+        await appAlert("정보 저장에 실패했어요. 잠시 후 다시 시도해 주세요.");
         setSubmitting(false);
         return;
       }
