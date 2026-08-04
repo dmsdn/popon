@@ -159,12 +159,15 @@ export default function Home() {
     return myKeywordIds.map((id) => nameById.get(id)).filter((n): n is string => !!n).slice(0, 2);
   }, [allKeywords, myKeywordIds]);
 
+  // [수정] 제목은 관심 지역 중 하나(featuredRegion)만 보여주는데, 목록은
+  // preferredRegions 전체(여러 지역)를 기준으로 필터링하고 있었어요. 그래서
+  // 관심 지역을 여러 개 선택해두면 "OO에 이런 팝업이 열려요"라고 하나만
+  // 짚어놓고, 실제로는 다른 지역 팝업까지 섞여서 나왔어요. 제목이랑 똑같이
+  // featuredRegion 하나만 기준으로 필터링하도록 맞췄어요.
   const regionPopups = useMemo(() => {
-    if (preferredRegions.length === 0) return [];
-    return allOpenPopups.filter((p) =>
-      preferredRegions.some((r) => p.location?.toLowerCase().includes(r.toLowerCase()))
-    );
-  }, [allOpenPopups, preferredRegions]);
+    if (!featuredRegion) return [];
+    return allOpenPopups.filter((p) => p.location?.toLowerCase().includes(featuredRegion.toLowerCase()));
+  }, [allOpenPopups, featuredRegion]);
 
   const categoryPopupLists = useMemo(() => {
     return preferredCategories.map((category) => ({
@@ -226,7 +229,7 @@ export default function Home() {
         <PopupSection
           title={`"${featuredRegion}"에 이런 팝업이 열려요`}
           items={regionPopups}
-          moreHref={`/search?region=${encodeURIComponent(preferredRegions.join(","))}`}
+          moreHref={`/search?region=${encodeURIComponent(featuredRegion)}`}
         />
       )}
 

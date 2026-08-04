@@ -37,13 +37,30 @@ export function SearchInput({
   return (
     <div className="relative flex-1">
       {isTyping && (
-        <Image
-          src="/icons/ui/Bar_Search.svg"
-          alt=""
-          width={16}
-          height={16}
-          className="absolute left-3 top-1/2 -translate-y-1/2 dark:invert"
-        />
+        <>
+          <Image
+            src="/icons/ui/Bar_Search_active.svg"
+            alt=""
+            width={24}
+            height={24}
+            className="absolute left-3 top-1/2 -translate-y-1/2 dark:hidden"
+          />
+          {/* [수정] Bar_Search_active_Dark.svg 파일이 아직 없어서 깨진 이미지로 뜨고
+              있었어요 - 다크 전용 파일 로드에 실패하면(onError) 라이트 파일로
+              바꾸고 invert 필터를 씌워서 최소한 아이콘은 보이게 했어요. */}
+          <Image
+            src="/icons/ui/Bar_Search_active_Dark.svg"
+            alt=""
+            width={24}
+            height={24}
+            className="absolute left-3 top-1/2 -translate-y-1/2 hidden dark:block"
+            onError={(e) => {
+              const img = e.currentTarget as HTMLImageElement;
+              img.src = "/icons/ui/Bar_Search_active.svg";
+              img.classList.add("invert");
+            }}
+          />
+        </>
       )}
 
       <input
@@ -81,7 +98,21 @@ export function SearchInput({
           onClick={handleSearch}
           className="absolute right-3 top-1/2 -translate-y-1/2"
         >
-          <Image src="/icons/ui/Bar_Search.svg" alt="" width={16} height={16} className="dark:invert" />
+          <>
+            <Image src="/icons/ui/Bar_Search_active.svg" alt="" width={24} height={24} className="dark:hidden" />
+            <Image
+              src="/icons/ui/Bar_Search_active_Dark.svg"
+              alt=""
+              width={24}
+              height={24}
+              className="hidden dark:block"
+              onError={(e) => {
+                const img = e.currentTarget as HTMLImageElement;
+                img.src = "/icons/ui/Bar_Search_active.svg";
+                img.classList.add("invert");
+              }}
+            />
+          </>
         </button>
       )}
     </div>

@@ -117,7 +117,7 @@ export default function MorePage() {
                 <span className="flex items-center gap-1.5">
                   {kw.name}
                   {myKeywordIds.includes(kw.id) && (
-                    <span className="text-sm text-gray-400">관심</span>
+                    <span className="text-sm text-point">관심</span>
                   )}
                 </span>
               </Link>
@@ -141,7 +141,7 @@ export default function MorePage() {
               <span className="flex items-center gap-1.5">
                 {region.name}
                 {myRegionIds.includes(region.id) && (
-                  <span className="text-sm text-gray-400">관심</span>
+                  <span className="text-sm text-point">관심</span>
                 )}
               </span>
             </Link>

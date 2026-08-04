@@ -9,6 +9,7 @@ import { submitPreferences } from "@/lib/api/auth";
 import { getRegions, saveMyRegions, type Region } from "@/lib/api/regions";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { consumeRedirectTarget } from "@/lib/postLoginRedirect";
+import { appAlert } from "@/lib/ui/alertStore";
 
 // [수정] 예전엔 백엔드 region이 서울/경기/부산 같은 시/도 단위라 이 앱이 쓰는 성수/홍대
 // 같은 동네 단위 선택이랑 안 맞아서 로컬 저장으로만 처리했었는데, 백엔드가 이제
@@ -63,7 +64,7 @@ export default function PreferencesPage() {
     } catch (error) {
       console.warn("취향 저장 실패(개발 중 CORS 등으로 무시하고 진행)", error);
       if (process.env.NODE_ENV !== "development") {
-        alert("저장에 실패했어요. 잠시 후 다시 시도해 주세요.");
+        await appAlert("저장에 실패했어요. 잠시 후 다시 시도해 주세요.");
         setSubmitting(false);
         return;
       }
