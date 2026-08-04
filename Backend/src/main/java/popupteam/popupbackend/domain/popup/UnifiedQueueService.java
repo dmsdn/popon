@@ -67,6 +67,7 @@ public class UnifiedQueueService {
                     .partySize(r.getPartySize())
                     .qrToken(r.getQrToken())
                     .entryStatus(r.getEntryStatus().name())
+                    .exitedAt(r.getExitedAt())
                     // 입장한 건은 입장 시각으로 줄을 세워야 체류 순서가 맞는다
                     .joinedAt(r.getCheckedInAt() != null ? r.getCheckedInAt() : slotStart)
                     .build());
@@ -87,6 +88,7 @@ public class UnifiedQueueService {
                     .qrToken(w.getQrToken())
                     .entryStatus(w.getStatus().name())
                     .cancelReason(w.getCancelReason())
+                    .exitedAt(w.getExitedAt())
                     .joinedAt(w.getEnteredAt() != null ? w.getEnteredAt() : w.getRegisteredAt())
                     .build());
         }

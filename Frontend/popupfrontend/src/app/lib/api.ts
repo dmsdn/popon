@@ -492,6 +492,9 @@ export type UnifiedEntry = {
   qrToken: string;
   entryStatus: string; // PENDING/CHECKED_IN/NO_SHOW(예약) · WAITING/ENTERED/CANCELLED(웨이팅)
   cancelReason?: string | null; // 웨이팅 취소 사유 (8/4) — 자정 리셋분은 "미입장"
+  // 퇴장 시각 (8/4). null이면 아직 체류 중.
+  // entryStatus는 퇴장 후에도 CHECKED_IN/ENTERED 그대로라, 체류 여부는 이 값으로 판단해야 한다.
+  exitedAt?: string | null;
   joinedAt: string; // 예약=슬롯 시작시각, 웨이팅=등록시각 (입장 후에는 둘 다 입장시각)
 };
 
