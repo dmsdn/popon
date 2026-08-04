@@ -42,6 +42,16 @@ public class WaitingQueueController {
         return ResponseEntity.ok(waitingQueueService.getMyStatus(id));
     }
 
+    // QR 토큰으로 상태 조회 (7/31 신설 → 8/4 머지 유실 → 복구).
+    // 손님의 /qr/{token} 화면이 3초 폴링한다. 소비자 앱과 SecurityConfig permitAll 규칙은
+    // 계속 이 경로를 보고 있었는데 핸들러만 사라져 QR 화면의 상태 갱신이 통째로 죽어 있었다.
+    // 비회원 웨이팅도 써야 하므로 인증을 걸지 않는다. 대신 **토큰을 아는 사람에게도
+    // 개인정보를 주지 않는다** — 응답(WaitingQrStatusResponse)에서 이름·연락처·이메일을 뺀다.
+    @GetMapping("/api/waiting/qr/{qrToken}")
+    public ResponseEntity<WaitingQrStatusResponse> getStatusByQr(@PathVariable String qrToken) {
+        return ResponseEntity.ok(waitingQueueService.getStatusByQr(qrToken));
+    }
+
     // 주최자/관리자: 호출 — 부활 (8/4 저녁).
     //
     // 오전에 「호출 기능 폐지」 판단으로 잠시 닫았다가, 호출 시 이메일·SMS·인앱 알림을 보내는
