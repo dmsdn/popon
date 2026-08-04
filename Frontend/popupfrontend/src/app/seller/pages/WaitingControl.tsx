@@ -26,6 +26,16 @@ const SHOW_QR_TOOLS = false;
 const fmtTime = (t: string | null) => (t ? t.slice(0, 5) : "");
 const fmtClock = (iso: string | null | undefined) => (iso ? iso.slice(11, 16) : "");
 
+// 로컬 기준 YYYY-MM-DD (toISOString은 UTC라 자정 근처에 날짜가 하루 밀린다 — 사용 금지)
+const localDateStr = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+const DOW = ["일", "월", "화", "수", "목", "금", "토"];
+const dateLabel = (ymd: string) => {
+  const d = new Date(`${ymd}T00:00:00`);
+  return `${ymd.slice(5).replace("-", "/")} (${DOW[d.getDay()]})`;
+};
+
 const MODE_LABEL: Record<OpsMode, string> = {
   RESERVATION: "사전예약만",
   WALKIN: "현장 웨이팅만",
@@ -34,31 +44,40 @@ const MODE_LABEL: Record<OpsMode, string> = {
 
 // 처리 열 공용 렌더 (8/3) — 대기중이면 입장/노쇼 버튼, 처리 후에는 상태 배지.
 // 행을 지우는 대신 배지로 남겨 명단이 당일 기록지 역할을 하게 한다.
-function QueueActions<T extends { key: string; status: "WAITING" | "ENTERED" | "NO_SHOW"; enteredAt: string | null }>({
-  row, actingKey, onEnter, onNoShow,
+function QueueActions<T extends {
+  key: string;
+  status: "WAITING" | "ENTERED" | "NO_SHOW" | "CANCELLED";
+  enteredAt: string | null;
+}>({
+  row, actingKey, readOnly, onEnter, onNoShow,
 }: {
   row: T;
   actingKey: string | null;
+  readOnly: boolean; // 지난 날짜는 확정된 기록이라 처리 버튼을 열지 않는다 (8/4)
   onEnter: (row: T) => void;
   onNoShow: (row: T) => void;
 }) {
+  const badge = (cls: string, icon: React.ReactNode, text: string) => (
+    <div className="flex justify-center">
+      <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${cls}`}>
+        {icon} {text}
+      </span>
+    </div>
+  );
+
   if (row.status === "NO_SHOW") {
-    return (
-      <div className="flex justify-center">
-        <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border bg-red-50 text-red-500 border-red-200">
-          <XCircle size={10} /> 노쇼처리됨
-        </span>
-      </div>
-    );
+    return badge("bg-red-50 text-red-500 border-red-200", <XCircle size={10} />, "미입장");
+  }
+  if (row.status === "CANCELLED") {
+    return badge("bg-slate-100 text-slate-500 border-slate-200", <XCircle size={10} />, "취소됨");
   }
   if (row.status === "ENTERED") {
-    return (
-      <div className="flex justify-center">
-        <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-600 border-emerald-200">
-          <CheckCircle2 size={10} /> 입장처리됨{row.enteredAt ? ` ${fmtClock(row.enteredAt)}` : ""}
-        </span>
-      </div>
-    );
+    return badge("bg-emerald-50 text-emerald-600 border-emerald-200", <CheckCircle2 size={10} />,
+      `입장처리됨${row.enteredAt ? ` ${fmtClock(row.enteredAt)}` : ""}`);
+  }
+  // 대기중인데 지난 날짜라면 자정 리셋 전 상태다 — 곧 미입장으로 확정된다
+  if (readOnly) {
+    return badge("bg-amber-50 text-amber-600 border-amber-200", <Clock3 size={10} />, "미처리");
   }
   return (
     <div className="flex items-center justify-center gap-1.5">
@@ -91,6 +110,8 @@ export default function WaitingControl() {
   const [board, setBoard] = useState<UnifiedEntry[]>([]);
   const [mode, setMode] = useState<OpsMode>("BOTH");
   // 8/3 — 슬롯 필터 폐지: 현장 대기열은 회차 구분 없는 전체 대기 하나다 (아래 개편 주석 참고)
+  // 8/4 — 대신 「날짜」로 끊는다. 대기열의 단위는 회차가 아니라 하루다.
+  const [day, setDay] = useState(() => localDateStr(new Date()));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [actingKey, setActingKey] = useState<string | null>(null);
@@ -121,7 +142,7 @@ export default function WaitingControl() {
 
   // 서버 데이터 로드 + 30초마다 갱신 (통합 보드가 사전예약 자동 편입·웨이팅 접수를 반영)
   const refreshBoard = (pid: number) => {
-    getQueueBoard(pid).then((b) => setBoard(b.entries)).catch(() => {});
+    getQueueBoard(pid, day).then((b) => setBoard(b.entries)).catch(() => {});
     getPopupReservations(pid).then(setRoster).catch(() => {});
   };
 
@@ -130,7 +151,7 @@ export default function WaitingControl() {
     let alive = true;
     const fetchAll = (withSpinner: boolean) => {
       if (withSpinner) setLoading(true);
-      Promise.all([getSlots(popupId), getPopupReservations(popupId), getQueueBoard(popupId)])
+      Promise.all([getSlots(popupId), getPopupReservations(popupId), getQueueBoard(popupId, day)])
         .then(([s, r, b]) => {
           if (!alive) return;
           setSlots(s);
@@ -154,12 +175,14 @@ export default function WaitingControl() {
         : qm === "BOTH" ? "BOTH"
         : loadOpsMode(popupId),
     );
-    const t = setInterval(() => fetchAll(false), 30_000);
+    // 지난 날짜는 더 이상 변하지 않는 기록이라 폴링하지 않는다 — 오늘일 때만 30초 갱신
+    const t = day === localDateStr(new Date()) ? setInterval(() => fetchAll(false), 30_000) : null;
     return () => {
       alive = false;
-      clearInterval(t);
+      if (t) clearInterval(t);
     };
-  }, [popupId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [popupId, day]);
 
   const selected = popups.find((p) => p.id === popupId) ?? null;
   const slotMap = useMemo(() => Object.fromEntries(slots.map((s) => [s.id, s])), [slots]);
@@ -185,7 +208,9 @@ export default function WaitingControl() {
     joinedAt: string | null; // 웨이팅 = 등록 시각 (예약은 서버가 다른 의미로 채워 표기에 안 씀)
     slotLabel: string;       // 사전예약의 예약 회차 "MM-DD HH:MM" (웨이팅은 "-")
     enteredAt: string | null;
-    status: "WAITING" | "ENTERED" | "NO_SHOW";
+    // 8/4 — CANCELLED를 둘로 가른다. 직원·손님이 누른 취소와, 자정 리셋으로 넘어간
+    // 미입장은 운영상 의미가 달라 명단에서 구분돼야 한다(서버 cancelReason으로 판별).
+    status: "WAITING" | "ENTERED" | "NO_SHOW" | "CANCELLED";
   };
 
   const slotLabelOf = (slotId: number | null | undefined): string => {
@@ -210,9 +235,12 @@ export default function WaitingControl() {
       enteredAt: entered ? ((detail?.checkedInAt ?? null) || e.joinedAt) : null,
       status: entered
         ? "ENTERED"
-        : e.entryStatus === "NO_SHOW" || e.entryStatus === "CANCELLED"
+        // 예약 NO_SHOW, 그리고 자정 리셋으로 미입장 처리된 웨이팅(cancelReason="미입장")이 「미입장」
+        : e.entryStatus === "NO_SHOW" || (e.entryStatus === "CANCELLED" && e.cancelReason)
           ? "NO_SHOW"
-          : "WAITING",
+          : e.entryStatus === "CANCELLED"
+            ? "CANCELLED"
+            : "WAITING",
     };
   };
 
@@ -231,6 +259,37 @@ export default function WaitingControl() {
     () => [...reservationRows, ...walkinRows].filter((r) => r.status === "WAITING"),
     [reservationRows, walkinRows],
   );
+
+  // ── 운영 날짜 목록 (8/4) ──
+  // 팝업 등록 때 정한 운영기간을 하루 단위로 펼친다. 지난 날짜를 고르면 그날 명단을
+  // 기록 그대로 볼 수 있다(자정 리셋으로 미처리분이 「미입장」으로 확정돼 있다).
+  // 오늘이 운영기간 밖이면(운영 전·종료 후) 오늘도 목록에 넣어 화면이 비지 않게 한다.
+  const todayStr = localDateStr(new Date(nowMs));
+  const operatingDays = useMemo(() => {
+    const days: string[] = [];
+    const s = selected?.startDate?.slice(0, 10);
+    const e = selected?.endDate?.slice(0, 10);
+    if (s && e) {
+      const cur = new Date(`${s}T00:00:00`);
+      const end = new Date(`${e}T00:00:00`);
+      // 운영기간이 아주 길어도 셀렉트가 감당할 범위(최대 120일)로 자른다
+      for (let i = 0; i < 120 && cur <= end; i++) {
+        days.push(localDateStr(cur));
+        cur.setDate(cur.getDate() + 1);
+      }
+    }
+    if (!days.includes(todayStr)) days.push(todayStr);
+    return days.sort();
+  }, [selected?.startDate, selected?.endDate, todayStr]);
+
+  const isPastDay = day < todayStr;
+  const isFutureDay = day > todayStr;
+  const readOnlyDay = isPastDay || isFutureDay;
+
+  // 팝업을 바꾸면 그 팝업의 오늘로 돌아간다 (남의 팝업 날짜가 남아 있으면 빈 화면이 뜬다)
+  useEffect(() => {
+    setDay(localDateStr(new Date()));
+  }, [popupId]);
 
   // ── 체류 인원: 서버 통합 보드의 입장완료(CHECKED_IN/ENTERED, 퇴장 전) 엔트리 — 7/23 전면 서버 기준 ──
   type StayRow = { key: string; source: "RESERVATION" | "ONSITE_WAITING"; refId: number; name: string; partySize: number; enteredAt: string | null; qrToken: string };
@@ -575,15 +634,50 @@ export default function WaitingControl() {
             </div>
           )}
 
+          {/* ── 날짜 선택 (8/4 신설) ──
+              대기열의 단위는 회차가 아니라 하루다. 팝업 운영기간을 일별로 펼쳐 고르게 하고,
+              지난 날짜를 고르면 그날 명단을 기록 그대로 본다(처리 버튼은 잠긴다).
+              매일 자정 5분에 서버가 전날 미처리분을 「미입장」으로 확정하고 대기열을 비운다. */}
+          <div className="bg-card border border-border rounded-sm px-4 py-3 flex flex-wrap items-center gap-3">
+            <span className="text-sm font-semibold">운영 날짜</span>
+            <select
+              value={day}
+              onChange={(e) => setDay(e.target.value)}
+              className="text-[12px] px-2.5 py-1.5 border border-border rounded-sm bg-card focus:outline-none focus:border-accent"
+              style={{ fontFamily: "'DM Mono', monospace" }}
+            >
+              {operatingDays.map((d) => (
+                <option key={d} value={d}>
+                  {dateLabel(d)}{d === todayStr ? " · 오늘" : ""}
+                </option>
+              ))}
+            </select>
+            {day !== todayStr && (
+              <button
+                onClick={() => setDay(todayStr)}
+                className="text-[11px] px-2 py-1 rounded-sm border border-border text-muted-foreground hover:border-accent hover:text-accent"
+              >
+                오늘로
+              </button>
+            )}
+            <span className="text-[11px] text-muted-foreground ml-auto">
+              {isPastDay
+                ? "지난 날짜의 확정된 기록입니다 — 처리할 수 없습니다"
+                : isFutureDay
+                  ? "아직 오지 않은 날짜입니다 — 예약 명단만 미리 볼 수 있습니다"
+                  : "매일 자정이 지나면 미처리 건이 「미입장」으로 확정되고 대기열이 비워집니다"}
+            </span>
+          </div>
+
           {/* ── 현장 대기열 — 전체 대기 하나, 사전예약·현장 웨이팅 표 2개 (8/3 전면 개편) ──
-              입장·노쇼를 처리해도 행이 사라지지 않는다: 상태 열에 「입장처리됨/노쇼처리됨」으로
-              남아 명단이 곧 당일 기록지가 된다. */}
+              입장·노쇼를 처리해도 행이 사라지지 않는다: 상태 열에 배지로 남아
+              명단이 곧 그날의 기록지가 된다. */}
           {mode !== "WALKIN" && (
             <div className="bg-card border border-border rounded-sm overflow-x-auto">
               <div className="px-4 py-3 border-b border-border flex flex-wrap items-center gap-2">
                 <span className="text-sm font-semibold">현장 대기열 — 사전예약</span>
                 <span className="text-[11px] text-muted-foreground">
-                  슬롯 시작 시각이 되면 그 회차 예약 명단이 자동으로 들어옵니다
+                  {readOnlyDay ? `${dateLabel(day)} 예약 명단` : "슬롯 시작 시각이 되면 그 회차 예약 명단이 자동으로 들어옵니다"}
                 </span>
               </div>
               {loading ? (
@@ -604,21 +698,21 @@ export default function WaitingControl() {
                   </thead>
                   <tbody className="divide-y divide-border">
                     {reservationRows.map((row, i) => (
-                      <tr key={row.key} className={row.status === "NO_SHOW" ? "opacity-60" : row.status === "ENTERED" ? "bg-emerald-50/40" : "hover:bg-secondary/40"}>
+                      <tr key={row.key} className={row.status === "NO_SHOW" || row.status === "CANCELLED" ? "opacity-60" : row.status === "ENTERED" ? "bg-emerald-50/40" : "hover:bg-secondary/40"}>
                         <td className="px-4 py-2.5 font-semibold" style={{ fontFamily: "'DM Mono', monospace" }}>#{i + 1}</td>
                         <td className="px-4 py-2.5 text-xs text-muted-foreground" style={{ fontFamily: "'DM Mono', monospace" }}>{row.slotLabel}</td>
                         <td className="px-4 py-2.5 font-medium">{row.name}</td>
                         <td className="px-4 py-2.5 text-xs text-muted-foreground">{row.contact}</td>
                         <td className="px-4 py-2.5 text-right">{row.partySize}명</td>
                         <td className="px-4 py-2.5">
-                          <QueueActions row={row} actingKey={actingKey} onEnter={handleEnter} onNoShow={handleNoShow} />
+                          <QueueActions row={row} actingKey={actingKey} readOnly={readOnlyDay} onEnter={handleEnter} onNoShow={handleNoShow} />
                         </td>
                       </tr>
                     ))}
                     {reservationRows.length === 0 && (
                       <tr>
                         <td colSpan={6} className="px-4 py-10 text-center text-xs text-muted-foreground">
-                          아직 편입된 사전예약이 없습니다. 슬롯 시작 시간이 되면 예약자가 자동으로 들어옵니다.
+                          {readOnlyDay ? `${dateLabel(day)}에 예약된 건이 없습니다.` : "아직 편입된 사전예약이 없습니다. 슬롯 시작 시간이 되면 예약자가 자동으로 들어옵니다."}
                         </td>
                       </tr>
                     )}
@@ -632,13 +726,18 @@ export default function WaitingControl() {
             <div className="bg-card border border-border rounded-sm overflow-x-auto">
               <div className="px-4 py-3 border-b border-border flex flex-wrap items-center gap-2">
                 <span className="text-sm font-semibold">현장 대기열 — 현장 웨이팅</span>
-                <span className="text-[11px] text-muted-foreground">줄 선 순서 그대로의 전체 대기입니다</span>
-                <button
-                  onClick={() => setAddOpen((v) => !v)}
-                  className="ml-auto flex items-center gap-1 text-xs px-3 py-1.5 rounded-sm border border-border hover:border-accent hover:text-accent"
-                >
-                  <UserPlus size={12} /> 대기 수동 추가
-                </button>
+                <span className="text-[11px] text-muted-foreground">
+                  {readOnlyDay ? `${dateLabel(day)} 접수 명단` : "줄 선 순서 그대로의 그날 전체 대기입니다"}
+                </span>
+                {/* 수동 추가는 오늘만 — 지난 날짜에 손님을 끼워 넣으면 기록이 어긋난다 (8/4) */}
+                {!readOnlyDay && (
+                  <button
+                    onClick={() => setAddOpen((v) => !v)}
+                    className="ml-auto flex items-center gap-1 text-xs px-3 py-1.5 rounded-sm border border-border hover:border-accent hover:text-accent"
+                  >
+                    <UserPlus size={12} /> 대기 수동 추가
+                  </button>
+                )}
               </div>
 
               {addOpen && (
@@ -699,7 +798,7 @@ export default function WaitingControl() {
                   </thead>
                   <tbody className="divide-y divide-border">
                     {walkinRows.map((row, i) => (
-                      <tr key={row.key} className={row.status === "NO_SHOW" ? "opacity-60" : row.status === "ENTERED" ? "bg-emerald-50/40" : "hover:bg-secondary/40"}>
+                      <tr key={row.key} className={row.status === "NO_SHOW" || row.status === "CANCELLED" ? "opacity-60" : row.status === "ENTERED" ? "bg-emerald-50/40" : "hover:bg-secondary/40"}>
                         <td className="px-4 py-2.5 font-semibold" style={{ fontFamily: "'DM Mono', monospace" }}>#{i + 1}</td>
                         {/* 입장 처리되면 서버가 joinedAt을 입장 시각으로 바꿔 보낸다 — 그때는 등록 시각 대신 "-" */}
                         <td className="px-4 py-2.5 text-xs text-muted-foreground" style={{ fontFamily: "'DM Mono', monospace" }}>
@@ -711,14 +810,14 @@ export default function WaitingControl() {
                         <td className="px-4 py-2.5 text-xs text-muted-foreground">{row.contact}</td>
                         <td className="px-4 py-2.5 text-right">{row.partySize}명</td>
                         <td className="px-4 py-2.5">
-                          <QueueActions row={row} actingKey={actingKey} onEnter={handleEnter} onNoShow={handleNoShow} />
+                          <QueueActions row={row} actingKey={actingKey} readOnly={readOnlyDay} onEnter={handleEnter} onNoShow={handleNoShow} />
                         </td>
                       </tr>
                     ))}
                     {walkinRows.length === 0 && (
                       <tr>
                         <td colSpan={6} className="px-4 py-10 text-center text-xs text-muted-foreground">
-                          현재 현장 웨이팅이 없습니다. 현장 접수 웹 또는 수동 추가로 등록되면 여기 표시됩니다.
+                          {readOnlyDay ? `${dateLabel(day)}에 접수된 현장 웨이팅이 없습니다.` : "현재 현장 웨이팅이 없습니다. 현장 접수 웹 또는 수동 추가로 등록되면 여기 표시됩니다."}
                         </td>
                       </tr>
                     )}
@@ -726,7 +825,7 @@ export default function WaitingControl() {
                 </table>
               )}
               <div className="px-4 py-2.5 border-t border-border text-[11px] text-muted-foreground">
-                서버 통합 대기열(30초 갱신) · 입장·노쇼 처리해도 명단에 남습니다 · 예약취소자는 편입되지 않습니다
+                서버 통합 대기열(오늘은 30초 갱신) · 입장·노쇼 처리해도 명단에 남습니다 · 매일 자정 5분에 전날 미처리 건이 「미입장」으로 확정되고 대기열이 비워집니다
               </div>
             </div>
           )}

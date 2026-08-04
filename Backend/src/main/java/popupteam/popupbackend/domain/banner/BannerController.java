@@ -1,12 +1,15 @@
 package popupteam.popupbackend.domain.banner;
 
 import popupteam.popupbackend.common.exception.ForbiddenException;
+import popupteam.popupbackend.domain.banner.dto.BannerFromPopupRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -20,8 +23,6 @@ public class BannerController {
             throw new ForbiddenException("관리자만 접근할 수 있습니다.");
         }
     }
-
-    // === 관리자용 ===
 
     @PostMapping("/api/admin/banners")
     public ResponseEntity<?> create(Authentication authentication,
@@ -58,6 +59,29 @@ public class BannerController {
         return ResponseEntity.ok(bannerService.update(id, title, linkUrl, sortOrder, startDate, endDate, active, file));
     }
 
+    // 배너로 등록할 수 있는 팝업 후보 목록 (진행중 + 오픈예정만)
+    @GetMapping("/api/admin/banners/eligible-popups")
+    public ResponseEntity<?> getEligiblePopups(Authentication authentication) {
+        checkAdmin(authentication);
+        return ResponseEntity.ok(bannerService.getEligiblePopups());
+    }
+
+    // 진행중/오픈예정 팝업 목록에서 관리자가 고른 팝업으로 배너 생성
+    @PostMapping("/api/admin/banners/from-popup")
+    public ResponseEntity<?> createFromPopup(Authentication authentication,
+                                             @Valid @RequestBody BannerFromPopupRequest request) {
+        checkAdmin(authentication);
+        return ResponseEntity.status(201)
+                .body(bannerService.createFromPopup(request.getPopupId(), request.getTitle(), request.getSortOrder()));
+    }
+
+    // 배너 노출 순서 일괄 변경
+    @PatchMapping("/api/admin/banners/reorder")
+    public ResponseEntity<?> reorder(Authentication authentication, @RequestBody List<Long> bannerIds) {
+        checkAdmin(authentication);
+        return ResponseEntity.ok(bannerService.reorder(bannerIds));
+    }
+
     @DeleteMapping("/api/admin/banners/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id, Authentication authentication) {
         checkAdmin(authentication);
@@ -70,8 +94,6 @@ public class BannerController {
         checkAdmin(authentication);
         return ResponseEntity.ok(bannerService.getAll());
     }
-
-    // === 공개(소비자)용 ===
 
     @GetMapping("/api/banners")
     public ResponseEntity<?> getActiveBanners() {

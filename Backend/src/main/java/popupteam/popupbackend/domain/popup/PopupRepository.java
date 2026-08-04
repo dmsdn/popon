@@ -46,6 +46,9 @@ public interface PopupRepository extends JpaRepository<Popup, Long> {
     @Query("SELECT p FROM Popup p JOIN FETCH p.business LEFT JOIN FETCH p.addressKeyword WHERE p.status = :status")
     List<Popup> findByStatus(@Param("status") PopupStatus status);
 
+    // 배너 등록 시 "진행중/오픈예정" 팝업만 골라 보여주기 위한 조회
+    List<Popup> findByStatusInOrderByCreatedAtDesc(List<PopupStatus> statuses);
+
     // 오픈/종료 임박 알림 스케줄러용 - 특정 날짜에 시작/종료하는 팝업 조회
     @Query("SELECT p FROM Popup p WHERE FUNCTION('DATE', p.startDate) = :date AND p.status IN (popupteam.popupbackend.domain.popup.PopupStatus.BEFOR, popupteam.popupbackend.domain.popup.PopupStatus.OPEN)")
     List<Popup> findByStartDateOnDate(@Param("date") LocalDate date);

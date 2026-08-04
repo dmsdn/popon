@@ -15,22 +15,25 @@ public class Banner {
     private Long id;
 
     @Column(nullable = false)
-    private String title; // 관리용 제목 (소비자에게 노출 안 됨)
+    private String title;
 
     @Column(name = "image_url", nullable = false)
     private String imageUrl;
 
     @Column(name = "link_url")
-    private String linkUrl; // 클릭 시 이동할 주소 (예: 팝업 상세페이지)
+    private String linkUrl;
+
+    @Column(name = "popup_id")
+    private Long popupId;
 
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder = 0;
 
     @Column(name = "start_date")
-    private LocalDateTime startDate; // null이면 시작일 제한 없음
+    private LocalDateTime startDate;
 
     @Column(name = "end_date")
-    private LocalDateTime endDate; // null이면 종료일 제한 없음
+    private LocalDateTime endDate;
 
     @Column(nullable = false)
     private Boolean active = true;

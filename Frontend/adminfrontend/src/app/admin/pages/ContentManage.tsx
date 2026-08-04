@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { Plus, Eye, EyeOff, Newspaper, Image as ImageIcon, Trash2, Loader2, Megaphone } from "lucide-react";
 import {
   getAdminBanners, createBanner, updateBanner, deleteBanner, Banner,
+  getBannerEligiblePopups, createBannerFromPopup, EligiblePopup,
   getAdminAnnouncements, createAnnouncement, deleteAnnouncement, Announcement,
 } from "../../lib/api";
+import { consumerPopupUrl } from "../../lib/siteUrls";
 
 // 배너·공지 관리 — 7/28 실연동 (banner·announcement 백엔드는 7/27 jsw 신설)
 // 배너: 소비자 홈 상단 캐러셀 / 공지 배너: 소비자 홈 공지줄
@@ -26,7 +28,16 @@ export default function ContentManage() {
   const [actingId, setActingId] = useState<string | null>(null); // "banner:3" / "ann:1" — 두 목록 id 충돌 방지
 
   // 배너 추가 폼 — 7/29부터 URL 직접 입력이 아니라 파일 업로드 (백엔드가 multipart를 받는다)
+  //
+  // 8/4 — 등록 방식이 둘로 갈렸다.
+  //   POPUP : 승인된 팝업을 고르면 이미지·링크를 서버가 그 팝업에서 가져온다(POST .../from-popup).
+  //           관리자가 같은 이미지를 다시 올릴 이유가 없고, 링크 형식도 서버가 단일 관리한다.
+  //   URL   : 팝업과 무관한 배너(이벤트·외부 홍보). 기존처럼 제목·이미지·링크를 직접 받는다.
   const [showBannerForm, setShowBannerForm] = useState(false);
+  const [bMode, setBMode] = useState<"POPUP" | "URL">("POPUP");
+  const [eligible, setEligible] = useState<EligiblePopup[]>([]);
+  const [eligibleErr, setEligibleErr] = useState("");
+  const [pickedPopupId, setPickedPopupId] = useState<number | "">("");
   const [bForm, setBForm] = useState({ title: "", linkUrl: "" });
   const [bFile, setBFile] = useState<File | null>(null);
   const bFileRef = useRef<HTMLInputElement>(null);
@@ -41,6 +52,31 @@ export default function ContentManage() {
     setBPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [bFile]);
+  // 팝업 후보는 폼을 처음 열 때 한 번만 받는다 (승인된 팝업 목록이라 자주 바뀌지 않는다)
+  useEffect(() => {
+    if (!showBannerForm || eligible.length > 0) return;
+    getBannerEligiblePopups()
+      .then((list) => { setEligible(list); setEligibleErr(""); })
+      .catch((e) => setEligibleErr(e instanceof Error ? e.message : "팝업 목록을 불러오지 못했습니다."));
+  }, [showBannerForm, eligible.length]);
+
+  const pickedPopup = eligible.find((p) => p.id === pickedPopupId) ?? null;
+
+  // 팝업을 고르면 제목을 팝업명으로 채워 준다 — 그대로 써도 되고 홍보문구로 고쳐도 된다
+  const onPickPopup = (id: number | "") => {
+    setPickedPopupId(id);
+    const p = eligible.find((x) => x.id === id);
+    if (p) setBForm((prev) => ({ ...prev, title: p.title }));
+  };
+
+  const resetBannerForm = () => {
+    setBForm({ title: "", linkUrl: "" });
+    setBFile(null);
+    setPickedPopupId("");
+    if (bFileRef.current) bFileRef.current.value = ""; // 같은 파일을 다시 고를 수 있게 비운다
+    setShowBannerForm(false);
+  };
+
   // 공지 추가 폼
   const [showAnnForm, setShowAnnForm] = useState(false);
   const [aForm, setAForm] = useState({ title: "", content: "" });
@@ -85,19 +121,28 @@ export default function ContentManage() {
 
   const submitBanner = async () => {
     if (!bForm.title.trim()) return alert("배너 제목을 입력해 주세요.");
-    if (!bFile) return alert("배너 이미지 파일을 선택해 주세요.");
+    if (bMode === "POPUP") {
+      if (pickedPopupId === "") return alert("배너로 만들 팝업을 선택해 주세요.");
+      // 썸네일이 없는 팝업은 서버도 거절한다 — 여기서 먼저 막아 사유를 분명히 알린다
+      if (!pickedPopup?.thumbnailImageUrl) {
+        return alert("이 팝업은 대표(썸네일) 이미지가 없어 배너로 만들 수 없습니다.\n팝업에 썸네일을 먼저 등록해 주세요.");
+      }
+    } else if (!bFile) {
+      return alert("배너 이미지 파일을 선택해 주세요.");
+    }
+
     setActingId("banner:new");
     try {
-      const created = await createBanner(bFile, {
-        title: bForm.title.trim(),
-        linkUrl: bForm.linkUrl.trim() || undefined,
-        sortOrder: banners.length + 1,
-      });
+      const created = bMode === "POPUP"
+        // 이미지·링크는 보내지 않는다 — 서버가 그 팝업의 썸네일과 상세페이지 주소로 채운다
+        ? await createBannerFromPopup(Number(pickedPopupId), bForm.title.trim(), banners.length + 1)
+        : await createBanner(bFile!, {
+            title: bForm.title.trim(),
+            linkUrl: bForm.linkUrl.trim() || undefined,
+            sortOrder: banners.length + 1,
+          });
       setBanners((prev) => [...prev, created]);
-      setBForm({ title: "", linkUrl: "" });
-      setBFile(null);
-      if (bFileRef.current) bFileRef.current.value = ""; // 같은 파일을 다시 고를 수 있게 비운다
-      setShowBannerForm(false);
+      resetBannerForm();
     } catch (e) {
       alert(e instanceof Error ? e.message : "등록에 실패했습니다.");
     } finally {
@@ -166,40 +211,121 @@ export default function ContentManage() {
             </div>
 
             {showBannerForm && (
-              <div className="px-4 py-3 border-b border-border bg-secondary/40 flex flex-wrap items-end gap-2">
-                <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
-                  제목 *
-                  <input className={inputCls + " w-52"} value={bForm.title} onChange={(e) => setBForm((p) => ({ ...p, title: e.target.value }))} />
-                </label>
-                <label className="flex flex-col gap-1 text-[11px] text-muted-foreground flex-1 min-w-[240px]">
-                  배너 이미지 * <span className="normal-case">(JPG·PNG · 서버가 1080×1440으로 변환)</span>
-                  <div className="flex items-center gap-2">
-                    <input
-                      ref={bFileRef}
-                      type="file"
-                      accept="image/jpeg,image/png"
-                      onChange={(e) => setBFile(e.target.files?.[0] ?? null)}
-                      className="hidden"
-                    />
+              <div className="px-4 py-3 border-b border-border bg-secondary/40 flex flex-col gap-3">
+                {/* 등록 방식 (8/4) — 팝업을 고르면 이미지·링크가 자동으로 채워진다 */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-muted-foreground">등록 방식</span>
+                  {([["POPUP", "팝업 등록"], ["URL", "외부 URL 등록"]] as const).map(([v, label]) => (
                     <button
+                      key={v}
                       type="button"
-                      onClick={() => bFileRef.current?.click()}
-                      className={inputCls + " flex-1 min-w-0 text-left truncate hover:border-accent"}
+                      onClick={() => setBMode(v)}
+                      className={`text-xs px-3 py-1.5 rounded-sm border transition-colors ${
+                        bMode === v
+                          ? "border-accent text-accent bg-accent/5 font-medium"
+                          : "border-border text-muted-foreground hover:border-accent"
+                      }`}
                     >
-                      {bFile ? bFile.name : "클릭하여 파일 선택"}
+                      {label}
                     </button>
-                    {bPreview && (
-                      <img src={bPreview} alt="" className="w-12 h-9 object-cover rounded-sm border border-border shrink-0" />
-                    )}
+                  ))}
+                  <span className="text-[11px] text-muted-foreground ml-1">
+                    {bMode === "POPUP"
+                      ? "진행중·오픈예정 팝업을 고르면 대표 이미지와 상세페이지 링크가 자동으로 채워집니다"
+                      : "팝업과 무관한 배너 — 이미지와 링크를 직접 입력합니다"}
+                  </span>
+                </div>
+
+                {bMode === "POPUP" ? (
+                  <div className="flex flex-wrap items-end gap-2">
+                    <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                      팝업 선택 *
+                      <select
+                        className={inputCls + " w-60"}
+                        value={pickedPopupId === "" ? "" : String(pickedPopupId)}
+                        onChange={(e) => onPickPopup(e.target.value ? Number(e.target.value) : "")}
+                      >
+                        <option value="">팝업을 선택하세요</option>
+                        {eligible.map((p) => (
+                          <option key={p.id} value={p.id} disabled={!p.thumbnailImageUrl}>
+                            [{p.status === "OPEN" ? "진행중" : "오픈예정"}] {p.title}
+                            {p.thumbnailImageUrl ? "" : " (썸네일 없음)"}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                      제목 * <span className="normal-case">(팝업명이 채워집니다 — 홍보문구로 고쳐도 됩니다)</span>
+                      <input className={inputCls + " w-64"} value={bForm.title} onChange={(e) => setBForm((p) => ({ ...p, title: e.target.value }))} />
+                    </label>
+                    {/* 자동으로 채워지는 값 — 읽기 전용으로 보여 준다 */}
+                    <div className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                      배너 이미지 <span className="normal-case">(팝업 대표 이미지)</span>
+                      <div className="flex items-center gap-2 h-[30px]">
+                        {pickedPopup?.thumbnailImageUrl ? (
+                          <>
+                            <img src={pickedPopup.thumbnailImageUrl} alt="" className="w-8 h-8 object-cover rounded-sm border border-border" />
+                            <span className="text-[11px] text-emerald-600">자동 로드됨</span>
+                          </>
+                        ) : (
+                          <span className="text-[11px] text-muted-foreground">팝업을 선택하면 표시됩니다</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1 text-[11px] text-muted-foreground flex-1 min-w-[220px]">
+                      링크 URL <span className="normal-case">(소비자 상세페이지)</span>
+                      <input
+                        className={inputCls + " w-full bg-secondary/60 text-muted-foreground"}
+                        readOnly
+                        value={pickedPopupId === "" ? "" : consumerPopupUrl(Number(pickedPopupId))}
+                        placeholder="팝업을 선택하면 자동으로 채워집니다"
+                      />
+                    </div>
+                    <button onClick={submitBanner} disabled={actingId === "banner:new"} className="text-xs px-4 py-2 rounded-sm bg-foreground text-primary-foreground disabled:opacity-50">
+                      {actingId === "banner:new" ? "등록 중…" : "등록"}
+                    </button>
                   </div>
-                </label>
-                <label className="flex flex-col gap-1 text-[11px] text-muted-foreground w-44">
-                  링크 URL (선택)
-                  <input className={inputCls} value={bForm.linkUrl} onChange={(e) => setBForm((p) => ({ ...p, linkUrl: e.target.value }))} />
-                </label>
-                <button onClick={submitBanner} disabled={actingId === "banner:new"} className="text-xs px-4 py-2 rounded-sm bg-foreground text-primary-foreground disabled:opacity-50">
-                  {actingId === "banner:new" ? "등록 중…" : "등록"}
-                </button>
+                ) : (
+                  <div className="flex flex-wrap items-end gap-2">
+                    <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                      제목 *
+                      <input className={inputCls + " w-52"} value={bForm.title} onChange={(e) => setBForm((p) => ({ ...p, title: e.target.value }))} />
+                    </label>
+                    <label className="flex flex-col gap-1 text-[11px] text-muted-foreground flex-1 min-w-[240px]">
+                      배너 이미지 * <span className="normal-case">(JPG·PNG · 서버가 1080×1440으로 변환)</span>
+                      <div className="flex items-center gap-2">
+                        <input
+                          ref={bFileRef}
+                          type="file"
+                          accept="image/jpeg,image/png"
+                          onChange={(e) => setBFile(e.target.files?.[0] ?? null)}
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => bFileRef.current?.click()}
+                          className={inputCls + " flex-1 min-w-0 text-left truncate hover:border-accent"}
+                        >
+                          {bFile ? bFile.name : "클릭하여 파일 선택"}
+                        </button>
+                        {bPreview && (
+                          <img src={bPreview} alt="" className="w-12 h-9 object-cover rounded-sm border border-border shrink-0" />
+                        )}
+                      </div>
+                    </label>
+                    <label className="flex flex-col gap-1 text-[11px] text-muted-foreground w-44">
+                      링크 URL (선택)
+                      <input className={inputCls} value={bForm.linkUrl} onChange={(e) => setBForm((p) => ({ ...p, linkUrl: e.target.value }))} />
+                    </label>
+                    <button onClick={submitBanner} disabled={actingId === "banner:new"} className="text-xs px-4 py-2 rounded-sm bg-foreground text-primary-foreground disabled:opacity-50">
+                      {actingId === "banner:new" ? "등록 중…" : "등록"}
+                    </button>
+                  </div>
+                )}
+
+                {eligibleErr && bMode === "POPUP" && (
+                  <span className="text-[11px] text-red-500">{eligibleErr}</span>
+                )}
               </div>
             )}
 
@@ -213,7 +339,16 @@ export default function ContentManage() {
                   {/* 배너 이미지 미리보기 */}
                   <img src={b.imageUrl} alt="" className="w-16 h-9 object-cover rounded-sm border border-border shrink-0 bg-secondary" onError={(e) => { (e.target as HTMLImageElement).style.visibility = "hidden"; }} />
                   <div className="flex-1 min-w-0">
-                    <div className="text-[13px] font-medium truncate">{b.title}</div>
+                    <div className="text-[13px] font-medium truncate flex items-center gap-1.5">
+                      {/* 8/4 — 팝업 연동 배너와 외부 URL 배너를 구분한다. 연동 배너는 팝업이 내려가면
+                          링크가 빈 상세로 가므로, 어느 쪽인지 목록에서 바로 보여야 한다 */}
+                      <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded-full border ${
+                        b.popupId ? "bg-blue-50 text-blue-600 border-blue-200" : "bg-secondary text-muted-foreground border-border"
+                      }`}>
+                        {b.popupId ? `팝업 #${b.popupId}` : "외부 링크"}
+                      </span>
+                      <span className="truncate">{b.title}</span>
+                    </div>
                     <div className="text-[11px] text-muted-foreground truncate">
                       노출: {fmtDate(b.startDate)} ~ {fmtDate(b.endDate)}{b.linkUrl ? ` · ${b.linkUrl}` : ""}
                     </div>
