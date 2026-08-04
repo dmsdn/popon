@@ -28,7 +28,17 @@ public class ReservationService {
     private final PopupSlotRepository popupSlotRepository;
     private final CustomerAccountRepository customerRepository;
     private final BusinessRepository businessRepository;
+    private final popupteam.popupbackend.domain.popup.PopupOperatingHoursRepository popupOperatingHoursRepository;
     private final popupteam.popupbackend.domain.eventlog.TransactionEventLogService transactionEventLogService;
+
+    // 그 날짜의 요일이 이 팝업의 휴무일로 설정되어 있는지 확인 (설정 자체가 없는 요일은 휴무 아님으로 간주)
+    private void validateNotClosedDay(Long popupId, LocalDate date) {
+        popupOperatingHoursRepository.findByPopupIdAndDayOfWeek(popupId, date.getDayOfWeek())
+                .filter(popupteam.popupbackend.domain.popup.PopupOperatingHours::isClosed)
+                .ifPresent(h -> {
+                    throw new IllegalArgumentException("휴무일에는 예약할 수 없습니다.");
+                });
+    }
 
     public ReservationResponse create(Long customerId, ReservationCreateRequest request) {
         Popup popup = popupRepository.findById(request.getPopupId())
@@ -78,6 +88,7 @@ public class ReservationService {
             if (LocalDateTime.of(slot.getSlotDate(), slot.getStartTime()).isBefore(LocalDateTime.now())) {
                 throw new IllegalArgumentException("이미 지난 시간대는 예약할 수 없습니다.");
             }
+            validateNotClosedDay(popup.getId(), slot.getSlotDate());
 
             reservation.setSlot(slot);
             reservation.setReservationDate(slot.getSlotDate());
@@ -94,6 +105,7 @@ public class ReservationService {
                     && request.getReservationDate().isBefore(LocalDate.now())) {
                 throw new IllegalArgumentException("이미 지난 날짜는 예약할 수 없습니다.");
             }
+            validateNotClosedDay(popup.getId(), request.getReservationDate());
 
             int reserved = reservationRepository.findByPopupIdAndReservationDateAndStatus(
                             popup.getId(), request.getReservationDate(), ReservationStatus.CONFIRMED).stream()
@@ -161,6 +173,7 @@ public class ReservationService {
             if (LocalDateTime.of(newSlot.getSlotDate(), newSlot.getStartTime()).isBefore(LocalDateTime.now())) {
                 throw new IllegalArgumentException("이미 지난 시간대로는 변경할 수 없습니다.");
             }
+            validateNotClosedDay(popup.getId(), newSlot.getSlotDate());
 
             reservation.setSlot(newSlot);
             reservation.setReservationDate(newSlot.getSlotDate());
@@ -176,6 +189,7 @@ public class ReservationService {
             } else if (newTime == null && newDate.isBefore(LocalDate.now())) {
                 throw new IllegalArgumentException("이미 지난 날짜로는 변경할 수 없습니다.");
             }
+            validateNotClosedDay(popup.getId(), newDate);
 
             int reserved = reservationRepository.findByPopupIdAndReservationDateAndStatus(
                             popup.getId(), newDate, ReservationStatus.CONFIRMED).stream()
