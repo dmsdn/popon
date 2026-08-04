@@ -53,7 +53,19 @@ export function MobileHeader({
       </Link>
       <div className="flex items-center gap-4">
         <Link href="/search" aria-label="검색">
-          <Image src="/icons/ui/Bar_Search.svg" alt="검색" width={20} height={20} className="dark:invert" />
+          <Image src="/icons/ui/Bar_Search_active.svg" alt="검색" width={20} height={20} className="dark:hidden" />
+          <Image
+            src="/icons/ui/Bar_Search_active_Dark.svg"
+            alt="검색"
+            width={20}
+            height={20}
+            className="hidden dark:block"
+            onError={(e) => {
+              const img = e.currentTarget as HTMLImageElement;
+              img.src = "/icons/ui/Bar_Search_active.svg";
+              img.classList.add("invert");
+            }}
+          />
         </Link>
         <Link href="/notifications" aria-label="알림" className="relative">
           <Image src="/icons/ui/notification_on.svg" alt="알림" width={20} height={20} className="dark:invert" />

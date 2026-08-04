@@ -26,6 +26,7 @@ public class WaitingQueueService {
     private final popupteam.popupbackend.common.notification.SmsNotificationService smsNotificationService;
     private final popupteam.popupbackend.domain.eventlog.TransactionEventLogService transactionEventLogService;
     private final popupteam.popupbackend.domain.business.BusinessRepository businessRepository;
+    private final popupteam.popupbackend.domain.popup.PopupOperatingHoursRepository popupOperatingHoursRepository;
 
     @org.springframework.beans.factory.annotation.Value("${app.qr-base-url}")
     private String qrBaseUrl;
@@ -40,6 +41,15 @@ public class WaitingQueueService {
             throw new IllegalArgumentException(
                     "팀당 최대 인원은 " + popup.getMaxPartySizePerTeam() + "명입니다. 입력하신 인원(" + request.getPartySize() + "명)이 초과되었습니다.");
         }
+
+        // 버그 수정: 현장웨이팅은 항상 "오늘" 기준으로 등록되는데, 오늘이 휴무일로 설정되어 있어도
+        // 걸러내는 로직이 없어서 예약(사전예약)과 달리 그대로 등록되고 있었음.
+        java.time.DayOfWeek today = LocalDate.now().getDayOfWeek();
+        popupOperatingHoursRepository.findByPopupIdAndDayOfWeek(popupId, today)
+                .filter(popupteam.popupbackend.domain.popup.PopupOperatingHours::isClosed)
+                .ifPresent(h -> {
+                    throw new IllegalArgumentException("오늘은 휴무일이라 웨이팅 등록을 할 수 없습니다.");
+                });
 
         Customer customer = null;
         if (customerId != null) {

@@ -9,6 +9,16 @@ const LABEL_COLOR: Record<PopupLiveStatus["congestionLabel"], string> = {
   혼잡: "text-red-500",
 };
 
+// [수정] "현재 0명 / 정원 55명 이용 중"처럼 정확한 인원 숫자를 그대로 보여주니까
+// 오히려 헷갈린다는 피드백이 있었어요(0명인데 왜 혼잡이라고 뜨지? 같은 의문).
+// 정확한 숫자 대신, 혼잡도 라벨에 맞는 안내 문구로 바꿨어요 - 보통/혼잡일 때도
+// 너무 부정적으로 안 느껴지게 최대한 긍정적인 톤으로 썼어요.
+const STATUS_MESSAGE: Record<PopupLiveStatus["congestionLabel"], string> = {
+  여유: "지금 방문하시면 여유롭게 관람하실 수 있어요",
+  보통: "많은 분들이 함께 둘러보고 계세요",
+  혼잡: "인기가 많아 붐비고 있어요",
+};
+
 // [수정] 신호 세기(막대 높이가 다른 방식) 대신, 참고 이미지처럼 가로 막대를
 // 3등분해서 칸마다 정해진 색(포인트→노랑→빨강)으로 순서대로 채워지는 방식으로
 // 바꿨어요. 여유=포인트컬러 1칸, 보통=포인트+노랑 2칸, 혼잡=포인트+노랑+빨강 3칸.
@@ -53,9 +63,7 @@ export function LiveCongestionPanel({ status }: { status: PopupLiveStatus }) {
           </span>
         </div>
       </div>
-      <p className="text-sm text-gray-400">
-        현재 {status.currentOccupancy}명 / 정원 {status.capacity}명 이용 중
-      </p>
+      <p className="text-sm text-gray-400">{STATUS_MESSAGE[status.congestionLabel]}</p>
     </div>
   );
 }

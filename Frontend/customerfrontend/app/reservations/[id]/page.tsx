@@ -17,6 +17,7 @@ import { toLocalDateString } from "@/lib/utils/formatLocalDate";
 import { ReservationModal } from "@/components/popup/ReservationModal";
 import { QRCodeDisplay } from "@/components/ui/QRCodeDisplay";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
+import { appAlert, appConfirm } from "@/lib/ui/alertStore";
 
 const POLICY = [
   "예약 시간 10분 전까지 입장해 주세요. 시간이 지나면 예약이 자동 취소될 수 있어요.",
@@ -84,23 +85,28 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
 
   const handleCancel = async () => {
     if (!reservation || !customer) return;
-    if (!confirm("예약을 취소할까요?")) return;
+    if (!(await appConfirm("예약을 취소할까요?"))) return;
     try {
       await cancelReservation(reservation.id, customer.id);
-      alert("예약이 취소됐어요.");
+      await appAlert("예약이 취소됐어요.");
       router.back();
     } catch (err) {
       console.error("예약 취소 실패", err);
-      alert(err instanceof Error ? err.message : "예약 취소에 실패했어요. 잠시 후 다시 시도해주세요.");
+      await appAlert(err instanceof Error ? err.message : "예약 취소에 실패했어요. 잠시 후 다시 시도해주세요.");
     }
   };
 
   const handleShare = async () => {
     if (!popup) return;
+    // [수정] window.location.href(지금 보고 있는 "내 예약 상세" 페이지 주소)를
+    // 그대로 공유하고 있었어요 - 이 페이지는 로그인한 본인 예약만 볼 수 있는
+    // 개인 페이지라, 친구가 링크를 눌러도 로그인 화면이나 "정보를 찾을 수
+    // 없어요"만 보게 돼요. 친구가 실제로 볼 수 있는 팝업 공개 상세페이지
+    // 주소로 바꿨어요.
     const shareData = {
       title: popup.title,
-      text: `${popup.title} 예약 정보를 공유해요.`,
-      url: window.location.href,
+      text: `${popup.title} 같이 갈래?`,
+      url: `${window.location.origin}/popup/${popup.id}`,
     };
     if (navigator.share) {
       try {
@@ -110,7 +116,7 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
       }
     } else {
       await navigator.clipboard.writeText(shareData.url);
-      alert("링크가 복사됐어요.");
+      await appAlert("링크가 복사됐어요.");
     }
   };
 
@@ -123,6 +129,14 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
   }
 
   const isCancelled = reservation.status === "CANCELLED";
+  // [신규] QR 입장권을 예약 날짜 전에도 그냥 보여주고 있었어요 - 예약 당일에만
+  // 입장 QR을 받을 수 있어야 자연스러워서(그 전엔 어차피 입장 처리할 수도
+  // 없고), 오늘이 예약 날짜인지 따로 계산해서 아닐 땐 QR 대신 안내 문구를
+  // 보여주도록 했어요.
+  const reservationDateStr = reservation.slotId
+    ? slots.find((s) => s.id === reservation.slotId)?.slotDate ?? null
+    : reservation.reservationDate ?? null;
+  const isReservationDay = reservationDateStr === toLocalDateString(new Date());
   const dateTimeLabel = (() => {
     if (reservation.slotId) {
       const slot = slots.find((s) => s.id === reservation.slotId);
@@ -174,7 +188,7 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
           <button
             type="button"
             onClick={() => setShowQr(true)}
-            className="w-full rounded-full py-3.5 text-sm font-medium bg-gray-900 text-white"
+            className="w-full rounded-full py-3.5 text-base font-medium bg-point text-gray-900 dark:text-white"
           >
             QR 입장권 보기
           </button>
@@ -191,14 +205,21 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
 
         {!isCancelled && (
           <>
-            <div className="flex gap-2">
+            {/* [수정] 혼자 예약한 경우엔 "같이 갈 친구"가 없으니 이 버튼 자체를
+                숨겨요. [수정] 취소/일정변경보다 위, 즉 더 먼저 보이는 위치로
+                옮겼어요. */}
+            {reservation.partySize > 1 && (
               <button
                 type="button"
-                onClick={() => setShowChange(true)}
-                className="flex-1 rounded-full py-3 text-sm font-medium border border-gray-300 dark:border-[#282B32]"
+                onClick={handleShare}
+                className="w-full rounded-full py-3 text-base font-medium border border-gray-300 dark:border-[#282B32]"
               >
-                일정 변경
+                함께 갈 친구에게 보내기
               </button>
+            )}
+
+            {/* [수정] 예약 취소를 왼쪽, 일정 변경을 오른쪽으로 순서를 바꿨어요. */}
+            <div className="flex gap-2">
               <button
                 type="button"
                 onClick={handleCancel}
@@ -206,15 +227,14 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
               >
                 예약 취소
               </button>
+              <button
+                type="button"
+                onClick={() => setShowChange(true)}
+                className="flex-1 rounded-full py-3 text-base font-medium border border-gray-300 dark:border-[#282B32]"
+              >
+                일정 변경
+              </button>
             </div>
-
-            <button
-              type="button"
-              onClick={handleShare}
-              className="w-full rounded-full py-3 text-base font-medium border border-gray-300 dark:border-[#282B32]"
-            >
-              함께 갈 친구에게 보내기
-            </button>
           </>
         )}
       </div>
@@ -229,6 +249,15 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
                   ✓
                 </div>
                 <p className="text-sm font-medium mb-6">입장 처리 됐어요. 즐거운 시간 보내세요!</p>
+              </>
+            ) : !isReservationDay ? (
+              // [신규] 예약 날짜 전에는 QR을 미리 보여주지 않고, 언제 볼 수
+              // 있는지 안내만 해요.
+              <>
+                <p className="text-sm font-medium mb-2">아직 예약 날짜가 아니에요</p>
+                <p className="text-sm text-gray-400 mb-6">
+                  {reservationDateStr}에 입장 QR을 확인할 수 있어요.
+                </p>
               </>
             ) : (
               <>
@@ -267,10 +296,10 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
               });
               setReservation(updated);
               setShowChange(false);
-              alert("예약 일정이 변경됐어요.");
+              await appAlert("예약 일정이 변경됐어요.");
             } catch (err) {
               console.error("예약 변경 실패", err);
-              alert(err instanceof Error ? err.message : "예약 변경에 실패했어요. 잠시 후 다시 시도해주세요.");
+              await appAlert(err instanceof Error ? err.message : "예약 변경에 실패했어요. 잠시 후 다시 시도해주세요.");
             }
           }}
         />

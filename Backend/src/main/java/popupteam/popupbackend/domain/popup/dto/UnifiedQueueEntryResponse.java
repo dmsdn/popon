@@ -12,5 +12,6 @@ public class UnifiedQueueEntryResponse {
     private Integer partySize;
     private String qrToken;
     private String entryStatus;  // 공통 상태값으로 통일: WAITING/CALLED/CHECKED_IN/NO_SHOW/CANCELLED 등
-    private LocalDateTime joinedAt; // 예약자는 슬롯 시작시각, 웨이팅자는 등록시각
+    private String cancelReason; // 웨이팅 취소 사유 (8/4) — 자정 리셋분은 "미입장", 직접 취소는 null
+    private LocalDateTime joinedAt; // 예약자는 슬롯 시작시각(입장 후에는 입장시각), 웨이팅자는 등록시각(입장 후에는 입장시각)
 }

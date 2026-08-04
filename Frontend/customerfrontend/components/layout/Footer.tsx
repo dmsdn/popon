@@ -16,7 +16,14 @@ export function Footer() {
 
   return (
     <footer className="bg-gray-100 dark:bg-[#282B32] px-4 py-6 mt-4 text-sm text-gray-500 dark:text-gray-400">
-      <p className="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-3">로고</p>
+      {/* [수정] "로고"라고만 적힌 자리표시자 텍스트였는데, 헤더(Header.tsx,
+          MobileHeader.tsx)와 같은 방식으로 실제 로고 이미지를 넣었어요 -
+          라이트/다크 모드 각각 전용 파일(LOGO_Light.svg/LOGO_Dark.svg)을
+          두고 CSS로 하나만 보이게 전환해요. */}
+      <div className="mb-3">
+        <img src="/icons/ui/LOGO_Light.svg" alt="POP-ON" className="h-6 w-auto dark:hidden" />
+        <img src="/icons/ui/LOGO_Dark.svg" alt="POP-ON" className="h-6 w-auto hidden dark:block" />
+      </div>
       <p className="mb-3 flex flex-wrap gap-x-1">
         <button type="button" onClick={() => setOpenId("service")} className="underline underline-offset-2">
           이용약관
