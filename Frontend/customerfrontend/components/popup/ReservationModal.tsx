@@ -8,6 +8,7 @@ import type { PopupSlot } from "@/lib/api/popups";
 import { RESERVATION_USAGE_GUIDE } from "@/lib/usageGuide";
 import { useScrollLock } from "@/lib/useScrollLock";
 import { appAlert } from "@/lib/ui/alertStore";
+import { isDateClosed, type OperatingHours } from "@/lib/utils/operatingHours";
 
 interface ReservationModalProps {
   popupName: string;
@@ -23,6 +24,9 @@ interface ReservationModalProps {
   // [신규] 예약 생성과 일정 변경이 같은 모달을 재사용하는데, 버튼이 항상 "예약하기"라고만
   // 떠서 일정 변경 화면에서도 새로 예약하는 것처럼 보였어요. mode로 문구를 구분합니다.
   mode?: "create" | "change";
+  // [신규] 팝업 요일별 휴무일 - 달력에서 휴무 요일은 아예 선택 못 하게 막아요
+  // (사전예약을 휴무일로 넣어버리는 걸 원천 차단).
+  operatingHours?: OperatingHours;
 }
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -62,6 +66,7 @@ export function ReservationModal({
   maxDate,
   capacity,
   mode = "create",
+  operatingHours,
 }: ReservationModalProps) {
   // [수정] 단순 overflow:hidden만으로는 모바일 터치 스크롤이 새는 경우가 있어서,
   // body를 고정하는 더 확실한 방식으로 바꿨어요.
@@ -120,9 +125,15 @@ export function ReservationModal({
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [count, setCount] = useState(1);
 
+  // [신규] 휴무 요일은 기간(minDate~maxDate) 안에 있어도 선택 못 하게 막아요.
+  function isClosedDay(year: number, month: number, day: number): boolean {
+    return isDateClosed(operatingHours, new Date(year, month, day));
+  }
+
   function isSelectable(year: number, month: number, day: number): boolean {
     const d = startOfDay(new Date(year, month, day));
-    return d >= earliestSelectable && d <= latestSelectable;
+    if (d < earliestSelectable || d > latestSelectable) return false;
+    return !isClosedDay(year, month, day);
   }
 
   const hasSlots = slots.length > 0;
@@ -276,6 +287,7 @@ export function ReservationModal({
 
                   const cellDate = new Date(year, month, day);
                   const selectable = isSelectable(year, month, day);
+                  const closedDay = isClosedDay(year, month, day);
                   const isToday = sameDate(today, cellDate);
                   const isSelected = sameDate(selectedDate, cellDate);
                   const isCurrentMonth = mi === 0;
@@ -287,19 +299,32 @@ export function ReservationModal({
                   if (isToday && selectable && !isSelected) {
                     textClass = "text-orange-500 font-bold";
                   }
+                  // [신규] 휴무 요일은 기간 안이어도 흐리게 + 취소선으로 구분해요.
+                  if (closedDay) {
+                    textClass = "text-gray-300 dark:text-gray-700 line-through";
+                  }
 
                   return (
-                    <button
-                      key={day}
-                      type="button"
-                      disabled={!selectable}
-                      onClick={() => setSelectedDate(cellDate)}
-                      className={`w-7 h-7 mx-auto rounded-full text-sm flex items-center justify-center ${textClass} ${
-                        isSelected ? "bg-point/25 !text-gray-900 dark:!text-white font-semibold" : ""
-                      }`}
-                    >
-                      {day}
-                    </button>
+                    <div key={day} className="flex flex-col items-center gap-0.5">
+                      <button
+                        type="button"
+                        disabled={!selectable}
+                        onClick={() => setSelectedDate(cellDate)}
+                        className={`w-7 h-7 mx-auto rounded-full text-sm flex items-center justify-center ${textClass} ${
+                          isSelected ? "border border-point !text-point font-semibold" : ""
+                        }`}
+                      >
+                        {day}
+                      </button>
+                      {/* 휴무가 아닌 날짜도 같은 높이를 갖도록 invisible로 자리만 잡아요 (행 높이 흔들림 방지) */}
+                      <span
+                        className={`text-[9px] leading-none ${
+                          closedDay ? "text-gray-300 dark:text-gray-600" : "invisible"
+                        }`}
+                      >
+                        휴무
+                      </span>
+                    </div>
                   );
                 })}
               </div>
@@ -329,7 +354,7 @@ export function ReservationModal({
                           isFull || isPast
                             ? "border-gray-100 dark:border-[#282B32] text-gray-300 line-through"
                             : isSelected
-                            ? "bg-point/25 border-point text-gray-900 dark:text-white font-medium"
+                            ? "border-point text-point font-medium"
                             : "border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
                         }`}
                       >
@@ -357,7 +382,7 @@ export function ReservationModal({
                         isPast
                           ? "border-gray-100 dark:border-[#282B32] text-gray-300 line-through"
                           : selectedTime === time
-                          ? "bg-point/25 border-point text-gray-900 dark:text-white font-medium"
+                          ? "border-point text-point font-medium"
                           : "border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
                       }`}
                     >

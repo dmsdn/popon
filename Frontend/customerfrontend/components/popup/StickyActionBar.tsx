@@ -21,6 +21,7 @@ export function StickyActionBar({
   onReserve,
   onWaiting,
   businessPhone,
+  todayClosed,
 }: {
   popupId: number;
   /** 팝업 진행 상태 - 웨이팅은 "진행중"일 때만, 예약은 "종료" 전까지 열어둬요.
@@ -44,11 +45,14 @@ export function StickyActionBar({
       "전화로 문의하기" 버튼을 띄워요 - 1:1 문의 폼 대신 주최자 전화번호로
       바로 통화 연결해요. 전화번호가 없으면 버튼 자체를 숨겨요. */
   businessPhone?: string | null;
+  /** [신규] 오늘이 팝업 휴무일인지 - 현장 웨이팅은 "오늘" 기준으로만 등록하는
+      기능이라, 휴무일엔 팀 수와 무관하게 아예 막아요. */
+  todayClosed?: boolean;
 }) {
   const supportsWaiting = queueMode === "ONSITE_WAITING_ONLY" || queueMode === "BOTH";
   const noSlotsYet = reservationMode === "SLOT" && !hasSlots;
   const supportsReservation = (queueMode === "PRERESERVATION_ONLY" || queueMode === "BOTH") && !noSlotsYet;
-  const waitingEnabled = supportsWaiting && popupStatus === "진행중";
+  const waitingEnabled = supportsWaiting && popupStatus === "진행중" && !todayClosed;
   const reservationEnabled = supportsReservation && (popupStatus === "진행중" || popupStatus === "예정");
 
   return (
@@ -84,6 +88,8 @@ export function StickyActionBar({
           >
             {popupStatus === "종료"
               ? "종료된 팝업이에요"
+              : todayClosed
+              ? "오늘은 휴무일이에요"
               : !waitingEnabled
               ? "웨이팅 준비중"
               : waitingTeams !== null && waitingTeams > 0

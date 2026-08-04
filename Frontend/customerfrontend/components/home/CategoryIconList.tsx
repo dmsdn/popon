@@ -4,7 +4,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getKeywords } from "@/lib/api/customer";
+import { getKeywords, type Keyword } from "@/lib/api/customer";
 import { HorizontalCarousel } from "@/components/ui/HorizontalCarousel";
 import { getPopupCategoryIcon, getPopupCategoryBg } from "@/lib/utils/popupCategoryIcon";
 
@@ -16,12 +16,17 @@ import { getPopupCategoryIcon, getPopupCategoryBg } from "@/lib/utils/popupCateg
 // 쓰면 그럴 걱정이 없어요. 칸은 56x56, 아이콘은 36x36으로 맞췄고, 배경은
 // 파스텔 대신 연한 회색으로 통일했어요. 포인트 컬러는 선택된 카테고리의
 // 오른쪽 위에 작은 점 배지로만 얹어요.
+//
+// [수정] 관리자가 카테고리별로 아이콘 이미지를 업로드할 수 있게 되면서,
+// keyword.iconUrl이 있으면 그 이미지를 쓰고, 없으면(기존 8개처럼 아직 아이콘을
+// 안 올린 카테고리) 지금까지 쓰던 lucide 아이콘 폴백을 그대로 보여줘요 -
+// popupCategoryIcon.ts는 지우지 않고 폴백용으로 유지해요.
 export function CategoryIconList({ selected }: { selected?: string } = {}) {
-  const [categories, setCategories] = useState<string[]>([]);
+  const [categories, setCategories] = useState<Keyword[]>([]);
 
   useEffect(() => {
     getKeywords()
-      .then((list) => setCategories(list.map((k) => k.name)))
+      .then(setCategories)
       .catch((err) => console.error("키워드 목록 조회 실패", err));
   }, []);
 
@@ -30,7 +35,7 @@ export function CategoryIconList({ selected }: { selected?: string } = {}) {
   return (
     <div className="px-4 mobile:px-8 pt-4 mobile:pt-6 mb-14 mobile:mb-16">
       <HorizontalCarousel className="gap-5 mobile:gap-8">
-        {categories.map((name) => {
+        {categories.map(({ name, iconUrl }) => {
           const Icon = getPopupCategoryIcon(name);
           return (
             <Link
@@ -43,11 +48,12 @@ export function CategoryIconList({ selected }: { selected?: string } = {}) {
               <div
                 className={`relative w-[72px] h-[72px] rounded-full ${getPopupCategoryBg()} flex items-center justify-center`}
               >
-                <Icon
-                  size={36}
-                  strokeWidth={1.4}
-                  className="text-gray-500 dark:text-gray-300"
-                />
+                {iconUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={iconUrl} alt="" className="w-9 h-9 object-contain" />
+                ) : (
+                  <Icon size={36} strokeWidth={1.4} className="text-gray-500 dark:text-gray-300" />
+                )}
                 {selected === name && (
                   <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-point border-2 border-white dark:border-[#17181a]" />
                 )}

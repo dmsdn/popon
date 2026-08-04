@@ -1,22 +1,22 @@
 "use client";
 
-// 인기 추천 팝업 더보기 페이지 - 지역별 탭으로 진행중인 팝업을 볼 수 있어요.
+// 인기 추천 팝업 더보기 페이지 - 지역별 탭으로 실제 인기순(찜+후기+클릭수) 랭킹을 볼 수 있어요.
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Footer } from "@/components/layout/Footer";
 import { BottomTabBar } from "@/components/layout/BottomTabBar";
-import { searchPopups } from "@/lib/api/popups";
+import { searchPopups, getPopularPopups } from "@/lib/api/popups";
+import { getRegions } from "@/lib/api/regions";
 import { toPopupItem } from "@/lib/utils/popupMapper";
-import { getTopRegions } from "@/lib/utils/topRegions";
 import type { PopupItem } from "@/data/mockPopups";
 import { LoadingState, EmptyState } from "@/components/ui/EmptyState";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 
-// ⚠️ 방문자 수 기반 진짜 "인기순" 랭킹 API는 고객 화면에 아직 공개돼 있지 않아서
-// (관리자 전용 /api/admin/stats/popup-ranking만 존재), 지금은 선택한 지역의
-// 진행중인 팝업 목록을 순서대로 보여주고 있어요. 번호는 실제 순위가 아니에요.
+// [수정] "고객 화면에 진짜 인기순 랭킹 API가 없다"고 알고 있었는데, 사실 백엔드에
+// GET /api/popups/popular?region=이 이미 공개돼 있었고(찜+후기+클릭수 합산),
+// 프론트가 그동안 안 쓰고 있었을 뿐이었어요. 이제 실제로 이 API를 써요.
 
 export default function RankingListPage() {
   return (
@@ -32,32 +32,33 @@ function RankingListInner() {
   // [수정] 홈 화면 "인기 추천 팝업"에서 특정 지역으로 더보기를 눌렀을 때, 그
   // 지역이 바로 선택된 채로 열리도록 URL의 region 파라미터를 읽어요.
   const [keyword, setKeyword] = useState(searchParams.get("region") ?? "전체");
-  // [수정] 지역 목록도 성수/여의도/홍대 고정이 아니라, 지금 진행중인 팝업이
-  // 가장 많은 지역 3개로 동적으로 계산해요.
-  const [keywords, setKeywords] = useState<string[]>(["전체", keyword].filter((v, i, arr) => arr.indexOf(v) === i));
-  const [items, setItems] = useState<PopupItem[]>([]);
+  // [수정] "지금 진행중인 팝업이 많은 지역 3개"만 보여주던 걸, 지역 카탈로그
+  // (getRegions) 전체로 바꿨어요.
+  const [keywords, setKeywords] = useState<string[]>(["전체", searchParams.get("region") ?? ""].filter(Boolean));
+  const [popularIds, setPopularIds] = useState<number[]>([]);
+  const [popupById, setPopupById] = useState<Map<number, PopupItem>>(new Map());
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    searchPopups({ status: "OPEN" })
+    getRegions()
+      .then((list) => setKeywords(["전체", ...list.map((r) => r.name)]))
+      .catch((err) => console.error("지역 목록 조회 실패", err));
+    searchPopups()
       .then((list) => {
-        const allOpen = list.map(toPopupItem);
-        const top = getTopRegions(allOpen, 3);
-        // 현재 선택된 지역이 top3에 없으면(예: URL로 바로 들어온 경우) 목록에 끼워넣어요.
-        setKeywords(["전체", ...new Set([...top, ...(keyword !== "전체" ? [keyword] : [])])]);
+        const map = new Map<number, PopupItem>();
+        list.forEach((p) => map.set(p.id, toPopupItem(p)));
+        setPopupById(map);
       })
-      .catch((err) => console.error("지역 랭킹 계산용 팝업 조회 실패", err));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      .catch((err) => console.error("팝업 목록 조회 실패", err));
   }, []);
 
   useEffect(() => {
     let cancelled = false;
     setLoaded(false);
-    const location = keyword === "전체" ? undefined : keyword;
 
-    searchPopups({ status: "OPEN", location })
+    getPopularPopups({ limit: 50, region: keyword === "전체" ? undefined : keyword })
       .then((list) => {
-        if (!cancelled) setItems(list.map(toPopupItem));
+        if (!cancelled) setPopularIds(list.map((p) => p.popupId));
       })
       .catch((err) => console.error("인기 팝업 조회 실패", err))
       .finally(() => {
@@ -68,6 +69,11 @@ function RankingListInner() {
       cancelled = true;
     };
   }, [keyword]);
+
+  const items = useMemo(
+    () => popularIds.map((id) => popupById.get(id)).filter((p): p is PopupItem => !!p),
+    [popularIds, popupById]
+  );
 
   return (
     <main className="min-h-screen flex flex-col w-full pb-16 mobile:pb-0 mobile:max-w-[1000px] mobile:mx-auto">

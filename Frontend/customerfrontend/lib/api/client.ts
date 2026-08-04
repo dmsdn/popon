@@ -75,7 +75,19 @@ export async function apiFetch<T>(
     // "백엔드가 제대로 안 떠있거나 막 재시작 중"일 때 나오는 패턴이었어요.
     // (진짜 서버 로직 버그로 인한 500도 이 신호를 탈 수 있긴 하지만,
     //  화면이 조용히 mock으로 대체되고 배너로 알려주는 편이 아무 반응 없는 것보단 나아요.)
-    const message = await res.text().catch(() => "");
+    const rawText = await res.text().catch(() => "");
+    // 백엔드(GlobalExceptionHandler)는 에러를 { "message": "..." } 형태의 JSON으로 내려주는데,
+    // 지금까지는 이 JSON을 그대로 문자열로 써서 화면/로직에 원본 JSON이 그대로 노출됐어요.
+    // (예: "이미 이 팝업에 리뷰를 작성하셨어요." 대신 {"message":"이미 이 팝업에 리뷰를 작성하셨어요."} 가 통째로 표시됨)
+    let message = rawText;
+    try {
+      const parsed = JSON.parse(rawText);
+      if (parsed && typeof parsed.message === "string") {
+        message = parsed.message;
+      }
+    } catch {
+      // JSON이 아니면(순수 텍스트/빈 응답 등) rawText를 그대로 사용
+    }
     if (res.status >= 500) {
       markBackendDown();
     }

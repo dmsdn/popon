@@ -8,9 +8,16 @@
 import type { PopupItem } from "@/data/mockPopups";
 
 export function getTopRegions(openPopups: PopupItem[], count = 3): string[] {
+  // [수정] regionId가 있는 팝업만 집계했더니, searchPopups() 응답에 regionId가
+  // 아예 없는 경우(목록 API가 상세조회와 달리 이 필드를 안 내려주는 경우)
+  // 지역 순위가 통째로 비어버렸어요. regionId가 하나라도 있는 팝업이 있으면
+  // 그 기준으로 정확하게 집계하고, 정말 하나도 없으면(=이 응답엔 애초에
+  // regionId가 없는 것) location 전체로 폴백해요.
+  const anyHasRegionId = openPopups.some((p) => p.regionId != null);
   const counts = new Map<string, number>();
   for (const p of openPopups) {
     if (!p.location) continue;
+    if (anyHasRegionId && p.regionId == null) continue;
     counts.set(p.location, (counts.get(p.location) ?? 0) + 1);
   }
   return [...counts.entries()]
@@ -52,9 +59,12 @@ function extractTitleWords(title: string): string[] {
 }
 
 export function getTopKeywords(openPopups: PopupItem[], count = 5): string[] {
+  const anyHasRegionId = openPopups.some((p) => p.regionId != null);
   const counts = new Map<string, number>();
   for (const p of openPopups) {
-    if (p.location) counts.set(p.location, (counts.get(p.location) ?? 0) + 1);
+    if (p.location && (!anyHasRegionId || p.regionId != null)) {
+      counts.set(p.location, (counts.get(p.location) ?? 0) + 1);
+    }
     for (const k of p.keywordNames ?? []) {
       counts.set(k, (counts.get(k) ?? 0) + 1);
     }

@@ -162,7 +162,15 @@ function BrandPopupRow({ item }: { item: PopupItem }) {
         {item.imageUrl ? <ImageWithFallback src={item.imageUrl} className="w-full h-full object-cover" /> : "이미지"}
       </div>
       <div className="flex flex-col justify-center">
-        {item.status && <p className="text-sm text-gray-400 mb-1">{item.status === "예정" ? "진행예정" : item.status}</p>}
+        {item.status && (
+          <p
+            className={`text-sm mb-1 ${
+              item.status === "진행중" ? "text-point font-semibold" : "text-gray-400"
+            }`}
+          >
+            {item.status === "예정" ? "진행예정" : item.status}
+          </p>
+        )}
         <p className="text-base font-medium">{item.name}</p>
         {item.dateRange && <p className="text-sm text-gray-400 mt-1">{item.dateRange}</p>}
         {item.location && <p className="text-sm text-gray-400">{item.location}</p>}

@@ -290,7 +290,7 @@ public class PopupService {
     public List<PopupImageResponse> getImages(Long popupId, PopupImageType type) {
         List<PopupImage> images = (type != null)
                 ? popupImageRepository.findByPopupIdAndTypeOrderBySortOrder(popupId, type)
-                : popupImageRepository.findByPopupIdOrderBySortOrder(popupId);
+                : popupImageRepository.findByPopupIdOrderByTypeThenSortOrder(popupId);
 
         return images.stream().map(PopupImageResponse::from).toList();
     }
@@ -481,16 +481,10 @@ public class PopupService {
         return enrichForList(combined);
     }
 
-    // location(상세주소)과 addressKeyword(선택한 지역)가 서로 맞는지 참고용으로만 확인 (도로명주소엔 동명이 안 들어가는 경우가 많아 차단하지 않음)
+    // 선택한 지역(addressKeyword)을 팝업에 저장. 주소와의 일치 여부는 검증하지 않음.
     private void applyAddressKeyword(Popup popup, Long addressKeywordId, String location) {
-        if (addressKeywordId == null) return;
-
         popupteam.popupbackend.domain.consumer.Region region = regionRepository.findById(addressKeywordId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 지역입니다."));
-
-        if (location != null && !location.contains(region.getName())) {
-            log.warn("[지역 불일치 - 참고용 경고, 저장은 진행됨] location=\"{}\", region=\"{}\"", location, region.getName());
-        }
 
         popup.setAddressKeyword(region);
     }

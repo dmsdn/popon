@@ -41,7 +41,7 @@ export function EmailInput({
         value={local}
         onChange={(e) => setLocal(e.target.value)}
         placeholder={placeholder}
-        className="flex-1 min-w-0 bg-gray-50 dark:bg-[#282B32] text-gray-900 dark:text-white rounded-lg px-4 py-3 text-base outline-none"
+        className="flex-1 min-w-0 bg-gray-100 dark:bg-[#282B32] text-gray-900 dark:text-white rounded-lg px-4 py-3 text-base outline-none"
       />
       <span className="text-gray-400 flex-none">@</span>
 
@@ -51,14 +51,14 @@ export function EmailInput({
           value={domain}
           onChange={(e) => setDomain(e.target.value)}
           placeholder="도메인 직접 입력"
-          className="flex-1 min-w-0 bg-gray-50 dark:bg-[#282B32] text-gray-900 dark:text-white rounded-lg px-4 py-3 text-base outline-none"
+          className="flex-1 min-w-0 bg-gray-100 dark:bg-[#282B32] text-gray-900 dark:text-white rounded-lg px-4 py-3 text-base outline-none"
         />
       ) : (
         <div className="relative flex-1 min-w-0">
           <button
             type="button"
             onClick={() => setShowDomainMenu((prev) => !prev)}
-            className="w-full flex items-center justify-between bg-gray-50 dark:bg-[#282B32] text-gray-900 dark:text-white rounded-lg px-4 py-3 text-base"
+            className="w-full flex items-center justify-between bg-gray-100 dark:bg-[#282B32] text-gray-900 dark:text-white rounded-lg px-4 py-3 text-base"
           >
             <span className={domain ? "" : "text-gray-400"}>{domain || "선택"}</span>
             <span className="text-gray-400 text-sm">▾</span>

@@ -73,4 +73,12 @@ public class Reservation {
     @Column(name = "reservation_time")
     private LocalTime reservationTime;
 
+    // 예약 시간 임박 알림(#3)을 이미 보냈는지 - 중복 발송 방지용. ddl-auto: update로 자동 생성됨.
+    @Column(name = "time_reminder_sent_at")
+    private LocalDateTime timeReminderSentAt;
+
+    // 예약 당일 알림(#2)을 이미 보냈는지 - 중복 발송 방지용.
+    @Column(name = "day_reminder_sent_at")
+    private LocalDateTime dayReminderSentAt;
+
 }

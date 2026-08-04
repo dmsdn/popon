@@ -47,6 +47,14 @@ public class ReviewController {
         Long customerId = extractCustomerId(authHeader);
         validateImageCount(request.getImageUrls());
 
+        // 버그 수정: content가 비어있어도 DB NOT NULL 제약 위반(DataIntegrityViolationException)으로
+        // 떨어지는데, 그 예외를 무조건 "이미 리뷰를 작성하셨어요"로 바꿔버리고 있었음. 원인을 구분하지
+        // 않고 catch(DataIntegrityViolationException)에서 전부 중복 메시지로 뭉뚱그려진 게 문제였음 -
+        // 여기서 미리 걸러내면 그 catch 블록은 실제 중복(unique constraint) 케이스만 타게 된다.
+        if (request.getContent() == null || request.getContent().isBlank()) {
+            throw new IllegalArgumentException("내용을 입력해주세요.");
+        }
+
         // 방문 여부는 작성 가능 여부를 막는 조건이 아니라, 댓글 유형(방문자 후기/일반 댓글)을 구분하기 위한 값이다.
         // 방문자는 별점이 있는 "후기", 방문 안 한 사람은 별점이 없는 "댓글"로 취급한다.
         boolean visited = reservationRepository.existsByPopup_IdAndCustomer_IdAndEntryStatus(
@@ -123,6 +131,25 @@ public class ReviewController {
                 .toList();
     }
 
+    // 특정 팝업 후기 개수 (공개, 로그인 불필요 - 카드/상세페이지에서 "후기 12개" 같은 뱃지용)
+    @GetMapping("/popup/{popupId}/count")
+    public Map<String, Object> getPopupReviewCount(@PathVariable Long popupId) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("popupId", popupId);
+        result.put("reviewCount", reviewRepository.countByPopupId(popupId));
+        return result;
+    }
+
+    // 여러 팝업의 후기 개수를 한 번에 (공개) - 목록/리스트 화면에서 팝업마다 개별 호출하지 않도록
+    @GetMapping("/counts")
+    public Map<Long, Long> getReviewCounts() {
+        Map<Long, Long> counts = new HashMap<>();
+        for (Object[] row : reviewRepository.countAllGroupByPopupId()) {
+            counts.put((Long) row[0], (Long) row[1]);
+        }
+        return counts;
+    }
+
     // 플랫폼 전체 최신 후기 (홈 화면 "실시간 후기 모음"용, 공개)
     @GetMapping("/recent")
     public List<ReviewResponse> getRecentReviews(@RequestParam(defaultValue = "10") int limit) {
@@ -160,6 +187,10 @@ public class ReviewController {
     ) {
         Long customerId = extractCustomerId(authHeader);
         validateImageCount(request.getImageUrls());
+
+        if (request.getContent() == null || request.getContent().isBlank()) {
+            throw new IllegalArgumentException("내용을 입력해주세요.");
+        }
 
         Review review = reviewRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("리뷰를 찾을 수 없어요."));

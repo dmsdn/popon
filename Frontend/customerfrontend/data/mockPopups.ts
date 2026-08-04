@@ -9,6 +9,7 @@ export type PopupItem = {
   location?: string;
   badge?: string;
   brandId?: string; // data/mockBrands.ts의 Brand.id와 연결
+  brandName?: string; // [신규] 실 데이터의 companyName(주최사명) - 검색에서 브랜드 이름으로도 찾을 수 있게
   status?: "예정" | "진행중" | "종료";
   imageUrl?: string; // [신규] 팝업 대표 이미지 - 목록 카드에서 실제 썸네일을 보여줄 때 씀
   avgRating?: number | null; // [신규] 평균 평점 - 검색 별점 필터에 씀
