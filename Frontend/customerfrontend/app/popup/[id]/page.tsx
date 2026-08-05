@@ -134,6 +134,17 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     let cancelled = false;
     setLoading(true);
     setLoadError(false);
+    // [수정 8/5] 다른 팝업 상세페이지로 이동해도(같은 /popup/[id] 라우트라 컴포넌트가
+    // 리마운트되지 않고 재사용됨) id만 바뀌고 popup state는 그대로 남아있었어요.
+    // 새 데이터가 도착하기 전까지 짧은 시간 동안 "화면은 새 id인데 popup.id는 이전
+    // 팝업" 상태가 됐고, 그 사이에 리뷰 목록 조회(popup.id 기준)나 리뷰/댓글 작성
+    // 버튼 클릭이 일어나면 이전 팝업의 id로 잘못 나갔어요(다른 팝업 리뷰가 섞여
+    // 보이거나, 엉뚱한 팝업에 리뷰가 저장되는 원인). id가 바뀌는 즉시 popup을
+    // 비워서, 그 사이엔 로딩 화면만 보이고 이전 팝업 데이터를 참조할 방법이
+    // 없게 했어요.
+    setPopup(null);
+    setMyReviewsForPopup([]);
+    setPopupReviews([]);
 
     getPopup(id)
       .then((data) => {
@@ -586,6 +597,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   minDate={new Date(popup.startDate)}
   maxDate={new Date(popup.endDate)}
   capacity={popup.capacity}
+  maxPartySizePerTeam={popup.maxPartySizePerTeam}
   operatingHours={popup.operatingHours}
   onClose={() => setShowReservation(false)}
   onSubmit={async (date, count, slotId, time) => {
@@ -657,6 +669,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
             location={popup.location ?? undefined}
             notice={popup.notice}
             capacity={popup.capacity}
+            maxPartySizePerTeam={popup.maxPartySizePerTeam}
             onClose={() => setShowWaiting(false)}
             onSubmit={async (count) => {
               if (!customer) {
@@ -947,7 +960,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                         onClick={() => setReviewFilter(value)}
                         className={`text-sm px-3 py-1.5 rounded-full ${
                           reviewFilter === value
-                            ? "border border-point text-point font-medium"
+                            ? "border border-point text-[#218B09] font-medium"
                             : "text-gray-500"
                         }`}
                       >
@@ -956,7 +969,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                     ))}
                   </div>
                   <label className="flex items-center gap-1.5 text-sm text-gray-500 flex-none ml-2">
-                    <Checkbox size="sm" checked={photoOnly} onChange={() => setPhotoOnly(!photoOnly)} />
+                    <Checkbox checked={photoOnly} onChange={() => setPhotoOnly(!photoOnly)} />
                     사진만
                   </label>
                 </div>
@@ -966,7 +979,24 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
             {relatedReviews.length === 0 ? (
               <EmptyState message="아직 후기가 없어요." />
             ) : visibleReviews.length === 0 ? (
-              <EmptyState message="사진이 있는 후기가 없어요." />
+              // [수정 8/5] "사진이 있는 후기가 없어요."로 고정돼 있었어요 - photoOnly
+              // 체크가 원인일 때만 맞는 문구인데, reviewFilter(전체/인증된 후기/댓글)
+              // 탭 때문에 0개가 된 경우(예: "인증된 후기" 탭인데 댓글만 있는 경우)에도
+              // 똑같이 "사진" 탓을 해서 사용자가 엉뚱한 이유로 오해했어요. 지금 켜진
+              // 필터 조합에 맞는 문구로 정확히 안내해요.
+              <EmptyState
+                message={
+                  reviewFilter === "verified"
+                    ? photoOnly
+                      ? "사진이 있는 인증된 후기가 없어요."
+                      : "인증된 후기가 없어요."
+                    : reviewFilter === "comment"
+                    ? photoOnly
+                      ? "사진이 있는 댓글이 없어요."
+                      : "댓글이 없어요."
+                    : "사진이 있는 후기가 없어요."
+                }
+              />
             ) : (
               visibleReviews.map((review, i) => (
                 <ReviewCard

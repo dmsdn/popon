@@ -294,7 +294,7 @@ export default function EditProfilePage() {
                 onClick={() => toggleKeyword(kw.id)}
                 className={`px-4 py-2 rounded-full text-sm border ${
                   selectedKeywordIds.includes(kw.id)
-                    ? "border-point text-point"
+                    ? "border-point text-[#218B09]"
                     : "border-gray-200 dark:border-[#282B32] text-gray-600 dark:text-gray-400"
                 }`}
               >
@@ -316,7 +316,7 @@ export default function EditProfilePage() {
                 onClick={() => toggleRegion(r.id)}
                 className={`px-4 py-2 rounded-full text-sm border ${
                   selectedRegionIds.includes(r.id)
-                    ? "border-point text-point"
+                    ? "border-point text-[#218B09]"
                     : "border-gray-200 dark:border-[#282B32] text-gray-600 dark:text-gray-400"
                 }`}
               >

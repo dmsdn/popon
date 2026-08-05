@@ -42,8 +42,14 @@ type MenuKey =
   | "Q&A"
   | "약관";
 
-const PUBLIC_MENU: MenuKey[] = ["공지사항", "1:1 문의", "Q&A", "약관"];
-const PRIVATE_MENU: MenuKey[] = ["찜 목록", "웨이팅 / 예약", "다녀간 팝업", "알림 설정", "화면 설정"];
+// [수정 8/5] "화면 설정"(다크모드 토글)은 로그인 여부와 무관한 순수 로컬 설정인데
+// PRIVATE_MENU에 있어서 로그아웃 상태에서는 사이드바에 항목 자체가 안 보이고,
+// 직접 ?menu=화면 설정으로 들어와도 로그인 페이지로 튕겨나갔어요. 실제로 이
+// 메뉴의 내용(<ThemeToggle />)도 customer 정보를 전혀 안 써서, 로그인 여부를
+// 따질 이유가 없는 항목이에요. PUBLIC_MENU로 옮겨서 로그아웃 상태에서도 쓸 수
+// 있게 했어요.
+const PUBLIC_MENU: MenuKey[] = ["화면 설정", "공지사항", "1:1 문의", "Q&A", "약관"];
+const PRIVATE_MENU: MenuKey[] = ["찜 목록", "웨이팅 / 예약", "다녀간 팝업", "알림 설정"];
 const SIDEBAR_MENU: MenuKey[] = [...PRIVATE_MENU, ...PUBLIC_MENU];
 
 const PROVIDER_LABEL = {
@@ -375,6 +381,16 @@ function MyPageContent() {
   // 꺼서, 그 다음부터는 기존처럼 "마이페이지 목록 화면"으로 돌아가요.
   const cameFromExternalLink = useRef(queryMenu !== null);
 
+  // [수정 8/5] "화면 설정/공지사항/1:1 문의/Q&A/약관" 같은 로그인 없이도 보던
+  // 공개 메뉴들을 /login 페이지 쪽으로 옮겼어요(로그인 버튼 바로 아래에 같이
+  // 있어요). 그래서 마이페이지는 이제 로그인된 사용자 전용이에요 - 로그인 안
+  // 한 상태로 들어오면(직접 URL 접근, 북마크 등) 무조건 /login으로 보내요.
+  useEffect(() => {
+    if (!loading && !isLoggedIn) {
+      router.replace("/login");
+    }
+  }, [loading, isLoggedIn, router]);
+
   // [수정] 렌더링 도중(컴포넌트 함수 본문)에서 setState를 호출하던 방식이었는데,
   // loading이 true인 동안 한 번 처리되고 나면 나중에 loading이 풀려도 다시 안
   // 돌아서, 새로고침 시 비로그인 사용자가 로그인 필요한 탭에 잠깐 들어가 있는 등
@@ -388,24 +404,10 @@ function MyPageContent() {
       return;
     }
     if (!(VALID_MENUS as string[]).includes(queryMenu)) return;
-
-    const isPrivate = (PRIVATE_MENU as string[]).includes(queryMenu) || queryMenu === "내 정보";
-    if (isPrivate && !loading && !isLoggedIn) {
-      router.replace("/login");
-      return;
-    }
-    if (loading) return; // 아직 로그인 여부를 모르면 판단을 미뤄요 - 확정되면 이 effect가 다시 돌아요.
+    if (loading || !isLoggedIn) return; // 위 리다이렉트 effect가 처리해요.
     setActiveMenu(queryMenu as MenuKey);
     setMobileView("detail");
-  }, [queryMenu, loading, isLoggedIn, router]);
-
-  // 비로그인 상태로 들어왔는데 아직 기본값(내 정보)이면, 로그인 없이도 볼 수 있는
-  // 메뉴로 기본 선택을 바꿔줍니다.
-  useEffect(() => {
-    if (!loading && !isLoggedIn && activeMenu === "내 정보") {
-      setActiveMenu("공지사항");
-    }
-  }, [loading, isLoggedIn, activeMenu]);
+  }, [queryMenu, loading, isLoggedIn]);
 
 
   const handleSelectMenu = (menu: MenuKey) => {
@@ -580,7 +582,7 @@ function MyPageContent() {
   // during the previous render" 에러가 났었어요. 모든 useState/useEffect/useMemo가
   // 끝난 뒤, 화면을 그리기 직전으로 옮겼어요 - React 훅은 매 렌더링마다 정확히
   // 같은 순서로 호출돼야 해서, 훅들 사이에 조건부 return이 끼어있으면 안 돼요.
-  if (loading) return null;
+  if (loading || !isLoggedIn) return null;
 
   return (
     <main className="min-h-screen flex flex-col w-full mobile:max-w-[1000px] mobile:mx-auto">
@@ -604,8 +606,10 @@ function MyPageContent() {
         <aside
           className={`${mobileView === "detail" ? "hidden mobile:block" : "block"} mobile:w-[240px] mobile:border-r border-gray-100 dark:border-[#282B32] py-6`}
         >
-          {isLoggedIn && customer ? (
-            <>
+          {/* isLoggedIn은 위 렌더 가드(if (loading || !isLoggedIn) return null)를
+              통과했다는 뜻이라 여기서부턴 항상 true예요 - 게스트용 분기를
+              없애고 로그인 사용자 콘텐츠만 남겼어요. */}
+          <>
               <button
                 type="button"
                 onClick={() => handleSelectMenu("내 정보")}
@@ -675,18 +679,6 @@ function MyPageContent() {
                 </button>
               </div>
             </>
-          ) : (
-            <div className="px-4 mobile:px-6 mb-6">
-              <p className="text-sm text-gray-500 mb-3">
-                로그인하면 찜 목록, 예약/웨이팅 내역을 확인할 수 있어요.
-              </p>
-              <Link
-                href="/login"
-                className="block w-full text-center rounded-full py-3 text-sm font-medium bg-gray-900 text-white"
-              >
-                로그인 / 회원가입
-              </Link>
-            </div>
           )}
 
           <nav className="flex flex-col">
