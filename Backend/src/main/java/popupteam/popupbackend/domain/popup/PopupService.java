@@ -566,12 +566,20 @@ public class PopupService {
                 .map(popup -> {
                     Long popupId = popup.getId();
                     Object[] rating = ratingByPopup.get(popupId);
+                    // ⚠ JPQL AVG()는 컬럼이 BigDecimal이어도 Double을 돌려준다(스펙).
+                    //    BigDecimal로 바로 캐스트하면 ClassCastException으로 목록 전체가 500 —
+                    //    배포 직후 실제로 났다. Number로 받아 변환한다.
+                    // ⚠ rating이 null인 후기만 있는 팝업은 AVG 자체가 null로 온다(집계는 null을
+                    //    건너뛴다). 그 행도 실데이터에 있었다 — null이면 별점 없음으로 취급.
+                    java.math.BigDecimal avg = (rating != null && rating[1] != null)
+                            ? java.math.BigDecimal.valueOf(((Number) rating[1]).doubleValue())
+                            : null;
                     return PopupResponse.fromForList(popup,
                             hashtagsByPopup.getOrDefault(popupId, List.of()),
                             keywordNamesByPopup.getOrDefault(popupId, List.of()),
                             thumbnailsByPopup.getOrDefault(popupId, List.of()),
-                            rating != null ? (java.math.BigDecimal) rating[1] : null,
-                            rating != null ? (Long) rating[2] : 0L);
+                            avg,
+                            rating != null ? ((Number) rating[2]).longValue() : 0L);
                 })
                 .toList();
     }
