@@ -93,7 +93,7 @@ export function PopularRankingSection() {
             onClick={() => setKeyword(k)}
             className={`flex-none text-sm px-3 py-1.5 rounded-full border ${
               keyword === k
-                ? "border-point text-point font-medium"
+                ? "border-point text-[#218B09] font-medium"
                 : "border-gray-200 dark:border-[#282B32] text-gray-500"
             }`}
           >

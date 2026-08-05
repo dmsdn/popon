@@ -77,6 +77,9 @@ export function Header({ initialQuery = "" }: { initialQuery?: string }) {
           </span>
         )}
       </Link>
+      {/* [수정 8/5] 공개 메뉴(화면 설정 등)가 /login 페이지 안으로 옮겨가서,
+          마이페이지는 다시 로그인 전용이에요. 로그아웃 상태면 그 메뉴가 있는
+          /login으로 보내요. */}
       <Link href={isLoggedIn ? "/mypage" : "/login"} aria-label="마이페이지">
         {isLoggedIn && customer?.profileImage ? (
           // eslint-disable-next-line @next/next/no-img-element

@@ -6,6 +6,7 @@
 
 import type { Metadata } from "next";
 import "./globals.css";
+import TouchActivation from "./TouchActivation";
 
 export const metadata: Metadata = {
   title: "팝온 현장 웨이팅",
@@ -18,7 +19,13 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko" className="dark h-full antialiased">
+      {/* iOS Safari의 :active 미발동 문제는 body에 빈 터치 리스너를 달아 푼다.
+          [수정 8/5] 그 리스너를 <body>의 onTouchStart prop으로 넘겼더니 빌드가 깨졌다 —
+          이 layout은 서버 컴포넌트라 이벤트 핸들러를 prop으로 못 넘긴다
+          ("Event handlers cannot be passed to Client Component props").
+          의도는 그대로 두고, 리스너를 다는 일만 TouchActivation(클라이언트)으로 옮겼다. */}
       <body className="h-full bg-background text-foreground overflow-hidden">
+        <TouchActivation />
         <div id="checkin-app" className="h-full">
           {children}
         </div>

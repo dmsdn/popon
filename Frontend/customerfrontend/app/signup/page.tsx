@@ -10,6 +10,7 @@ import { TERMS_SECTIONS } from "@/data/termsContent";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { formatPhoneInput, isValidPhone } from "@/lib/utils/formatPhone";
 import { BirthDatePicker } from "@/components/ui/BirthDatePicker";
+import { Checkbox } from "@/components/ui/Checkbox";
 import { EmailInput } from "@/components/ui/EmailInput";
 import { LoadingState } from "@/components/ui/EmptyState";
 import { setToken } from "@/lib/api/client";
@@ -58,7 +59,6 @@ function SignupPageInner() {
   const [agreedTerms, setAgreedTerms] = useState<Record<string, boolean>>({});
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [showTerms, setShowTerms] = useState(false);
   const [expandedTermId, setExpandedTermId] = useState<string | null>(null);
   const [showBirthPicker, setShowBirthPicker] = useState(false);
 
@@ -101,10 +101,6 @@ function SignupPageInner() {
 
   const toggleTerm = (id: string) => {
     setAgreedTerms((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  const handleOpenTerms = () => {
-    setShowTerms(true);
   };
 
   const handleSubmit = async () => {
@@ -160,11 +156,17 @@ function SignupPageInner() {
           <span className="flex items-center gap-1.5 text-sm text-gray-500">
             {PROVIDER_LABEL[provider]}
             {provider === "KAKAO" ? (
-              <span className="w-6 h-6 rounded-full bg-[#FEE500] flex items-center justify-center">💬</span>
+              <span className="w-6 h-6 rounded-full bg-[#FEE500] flex items-center justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/icons/ui/kakao.svg" alt="" width={14} height={14} />
+              </span>
             ) : provider === "GOOGLE" ? (
-              <span className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center">G</span>
+              <span className="w-6 h-6 rounded-full bg-gray-100 dark:bg-[#282B32] flex items-center justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/icons/ui/google.svg" alt="" width={14} height={14} />
+              </span>
             ) : (
-              <span className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center">🛠️</span>
+              <span className="w-6 h-6 rounded-full bg-gray-100 dark:bg-[#282B32] flex items-center justify-center">🛠️</span>
             )}
           </span>
         )}
@@ -237,15 +239,15 @@ function SignupPageInner() {
                 type="button"
                 onClick={() => setGender(value)}
                 className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-3 text-sm border ${
-                  gender === value ? "border-gray-900 text-gray-900 dark:text-white font-medium" : "border-gray-200 dark:border-[#282B32] text-gray-500"
+                  gender === value ? "border-point text-point font-medium" : "border-gray-200 dark:border-[#282B32] text-gray-500"
                 }`}
               >
                 <span
                   className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
-                    gender === value ? "border-gray-900 dark:border-white" : "border-gray-300 dark:border-[#282B32]"
+                    gender === value ? "border-point" : "border-gray-300 dark:border-[#282B32]"
                   }`}
                 >
-                  {gender === value && <span className="w-2 h-2 rounded-full bg-gray-900" />}
+                  {gender === value && <span className="w-2 h-2 rounded-full bg-point" />}
                 </span>
                 {label}
               </button>
@@ -254,82 +256,55 @@ function SignupPageInner() {
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">동의</span>
-            <button
-              type="button"
-              onClick={handleOpenTerms}
-              className="text-base text-gray-400 underline underline-offset-2"
-            >
-              약관 더보기
-            </button>
-          </div>
-          <div className="flex flex-col gap-3">
-            {[...REQUIRED_TERMS, ...OPTIONAL_TERMS].map((term) => (
-              <label key={term.id} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                <input
-                  type="checkbox"
-                  checked={!!agreedTerms[term.id]}
-                  onChange={() => toggleTerm(term.id)}
-                  className="w-4 h-4 rounded border-gray-300 dark:border-[#282B32]"
-                />
-                {term.label}
-              </label>
-            ))}
-          </div>
-        </div>
-
-        {showTerms && (
-          <div
-            className="fixed inset-0 bg-black/40 flex items-center justify-center px-6 z-50"
-            onClick={() => setShowTerms(false)}
-          >
-            <div
-              className="bg-white dark:bg-[#282B32] rounded-xl w-full max-w-md max-h-[75vh] flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-[#17181a]">
-                <p className="text-base font-bold">약관 전체보기</p>
-                <button
-                  type="button"
-                  onClick={() => setShowTerms(false)}
-                  aria-label="닫기"
-                  className="text-gray-400 text-lg"
+          <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">동의</span>
+          {/* [수정 8/5] "약관 더보기" 버튼 하나로 4개 문서를 한 모달에 몰아서 보여주던
+              방식 대신, 각 항목 오른쪽에 화살표를 붙여서 그 항목만 바로 펼쳐볼 수
+              있게 했어요. 또 체크박스 사이 간격이 너무 붙어있다는 피드백을 반영해서
+              각 줄에 위아래 패딩(py-3.5)을 주고 구분선으로 나눴어요. */}
+          <div className="flex flex-col">
+            {[...REQUIRED_TERMS, ...OPTIONAL_TERMS].map((term, i) => {
+              const section = TERMS_SECTIONS.find((s) => s.id === term.id);
+              const isOpen = expandedTermId === term.id;
+              return (
+                <div
+                  key={term.id}
+                  className={i > 0 ? "border-t border-gray-50 dark:border-[#17181a]" : ""}
                 >
-                  ✕
-                </button>
-              </div>
-
-              {/* [수정] 백엔드의 단일 약관 문서 대신, 마이페이지·하단바와 같은 4개
-                  문서(이용약관/개인정보처리방침/위치정보이용/마케팅정보수신)를
-                  모아서 아코디언으로 펼쳐볼 수 있게 했어요. */}
-              <div className="overflow-y-auto px-6 py-4 flex flex-col gap-1">
-                {TERMS_SECTIONS.map((section) => {
-                  const isOpen = expandedTermId === section.id;
-                  return (
-                    <div key={section.id} className="border-b border-gray-50 dark:border-[#17181a] py-3">
+                  <div className="flex items-center justify-between gap-2 py-3.5">
+                    <label className="flex-1 flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
+                      <Checkbox
+                        checked={!!agreedTerms[term.id]}
+                        onChange={() => toggleTerm(term.id)}
+                      />
+                      {term.label}
+                    </label>
+                    {section && (
                       <button
                         type="button"
-                        onClick={() => setExpandedTermId(isOpen ? null : section.id)}
-                        className="w-full flex items-center justify-between text-left"
+                        onClick={() => setExpandedTermId(isOpen ? null : term.id)}
+                        aria-label={`${term.label} 내용 보기`}
+                        className="flex-none p-1 -m-1"
                       >
-                        <span className="text-sm font-semibold">{section.title}</span>
-                        <span className={`transition-transform ${isOpen ? "rotate-180" : ""}`}>
-                          <img src="/icons/ui/chevron_down.svg" alt="" width={14} height={14} className="dark:invert" />
-                        </span>
+                        <img
+                          src="/icons/ui/chevron_down.svg"
+                          alt=""
+                          width={14}
+                          height={14}
+                          className={`dark:invert transition-transform ${isOpen ? "rotate-180" : ""}`}
+                        />
                       </button>
-                      {isOpen && (
-                        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap mt-3">
-                          {section.content}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+                    )}
+                  </div>
+                  {isOpen && section && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap pb-4">
+                      {section.content}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        )}
+        </div>
 
         {/* [신규] 버튼이 안 눌러질 때 "약관은 다 체크했는데 왜 안 되지?" 하는 혼란이
             있었어요 - 닉네임/전화번호도 같이 채워야 하는데 그게 눈에 잘 안 띄었던
@@ -351,7 +326,7 @@ function SignupPageInner() {
           type="button"
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="w-full rounded-full py-3.5 mt-4 text-base font-medium bg-gray-100 text-gray-900 dark:text-white disabled:opacity-60 enabled:bg-gray-900 enabled:text-white"
+          className="w-full rounded-full py-3.5 mt-4 text-base font-medium bg-point text-gray-900 dark:text-white disabled:opacity-50"
         >
           {submitting ? "저장하는 중..." : "동의하고 가입하기"}
         </button>

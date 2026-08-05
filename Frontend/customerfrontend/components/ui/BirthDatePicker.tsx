@@ -84,7 +84,7 @@ export function BirthDatePicker({
           <select
             value={viewYear}
             onChange={(e) => setViewYear(Number(e.target.value))}
-            className="flex-1 bg-gray-100 rounded-lg px-3 py-2 text-sm outline-none"
+            className="flex-1 bg-gray-100 dark:bg-[#17181a] text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm outline-none"
           >
             {years.map((y) => (
               <option key={y} value={y}>
@@ -95,7 +95,7 @@ export function BirthDatePicker({
           <select
             value={viewMonth}
             onChange={(e) => setViewMonth(Number(e.target.value))}
-            className="flex-1 bg-gray-100 rounded-lg px-3 py-2 text-sm outline-none"
+            className="flex-1 bg-gray-100 dark:bg-[#17181a] text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm outline-none"
           >
             {Array.from({ length: 12 }, (_, i) => i).map((m) => (
               <option key={m} value={m}>

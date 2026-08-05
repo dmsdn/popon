@@ -246,7 +246,7 @@ function SearchPageInner() {
                 onClick={() => setOpenFilterTab(tab)}
                 className={`flex-none flex items-center gap-1 text-sm px-3 py-1.5 rounded-full border ${
                   count > 0
-                    ? "border-point text-point font-medium"
+                    ? "border-point text-[#218B09] font-medium"
                     : "border-gray-200 dark:border-[#282B32] text-gray-600 dark:text-gray-400"
                 }`}
               >
