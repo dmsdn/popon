@@ -7,6 +7,7 @@ import {
   Popup, PopupSlot, ReservationDetail,
 } from "../../lib/api";
 import { ensureSlots } from "../../lib/slotAutoGen";
+import { restoreSelectedPopup, saveSelectedPopup } from "../../lib/popupSelection";
 
 const fmtTime = (t: string | null) => (t ? t.slice(0, 5) : ""); // HH:mm:ss → HH:mm
 
@@ -72,13 +73,20 @@ export default function Reservations() {
     getMyPopups()
       .then((list) => {
         setPopups(list);
-        // 쿼리로 받은 팝업이 내 목록에 없으면(잘못된 id 등) 첫 팝업으로 폴백
-        if (list.length > 0) setPopupId((prev) => (prev && list.some((p) => p.id === prev) ? prev : list[0].id));
+        // 우선순위: URL 쿼리(?popup=) → 다른 화면에서 마지막으로 고른 팝업(localStorage) → 첫 팝업.
+        // 쿼리로 받은 팝업이 내 목록에 없으면(잘못된 id 등) 그다음 순위로 폴백 (8/5)
+        if (list.length > 0)
+          setPopupId((prev) =>
+            prev && list.some((p) => p.id === prev) ? prev : restoreSelectedPopup(list, list[0].id),
+          );
       })
       .catch((e) => setError(e instanceof Error ? e.message : "팝업 목록을 불러오지 못했습니다."));
   }, [isBusiness]);
 
   const selected = popups.find((p) => p.id === popupId) ?? null;
+
+  // 8/5 — 마지막 선택을 기억해 관제·성과·공지에서도 같은 팝업이 잡히게 한다
+  useEffect(() => { if (popupId != null) saveSelectedPopup(popupId); }, [popupId]);
 
   // 선택된 팝업의 슬롯·명단 로드 + SLOT 모드면 누락 슬롯 자동 생성(등록 정보 기준, 없는 것만)
   useEffect(() => {

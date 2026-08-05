@@ -9,6 +9,7 @@ import {
   getVisitorAgeStats, getVisitorGenderStats, getConversionRate,
   Popup, DailyCount, VisitorSummary, ConversionRate,
 } from "../../lib/api";
+import { restoreSelectedPopup, saveSelectedPopup } from "../../lib/popupSelection";
 
 // 내 팝업 성과 대시보드 — 7/27 방문자 통계 API 6종(jmy) 실연동
 // 방문자 = 체크인(CHECKED_IN) 기준, 전환율 = 클릭로그 대비 예약
@@ -34,7 +35,9 @@ export default function Performance() {
       .then((list) => {
         setPopups(list);
         const first = list.find((p) => p.status === "OPEN") ?? list.find((p) => p.status === "BEFOR") ?? list[0];
-        if (first) setPopupId(first.id);
+        // 8/5 — 다른 화면에서 고른 팝업을 우선 복원, 없으면 기존 규칙(게시 상태 우선)
+        const initial = restoreSelectedPopup(list, first ? first.id : null);
+        if (initial != null) setPopupId(initial);
         else setLoading(false);
       })
       .catch((e) => { setError(e instanceof Error ? e.message : "팝업 목록을 불러오지 못했습니다."); setLoading(false); });
@@ -66,6 +69,9 @@ export default function Performance() {
   }, [popupId]);
 
   const selected = popups.find((p) => p.id === popupId) ?? null;
+
+  // 8/5 — 마지막 선택을 기억해 명단·관제·공지에서도 같은 팝업이 잡히게 한다
+  useEffect(() => { if (popupId != null) saveSelectedPopup(popupId); }, [popupId]);
   // 사전예약을 아예 안 받는 팝업 (8/4). 등록 시점에 따라 두 필드로 표현돼 있어 둘 다 본다 —
   // queueMode는 7/24 신설이고, 그 이전 팝업은 reservationMode=FREE로만 남아 있다.
   const walkinOnly =
