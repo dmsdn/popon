@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { MapPin, Tags, Loader2, Info, Plus, Trash2, Users, Image as ImageIcon, X, Pencil, Check } from "lucide-react";
+import { MapPin, Tags, Loader2, Info, Plus, Trash2, Users, Store, Image as ImageIcon, X, Pencil, Check } from "lucide-react";
 import {
   getAdminKeywords, createAdminKeyword, updateAdminKeyword, deleteAdminKeyword,
   getAdminRegions, createAdminRegion, deleteAdminRegion,
@@ -329,6 +329,14 @@ export default function Masters() {
                   title="이 항목을 관심으로 선택한 소비자 수"
                 >
                   <Users size={11} /> {item.customerCount}
+                </span>
+                {/* 8/5 — 이 항목을 선택한 팝업 수. 관심 소비자 수만으로는 삭제·수정의
+                    영향 범위가 안 보여서(팝업 매핑이 몇 개 걸려 있는지) 나란히 보여 준다 */}
+                <span
+                  className="flex items-center gap-1 text-[11px] text-muted-foreground shrink-0"
+                  title={`이 ${unit}을(를) 선택한 팝업 수`}
+                >
+                  <Store size={11} /> {item.popupCount ?? 0}
                 </span>
                 {/* 카테고리만 수정 가능 — 지역은 아직 백엔드 PATCH가 없다 (8/4) */}
                 {!isRegion && (editId === item.id ? (

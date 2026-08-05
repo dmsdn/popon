@@ -83,9 +83,12 @@ public class PopupResponse {
     }
 
     // 목록/검색 화면 전용 - 해시태그·키워드명·썸네일까지 배치조회로 채워서 리턴 (평점·SNS·상세이미지는 목록에서 안 씀)
+    // 8/5 - 별점·후기 수 인자 추가. 목록에서도 별점순 정렬이 가능해야 해서
+    // (관리자 종합성과 별점 랭킹) enrichForList가 GROUP BY로 집계해 넘긴다.
     public static PopupResponse fromForList(Popup popup, List<String> hashtags,
-                                            List<String> keywordNames, List<String> thumbnailImages) {
-        return from(popup, hashtags, null, 0L, keywordNames, Collections.emptyList(),
+                                            List<String> keywordNames, List<String> thumbnailImages,
+                                            java.math.BigDecimal avgRating, Long reviewCount) {
+        return from(popup, hashtags, avgRating, reviewCount, keywordNames, Collections.emptyList(),
                 thumbnailImages, Collections.emptyList(), Collections.emptyList());
     }
 

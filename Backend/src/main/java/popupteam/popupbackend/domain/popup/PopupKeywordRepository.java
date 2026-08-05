@@ -10,4 +10,6 @@ public interface PopupKeywordRepository extends JpaRepository<PopupKeyword, Popu
     void deleteByKeywordId(Long keywordId);
     // 목록/검색 화면에서 여러 팝업의 표준 키워드를 한 번에 조회 (N+1 방지)
     List<PopupKeyword> findByPopupIdIn(List<Long> popupIds);
+    // 마스터 관리 - 이 카테고리를 선택한 팝업 수 (8/5)
+    long countByKeywordId(Long keywordId);
 }

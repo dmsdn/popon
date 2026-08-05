@@ -86,6 +86,9 @@ public class AdminKeywordController {
                     m.put("name", k.getName());
                     m.put("iconUrl", k.getIconUrl());
                     m.put("customerCount", customerKeywordRepository.countByKeywordId(k.getId()));
+                    // 8/5 - 이 카테고리를 선택한 팝업 수. 삭제 전에 영향 범위(소비자 관심 + 팝업 매핑)를
+                    // 둘 다 보여주기 위한 값이다
+                    m.put("popupCount", popupKeywordRepository.countByKeywordId(k.getId()));
                     return m;
                 })
                 .toList();
