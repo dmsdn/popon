@@ -773,7 +773,7 @@ function MyPageContent() {
                 <span className="text-sm text-gray-500">{customer.nickname}</span>
               </div>
 
-              <div className="flex items-center justify-between py-4 border-b border-gray-50 dark:border-[#282B32]">
+              <div className="flex items-center justify-between py-2.5 border-b border-gray-50 dark:border-[#282B32]">
                 <span className="text-sm text-gray-700 dark:text-gray-300">연결된 로그인</span>
                 <span
                   className={`flex items-center gap-1.5 text-sm font-medium rounded-full px-3 py-1.5 ${
