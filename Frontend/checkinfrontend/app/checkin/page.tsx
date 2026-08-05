@@ -324,6 +324,19 @@ function CheckinPageInner() {
   const [lang, setLang] = useState<Lang>("ko");
   const t = TEXT[lang];
 
+  // [신규 8/5] 사전 예약 QR 주소. 소비자 앱 오리진을 현재 접속 주소에서 유도하는데
+  // (lib/siteUrls.ts), 그건 브라우저에서만 알 수 있어서 useEffect로 미뤄요.
+  // 값이 정해지기 전에는 null이라 QR을 안 그려요 - 자세한 사정은 아래 렌더부 주석 참고.
+  const [reservationQrSrc, setReservationQrSrc] = useState<string | null>(null);
+  useEffect(() => {
+    if (!popupId) return;
+    setReservationQrSrc(
+      `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
+        consumerReservationUrl(popupId)
+      )}`
+    );
+  }, [popupId]);
+
   // 현재 대기 팀 수를 주기적으로 새로고침 (현장 태블릿이라 계속 켜져있을 걸 가정)
   useEffect(() => {
     if (!popupId) return;
@@ -439,9 +452,12 @@ function CheckinPageInner() {
     );
   }
 
-  const reservationQrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
-    consumerReservationUrl(popupId)
-  )}`;
+  // [수정 8/5] QR 주소를 렌더 중에 만들지 않고 useEffect(아래 reservationQrSrc)에서
+  // 계산해요. 이 앱은 output:"export"라 빌드 시점에 HTML이 한 번 만들어지는데,
+  // 그때는 window가 없어 소비자 앱 주소를 알 수 없어요. 렌더 중에 만들면 그 순간의
+  // 값(로컬 기본값)으로 QR이 한 번 그려졌다가 하이드레이션 후에 바뀌어요 -
+  // 손님이 그 찰나에 스캔하면 열리지 않는 주소를 받아요. 그래서 주소가 확정되기
+  // 전에는 QR 자리를 비워 둬요.
 
   return (
     <main className="h-full flex flex-col landscape:flex-row relative overflow-y-auto landscape:overflow-hidden scrollbar-hide">
@@ -513,8 +529,14 @@ function CheckinPageInner() {
             스캔하면 소비자 앱의 예약 화면으로 바로 연결돼요. 설명은 QR
             오른쪽에 둬요. (입장 QR 스캔은 /checkin/scan 화면으로 분리했어요.) */}
         <div className="w-full flex items-center gap-4 bg-[#17181a] rounded-xl px-4 py-4 flex-none">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={reservationQrSrc} alt="" width={90} height={90} className="rounded-md flex-none bg-white" />
+          {/* 주소가 확정되기 전(빌드 시점 HTML)에는 자리만 잡아 둬요 — 틀린 QR을
+              잠깐이라도 띄우면 그 사이에 스캔한 손님이 안 열리는 주소를 받아요. */}
+          {reservationQrSrc ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={reservationQrSrc} alt="" width={90} height={90} className="rounded-md flex-none bg-white" />
+          ) : (
+            <div className="w-[90px] h-[90px] rounded-md flex-none bg-[#282b32]" aria-hidden />
+          )}
           <div className="text-left min-w-0">
             <p className="text-sm font-semibold text-white">{t.reservationQrTitle}</p>
             <p className="text-sm text-gray-400 mt-1 leading-relaxed">{t.reservationQrDesc}</p>
