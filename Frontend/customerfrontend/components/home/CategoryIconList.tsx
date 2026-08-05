@@ -21,6 +21,14 @@ import { getPopupCategoryIcon, getPopupCategoryBg } from "@/lib/utils/popupCateg
 // keyword.iconUrl이 있으면 그 이미지를 쓰고, 없으면(기존 8개처럼 아직 아이콘을
 // 안 올린 카테고리) 지금까지 쓰던 lucide 아이콘 폴백을 그대로 보여줘요 -
 // popupCategoryIcon.ts는 지우지 않고 폴백용으로 유지해요.
+//
+// [수정 8/5] 관리자 업로드 아이콘도 뒤로가기 화살표 등 다른 단색 아이콘들과
+// 똑같이 dark:invert를 적용했어요 - 백엔드에 새 필드를 추가하는 대신, 지금
+// 오는 아이콘 하나를 다크모드에서 CSS로 반전시켜서 보이게 하는 방식이에요.
+// ⚠️ 단색(검정 실루엣) 아이콘일 때만 자연스럽게 반전돼요 - 알록달록한 다색
+// 아이콘을 올리면 invert가 색상을 이상하게 뒤집어버릴 수 있어요. 카테고리
+// 아이콘을 다색으로 올리는 카테고리가 있다면 그 아이콘만 이 반전에서 빼는
+// 방법도 있으니 필요하면 말씀해주세요.
 export function CategoryIconList({ selected }: { selected?: string } = {}) {
   const [categories, setCategories] = useState<Keyword[]>([]);
 
@@ -50,7 +58,7 @@ export function CategoryIconList({ selected }: { selected?: string } = {}) {
               >
                 {iconUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={iconUrl} alt="" className="w-9 h-9 object-contain" />
+                  <img src={iconUrl} alt="" className="w-9 h-9 object-contain dark:invert" />
                 ) : (
                   <Icon size={36} strokeWidth={1.4} className="text-gray-500 dark:text-gray-300" />
                 )}

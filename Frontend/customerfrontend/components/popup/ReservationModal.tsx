@@ -20,6 +20,15 @@ interface ReservationModalProps {
   slots?: PopupSlot[];
   minDate: Date;
   maxDate: Date;
+  /** [수정 8/5] 팀당 최대 인원(popup.maxPartySizePerTeam) - 슬롯을 아직 안
+      고르거나 슬롯이 없는(FREE 모드) 팝업에서 인원 스테퍼의 최대값으로 써요.
+      capacity(공간 전체 동시 수용 인원)와는 다른 개념이라 최대 인원 기준으로
+      쓰면 안 돼요. 없는 팝업(옛 데이터)은 capacity로 대체, 그것도 없으면
+      기본값(10명). 슬롯을 골랐으면 slot.remaining(그 시간대 잔여 인원)과
+      이 값 중 더 작은 쪽을 써요 - 잔여 인원이 남아 있어도 팀당 정원을
+      넘겨 예약할 수는 없으니까요. */
+  maxPartySizePerTeam?: number | null;
+  /** @deprecated maxPartySizePerTeam이 없을 때의 대체값으로만 남겨둠. */
   capacity?: number;
   // [신규] 예약 생성과 일정 변경이 같은 모달을 재사용하는데, 버튼이 항상 "예약하기"라고만
   // 떠서 일정 변경 화면에서도 새로 예약하는 것처럼 보였어요. mode로 문구를 구분합니다.
@@ -65,6 +74,7 @@ export function ReservationModal({
   minDate,
   maxDate,
   capacity,
+  maxPartySizePerTeam,
   mode = "create",
   operatingHours,
 }: ReservationModalProps) {
@@ -162,11 +172,12 @@ export function ReservationModal({
   // [수정] 시간대(슬롯)를 아직 안 골랐을 때 무조건 "최대 1명"으로 떠서
   // 마치 정원이 1명인 것처럼 보였어요. 슬롯을 고르기 전엔 팝업 전체 정원을
   // 기본으로 보여주고, 슬롯을 고르면 그 시간대의 실제 잔여 인원으로 좁혀요.
+  const perTeamCap = maxPartySizePerTeam ?? capacity ?? 10;
   const maxCount = hasSlots
     ? selectedSlot
-      ? Math.max(1, selectedSlot.remaining)
-      : Math.max(1, capacity ?? 10)
-    : Math.max(1, capacity ?? 10);
+      ? Math.max(1, Math.min(selectedSlot.remaining, perTeamCap))
+      : Math.max(1, perTeamCap)
+    : Math.max(1, perTeamCap);
 
   useEffect(() => {
     if (count > maxCount) setCount(maxCount);
@@ -311,7 +322,7 @@ export function ReservationModal({
                         disabled={!selectable}
                         onClick={() => setSelectedDate(cellDate)}
                         className={`w-7 h-7 mx-auto rounded-full text-sm flex items-center justify-center ${textClass} ${
-                          isSelected ? "border border-point !text-point font-semibold" : ""
+                          isSelected ? "border border-point !text-[#218B09] font-semibold" : ""
                         }`}
                       >
                         {day}

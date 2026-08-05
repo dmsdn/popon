@@ -122,7 +122,7 @@ export function FilterPanel({
               {selectedChips.map(({ group, value }) => (
                 <span
                   key={`${group}-${value}`}
-                  className="flex items-center gap-1 text-sm border border-point text-point rounded-full pl-3 pr-2 py-1.5"
+                  className="flex items-center gap-1 text-sm border border-point text-[#218B09] rounded-full pl-3 pr-2 py-1.5"
                 >
                   {value}
                   <button

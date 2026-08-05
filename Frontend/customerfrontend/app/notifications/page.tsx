@@ -167,7 +167,7 @@ export default function NotificationsPage() {
             onClick={() => setTab(t)}
             className={`flex-none px-3 py-1.5 rounded-full text-sm border ${
               tab === t
-                ? "border-point text-point font-medium"
+                ? "border-point text-[#218B09] font-medium"
                 : "border-gray-200 dark:border-[#282B32] text-gray-500"
             }`}
           >

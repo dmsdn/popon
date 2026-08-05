@@ -9,7 +9,7 @@
 
 import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { consumerReservationUrl } from "@/lib/siteUrls";
+import { consumerReservationUrl, consumerWaitingUrl, consumerPopupUrl } from "@/lib/siteUrls";
 
 // [참고] customerfrontend의 lib/utils/formatPhone.ts와 완전히 동일한 로직이에요.
 // 프로젝트가 분리되어 있어서 그대로 복사해왔어요 - 소비자 앱에서 이 파일을
@@ -201,8 +201,12 @@ const TEXT = {
     confirmOk: "확인",
     noPopupTitle: "팝업이 선택되지 않았어요",
     goSelectPopup: "팝업 선택 화면으로",
-    reservationQrTitle: "사전 예약은 QR로",
-    reservationQrDesc: "이 QR을 스캔하면 예약 화면으로 바로 연결돼요.",
+    reservationQrTitle: "팝온에서 사전예약을 해보세요",
+    reservationQrDesc: "이 QR을 스캔하면 팝온에서 바로 예약할 수 있어요.",
+    appWaitingQrTitle: "팝온에서 웨이팅을 등록해보세요",
+    appWaitingQrDesc: "이 QR을 스캔하면 팝온에서 바로 웨이팅을 등록할 수 있어요.",
+    bothQrTitle: "예약도 웨이팅도 팝온에서 가능해요",
+    bothQrDesc: "이 QR을 스캔하면 팝온에서 예약하거나 웨이팅할 수 있어요.",
   },
   en: {
     langLabel: "English",
@@ -230,8 +234,12 @@ const TEXT = {
     confirmOk: "OK",
     noPopupTitle: "No popup selected",
     goSelectPopup: "Go to popup selection",
-    reservationQrTitle: "Reserve ahead via QR",
-    reservationQrDesc: "Scan this QR code to go straight to the reservation screen.",
+    reservationQrTitle: "Reserve via POP-ON",
+    reservationQrDesc: "Scan this QR code to reserve right on POP-ON.",
+    appWaitingQrTitle: "Join the waitlist via POP-ON, too",
+    appWaitingQrDesc: "Scan this QR code to join the waitlist right on POP-ON.",
+    bothQrTitle: "Reserve or wait — both on POP-ON",
+    bothQrDesc: "Scan this QR code to reserve or join the waitlist on POP-ON.",
   },
   zh: {
     langLabel: "中文",
@@ -259,8 +267,12 @@ const TEXT = {
     confirmOk: "确认",
     noPopupTitle: "尚未选择快闪店",
     goSelectPopup: "前往选择快闪店",
-    reservationQrTitle: "扫码提前预约",
-    reservationQrDesc: "扫描此二维码可直接进入预约页面。",
+    reservationQrTitle: "扫码在POP-ON预约",
+    reservationQrDesc: "扫描此二维码即可在POP-ON上预约。",
+    appWaitingQrTitle: "也可以在POP-ON排队等候",
+    appWaitingQrDesc: "扫描此二维码即可直接在POP-ON登记排队。",
+    bothQrTitle: "预约和排队都可以在POP-ON上",
+    bothQrDesc: "扫描此二维码即可在POP-ON上预约或登记排队。",
   },
   ja: {
     langLabel: "日本語",
@@ -288,8 +300,12 @@ const TEXT = {
     confirmOk: "確認",
     noPopupTitle: "ポップアップが選択されていません",
     goSelectPopup: "ポップアップ選択画面へ",
-    reservationQrTitle: "QRで事前予約",
-    reservationQrDesc: "このQRコードをスキャンすると予約画面に直接移動します。",
+    reservationQrTitle: "QRでPOP-ONから事前予約",
+    reservationQrDesc: "このQRコードをスキャンするとPOP-ONで直接予約できます。",
+    appWaitingQrTitle: "ウェイティングもPOP-ONで",
+    appWaitingQrDesc: "このQRコードをスキャンするとPOP-ONでウェイティング登録ができます。",
+    bothQrTitle: "予約もウェイティングもPOP-ONで",
+    bothQrDesc: "このQRコードをスキャンするとPOP-ONで予約またはウェイティング登録ができます。",
   },
 } as const;
 type Lang = keyof typeof TEXT;
@@ -306,6 +322,11 @@ function CheckinPageInner() {
   // [신규] 팀당 최대 인원(maxPartySizePerTeam)과는 다른 개념이에요 - capacity는
   // "동시에 공간에 들어갈 수 있는 전체 인원"이에요. 대기시간 계산엔 이게 필요해요.
   const [capacity, setCapacity] = useState<number | null>(null);
+  // [신규 8/5] 팝업마다 사전예약/현장웨이팅 지원 여부가 달라요(queueMode) - 웨이팅만
+  // 받는 팝업엔 애초에 "사전예약" 자체가 없어서, 그런 팝업에서 예약 QR을 보여주면
+  // 손님이 스캔해도 열 수 없는 기능으로 안내하는 셈이 돼요. 소비자 앱(StickyActionBar)이
+  // 이미 같은 필드로 예약 가능 여부를 판단하고 있어서 그 기준을 그대로 따라요.
+  const [queueMode, setQueueMode] = useState<"PRERESERVATION_ONLY" | "ONSITE_WAITING_ONLY" | "BOTH" | null>(null);
   const [totalWaitingTeams, setTotalWaitingTeams] = useState<number | null>(null);
   const [totalWaitingPeople, setTotalWaitingPeople] = useState<number | null>(null);
   const [email, setEmail] = useState("");
@@ -324,18 +345,29 @@ function CheckinPageInner() {
   const [lang, setLang] = useState<Lang>("ko");
   const t = TEXT[lang];
 
-  // [신규 8/5] 사전 예약 QR 주소. 소비자 앱 오리진을 현재 접속 주소에서 유도하는데
-  // (lib/siteUrls.ts), 그건 브라우저에서만 알 수 있어서 useEffect로 미뤄요.
-  // 값이 정해지기 전에는 null이라 QR을 안 그려요 - 자세한 사정은 아래 렌더부 주석 참고.
+  // [신규 8/5] QR 주소. 오늘 두 사람이 각자 고친 것을 합쳤어요.
+  //  ① 목적지가 팝업의 queueMode에 따라 3갈래로 갈려요 (아래 렌더부 주석 참고).
+  //  ② 소비자 앱 오리진은 현재 접속 주소에서 유도해요(lib/siteUrls.ts). 그건 브라우저에서만
+  //     알 수 있어서, 렌더 중이 아니라 여기서 만들어요. 이 앱은 output:"export"라 빌드 시점에
+  //     HTML이 한 번 만들어지는데 그때는 window가 없어요 - 렌더 중에 만들면 그 순간의
+  //     값(로컬 기본값)으로 QR이 한 번 그려졌다가 하이드레이션 후에 바뀌고, 그 찰나에 스캔한
+  //     손님은 열리지 않는 주소를 받아요. 정해지기 전에는 null로 둬서 QR 자리를 비워요.
   const [reservationQrSrc, setReservationQrSrc] = useState<string | null>(null);
   useEffect(() => {
-    if (!popupId) return;
+    if (!popupId || !queueMode) {
+      setReservationQrSrc(null);
+      return;
+    }
+    const target =
+      queueMode === "ONSITE_WAITING_ONLY"
+        ? consumerWaitingUrl(popupId)
+        : queueMode === "BOTH"
+        ? consumerPopupUrl(popupId)
+        : consumerReservationUrl(popupId);
     setReservationQrSrc(
-      `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
-        consumerReservationUrl(popupId)
-      )}`
+      `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(target)}`
     );
-  }, [popupId]);
+  }, [popupId, queueMode]);
 
   // 현재 대기 팀 수를 주기적으로 새로고침 (현장 태블릿이라 계속 켜져있을 걸 가정)
   useEffect(() => {
@@ -369,6 +401,7 @@ function CheckinPageInner() {
           setAvgExperienceMinutes(data.avgExperienceMinutes ?? null);
           setMaxPartySize(data.maxPartySizePerTeam ?? null);
           setCapacity(data.capacity ?? null);
+          setQueueMode(data.queueMode ?? null);
         }
       })
       .catch((err) => console.error("팝업 정보 조회 실패", err));
@@ -452,12 +485,21 @@ function CheckinPageInner() {
     );
   }
 
-  // [수정 8/5] QR 주소를 렌더 중에 만들지 않고 useEffect(아래 reservationQrSrc)에서
-  // 계산해요. 이 앱은 output:"export"라 빌드 시점에 HTML이 한 번 만들어지는데,
-  // 그때는 window가 없어 소비자 앱 주소를 알 수 없어요. 렌더 중에 만들면 그 순간의
-  // 값(로컬 기본값)으로 QR이 한 번 그려졌다가 하이드레이션 후에 바뀌어요 -
-  // 손님이 그 찰나에 스캔하면 열리지 않는 주소를 받아요. 그래서 주소가 확정되기
-  // 전에는 QR 자리를 비워 둬요.
+  // [수정 8/5] 팝업의 queueMode(사전예약만/웨이팅만/둘 다)에 따라 QR이 가리키는
+  // 화면과 문구를 3갈래로 나눠요. 예전엔 BOTH(둘 다 가능)인 팝업도 무조건
+  // "사전예약" 문구+예약 화면으로만 보내서, 이 QR로 웨이팅도 할 수 있다는 걸
+  // 손님이 알 방법이 없었어요.
+  //  - PRERESERVATION_ONLY: 예약 화면(?action=reservation)
+  //  - ONSITE_WAITING_ONLY: 앱 웨이팅 등록 화면(?action=waiting) - 이미 태블릿에서
+  //    등록 가능한 손님에게 앱 사용을 홍보하는 용도
+  //  - BOTH: 어느 한쪽을 강제로 열지 않고 팝업 상세페이지로 보내서 손님이 직접 골라요
+  // 주소 자체를 만드는 일은 위쪽 useEffect(reservationQrSrc)가 맡아요 - 소비자 앱
+  // 오리진을 브라우저에서만 알 수 있어서 렌더 중에 만들면 안 되기 때문이에요.
+  // 여기서는 문구만 고릅니다.
+  const isWaitingOnly = queueMode === "ONSITE_WAITING_ONLY";
+  const isBoth = queueMode === "BOTH";
+  const qrTitle = isWaitingOnly ? t.appWaitingQrTitle : isBoth ? t.bothQrTitle : t.reservationQrTitle;
+  const qrDesc = isWaitingOnly ? t.appWaitingQrDesc : isBoth ? t.bothQrDesc : t.reservationQrDesc;
 
   return (
     <main className="h-full flex flex-col landscape:flex-row relative overflow-y-auto landscape:overflow-hidden scrollbar-hide">
@@ -495,7 +537,7 @@ function CheckinPageInner() {
             세로 가운데로 오도록 했어요. */}
         <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-6">
           {/* [수정] 팝업 이름 한 단계 굵게 (font-normal → font-semibold) */}
-          {popupTitle && <p className="text-xl font-semibold text-gray-300 text-center">{popupTitle}</p>}
+          {popupTitle && <p className="text-xl font-semibold text-gray-100 text-center">{popupTitle}</p>}
 
           <div className="flex flex-col items-center gap-1 mt-4">
             <span className="text-sm text-gray-400">{t.currentWaitingTeams}</span>
@@ -525,23 +567,32 @@ function CheckinPageInner() {
           )}
         </div>
 
-        {/* [신규] 사전 예약 QR - 아직 등록 안 한 손님이 자기 휴대폰으로
-            스캔하면 소비자 앱의 예약 화면으로 바로 연결돼요. 설명은 QR
-            오른쪽에 둬요. (입장 QR 스캔은 /checkin/scan 화면으로 분리했어요.) */}
-        <div className="w-full flex items-center gap-4 bg-[#17181a] rounded-xl px-4 py-4 flex-none">
-          {/* 주소가 확정되기 전(빌드 시점 HTML)에는 자리만 잡아 둬요 — 틀린 QR을
-              잠깐이라도 띄우면 그 사이에 스캔한 손님이 안 열리는 주소를 받아요. */}
-          {reservationQrSrc ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={reservationQrSrc} alt="" width={90} height={90} className="rounded-md flex-none bg-white" />
-          ) : (
-            <div className="w-[90px] h-[90px] rounded-md flex-none bg-[#282b32]" aria-hidden />
-          )}
-          <div className="text-left min-w-0">
-            <p className="text-sm font-semibold text-white">{t.reservationQrTitle}</p>
-            <p className="text-sm text-gray-400 mt-1 leading-relaxed">{t.reservationQrDesc}</p>
+        {/* [수정 8/5] 예약/웨이팅 QR - 아직 등록 안 한 손님이 자기 휴대폰으로
+            스캔하면 소비자 앱으로 바로 연결돼요. 설명은 QR 오른쪽에 둬요.
+            (입장 QR 스캔은 /checkin/scan 화면으로 분리했어요.)
+            사전예약 가능한 팝업은 예약 화면(?action=reservation)으로, 웨이팅만
+            받는 팝업(queueMode === "ONSITE_WAITING_ONLY")은 이 QR을 숨기는 대신
+            앱 웨이팅 등록 화면(?action=waiting)으로 보내고 문구도 "앱으로도
+            웨이팅할 수 있어요"로 바꿔요 - 이미 태블릿에서 등록할 수 있는
+            손님에게 앱 사용을 자연스럽게 홍보하는 용도예요.
+            queueMode를 아직 못 받아왔거나(null) 사전예약/웨이팅 둘 다 지원 안
+            하는 팝업이면 보여줄 화면이 없으니 QR 자체를 숨겨요.
+            그리고 주소가 확정되기 전(빌드 시점 HTML)에도 QR을 안 그려요 - 틀린 QR을
+            잠깐이라도 띄우면 그 사이에 스캔한 손님이 안 열리는 주소를 받아요. */}
+        {queueMode && (
+          <div className="w-full flex items-center gap-4 bg-[#17181a] rounded-xl px-4 py-4 flex-none">
+            {reservationQrSrc ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={reservationQrSrc} alt="" width={90} height={90} className="rounded-md flex-none bg-white" />
+            ) : (
+              <div className="w-[90px] h-[90px] rounded-md flex-none bg-[#282b32]" aria-hidden />
+            )}
+            <div className="text-left min-w-0">
+              <p className="text-sm font-semibold text-white">{qrTitle}</p>
+              <p className="text-sm text-gray-400 mt-1 leading-relaxed">{qrDesc}</p>
+            </div>
           </div>
-        </div>
+        )}
       </section>
 
       {/* 오른쪽(가로)/아래(세로): 등록 폼 */}
@@ -667,7 +718,7 @@ function CheckinPageInner() {
       {/* [신규] 전화번호로 등록 완료되면 뜨는 안내 모달 */}
       {showConfirm && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center px-8 z-50">
-          <div className="bg-card rounded-2xl px-10 py-10 w-full max-w-md text-center animate-float">
+          <div className="bg-card rounded-2xl px-10 py-10 w-full max-w-md text-center animate-slide-up">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-point/20 flex items-center justify-center text-point text-3xl">
               ✓
             </div>
