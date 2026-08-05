@@ -117,8 +117,19 @@ public class ReservationService {
             }
             validateNotClosedDay(popup.getId(), slot.getSlotDate());
 
+            // [수정 8/6] 같은 손님이 같은 회차를 두 번 잡는 것을 서버에서 막는다.
+            if (reservationRepository.existsByCustomer_IdAndSlot_IdAndStatus(
+                    customerId, slot.getId(), ReservationStatus.CONFIRMED)) {
+                throw new IllegalArgumentException("이미 이 시간대에 예약이 있습니다.");
+            }
+
             reservation.setSlot(slot);
             reservation.setReservationDate(slot.getSlotDate());
+            // [수정 8/6] 회차 예약인데 reservationTime을 비워 두고 있었다(실측 189건 NULL).
+            // 소비자 앱은 「같은 날짜 + 같은 시간」으로 중복을 판정하는데, 시간이 늘 null이라
+            // null == null이 항상 참이 되어 검사가 「같은 날짜」로 퇴화했다. 그래서 같은 날
+            // 다른 회차를 잡으려 해도 「이미 같은 시간대에 예약이 있어요」가 떴다.
+            reservation.setReservationTime(slot.getStartTime());
 
         } else { // FREE 모드
             if (request.getReservationDate() == null) {
@@ -134,6 +145,14 @@ public class ReservationService {
             }
             validateNotClosedDay(popup.getId(), request.getReservationDate());
             validateWithinOperatingHours(popup.getId(), request.getReservationDate(), request.getReservationTime());
+
+            // [수정 8/6] SLOT 모드와 같은 이유로 서버에서 중복을 막는다.
+            // 시간을 안 고르는 팝업(reservationTime = null)은 하루에 한 번으로 본다.
+            if (reservationRepository.existsSameFreeReservation(
+                    customerId, popup.getId(), request.getReservationDate(),
+                    request.getReservationTime(), ReservationStatus.CONFIRMED)) {
+                throw new IllegalArgumentException("이미 이 시간대에 예약이 있습니다.");
+            }
 
             int reserved = reservationRepository.findByPopupIdAndReservationDateAndStatus(
                             popup.getId(), request.getReservationDate(), ReservationStatus.CONFIRMED).stream()
