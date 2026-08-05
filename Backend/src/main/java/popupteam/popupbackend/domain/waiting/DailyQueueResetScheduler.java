@@ -49,9 +49,19 @@ public class DailyQueueResetScheduler {
     @Scheduled(cron = "0 5 0 * * *", zone = "Asia/Seoul")
     @Transactional
     public void resetYesterdayQueue() {
-        LocalDate yesterday = LocalDate.now().minusDays(1);
-        LocalDateTime dayStart = yesterday.atStartOfDay();
-        LocalDateTime dayEnd = yesterday.plusDays(1).atStartOfDay();
+        // [수정 8/6] 대상을 「어제 하루」에서 「오늘 이전 전부」로 넓혔다.
+        //
+        // 어제만 닫으면 리셋을 한 번이라도 거른 날짜가 영영 열린 채로 남는다. 배포 중 재기동,
+        // 서버 정지, 스케줄러 도입(8/4) 이전 데이터가 전부 여기 해당한다.
+        // 실제로 8/6 아침 기준 7/21~8/3에 걸쳐 20개 팝업에 33건이 열린 채 남아 있었고,
+        // 그게 현장 태블릿의 대기 팀 수를 부풀렸다.
+        //
+        // 밀린 날짜를 한 번에 닫아도 부작용은 없다. 어차피 상태만 바꾸고 행은 남기며,
+        // 정상 운영 중이라면 매일 어제치만 걸려 기존과 동일하게 동작한다.
+        LocalDate today = LocalDate.now();
+        LocalDate yesterday = today.minusDays(1);
+        LocalDateTime dayStart = LocalDateTime.of(1970, 1, 1, 0, 0);
+        LocalDateTime dayEnd = today.atStartOfDay();
 
         // ① 현장 웨이팅 — 대기중(WAITING) 또는 호출만 받고 끝난(CALLED) 건.
         //    예약의 EntryStatus.NO_SHOW와 같은 사건이므로 같은 상태값(NO_SHOW)으로 확정한다.
@@ -70,7 +80,7 @@ public class DailyQueueResetScheduler {
 
         // ② 사전예약 — 입장·노쇼 처리 없이 남은 건. 예약 자체(status=CONFIRMED)는 건드리지 않고
         //    입장 여부만 NO_SHOW로 확정한다. 예약 건수 통계가 취소로 깎이면 안 되기 때문이다.
-        List<Reservation> staleReservations = reservationRepository.findUnprocessedOfDay(yesterday);
+        List<Reservation> staleReservations = reservationRepository.findUnprocessedBefore(today);
         for (Reservation r : staleReservations) {
             r.setEntryStatus(EntryStatus.NO_SHOW);
             transactionEventLogService.log(r.getPopup().getId(), "RESERVATION", r.getId(),

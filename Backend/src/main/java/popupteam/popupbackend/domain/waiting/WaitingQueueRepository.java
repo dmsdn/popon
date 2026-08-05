@@ -11,6 +11,22 @@ public interface WaitingQueueRepository extends JpaRepository<WaitingQueue, Long
 
     List<WaitingQueue> findByPopupIdAndStatusOrderByRegisteredAtAsc(Long popupId, WaitingStatus status);
 
+    // 태블릿 현황판의 「현재 대기 팀」 (8/6 신설).
+    //
+    // 원래 위의 findByPopupIdAndStatus…를 썼는데 날짜 조건이 없어 전 기간 WAITING이 다 잡혔다.
+    // 자정 리셋이 매일 어제치를 닫아 주니 결과적으로 오늘치만 남는다는 전제였는데,
+    // 리셋이 하루라도 걸리면 그 날짜가 영구히 남아 태블릿 숫자만 부풀었다.
+    // (8/6 실측: 팝업 53의 태블릿이 3팀, 관제가 2팀 — 차이는 8/3에 방치된 1건이었다.)
+    //
+    // 배치의 부작용에 기대지 않고 화면이 스스로 오늘을 자른다. 관제(findDayRoster)와 같은 기준이다.
+    @Query("SELECT w FROM WaitingQueue w WHERE w.popup.id = :popupId AND w.status = :status " +
+            "AND w.registeredAt >= :startOfDay AND w.registeredAt < :endOfDay " +
+            "ORDER BY w.registeredAt ASC")
+    List<WaitingQueue> findDayBoard(@Param("popupId") Long popupId,
+                                    @Param("status") WaitingStatus status,
+                                    @Param("startOfDay") LocalDateTime startOfDay,
+                                    @Param("endOfDay") LocalDateTime endOfDay);
+
     // 하루치 웨이팅 전부 — 상태를 가리지 않는다 (8/4).
     // 관제 화면이 「그날의 명단」을 보여주기 위한 쿼리다. 입장·취소된 건도 함께 와야
     // 처리 결과가 배지로 남고, 지난 날짜를 골랐을 때 그날 기록을 그대로 볼 수 있다.

@@ -107,6 +107,13 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             "AND ((s IS NOT NULL AND s.slotDate = :date) OR (s IS NULL AND r.reservationDate = :date))")
     List<Reservation> findUnprocessedOfDay(@Param("date") LocalDate date);
 
+    // [수정 8/6] 「어제」가 아니라 「오늘 이전 전부」. 리셋이 하루라도 걸리면(배포 중 재기동,
+    // 서버 다운, 스케줄러 도입 이전 데이터) 그 날짜는 어제가 아니게 되어 영영 닫히지 않았다.
+    @Query("SELECT r FROM Reservation r LEFT JOIN r.slot s " +
+            "WHERE r.status = 'CONFIRMED' AND r.entryStatus = 'PENDING' " +
+            "AND ((s IS NOT NULL AND s.slotDate < :today) OR (s IS NULL AND r.reservationDate < :today))")
+    List<Reservation> findUnprocessedBefore(@Param("today") LocalDate today);
+
     List<Reservation> findByPopupIdAndStatus(Long popupId, ReservationStatus status);
 
     // 진짜 방문객(체크인 완료)의 연령 분포 통계용 - 예약만 하고 안 온 사람은 제외

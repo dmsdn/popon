@@ -95,10 +95,13 @@ public class WaitingQueueService {
         return WaitingResponse.from(saved, teamsAhead);
     }
 
-    // 패드 현황판: 현장웨이팅자만 (기존 방식 유지, 필요시 사용)
+    // 패드 현황판: 현장웨이팅자만
+    // [수정 8/6] 오늘 등록분으로 자른다. 전에는 날짜 조건이 없어 지난 날짜의 미처리 대기가
+    // 그대로 섞였고, 같은 팝업인데 태블릿과 관제 화면의 대기 팀 수가 어긋났다.
     public WaitingBoardResponse getBoard(Long popupId) {
+        java.time.LocalDateTime startOfDay = java.time.LocalDate.now().atStartOfDay();
         List<WaitingQueue> waitingList = waitingQueueRepository
-                .findByPopupIdAndStatusOrderByRegisteredAtAsc(popupId, WaitingStatus.WAITING);
+                .findDayBoard(popupId, WaitingStatus.WAITING, startOfDay, startOfDay.plusDays(1));
 
         List<WaitingResponse> responses = new java.util.ArrayList<>();
         for (int i = 0; i < waitingList.size(); i++) {
