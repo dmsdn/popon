@@ -118,17 +118,31 @@ export default function PlatformStats() {
               </div>
               <p className="text-[11px] text-muted-foreground mb-3">막대를 누르면 해당 팝업 상세로 이동합니다.</p>
               {/* 확장하면 행 수만큼 차트 키를 늘린다 — 고정 높이에 수십 개를 우겨 넣으면
-                  막대가 실선이 되고 라벨이 겹친다. 행당 30px + 여유분. */}
-              <div style={{ height: chartRows.length === 0 ? 240 : Math.max(240, chartRows.length * 30 + 16) }}>
+                  막대가 실선이 되고 라벨이 겹친다. 행당 34px + 여유분.
+                  8/5 — 라벨을 한 줄 말줄임으로 강제. recharts 기본 tick은 긴 이름을
+                  여러 줄로 접는데, 행 간격보다 라벨이 커지면서 서로 겹치고 아래가 잘렸다.
+                  자르는 건 축 라벨뿐이고 툴팁·클릭에는 원래 이름이 그대로 쓰인다. */}
+              <div style={{ height: chartRows.length === 0 ? 240 : Math.max(240, chartRows.length * 34 + 16) }}>
                 {chartRows.length === 0 ? (
                   <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
                     체크인 데이터가 없습니다.
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartRows} layout="vertical" margin={{ top: 0, right: 24, left: 24, bottom: 0 }}>
+                    <BarChart data={chartRows} layout="vertical" margin={{ top: 0, right: 24, left: 8, bottom: 0 }}>
                       <XAxis type="number" hide />
-                      <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={110} axisLine={false} tickLine={false} />
+                      <YAxis
+                        type="category"
+                        dataKey="name"
+                        width={120}
+                        axisLine={false}
+                        tickLine={false}
+                        tick={({ x, y, payload }: { x: number; y: number; payload: { value: string } }) => (
+                          <text x={x} y={y} dy={4} textAnchor="end" fontSize={11} fill="#6b7280">
+                            {payload.value.length > 11 ? `${payload.value.slice(0, 11)}…` : payload.value}
+                          </text>
+                        )}
+                      />
                       <Tooltip contentStyle={{ fontSize: 12, borderRadius: 4 }} formatter={(v) => `${Number(v).toLocaleString()}명`} />
                       <Bar
                         dataKey="visitors"
