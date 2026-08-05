@@ -693,7 +693,7 @@ function CheckinPageInner() {
       {/* [신규] 전화번호로 등록 완료되면 뜨는 안내 모달 */}
       {showConfirm && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center px-8 z-50">
-          <div className="bg-card rounded-2xl px-10 py-10 w-full max-w-md text-center animate-float">
+          <div className="bg-card rounded-2xl px-10 py-10 w-full max-w-md text-center animate-slide-up">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-point/20 flex items-center justify-center text-point text-3xl">
               ✓
             </div>

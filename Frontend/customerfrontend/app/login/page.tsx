@@ -35,7 +35,7 @@ export default function LoginPage() {
     // 주신 "하단에 붙어있고 스크롤하면 내려간다"는 증상과 정확히 일치). 실제 보이는
     // 영역을 따라가는 min-h-dvh(동적 뷰포트 높이)로 바꿔서 항상 한 화면에 딱
     // 맞게 나오도록 했어요.
-    <main className="min-h-dvh flex flex-col">
+    <main className="min-h-dvh flex flex-col w-full mobile:max-w-[1000px] mobile:mx-auto">
       {/* 상단바 - [수정 8/5] "팝업" 텍스트 로고 링크 대신 뒤로가기 버튼으로 바꿨어요. */}
       <header className="flex items-center h-14 px-4 border-b border-gray-100 dark:border-[#282B32]">
         <button
