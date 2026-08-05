@@ -87,7 +87,6 @@ public class UnifiedQueueService {
                     .partySize(w.getPartySize())
                     .qrToken(w.getQrToken())
                     .entryStatus(w.getStatus().name())
-                    .cancelReason(w.getCancelReason())
                     .exitedAt(w.getExitedAt())
                     .joinedAt(w.getEnteredAt() != null ? w.getEnteredAt() : w.getRegisteredAt())
                     .build());
@@ -160,6 +159,9 @@ public class UnifiedQueueService {
             }
             if (w.getStatus() == popupteam.popupbackend.domain.waiting.WaitingStatus.CANCELLED) {
                 throw new IllegalArgumentException("취소된 웨이팅입니다.");
+            }
+            if (w.getStatus() == popupteam.popupbackend.domain.waiting.WaitingStatus.NO_SHOW) {
+                throw new IllegalArgumentException("미입장 처리된 웨이팅입니다. 재방문 시 새로 웨이팅을 등록해 주세요.");
             }
 
             w.setStatus(popupteam.popupbackend.domain.waiting.WaitingStatus.ENTERED);

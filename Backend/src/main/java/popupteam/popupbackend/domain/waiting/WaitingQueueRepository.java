@@ -22,9 +22,11 @@ public interface WaitingQueueRepository extends JpaRepository<WaitingQueue, Long
                                      @Param("endOfDay") LocalDateTime endOfDay);
 
     // 자정 리셋 대상 — 그날 안에 아무 처리도 되지 않은 채 남은 대기 (8/4)
-    @Query("SELECT w FROM WaitingQueue w WHERE w.status = :status " +
+    // WAITING뿐 아니라 CALLED도 대상이다. 호출만 받고 끝내 입장하지 않은 손님이 그대로 남으면
+    // 다음 날 대기열이 0에서 시작하지 못한다. (호출 부활과 함께 statuses로 확장 — 8/4 저녁)
+    @Query("SELECT w FROM WaitingQueue w WHERE w.status IN :statuses " +
             "AND w.registeredAt >= :startOfDay AND w.registeredAt < :endOfDay")
-    List<WaitingQueue> findUnprocessedOfDay(@Param("status") WaitingStatus status,
+    List<WaitingQueue> findUnprocessedOfDay(@Param("statuses") List<WaitingStatus> statuses,
                                             @Param("startOfDay") LocalDateTime startOfDay,
                                             @Param("endOfDay") LocalDateTime endOfDay);
 

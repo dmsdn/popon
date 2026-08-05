@@ -1,34 +1,29 @@
 import { useEffect, useState } from "react";
 import {
-  ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
-  CartesianGrid, Tooltip, BarChart, Bar,
+  ResponsiveContainer, XAxis, YAxis, Tooltip, BarChart, Bar,
 } from "recharts";
 import { Loader2, ArrowUpRight } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 import {
   getAdminDashboard, AdminDashboard as Dashboard,
   getPopupRanking, PopupVisitorRanking,
-  getRevenueTrend, RevenueTrend,
   getPopups, type Popup,
 } from "../../lib/api";
 
 // 플랫폼 종합 성과 — 7/28 실데이터 연동
-// 방문자 랭킹(/api/admin/stats/popup-ranking) · 매출 추이(/api/admin/stats/revenue) · 요약(dashboard BFF)
+// 방문자 랭킹(/api/admin/stats/popup-ranking) · 요약(dashboard BFF)
 // 7/31 — 브랜드 재입점률 추가 (같은 사업자가 팝업을 2회 이상 연 비율 — 별도 API 없이 팝업 목록의 businessId로 집계)
-
-type Period = "DAILY30" | "MONTHLY12";
+// 8/4 — 매출 추이 차트·기간 셀렉트 삭제. 홈(8/3)에 이어 이 화면에서도 매출 지표를 내렸다 —
+//        계약금 기반 «매출»이 실거래액처럼 읽히는 문제. getRevenueTrend 호출도 함께 제거.
 
 export default function PlatformStats() {
   const navigate = useNavigate();
-  const [period, setPeriod] = useState<Period>("DAILY30");
   const [dash, setDash] = useState<Dashboard | null>(null);
   const [ranking, setRanking] = useState<PopupVisitorRanking[]>([]);
-  const [revenue, setRevenue] = useState<RevenueTrend[]>([]);
   const [popups, setPopups] = useState<Popup[]>([]); // 재입점률 집계용 (7/31)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // 요약·랭킹은 1회, 매출은 기간 변경 시 재조회
   useEffect(() => {
     Promise.all([getAdminDashboard(), getPopupRanking()])
       .then(([d, r]) => { setDash(d); setRanking(r); setError(""); })
@@ -47,38 +42,16 @@ export default function PlatformStats() {
   const brandReturning = Object.values(popupsByBusiness).filter((n) => n >= 2).length;
   const rebookRate = brandTotal > 0 ? (brandReturning / brandTotal) * 100 : null;
 
-  useEffect(() => {
-    const [unit, amount] = period === "DAILY30" ? (["DAILY", 30] as const) : (["MONTHLY", 12] as const);
-    getRevenueTrend(unit, amount)
-      .then(setRevenue)
-      .catch(() => setRevenue([]));
-  }, [period]);
-
   const totalCheckin = ranking.reduce((s, r) => s + r.visitorCount, 0);
-  // 8/3 — revenueSum(요약 카드용) 제거. 매출은 아래 추이 차트로만 남긴다
-  const revenueChart = revenue.map((r) => ({
-    period: period === "DAILY30" ? r.period.slice(5) : r.period, // 일별은 MM-DD
-    amount: Math.round(Number(r.totalAmount) / 10000), // 만원 단위
-  }));
   // 7/31 — 막대를 눌러도 상세로 가게 popupId를 함께 싣는다.
   // 오른쪽 「랭킹 전체」만 클릭되고 왼쪽 차트는 안 되면 같은 팝업인데 동작이 갈려 혼란스럽다.
   const top5 = ranking.slice(0, 5).map((r) => ({ name: r.popupTitle, visitors: r.visitorCount, popupId: r.popupId }));
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold">플랫폼 종합 성과 대시보드</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">전체 팝업 방문(체크인)·매출(계약금) 실데이터 집계</p>
-        </div>
-        <select
-          value={period}
-          onChange={(e) => setPeriod(e.target.value as Period)}
-          className="text-xs border border-border rounded-sm px-3 py-2 bg-card focus:outline-none focus:border-accent"
-        >
-          <option value="DAILY30">매출: 최근 30일 (일별)</option>
-          <option value="MONTHLY12">매출: 최근 12개월 (월별)</option>
-        </select>
+      <div>
+        <h1 className="text-lg font-semibold">플랫폼 종합 성과 대시보드</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">전체 팝업 방문(체크인) 실데이터 집계</p>
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 rounded-sm px-4 py-3 text-xs text-red-600">{error}</div>}
@@ -110,36 +83,6 @@ export default function PlatformStats() {
                 <div className="text-[11px] text-muted-foreground mt-1">{k.sub}</div>
               </div>
             ))}
-          </div>
-
-          {/* 매출 추이 */}
-          <div className="bg-card border border-border rounded-sm p-4">
-            <div className="text-sm font-semibold mb-4">
-              매출 추이 (계약금 · {period === "DAILY30" ? "최근 30일" : "최근 12개월"})
-            </div>
-            <div className="h-64">
-              {revenueChart.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
-                  집계된 매출 데이터가 없습니다. (팝업 계약금 등록 시 집계)
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={revenueChart} margin={{ top: 4, right: 8, left: -8, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="gRev" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#2F6BFF" stopOpacity={0.25} />
-                        <stop offset="100%" stopColor="#2F6BFF" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#eee" vertical={false} />
-                    <XAxis dataKey="period" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 4 }} formatter={(v) => `${Number(v).toLocaleString()}만원`} />
-                    <Area type="monotone" dataKey="amount" name="매출(만원)" stroke="#2F6BFF" strokeWidth={2} fill="url(#gRev)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
-            </div>
           </div>
 
           {/* 방문자 랭킹 */}
