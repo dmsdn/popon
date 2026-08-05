@@ -582,7 +582,7 @@ function MyPageContent() {
   // during the previous render" 에러가 났었어요. 모든 useState/useEffect/useMemo가
   // 끝난 뒤, 화면을 그리기 직전으로 옮겼어요 - React 훅은 매 렌더링마다 정확히
   // 같은 순서로 호출돼야 해서, 훅들 사이에 조건부 return이 끼어있으면 안 돼요.
-  if (loading || !isLoggedIn) return null;
+  if (loading || !isLoggedIn || !customer) return null;
 
   return (
     <main className="min-h-screen flex flex-col w-full mobile:max-w-[1000px] mobile:mx-auto">
@@ -606,9 +606,10 @@ function MyPageContent() {
         <aside
           className={`${mobileView === "detail" ? "hidden mobile:block" : "block"} mobile:w-[240px] mobile:border-r border-gray-100 dark:border-[#282B32] py-6`}
         >
-          {/* isLoggedIn은 위 렌더 가드(if (loading || !isLoggedIn) return null)를
-              통과했다는 뜻이라 여기서부턴 항상 true예요 - 게스트용 분기를
-              없애고 로그인 사용자 콘텐츠만 남겼어요. */}
+          {/* isLoggedIn과 customer 둘 다 위 렌더 가드
+              (if (loading || !isLoggedIn || !customer) return null)를
+              통과했다는 뜻이라 여기서부턴 항상 true/non-null이에요 - 게스트용
+              분기를 없애고 로그인 사용자 콘텐츠만 남겼어요. */}
           <>
               <button
                 type="button"
@@ -679,7 +680,6 @@ function MyPageContent() {
                 </button>
               </div>
             </>
-          )}
 
           <nav className="flex flex-col">
             {(isLoggedIn ? SIDEBAR_MENU : PUBLIC_MENU).map((menu) => (
