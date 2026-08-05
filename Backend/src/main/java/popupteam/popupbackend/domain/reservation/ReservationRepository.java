@@ -116,6 +116,26 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     List<Reservation> findByPopupIdAndStatus(Long popupId, ReservationStatus status);
 
+    // [신규 8/6] 중복 예약 방지 — 지금까지 서버에는 이 검사가 아예 없었다.
+    // 소비자 앱이 예약 직전에 목록을 한 번 더 받아 스스로 비교하는 게 전부였는데,
+    // 조회와 생성 사이에 원자성이 없어(TOCTOU) 버튼을 두 번 누르면 그대로 통과했다.
+    // 이용 안내에 「같은 날짜·같은 시간대에는 한 번만 예약할 수 있어요」라고
+    // 이미 약속해 둔 규칙이므로 서버가 지킨다.
+    boolean existsByCustomer_IdAndSlot_IdAndStatus(Long customerId, Long slotId, ReservationStatus status);
+
+    // FREE 모드는 시간을 안 고르는 팝업이면 reservationTime이 null이다. 파생 쿼리로 쓰면
+    // 그 null이 `= NULL`로 나가 아무것도 안 걸리므로(SQL에서 NULL 비교는 항상 거짓)
+    // null 비교를 명시한다 — 시간을 안 고르는 팝업은 하루 한 번으로 본다.
+    @Query("SELECT COUNT(r) > 0 FROM Reservation r " +
+            "WHERE r.customer.id = :customerId AND r.popup.id = :popupId " +
+            "AND r.status = :status AND r.reservationDate = :date " +
+            "AND ((:time IS NULL AND r.reservationTime IS NULL) OR r.reservationTime = :time)")
+    boolean existsSameFreeReservation(@Param("customerId") Long customerId,
+                                      @Param("popupId") Long popupId,
+                                      @Param("date") LocalDate date,
+                                      @Param("time") java.time.LocalTime time,
+                                      @Param("status") ReservationStatus status);
+
     // 진짜 방문객(체크인 완료)의 연령 분포 통계용 - 예약만 하고 안 온 사람은 제외
 // 주의: birthDate가 NULL인 경우도 일부러 포함시킴 (미상 버킷으로 잡아서 성별 분포와 총 인원수를 맞추기 위함)
     @Query("SELECT r.customer.birthDate FROM Reservation r WHERE r.popup.id = :popupId " +
