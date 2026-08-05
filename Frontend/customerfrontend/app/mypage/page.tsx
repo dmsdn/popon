@@ -10,7 +10,7 @@ import { getAnnouncements, type Announcement } from "@/lib/api/announcements";
 import { getMyReviews, deleteReview, toDisplayDate, type Review } from "@/lib/api/reviews";
 import { getPopup, HIDDEN_STATUSES, type PopupDetail } from "@/lib/api/popups";
 import { getMyReservations, type Reservation } from "@/lib/api/reservations";
-import { getMyWaitingStatus, getMyWaitingIds, type Waiting } from "@/lib/api/waiting";
+import { getMyWaitingStatus, getMyWaitingIds, getMyActiveWaitings, type Waiting, type MyActiveWaiting } from "@/lib/api/waiting";
 import { createCsRequest, getMyCsRequests, type CsRequestItem } from "@/lib/api/cs";
 import { TERMS_SECTIONS } from "@/data/termsContent";
 import { StarRatingDisplay } from "@/components/ui/StarRatingDisplay";
@@ -176,6 +176,11 @@ function MyPageContent() {
       setHiddenPopupIds((prev) => new Set(prev).add(popupId));
     }
   };
+  // [수정 8/5] "찜 3인데 목록엔 1개만 보인다"는 신고 확인 결과 - 상단 배지
+  // 숫자(wishlistIds.size)는 게시중지/승인대기/반려 팝업까지 그대로 세고,
+  // 바로 아래 목록은 hiddenPopupIds로 그 팝업들을 걸러내고 있어서 서로 기준이
+  // 달랐던 거예요. 배지도 목록과 똑같은 기준으로 세도록 통일해요.
+  const visibleWishlistCount = [...wishlistIds].filter((id) => !hiddenPopupIds.has(id)).length;
 
   useEffect(() => {
     if (isLoggedIn) ensureWishlistLoaded();
@@ -199,6 +204,15 @@ function MyPageContent() {
   // 웨이팅 / 예약
   const [myReservations, setMyReservations] = useState<Reservation[] | null>(null);
   const [myWaitings, setMyWaitings] = useState<Waiting[]>([]);
+  // [신규 8/5] "찜 3 / 웨이팅·예약 12"인데 실제론 더 적게 뜬다는 신고 확인 결과 -
+  // 위 myWaitings는 이 브라우저 localStorage에 기록해둔 웨이팅 id만 조회하는
+  // 방식이라(getMyWaitingIds), 다른 기기·브라우저에서 등록한 웨이팅은 개수에서
+  // 통째로 빠지고 있었어요. 백엔드에 이미 있는 "내 활성 웨이팅 전체" API(GET
+  // /api/waiting/me, lib/api/waiting.ts의 getMyActiveWaitings)로 개수/목록용
+  // state를 따로 둬요. myWaitings 자체는 "다녀간 팝업" 탭이 enteredAt(입장완료)
+  // 여부로 방문 이력을 판단하는 데 계속 쓰는데, 그건 활성 웨이팅 API 범위 밖이라
+  // (WAITING/CALLED만 내려줌) 그대로 남겨뒀어요.
+  const [myActiveWaitings, setMyActiveWaitings] = useState<MyActiveWaiting[]>([]);
   const [reservationPopupTitles, setReservationPopupTitles] = useState<Record<number, string>>({});
   const [reservationPopupImages, setReservationPopupImages] = useState<Record<number, string | undefined>>({});
 
@@ -220,8 +234,9 @@ function MyPageContent() {
         if (!cancelled) setMyReservations([]);
       });
 
-    // ⚠️ 백엔드에 "내 웨이팅 전체 목록" API가 없어서, 이 브라우저에서 등록할 때
-    // 기록해둔 id들로 하나씩 상태를 조회해요 (lib/api/waiting.ts의 addMyWaitingId 참고).
+    // ⚠️ myWaitings는 "다녀간 팝업" 탭에서 입장완료(enteredAt) 여부를 판단하는
+    // 용도로만 남겨뒀어요 - 이 브라우저에 기록된 id만 조회하는 한계가 있지만,
+    // 활성 웨이팅 개수/목록은 바로 아래에서 실 API로 따로 받아와요.
     Promise.all(
       getMyWaitingIds().map((id) =>
         getMyWaitingStatus(id).catch(() => null)
@@ -236,6 +251,16 @@ function MyPageContent() {
       }
     });
 
+    // [신규 8/5] "내 정보" 카드의 웨이팅/예약 개수·목록은 이 실 API 결과를 써요.
+    getMyActiveWaitings(customer.id)
+      .then((list) => {
+        if (!cancelled) setMyActiveWaitings(list);
+      })
+      .catch((err) => {
+        console.error("내 활성 웨이팅 조회 실패", err);
+        if (!cancelled) setMyActiveWaitings([]);
+      });
+
     return () => {
       cancelled = true;
     };
@@ -246,6 +271,11 @@ function MyPageContent() {
     const popupIds = [
       ...(myReservations ?? []).map((r) => r.popupId),
       ...myWaitings.map((w) => w.popupId),
+      // [수정 8/5] myActiveWaitings(실 API 기반, 다른 기기에서 등록한 웨이팅도
+      // 포함)의 popupId도 같이 모아서, 이미지/게시중지 여부를 그 팝업들에
+      // 대해서도 조회해요 - 안 그러면 이 브라우저에 기록이 없던 웨이팅은
+      // 이미지가 항상 빈 채로 뜨고, 게시중지된 팝업도 안 걸러져요.
+      ...myActiveWaitings.map((w) => w.popupId),
     ];
     [...new Set(popupIds)].forEach((popupId) => {
       if (reservationPopupTitles[popupId]) return;
@@ -260,7 +290,7 @@ function MyPageContent() {
         });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myReservations, myWaitings]);
+  }, [myReservations, myWaitings, myActiveWaitings]);
 
   // 1:1 문의
   const [myCsRequests, setMyCsRequests] = useState<CsRequestItem[] | null>(null);
@@ -494,7 +524,15 @@ function MyPageContent() {
   };
 
   // 웨이팅 + 예약을 합친 총 "대기중" 건수 - 프로필 아래 바로가기 카드 분기에 씁니다.
-  const activeCount = myWaitings.length + (myReservations?.length ?? 0);
+  // [수정 8/5] myWaitings.length(로컬 저장 id 기준) 대신 실 API 기반
+  // myActiveWaitings를 쓰고, 예약도 취소된 건 "활성"이 아니니 제외해요 -
+  // 하단바 배지(useActiveQueueCount)와 기준을 맞췄어요.
+  // [수정 8/5] 여기도 위 찜 개수와 같은 문제 - 배지는 hiddenPopupIds를 안 걸러서
+  // 목록(웨이팅 2개+예약 3개=5)보다 배지(10)가 훨씬 크게 나왔어요. 목록과
+  // 똑같이 게시중지/승인대기/반려 팝업은 배지 개수에서도 빼요.
+  const activeCount =
+    myActiveWaitings.filter((w) => !hiddenPopupIds.has(w.popupId)).length +
+    (myReservations?.filter((r) => r.status !== "CANCELLED" && !hiddenPopupIds.has(r.popupId)).length ?? 0);
 
   // "다녀간 팝업" - 예전엔 후기/예약/웨이팅을 각각 따로 카드로 만들어서, 예약해서
   // 다녀온 뒤 후기까지 쓴 팝업이 "예약(방문 완료·후기 남기기)" 카드랑 "후기" 카드
@@ -645,7 +683,7 @@ function MyPageContent() {
                       거의 안 보였어요. 라벨보다 눈에 띄도록 크고 굵게, 다크모드에서도
                       확실히 밝게 나오도록 고쳤어요. */}
                   <span className="text-3xl font-semibold text-gray-900 dark:text-white">
-                    {wishlistIds.size}
+                    {visibleWishlistCount}
                   </span>
                   <span className="text-sm text-gray-500 dark:text-gray-400 mt-1">찜</span>
                 </button>
@@ -657,7 +695,7 @@ function MyPageContent() {
                   <span className="text-3xl font-semibold text-gray-900 dark:text-white">
                     {activeCount}
                   </span>
-                  <span className="text-sm text-gray-500 dark:text-gray-400 mt-1">웨이팅 · 예약</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400 mt-1">웨이팅 / 예약</span>
                 </button>
               </div>
 
@@ -668,14 +706,14 @@ function MyPageContent() {
                   className="flex items-center justify-between rounded-lg px-2 py-2 text-left bg-gray-50 dark:bg-[#282B32]"
                 >
                   <span className="text-sm text-gray-700 dark:text-gray-300">찜</span>
-                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{wishlistIds.size}</span>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{visibleWishlistCount}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleSelectMenu("웨이팅 / 예약")}
                   className="flex items-center justify-between rounded-lg px-2 py-2 text-left bg-gray-50 dark:bg-[#282B32]"
                 >
-                  <span className="text-sm text-gray-700 dark:text-gray-300">웨이팅 · 예약</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">웨이팅 / 예약</span>
                   <span className="text-sm font-semibold text-gray-900 dark:text-white">{activeCount}</span>
                 </button>
               </div>
@@ -823,7 +861,7 @@ function MyPageContent() {
           )}
 
           {activeMenu === "찜 목록" &&
-            (wishlistIds.size === 0 ? (
+            (visibleWishlistCount === 0 ? (
               <EmptyState message="찜한 팝업이 없어요." />
             ) : (
               <div className="flex flex-col gap-3">
@@ -886,14 +924,14 @@ function MyPageContent() {
             <div className="flex flex-col gap-10">
               <section>
                 <h2 className="text-sm font-semibold mb-3">웨이팅</h2>
-                {myWaitings.length === 0 ? (
+                {myActiveWaitings.length === 0 ? (
                   <EmptyState message="진행 중인 웨이팅이 없어요." />
                 ) : (
                   <div className="flex flex-col gap-3">
-                    {myWaitings.filter((w) => !hiddenPopupIds.has(w.popupId)).map((w) => (
+                    {myActiveWaitings.filter((w) => !hiddenPopupIds.has(w.popupId)).map((w) => (
                       <Link
-                        key={w.id}
-                        href={`/waiting/${w.id}`}
+                        key={w.waitingId}
+                        href={`/waiting/${w.waitingId}`}
                         className="block border border-gray-200 dark:border-[#282B32] rounded-xl p-5"
                       >
                         <div className="flex items-start gap-4">
@@ -908,11 +946,12 @@ function MyPageContent() {
                             )}
                           </div>
                           <div className="flex-1">
-                            <p className="text-sm font-semibold mb-1">
-                              {reservationPopupTitles[w.popupId] ?? `팝업 #${w.popupId}`}
-                            </p>
+                            {/* [수정 8/5] getMyActiveWaitings 응답엔 popupTitle이 이미 실려있어서
+                                별도 조회(reservationPopupTitles) 없이 바로 써요. partySize는
+                                이 API에 없는 필드라 표시 문구에서 뺐어요. */}
+                            <p className="text-sm font-semibold mb-1">{w.popupTitle}</p>
                             <p className="text-sm text-gray-500">
-                              앞 {w.teamsAhead}팀 · {w.partySize}명 · {waitingStatusLabel(w.status)}
+                              앞 {w.teamsAhead}팀 · {waitingStatusLabel(w.status)}
                             </p>
                           </div>
                           <div className="text-right flex-none">

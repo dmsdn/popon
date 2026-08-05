@@ -19,7 +19,7 @@ import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 import { appAlert, appConfirm } from "@/lib/ui/alertStore";
 
 const POLICY = [
-  "순서가 되면 팝온으로 알림을 보내드려요. 팝업 재량으로 미입장시 노쇼 처리가 될 수 있으니 빠르게 입장할 수 있도록 미리 준비해주세요.",
+  "순서가 되면 팝온으로 알림을 보내드려요. 미입장시 노쇼처리가 될 수 있으니 빠른 입장 부탁드려요.",
   "잦은 취소·노쇼는 서비스 이용에 제한이 있을 수 있어요.",
 ];
 
