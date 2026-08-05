@@ -14,6 +14,7 @@ import {
 } from "../../lib/walkinQueue";
 import { isSuspended } from "../../lib/adminPopupMeta";
 import { CONSUMER_SIGNUP_URL } from "../../lib/siteUrls";
+import { restoreSelectedPopup, saveSelectedPopup } from "../../lib/popupSelection";
 
 // 대기열·인원 관제 — 예약·웨이팅 통합관리 (jsw waiting·unified queue 백엔드 실연동)
 // 실연동: 통합 대기열 보드(서버가 사전예약 자동 편입·정렬), 웨이팅 등록/입장/취소, 예약 체크인/노쇼
@@ -146,7 +147,8 @@ export default function WaitingControl() {
     getMyPopups()
       .then((list) => {
         setPopups(list);
-        if (list.length > 0) setPopupId((prev) => prev ?? list[0].id);
+        // 8/5 — 다른 화면에서 고른 팝업이 있으면 그걸 먼저 잡는다 (없으면 첫 팝업)
+        if (list.length > 0) setPopupId((prev) => prev ?? restoreSelectedPopup(list, list[0].id));
       })
       .catch((e) => setError(e instanceof Error ? e.message : "팝업 목록을 불러오지 못했습니다."));
   }, [isBusiness]);
@@ -196,6 +198,9 @@ export default function WaitingControl() {
   }, [popupId, day]);
 
   const selected = popups.find((p) => p.id === popupId) ?? null;
+
+  // 8/5 — 마지막 선택을 기억해 명단·성과·공지에서도 같은 팝업이 잡히게 한다
+  useEffect(() => { if (popupId != null) saveSelectedPopup(popupId); }, [popupId]);
   const slotMap = useMemo(() => Object.fromEntries(slots.map((s) => [s.id, s])), [slots]);
   // 예약 상세(슬롯·입장 시각)를 보드 행에 붙이기 위한 맵 — 보드 응답에는 refId(예약 id)만 있다
   const rosterById = useMemo(() => Object.fromEntries(roster.map((r) => [r.id, r])), [roster]);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Megaphone, Send, CheckCircle2, Loader2 } from "lucide-react";
 import { getMyPopups, sendPopupNotice, getPopupNotices, Popup, NoticeItem, NoticeTarget } from "../../lib/api";
+import { restoreSelectedPopup, saveSelectedPopup } from "../../lib/popupSelection";
 
 // 긴급공지 발송 — POST /api/popups/{id}/notices 실연동 (7/28)
 // 발송 대상 선택 → 서버가 수신자 집계 후 소비자·주최자 수신함에 적재. 발송 이력도 서버 조회.
@@ -33,7 +34,9 @@ export default function Notices() {
         // 공지를 보낼 수 있는 건 게시된 팝업(오픈예정·진행중)뿐 — 심사 대기·반려·종료는 제외
         const notifiable = all.filter((p) => p.status === "BEFOR" || p.status === "OPEN");
         setMyPopups(notifiable);
-        setPopupId((prev) => prev || (notifiable[0] ? String(notifiable[0].id) : ""));
+        // 8/5 — 다른 화면에서 고른 팝업이 게시 목록에 있으면 우선 복원
+        const restored = restoreSelectedPopup(notifiable, notifiable[0] ? notifiable[0].id : null);
+        setPopupId((prev) => prev || (restored != null ? String(restored) : ""));
       })
       .catch(() => setMyPopups([]));
   }, []);
@@ -52,6 +55,9 @@ export default function Notices() {
     setTargets((prev) => (prev.includes(key) ? prev.filter((t) => t !== key) : [...prev, key]));
 
   const selectedTitle = myPopups.find((p) => String(p.id) === popupId)?.title ?? "";
+
+  // 8/5 — 마지막 선택을 기억해 명단·관제·성과에서도 같은 팝업이 잡히게 한다
+  useEffect(() => { if (popupId) saveSelectedPopup(Number(popupId)); }, [popupId]);
 
   const send = async () => {
     setError("");
