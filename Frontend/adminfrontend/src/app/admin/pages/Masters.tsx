@@ -114,15 +114,33 @@ export default function Masters() {
   const [editIcon, setEditIcon] = useState<File | null>(null);
   const editIconRef = useRef<HTMLInputElement>(null);
 
+  // 8/5 — 고른 파일을 저장(체크) 전에 표에서 바로 보여 준다.
+  // 그전에는 행 아이콘이 서버의 iconUrl만 봐서, 파일을 바꿔도 체크를 누르기 전까지
+  // 옛 아이콘이 그대로 보였다. 「바꿨는데 안 바뀐다」로 읽히는 자리라 미리보기를 붙였다.
+  // createObjectURL은 브라우저 메모리를 잡으므로 파일이 바뀌거나 편집을 끝낼 때 반드시 해제한다.
+  const [editIconPreview, setEditIconPreview] = useState<string | null>(null);
+  useEffect(() => {
+    if (!editIcon) {
+      setEditIconPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(editIcon);
+    setEditIconPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [editIcon]);
+
   const startEdit = (item: MasterItem) => {
     setEditId(item.id);
     setEditName(item.name);
     setEditIcon(null);
+    if (editIconRef.current) editIconRef.current.value = "";
   };
   const cancelEdit = () => {
     setEditId(null);
     setEditName("");
     setEditIcon(null);
+    // 같은 파일을 다시 고를 수 있게 비운다 (등록 폼의 clearIcon과 같은 이유)
+    if (editIconRef.current) editIconRef.current.value = "";
   };
 
   const saveEdit = async (item: MasterItem) => {
@@ -271,16 +289,26 @@ export default function Masters() {
                 <span className="w-8 text-xs text-muted-foreground shrink-0" style={{ fontFamily: "'DM Mono', monospace" }}>
                   {item.id}
                 </span>
-                {/* 카테고리는 등록된 아이콘을 보여 준다 — 없으면 소비자 화면이 이름 규칙으로 폴백한다 (8/4) */}
-                {!isRegion && (
-                  item.iconUrl ? (
-                    <img src={item.iconUrl} alt="" className="w-6 h-6 object-contain shrink-0" />
+                {/* 카테고리는 등록된 아이콘을 보여 준다 — 없으면 소비자 화면이 이름 규칙으로 폴백한다 (8/4)
+                    8/5 — 수정 중에 파일을 고르면 저장 전에도 그 이미지를 먼저 보여 준다. */}
+                {!isRegion && (() => {
+                  const editing = editId === item.id;
+                  const src = (editing && editIconPreview) || item.iconUrl;
+                  return src ? (
+                    <img
+                      src={src}
+                      alt=""
+                      className={`w-6 h-6 object-contain shrink-0 ${
+                        editing && editIconPreview ? "ring-2 ring-accent rounded-sm" : ""
+                      }`}
+                      title={editing && editIconPreview ? "저장하기 전 미리보기입니다" : undefined}
+                    />
                   ) : (
                     <span className="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center shrink-0" title="등록된 아이콘 없음 — 기본 아이콘으로 표시됩니다">
                       <ImageIcon size={11} className="text-muted-foreground" />
                     </span>
-                  )
-                )}
+                  );
+                })()}
                 {/* 수정 중인 행은 이름 입력으로 바뀐다 (8/4 PATCH 연동) */}
                 {editId === item.id ? (
                   <input
