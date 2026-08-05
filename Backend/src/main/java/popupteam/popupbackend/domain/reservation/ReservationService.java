@@ -46,6 +46,27 @@ public class ReservationService {
                 });
     }
 
+    // 버그 수정: FREE(당일 방문) 모드는 슬롯이 없어서, 팝업 등록 시 요일별로 설정한 운영시간
+    // (open_time~close_time)을 전혀 검증하지 않고 있었음 - 오후 5시까지로 등록해도 19:30 같은
+    // 시간이 그대로 예약되던 원인. 시간이 함께 들어온 경우에만 그 요일의 운영시간 범위를 확인한다.
+    private void validateWithinOperatingHours(Long popupId, LocalDate date, LocalTime time) {
+        if (time == null) {
+            return;
+        }
+        popupOperatingHoursRepository.findByPopupIdAndDayOfWeek(popupId, date.getDayOfWeek())
+                .ifPresent(h -> {
+                    if (h.isClosed()) {
+                        return; // validateNotClosedDay가 별도로 처리
+                    }
+                    if (h.getOpenTime() != null && time.isBefore(h.getOpenTime())) {
+                        throw new IllegalArgumentException("운영 시작 시간(" + h.getOpenTime() + ") 이전에는 예약할 수 없습니다.");
+                    }
+                    if (h.getCloseTime() != null && time.isAfter(h.getCloseTime())) {
+                        throw new IllegalArgumentException("운영 종료 시간(" + h.getCloseTime() + ") 이후에는 예약할 수 없습니다.");
+                    }
+                });
+    }
+
     public ReservationResponse create(Long customerId, ReservationCreateRequest request) {
         Popup popup = popupRepository.findById(request.getPopupId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 팝업입니다."));
@@ -112,6 +133,7 @@ public class ReservationService {
                 throw new IllegalArgumentException("이미 지난 날짜는 예약할 수 없습니다.");
             }
             validateNotClosedDay(popup.getId(), request.getReservationDate());
+            validateWithinOperatingHours(popup.getId(), request.getReservationDate(), request.getReservationTime());
 
             int reserved = reservationRepository.findByPopupIdAndReservationDateAndStatus(
                             popup.getId(), request.getReservationDate(), ReservationStatus.CONFIRMED).stream()
@@ -207,6 +229,7 @@ public class ReservationService {
                 throw new IllegalArgumentException("이미 지난 날짜로는 변경할 수 없습니다.");
             }
             validateNotClosedDay(popup.getId(), newDate);
+            validateWithinOperatingHours(popup.getId(), newDate, newTime);
 
             int reserved = reservationRepository.findByPopupIdAndReservationDateAndStatus(
                             popup.getId(), newDate, ReservationStatus.CONFIRMED).stream()

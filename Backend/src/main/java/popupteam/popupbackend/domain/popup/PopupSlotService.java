@@ -84,14 +84,16 @@ public class PopupSlotService {
 
         LocalDate startDate = popup.getStartDate().toLocalDate();
         LocalDate endDate = popup.getEndDate().toLocalDate();
-        LocalTime dailyStart = popup.getStartDate().toLocalTime();
-        LocalTime dailyEnd = popup.getEndDate().toLocalTime();
+        // 팝업 전체 기간의 시작/종료 시각. 특정 요일에 대한 개별 운영시간(openTime/closeTime)이
+        // 설정되어 있지 않을 때만 이 값을 기본값(fallback)으로 사용한다.
+        LocalTime fallbackDailyStart = popup.getStartDate().toLocalTime();
+        LocalTime fallbackDailyEnd = popup.getEndDate().toLocalTime();
         int slotMinutes = popup.getAvgExperienceMinutes();
 
         if (startDate.isAfter(endDate)) {
             throw new IllegalArgumentException("시작일이 종료일보다 늦을 수 없습니다.");
         }
-        if (!dailyStart.isBefore(dailyEnd)) {
+        if (!fallbackDailyStart.isBefore(fallbackDailyEnd)) {
             throw new IllegalArgumentException("일일 운영 시작시간이 종료시간보다 빨라야 합니다.");
         }
 
@@ -101,15 +103,24 @@ public class PopupSlotService {
         // 버그 수정: 요일별 휴무 설정(PopupOperatingHours.closed)을 무시하고 기간 내 모든 날짜에
         // 슬롯을 생성하고 있었음. 휴무 요일은 슬롯 자체를 만들지 않도록 미리 걸러낸다.
         List<PopupOperatingHours> operatingHours = popupOperatingHoursRepository.findByPopupIdOrderByDayOfWeek(popupId);
-        Set<java.time.DayOfWeek> closedDays = operatingHours.stream()
-                .filter(PopupOperatingHours::isClosed)
-                .map(PopupOperatingHours::getDayOfWeek)
-                .collect(Collectors.toSet());
+        Map<java.time.DayOfWeek, PopupOperatingHours> hoursByDay = operatingHours.stream()
+                .collect(Collectors.toMap(PopupOperatingHours::getDayOfWeek, h -> h));
 
         for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
-            if (closedDays.contains(date.getDayOfWeek())) {
+            PopupOperatingHours hours = hoursByDay.get(date.getDayOfWeek());
+            if (hours != null && hours.isClosed()) {
                 continue;
             }
+
+            // 버그 수정: 요일별로 설정한 open/close 시간을 무시하고 팝업 전체 기간의 시작/종료 시각을
+            // 모든 날짜에 그대로 적용하고 있었음 (예: 운영시간을 오후 5시까지로 등록해도 슬롯은
+            // 팝업 종료 시각인 19:30까지 생성됨). 요일별 설정이 있으면 그 시간을 우선 사용한다.
+            LocalTime dailyStart = (hours != null && hours.getOpenTime() != null) ? hours.getOpenTime() : fallbackDailyStart;
+            LocalTime dailyEnd = (hours != null && hours.getCloseTime() != null) ? hours.getCloseTime() : fallbackDailyEnd;
+            if (!dailyStart.isBefore(dailyEnd)) {
+                continue;
+            }
+
             LocalTime cursor = dailyStart;
             while (true) {
                 LocalTime slotEnd = cursor.plusMinutes(slotMinutes);
