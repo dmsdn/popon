@@ -53,6 +53,27 @@ public class NoticeService {
         return result;
     }
 
+    // [신규 8/5] 관리자 일반 공지를 소비자 알림함에도 남긴다.
+    //
+    // 「관리자가 보낸 공지사항 알림이 안 온다」는 신고의 원인 —
+    // AnnouncementController.create()가 공지 게시판(announcement 테이블)에만 저장하고
+    // 알림함(notice·notice_recipient)에는 아무것도 안 남기고 있었다.
+    // Notice.popup 필드에 「특정 팝업과 무관한 공지면 null」이라는 주석이 이미 있는 걸 보면
+    // 원래 이 용도를 염두에 둔 구조인데 연결만 빠져 있었다.
+    //
+    // 대상은 전체 활성 회원이라 수신자 행이 회원 수만큼 생긴다. 지금 규모(수십 명)에서는
+    // saveAll 한 번으로 충분하지만, 회원이 수만 명이 되면 이 방식(수신자 테이블 팬아웃)
+    // 자체를 재검토해야 한다 — 그때는 「전체 공지」를 개인 수신함에 복제하지 않고
+    // 읽음 여부만 따로 기록하는 구조가 맞다.
+    public void notifyAnnouncementCreated(popupteam.popupbackend.domain.announcement.Announcement announcement) {
+        List<Long> customerIds = customerRepository.findAllActiveIds();
+        if (customerIds.isEmpty()) return;
+
+        Notice notice = createNotice(null, NoticeRecipientType.CUSTOMER, NoticeCategory.NOTICE,
+                announcement.getTitle(), announcement.getContent(), "admin", customerIds.size());
+        saveRecipients(notice, new HashSet<>(customerIds));
+    }
+
     // === 주최자 → 소비자 긴급공지 발송 ===
     public NoticeResponse sendFromOrganizer(Long popupId, Long businessId, String requesterEmail, NoticeSendRequest request) {
         Popup popup = popupRepository.findById(popupId)
@@ -308,13 +329,20 @@ public class NoticeService {
         return noticeRepository.save(notice);
     }
 
+    // [수정 8/5] 한 건씩 save 하던 것을 saveAll 한 번으로 묶었다.
+    // 수신자가 많을수록 왕복 횟수가 그대로 늘어나는데, DB가 EC2 원격이라 왕복 하나하나가
+    // 비용이다(공용 DB 시절 N+1로 예약 조회가 타임아웃 났던 그 문제와 같은 성질).
+    // 관리자 일반 공지는 전체 회원이 대상이라 특히 이 경로를 탄다.
     private void saveRecipients(Notice notice, Set<Long> recipientIds) {
+        if (recipientIds.isEmpty()) return;
+        List<NoticeRecipient> rows = new ArrayList<>(recipientIds.size());
         for (Long id : recipientIds) {
             NoticeRecipient nr = new NoticeRecipient();
             nr.setNotice(notice);
             nr.setRecipientId(id);
-            noticeRecipientRepository.save(nr);
+            rows.add(nr);
         }
+        noticeRecipientRepository.saveAll(rows);
     }
 
     // === 5,6. 오픈/종료 임박 자동알림 (매일 1회 스케줄러가 호출) ===
