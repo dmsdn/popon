@@ -51,10 +51,12 @@ export default function PlatformStats() {
   // 않고 시스템 날짜에서 받아, 해가 바뀌어도 표기가 저절로 따라오게 한다.
   const year = new Date().getFullYear();
 
-  // 8/5 — 차트 기본 TOP 10, 「전체 보기」를 누르면 랭킹 전량을 그린다.
+  // 8/5 — 차트 기본 TOP 10, 화살표를 누르면 TOP 20까지 펼친다.
+  // 버튼은 조건 없이 항상 보인다 — 처음엔 「랭킹이 10개를 넘을 때만」으로 숨겼는데,
+  // 데이터가 딱 10개인 시점엔 화살표 자체가 없어 펼침 기능이 있는 줄도 알 수 없었다.
   // 7/31 — 막대를 눌러도 상세로 가게 popupId를 함께 싣는다.
   const [showAllRanking, setShowAllRanking] = useState(false);
-  const chartRows = (showAllRanking ? ranking : ranking.slice(0, 10))
+  const chartRows = ranking.slice(0, showAllRanking ? 20 : 10)
     .map((r) => ({ name: r.popupTitle, visitors: r.visitorCount, popupId: r.popupId }));
 
   // 8/5 — 별점 랭킹. 목록 응답에 avgRating·reviewCount가 실리게 되어(백엔드 enrichForList)
@@ -114,7 +116,7 @@ export default function PlatformStats() {
           <div className="grid lg:grid-cols-2 gap-3">
             <div className="bg-card border border-border rounded-sm p-4 flex flex-col">
               <div className="text-sm font-semibold mb-1">
-                팝업별 방문자 {showAllRanking ? `전체 ${ranking.length}개` : "TOP 10"} (누적 체크인)
+                팝업별 방문자 {showAllRanking ? "TOP 20" : "TOP 10"} (누적 체크인)
               </div>
               <p className="text-[11px] text-muted-foreground mb-3">막대를 누르면 해당 팝업 상세로 이동합니다.</p>
               {/* 확장하면 행 수만큼 차트 키를 늘린다 — 고정 높이에 수십 개를 우겨 넣으면
@@ -159,20 +161,18 @@ export default function PlatformStats() {
                   </ResponsiveContainer>
                 )}
               </div>
-              {/* 랭킹이 10개를 넘을 때만 확장 버튼이 의미가 있다 */}
-              {ranking.length > 10 && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllRanking((v) => !v)}
-                  className="mt-2 self-center flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {showAllRanking ? (
-                    <>접기 <ChevronUp size={12} /></>
-                  ) : (
-                    <>전체 {ranking.length}개 보기 <ChevronDown size={12} /></>
-                  )}
-                </button>
-              )}
+              {/* 8/5 — 화살표는 조건 없이 항상 노출. 누르면 TOP 20까지 펼친다 */}
+              <button
+                type="button"
+                onClick={() => setShowAllRanking((v) => !v)}
+                className="mt-2 self-center flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showAllRanking ? (
+                  <>접기 <ChevronUp size={12} /></>
+                ) : (
+                  <>TOP 20 보기 <ChevronDown size={12} /></>
+                )}
+              </button>
             </div>
 
             {/* 별점 랭킹 — 소비자 후기 평균 별점 순 (8/5, 방문자 목록을 대체) */}
