@@ -60,6 +60,8 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/banners").permitAll()   // === 추가: 배너 조회, 비로그인 403 수정 ===
                         .requestMatchers("/api/notices/my/**").permitAll()   // === 추가: 소비자 알림함, 소유권 확인은 서비스 로직에서 처리 ===
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/popups/*/click").permitAll()   // === 추가: 비회원도 인기순위 집계용 클릭 로그 남겨야 함 ===
+                        .requestMatchers("/api/business/auth/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/business/*").permitAll()   // 소비자 브랜드 조회 (로그인 불필요)
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
