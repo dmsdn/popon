@@ -166,4 +166,11 @@ public class BusinessService {
 
         return java.util.Map.of("valid", valid, "message", message, "unavailable", unavailable);
     }
+
+    // 소비자가 팝업 상세페이지에서 "브랜드명" 클릭 시 조회하는 공개용 정보 (로그인 불필요)
+    public popupteam.popupbackend.domain.business.dto.BusinessBrandResponse getBrandInfo(Long businessId) {
+        Business business = businessRepository.findById(businessId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 브랜드입니다."));
+        return popupteam.popupbackend.domain.business.dto.BusinessBrandResponse.from(business);
+    }
 }
