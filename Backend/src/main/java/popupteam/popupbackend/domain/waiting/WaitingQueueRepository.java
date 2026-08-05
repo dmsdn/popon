@@ -22,8 +22,6 @@ public interface WaitingQueueRepository extends JpaRepository<WaitingQueue, Long
                                      @Param("endOfDay") LocalDateTime endOfDay);
 
     // 자정 리셋 대상 — 그날 안에 아무 처리도 되지 않은 채 남은 대기 (8/4)
-    // WAITING뿐 아니라 CALLED도 대상이다. 호출만 받고 끝내 입장하지 않은 손님이 그대로 남으면
-    // 다음 날 대기열이 0에서 시작하지 못한다. (호출 부활과 함께 statuses로 확장 — 8/4 저녁)
     @Query("SELECT w FROM WaitingQueue w WHERE w.status IN :statuses " +
             "AND w.registeredAt >= :startOfDay AND w.registeredAt < :endOfDay")
     List<WaitingQueue> findUnprocessedOfDay(@Param("statuses") List<WaitingStatus> statuses,
@@ -66,14 +64,14 @@ public interface WaitingQueueRepository extends JpaRepository<WaitingQueue, Long
     // 후기 작성 가능 여부 확인용 - 이 소비자가 이 팝업에 실제로 입장(ENTERED)한 웨이팅 기록이 있는지
     boolean existsByPopupIdAndCustomerIdAndStatus(Long popupId, Long customerId, WaitingStatus status);
 
-    // 누적 방문자 통계용 - 회원 웨이팅으로 입장한 인원만 (비회원은 정책상 통계 제외)
+    // 누적 방문자 통계용 - 웨이팅으로 입장한 전원(회원+비회원). 헤드카운트일 뿐 개인정보가 필요 없어서 비회원도 포함.
     @Query("SELECT COALESCE(SUM(w.partySize), 0) FROM WaitingQueue w " +
-            "WHERE w.popup.id = :popupId AND w.status = 'ENTERED' AND w.customer IS NOT NULL")
+            "WHERE w.popup.id = :popupId AND w.status = 'ENTERED'")
     long sumMemberVisitorsOfEntered(@Param("popupId") Long popupId);
 
-    // 일별 방문자 추이용 - 회원 웨이팅 입장자를 날짜별로 집계 (비회원 제외)
+    // 일별 방문자 추이용 - 웨이팅으로 입장한 전원(회원+비회원)을 날짜별로 집계
     @Query("SELECT FUNCTION('DATE', w.enteredAt), COALESCE(SUM(w.partySize), 0) FROM WaitingQueue w " +
-            "WHERE w.popup.id = :popupId AND w.status = 'ENTERED' AND w.customer IS NOT NULL " +
+            "WHERE w.popup.id = :popupId AND w.status = 'ENTERED' " +
             "AND w.enteredAt >= :from AND w.enteredAt < :to " +
             "GROUP BY FUNCTION('DATE', w.enteredAt) ORDER BY FUNCTION('DATE', w.enteredAt)")
     List<Object[]> countDailyMemberEntered(@Param("popupId") Long popupId,
