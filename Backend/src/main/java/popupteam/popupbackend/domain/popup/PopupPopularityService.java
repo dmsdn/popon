@@ -30,9 +30,11 @@ public class PopupPopularityService {
         targetPopups.addAll(popupRepository.findByStatus(PopupStatus.OPEN));
         targetPopups.addAll(popupRepository.findByStatus(PopupStatus.BEFOR));
 
+        // 지역 필터 - 주소 문자열(location)로 부정확하게 걸러내던 것을, 팝업 등록 시 선택한 정식 지역(addressKeyword)과
+        // 정확히 일치하는지로 바꿈. 도로명주소엔 지역명이 안 들어가는 경우가 많아서 문자열 포함 검사는 부정확했음.
         if (region != null && !region.isBlank() && !region.equals("전체")) {
             targetPopups = targetPopups.stream()
-                    .filter(p -> p.getLocation() != null && p.getLocation().contains(region))
+                    .filter(p -> p.getAddressKeyword() != null && region.equals(p.getAddressKeyword().getName()))
                     .toList();
         }
 
