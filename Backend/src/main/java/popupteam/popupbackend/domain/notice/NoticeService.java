@@ -26,6 +26,32 @@ public class NoticeService {
     private final ReservationRepository reservationRepository;
     private final WaitingQueueRepository waitingQueueRepository;
     private final PopupWishlistRepository popupWishlistRepository;
+    private final popupteam.popupbackend.domain.consumer.CustomerAccountRepository customerRepository;
+
+    // 버그 수정: 마이페이지 "알림 설정"에서 팝업 소식/예약·웨이팅 알림을 꺼도 실제 발송 로직에서는
+    // 전혀 체크하지 않고 있었음 (예약 리마인더 스케줄러 2곳만 예외적으로 체크). 자동 발송되는
+    // 알림들은 여기서 필터링해서, 꺼둔 사람에게는 인앱 알림함에도 쌓이지 않도록 한다.
+    private Set<Long> filterByPopupNewsAgreed(Set<Long> customerIds) {
+        if (customerIds.isEmpty()) return customerIds;
+        Set<Long> result = new HashSet<>();
+        for (var customer : customerRepository.findAllById(customerIds)) {
+            if (!Boolean.FALSE.equals(customer.getPopupNewsAgreed())) {
+                result.add(customer.getId());
+            }
+        }
+        return result;
+    }
+
+    private Set<Long> filterByReservationWaitingAgreed(Set<Long> customerIds) {
+        if (customerIds.isEmpty()) return customerIds;
+        Set<Long> result = new HashSet<>();
+        for (var customer : customerRepository.findAllById(customerIds)) {
+            if (!Boolean.FALSE.equals(customer.getReservationWaitingAgreed())) {
+                result.add(customer.getId());
+            }
+        }
+        return result;
+    }
 
     // === 주최자 → 소비자 긴급공지 발송 ===
     public NoticeResponse sendFromOrganizer(Long popupId, Long businessId, String requesterEmail, NoticeSendRequest request) {
@@ -105,6 +131,7 @@ public class NoticeService {
         for (PopupWishlist wl : popupWishlistRepository.findByPopupId(popupId)) {
             wishlistCustomerIds.add(wl.getCustomerId());
         }
+        wishlistCustomerIds = filterByPopupNewsAgreed(wishlistCustomerIds);
         if (!wishlistCustomerIds.isEmpty()) {
             Notice notice = createNotice(popup, NoticeRecipientType.CUSTOMER, NoticeCategory.WISHLIST,
                     "찜한 팝업 정보 변경", "찜하신 \"" + popup.getTitle() + "\" 팝업의 정보가 수정되었습니다.",
@@ -116,6 +143,7 @@ public class NoticeService {
         for (Reservation r : reservationRepository.findByPopupIdAndStatus(popupId, ReservationStatus.CONFIRMED)) {
             if (r.getCustomer() != null) reservationCustomerIds.add(r.getCustomer().getId());
         }
+        reservationCustomerIds = filterByReservationWaitingAgreed(reservationCustomerIds);
         if (!reservationCustomerIds.isEmpty()) {
             Notice notice = createNotice(popup, NoticeRecipientType.CUSTOMER, NoticeCategory.RESERVATION,
                     "예약한 팝업 정보 변경", "예약하신 \"" + popup.getTitle() + "\" 팝업의 정보가 수정되었습니다.",
@@ -127,6 +155,7 @@ public class NoticeService {
         for (WaitingQueue w : waitingQueueRepository.findByPopupIdAndStatusIn(popupId, List.of(WaitingStatus.WAITING, WaitingStatus.CALLED))) {
             if (w.getCustomer() != null) waitingCustomerIds.add(w.getCustomer().getId());
         }
+        waitingCustomerIds = filterByReservationWaitingAgreed(waitingCustomerIds);
         if (!waitingCustomerIds.isEmpty()) {
             Notice notice = createNotice(popup, NoticeRecipientType.CUSTOMER, NoticeCategory.WAITING,
                     "웨이팅 중인 팝업 정보 변경", "웨이팅 중이신 \"" + popup.getTitle() + "\" 팝업의 정보가 수정되었습니다.",
@@ -177,6 +206,7 @@ public class NoticeService {
     // (이메일/SMS QR은 WaitingQueueService에서 이미 보내고 있었음 - 여기선 인앱 알림함만 채움)
     public void notifyWaitingRegistered(WaitingQueue waiting) {
         if (waiting.getCustomer() == null) return; // 비회원 웨이팅은 알림함이 없음
+        if (filterByReservationWaitingAgreed(Set.of(waiting.getCustomer().getId())).isEmpty()) return;
         Popup popup = waiting.getPopup();
 
         Notice notice = createNotice(popup, NoticeRecipientType.CUSTOMER, NoticeCategory.WAITING,
@@ -189,6 +219,7 @@ public class NoticeService {
     // === 6. 웨이팅 호출(내 차례) 알림 - 인앱 알림함 ===
     public void notifyWaitingCalled(WaitingQueue waiting) {
         if (waiting.getCustomer() == null) return;
+        if (filterByReservationWaitingAgreed(Set.of(waiting.getCustomer().getId())).isEmpty()) return;
         Popup popup = waiting.getPopup();
 
         Notice notice = createNotice(popup, NoticeRecipientType.CUSTOMER, NoticeCategory.WAITING,
@@ -297,6 +328,7 @@ public class NoticeService {
         if (!noticeRepository.existsByPopupIdAndTitleAndSentAtAfter(popupId, wishlistTitle, cutoff)) {
             Set<Long> wishlistIds = new HashSet<>();
             for (PopupWishlist wl : popupWishlistRepository.findByPopupId(popupId)) wishlistIds.add(wl.getCustomerId());
+            wishlistIds = filterByPopupNewsAgreed(wishlistIds);
             if (!wishlistIds.isEmpty()) {
                 Notice n = createNotice(popup, NoticeRecipientType.CUSTOMER, NoticeCategory.WISHLIST,
                         wishlistTitle, "찜하신 \"" + popup.getTitle() + "\" 팝업이 내일부터 오픈합니다.", "system", wishlistIds.size());
@@ -310,6 +342,7 @@ public class NoticeService {
             for (Reservation r : reservationRepository.findByPopupIdAndStatus(popupId, ReservationStatus.CONFIRMED)) {
                 if (r.getCustomer() != null) reservationIds.add(r.getCustomer().getId());
             }
+            reservationIds = filterByReservationWaitingAgreed(reservationIds);
             if (!reservationIds.isEmpty()) {
                 Notice n = createNotice(popup, NoticeRecipientType.CUSTOMER, NoticeCategory.RESERVATION,
                         reservationTitle, "예약하신 \"" + popup.getTitle() + "\" 팝업이 내일부터 시작됩니다.", "system", reservationIds.size());
@@ -323,6 +356,7 @@ public class NoticeService {
             for (WaitingQueue w : waitingQueueRepository.findByPopupIdAndStatusIn(popupId, List.of(WaitingStatus.WAITING, WaitingStatus.CALLED))) {
                 if (w.getCustomer() != null) waitingIds.add(w.getCustomer().getId());
             }
+            waitingIds = filterByReservationWaitingAgreed(waitingIds);
             if (!waitingIds.isEmpty()) {
                 Notice n = createNotice(popup, NoticeRecipientType.CUSTOMER, NoticeCategory.WAITING,
                         waitingTitle, "웨이팅 등록하신 \"" + popup.getTitle() + "\" 팝업이 내일부터 시작됩니다.", "system", waitingIds.size());
@@ -340,6 +374,7 @@ public class NoticeService {
 
         Set<Long> wishlistIds = new HashSet<>();
         for (PopupWishlist wl : popupWishlistRepository.findByPopupId(popupId)) wishlistIds.add(wl.getCustomerId());
+        wishlistIds = filterByPopupNewsAgreed(wishlistIds);
         if (!wishlistIds.isEmpty()) {
             Notice n = createNotice(popup, NoticeRecipientType.CUSTOMER, NoticeCategory.WISHLIST,
                     title, "찜하신 \"" + popup.getTitle() + "\" 팝업이 내일 종료됩니다.", "system", wishlistIds.size());
@@ -349,10 +384,12 @@ public class NoticeService {
 
     // === 7. 웨이팅 혼잡 알림 (스케줄러가 호출) ===
     public void sendCongestionAlert(Popup popup, Set<Long> waitingCustomerIds) {
+        Set<Long> filtered = filterByReservationWaitingAgreed(waitingCustomerIds);
+        if (filtered.isEmpty()) return;
         Notice notice = createNotice(popup, NoticeRecipientType.CUSTOMER, NoticeCategory.WAITING,
                 "대기 혼잡 안내", "\"" + popup.getTitle() + "\" 현재 대기가 혼잡합니다. 잠시 여유를 가지고 기다려주세요.",
-                "system", waitingCustomerIds.size());
-        saveRecipients(notice, waitingCustomerIds);
+                "system", filtered.size());
+        saveRecipients(notice, filtered);
     }
 
     // === 8. 후기 신고 처리(가리기) 결과 안내 - 신고자에게는 안 가고, 후기 작성자 본인에게만 감 ===
