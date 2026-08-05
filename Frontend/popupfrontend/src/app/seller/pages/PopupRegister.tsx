@@ -97,7 +97,8 @@ const Req = () => <span className="text-red-500 ml-0.5">*</span>;
 
 function Section({ id, title, desc, children }: { id: string; title: string; desc: string; children: React.ReactNode }) {
   return (
-    <section id={id} className="bg-card border border-border rounded-sm">
+    // scroll-mt-20 (8/5) — 상단바가 sticky(h-14)라, 보정 없이 스크롤하면 섹션 제목이 바 뒤에 숨는다
+    <section id={id} className="bg-card border border-border rounded-sm scroll-mt-20">
       <div className="px-5 py-4 border-b border-border">
         <h2 className="text-sm font-semibold">{title}</h2>
         <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
@@ -679,12 +680,22 @@ function PopupRegisterForm() {
 
   return (
     <div className="flex gap-5 items-start">
-      {/* 좌측 섹션 내비게이션 */}
+      {/* 좌측 섹션 내비게이션
+          8/5 — <a href="#id"> 해시 앵커를 버튼 + scrollIntoView로 교체.
+          SellerRoot의 <ScrollRestoration />이 해시 클릭도 라우터 내비게이션으로 잡는데,
+          react-router의 ScrollRestoration은 해시 스크롤을 지원하지 않고 무조건 맨 위로
+          복원한다 — 그래서 어떤 섹션을 눌러도 항상 페이지 top으로 튀었다.
+          버튼은 내비게이션 자체를 일으키지 않아 ScrollRestoration이 개입할 틈이 없다. */}
       <nav className="hidden xl:flex flex-col w-44 shrink-0 sticky top-20 bg-card border border-border rounded-sm py-2">
         {SECTIONS.map(({ id, icon: Icon, label }) => (
-          <a key={id} href={`#${id}`} className="flex items-center gap-2 px-4 py-2 text-xs text-muted-foreground hover:text-accent hover:bg-accent/5">
+          <button
+            key={id}
+            type="button"
+            onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            className="flex items-center gap-2 px-4 py-2 text-xs text-muted-foreground hover:text-accent hover:bg-accent/5 text-left"
+          >
             <Icon size={13} /> {label}
-          </a>
+          </button>
         ))}
       </nav>
 
