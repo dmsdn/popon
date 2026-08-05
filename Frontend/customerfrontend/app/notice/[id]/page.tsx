@@ -26,7 +26,6 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
     <main className="min-h-screen flex flex-col w-full mobile:max-w-[1000px] mobile:mx-auto px-4 mobile:px-8 py-6">
       <Link href="/" className="inline-block text-sm text-gray-500 mb-6">
         <img src="/icons/ui/back_arrow.svg" alt="" width={24} height={24} className="dark:invert" />
-          <span>뒤로</span>
       </Link>
 
       {notice === undefined ? (

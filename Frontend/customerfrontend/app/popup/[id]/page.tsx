@@ -701,10 +701,23 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                 });
                 addMyWaitingId(waiting.id);
                 setShowWaiting(false);
-                // [신규] 예약과 동일하게, 웨이팅 등록 후에도 웨이팅 상세로
-                // 바로 이동할지 이 팝업을 계속 둘러볼지 선택하게 했어요.
+                // [수정 8/5] "웨이팅 등록하고 계속 둘러보기를 누르면 하단
+                // '대기중 N팀' 표시가 새로고침 전까지 그대로다"라는 신고 확인 -
+                // 이 배지(waitingTeams)는 팝업이 처음 로드될 때 딱 한 번만
+                // getWaitingBoard로 채워지고, 그 뒤로 다시 불러오는 곳이
+                // 없었어요. 방금 등록해서 실제로 대기 인원이 늘었으니, 등록
+                // 성공 직후 현황판을 다시 불러와서 화면에 바로 반영해요.
+                getWaitingBoard(popup.id)
+                  .then((board) => setWaitingTeams(board.totalWaitingTeams))
+                  .catch((err) => console.error("대기 현황 재조회 실패", err));
+                // [수정 8/5] "웨이팅 등록했는데 몇 팀인지 안 나온다"는 신고 확인 -
+                // 등록 직후 안내가 인원수(count)만 말하고 정작 몇 번째 대기인지
+                // (waiting.teamNumber)는 안 보여주고 있었어요. 체크인 앱(태블릿)
+                // 확인 모달엔 "대기번호 N번"이 있는데, 이 앱만 빠져 있었던
+                // 거예요. 백엔드 응답에 teamNumber가 이미 있어서 문구에 추가만
+                // 하면 돼요.
                 const goToDetail = await appChoice(
-                  `웨이팅 ${count}명 등록됐어요!`,
+                  `웨이팅 ${waiting.teamNumber}번째로 등록됐어요! (${count}명)`,
                   "웨이팅 확인하기",
                   "계속 둘러보기"
                 );
