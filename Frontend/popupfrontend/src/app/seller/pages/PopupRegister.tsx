@@ -177,6 +177,8 @@ export default function PopupRegister() {
   const undoImageRemoved = (id: number) => setRemovedImageIds((prev) => prev.filter((x) => x !== id));
   const serverThumbs = serverImages.filter((i) => i.type === "THUMBNAIL");
   const serverDetails = serverImages.filter((i) => i.type === "DETAIL");
+  // 화면에서 X로 빼둔 것을 제외한, **저장 후에도 남을** 서버 썸네일 (8/4 썸네일 필수 검증용)
+  const keptServerThumbs = serverThumbs.filter((i) => !removedImageIds.includes(i.id));
   // SNS 링크 (7/29 — 홍보영상 칸 대체, 백엔드 snsLinks 실저장)
   const [snsLinks, setSnsLinks] = useState<SnsLinkInput[]>([]);
   const [snsPlatform, setSnsPlatform] = useState<SnsPlatformCode>("INSTAGRAM");
@@ -525,6 +527,13 @@ export default function PopupRegister() {
     if (!maxCapacity || maxCapacity < 1) return setError("최대 수용 정원을 입력해 주세요.");
     // 8/4 — 지역 필수. 비어 있으면 소비자의 관심지역 필터·지역별 추천에서 이 팝업만 빠진다
     if (regionId === "") return setError("지역을 선택해 주세요. 소비자의 지역 필터 노출에 사용됩니다.");
+    // 8/4 — 썸네일 필수. 없이 등록하면 목록·검색 카드가 빈 이미지로 나가는데 주최자는 알 수 없다.
+    // 게다가 소비자 상세는 「맨 앞 이미지」를 대표로 쓰므로, 썸네일이 없으면 상세 이미지가
+    // 대표 자리로 올라오고 정작 상세 본문에서는 사라진다(에스파 팝업 사례).
+    // 수정 모드에서는 남아 있는 서버 썸네일도 인정한다 — 파일을 다시 고를 이유가 없다.
+    if (keptServerThumbs.length + images.length === 0) {
+      return setError("대표 이미지(썸네일)를 1장 이상 등록해 주세요. 목록·검색 카드와 상세페이지 대표 사진으로 쓰입니다.");
+    }
 
     // 요일별 운영시간 — 「모든 요일 동일」이면 7일 같은 값으로 펼쳐 전송한다.
     // startDate·endDate의 시각 부분은 슬롯 생성 창으로 쓰이므로, 요일별 시간이 갈릴 때는
