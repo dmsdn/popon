@@ -25,6 +25,9 @@ public interface PopupRepository extends JpaRepository<Popup, Long> {
 
     long countByStatus(PopupStatus status);
 
+    // 마스터 관리 - 이 지역을 선택한 팝업 수 (8/5). address_keyword가 region FK다
+    long countByAddressKeyword_Id(Long regionId);
+
     // 소비자의 관심지역(customer_region)에 해당하는 팝업만 조회할 때 사용
     @Query("SELECT p FROM Popup p JOIN FETCH p.business WHERE " +
             "p.addressKeyword.id IN :regionIds AND p.status = :status " +

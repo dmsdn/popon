@@ -640,7 +640,9 @@ export function getKeywords() {
 // ⚠ 수정(PUT)은 백엔드에 없다 — 이름을 바꾸려면 삭제 후 재등록해야 하고, 그러면 그 항목을
 //   고른 소비자의 관심 설정이 함께 지워진다. 화면에서 이 점을 안내한다.
 // iconUrl은 카테고리(keyword)에만 있다 — 지역은 아이콘을 쓰지 않는다 (8/4)
-export type MasterItem = { id: number; name: string; customerCount: number; iconUrl?: string | null };
+// popupCount(8/5) — 이 항목을 선택한 팝업 수. 관심 소비자 수와 나란히 보여
+// 삭제·수정 전에 영향 범위를 표에서 바로 가늠할 수 있게 한다.
+export type MasterItem = { id: number; name: string; customerCount: number; popupCount?: number; iconUrl?: string | null };
 
 export function getAdminKeywords() {
   return request<MasterItem[]>("/api/admin/keywords");

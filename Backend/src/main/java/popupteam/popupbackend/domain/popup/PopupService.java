@@ -556,13 +556,22 @@ public class PopupService {
                 .collect(Collectors.groupingBy(img -> img.getPopup().getId(),
                         Collectors.mapping(PopupImage::getImageUrl, Collectors.toList())));
 
+        // 8/5 - 별점·후기 수를 목록에도 싣는다. 상세(findById)에만 있던 값이라
+        // 관리자 별점순 정렬 같은 목록 화면이 만들 수 없었다. GROUP BY 한 번으로 전 팝업 집계.
+        java.util.Map<Long, Object[]> ratingByPopup = reviewRepository.avgRatingAndCountGroupByPopupId()
+                .stream()
+                .collect(Collectors.toMap(row -> (Long) row[0], row -> row));
+
         return popups.stream()
                 .map(popup -> {
                     Long popupId = popup.getId();
+                    Object[] rating = ratingByPopup.get(popupId);
                     return PopupResponse.fromForList(popup,
                             hashtagsByPopup.getOrDefault(popupId, List.of()),
                             keywordNamesByPopup.getOrDefault(popupId, List.of()),
-                            thumbnailsByPopup.getOrDefault(popupId, List.of()));
+                            thumbnailsByPopup.getOrDefault(popupId, List.of()),
+                            rating != null ? (java.math.BigDecimal) rating[1] : null,
+                            rating != null ? (Long) rating[2] : 0L);
                 })
                 .toList();
     }

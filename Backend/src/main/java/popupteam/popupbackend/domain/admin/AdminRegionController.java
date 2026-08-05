@@ -40,7 +40,10 @@ public class AdminRegionController {
                 .map(r -> Map.<String, Object>of(
                         "id", r.getId(),
                         "name", r.getName(),
-                        "customerCount", customerRegionRepository.countByRegionId(r.getId())
+                        "customerCount", customerRegionRepository.countByRegionId(r.getId()),
+                        // 8/5 - 이 지역을 선택한 팝업 수. 삭제는 RESTRICT라 팝업이 있으면 막히는데,
+                        // 그 사실을 삭제 버튼을 누르기 전에 표에서 미리 볼 수 있게 한다
+                        "popupCount", popupRepository.countByAddressKeyword_Id(r.getId())
                 ))
                 .toList();
     }
