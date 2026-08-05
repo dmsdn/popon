@@ -143,7 +143,18 @@ function ExistingImage({ img, removed, onRemove, onUndo }: {
   );
 }
 
+// 8/5 — 등록과 수정이 같은 라우트(/seller/popups/new, 수정은 ?id=)를 쓴다.
+// 수정 화면에서 사이드바 「팝업 등록」을 누르면 쿼리만 사라질 뿐 라우트가 같아서
+// React가 컴포넌트를 리마운트하지 않는다 → 폼 state가 그대로 남아, 새 등록 폼에
+// 수정하던 팝업의 내용이 통째로 딸려 왔다.
+// key를 모드(id·draft)로 걸어, 등록↔수정↔임시저장이 오갈 때마다 폼을 백지에서 다시 만든다.
 export default function PopupRegister() {
+  const [searchParams] = useSearchParams();
+  const modeKey = `${searchParams.get("id") ?? "new"}:${searchParams.get("draft") ?? ""}`;
+  return <PopupRegisterForm key={modeKey} />;
+}
+
+function PopupRegisterForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get("id"); // 있으면 수정 모드
