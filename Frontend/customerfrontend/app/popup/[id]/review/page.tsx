@@ -64,6 +64,14 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
 
   useEffect(() => {
     let cancelled = false;
+    // [수정 8/5] popup/[id]/page.tsx와 같은 이유 - 같은 라우트 안에서 다른 팝업의
+    // 리뷰 작성 화면으로 이동해도 컴포넌트가 재사용돼서, id만 바뀌고 popup은 이전
+    // 팝업 데이터로 남아있는 창이 생겼어요. 그 사이 제출 버튼을 누르면
+    // createReview({popupId: popup.id, ...})가 이전 팝업 id로 나가는 게 실제
+    // 원인으로 보여요("은혼에서 쓴 리뷰가 에스파 id로 나간다"는 신고와 일치). id가
+    // 바뀌는 즉시 popup을 비워서 새 데이터가 올 때까지는 로딩 화면만 보이게 했어요.
+    setPopup(null);
+    setLoading(true);
     getPopup(id)
       .then((data) => {
         if (!cancelled) setPopup(data);
@@ -232,24 +240,18 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
         message.includes("이미 ") &&
         (message.includes("작성") || message.includes("리뷰") || message.includes("후기") || message.includes("댓글"));
 
+      // [수정 8/5] 예전엔 백엔드의 "이미 작성했다" 응답을 안 믿고 getMyReviews()로
+      // 다시 확인한 뒤에야 모달을 띄웠어요 - 그때 당시 백엔드가 "내용이 비어있어서
+      // 생긴 DB 오류"까지 전부 "이미 작성하셨어요"로 뭉뚱그려 보내던 버그가 있어서
+      // 넣은 방어 로직이었습니다. 그 버그는 백엔드(ReviewController)에서 원인별로
+      // 구분해서 이미 고쳤고, 지금은 이 메시지가 뜨면 진짜 (customer, popup) 유니크
+      // 제약 위반일 때만이에요. 그런데 이 재확인 호출이 실패하거나(네트워크 문제)
+      // 타이밍상 최신 목록을 못 받아오면 "진짜 중복인데도" 안내 없이 애매한 일반
+      // 오류로 빠지는 새 문제가 생겼어요(재확인 자체를 다시 안 믿을 이유가 없는데
+      // 오히려 실패 지점만 하나 늘어난 셈). 백엔드 메시지를 그대로 신뢰하도록
+      // 되돌렸어요.
       if (looksLikeDuplicate) {
-        // [수정] "이미 작성했다"는 응답을 무조건 믿지 않고, 제출 실패 시점에 내 리뷰
-        // 목록을 다시 조회해서 진짜로 이 팝업에 내 리뷰가 있는지 한 번 더 확인해요.
-        // (실제로 이 팝업에 내 리뷰가 없는데도 이 오류가 뜨는 경우가 있었어요 - 이러면
-        // 사용자는 아무 안내도 없이 댓글을 영영 못 남기게 돼요. 진짜 중복일 때만
-        // "이미 남겼다" 안내를 띄우고, 아니면 다시 시도할 수 있게 일반 오류로 보여줘요.)
-        try {
-          const myReviews = await getMyReviews();
-          const reallyHasOne = myReviews.some((r) => r.popupId === popup.id);
-          if (reallyHasOne) {
-            setShowAlreadyReviewed(true);
-          } else {
-            setError("등록에 실패했어요. 잠시 후 다시 시도해주세요.");
-          }
-        } catch {
-          // 재확인 자체가 안 되면 원래 응답을 믿고 안내를 띄워요.
-          setShowAlreadyReviewed(true);
-        }
+        setShowAlreadyReviewed(true);
       } else {
         setError(message);
       }

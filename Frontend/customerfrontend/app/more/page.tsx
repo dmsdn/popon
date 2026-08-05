@@ -94,7 +94,7 @@ export default function MorePage() {
         ) : (
           <Link
             href="/login"
-            className="block w-full text-center rounded-full py-3 text-sm font-medium bg-gray-900 text-white"
+            className="block w-full text-center rounded-full py-3 text-sm font-medium bg-point text-gray-900 dark:text-white"
           >
             로그인 / 회원가입
           </Link>

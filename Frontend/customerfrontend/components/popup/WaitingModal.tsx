@@ -13,8 +13,14 @@ interface WaitingModalProps {
   dateRange?: string;
   location?: string;
   notice?: string | null;
-  /** [신규] 팝업 정원 - 웨이팅 인원 스테퍼의 최대값으로 써요. 없으면
-      기본값(10명)을 써요. */
+  /** [수정 8/5] 팀당 최대 인원(popup.maxPartySizePerTeam) - 웨이팅 인원
+      스테퍼의 최대값으로 써요. capacity(공간 전체 동시 수용 인원)는 이
+      값과 다른 개념이라 최대 인원 기준으로 쓰면 안 돼요 - 예: 공간 정원이
+      100명이어도 한 팀은 4명까지만 웨이팅할 수 있는 경우가 있어요.
+      maxPartySizePerTeam이 없는 팝업(옛 데이터)은 capacity로 대체하고,
+      그것도 없으면 기본값(10명)을 써요. */
+  maxPartySizePerTeam?: number | null;
+  /** @deprecated 팀당 최대 인원 계산엔 더 이상 안 써요 - maxPartySizePerTeam이 없을 때의 대체값으로만 남겨둠. */
   capacity?: number;
   onClose: () => void;
   onSubmit: (count: number) => void;
@@ -25,8 +31,19 @@ interface WaitingModalProps {
  * 이미지 자체를 없애고 팝업 이름/기간/장소를 간단한 카드로 정리해서 보여줘요.
  * (예약 모달 ReservationModal 상단에도 똑같은 카드를 넣었어요)
  */
-export function WaitingModal({ popupName, dateRange, location, notice, capacity, onClose, onSubmit }: WaitingModalProps) {
+export function WaitingModal({
+  popupName,
+  dateRange,
+  location,
+  notice,
+  maxPartySizePerTeam,
+  capacity,
+  onClose,
+  onSubmit,
+}: WaitingModalProps) {
   const [count, setCount] = useState(1);
+  // [수정 8/5] capacity(공간 전체 정원) 대신 maxPartySizePerTeam(팀당 최대 인원)을 우선 사용.
+  const maxCount = Math.max(1, maxPartySizePerTeam ?? capacity ?? 10);
 
   // [수정] 단순 overflow:hidden만으로는 모바일 터치 스크롤이 새는 경우가 있어서,
   // body를 고정하는 더 확실한 방식으로 바꿨어요.
@@ -65,12 +82,12 @@ export function WaitingModal({ popupName, dateRange, location, notice, capacity,
 
         <div className="flex items-center justify-between mb-8">
           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            인원 <span className="text-sm text-gray-400 font-normal">(최대 {Math.max(1, capacity ?? 10)}명)</span>
+            인원 <span className="text-sm text-gray-400 font-normal">(최대 {maxCount}명)</span>
           </span>
           <CountStepper
             value={count}
             onChange={setCount}
-            max={Math.max(1, capacity ?? 10)}
+            max={maxCount}
             onExceedMax={(max) => appAlert(`이 팝업에 웨이팅 등록할 수 있는 최대 인원(${max}명)을 넘었어요.`)}
           />
         </div>

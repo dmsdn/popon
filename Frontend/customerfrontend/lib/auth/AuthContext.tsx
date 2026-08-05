@@ -5,6 +5,7 @@ import { getToken, setToken, clearToken, registerForceLogoutHandler } from "@/li
 import { getMyInfo, type CustomerInfo } from "@/lib/api/customer";
 import { resetWishlistStore } from "@/lib/wishlistStore";
 import { appAlert } from "@/lib/ui/alertStore";
+import { decodeJwtPayload } from "@/lib/utils/decodeJwtPayload";
 
 interface AuthContextValue {
   isLoggedIn: boolean;
@@ -108,6 +109,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const email = token.slice(MOCK_ACCOUNT_TOKEN_PREFIX.length);
       const account = findMockAccountCustomer(email);
       setCustomer(account);
+      setLoading(false);
+      return;
+    }
+
+    // [수정 8/5] 회원가입 도중(소셜 로그인은 했지만 아직 회원정보 입력 전) 저장되는
+    // "가입대기 토큰"(pendingToken)은 백엔드가 claim("pending", true)만 넣고 customer
+    // id는 일부러 안 넣어요(가입 완료 전엔 customerId 자체가 없으니까). signup/page.tsx가
+    // 이 토큰을 localStorage에 저장해두는데, 그 순간 이 refresh()가 자동으로 실행되면서
+    // 그 토큰으로 GET /api/customer/me를 불렀다가 "토큰에 customer id 클레임이
+    // 없습니다" 오류로 실패하고 있었어요. pending 토큰은 애초에 이 API가 통할 수
+    // 없는(=아직 회원이 아닌) 정상 상태라서, 실패로 취급해 콘솔에 오류를 남기는 대신
+    // 조용히 "아직 로그인 안 됨"으로만 처리해요. (customer 조회는 signup 완료 후
+    // submitSignupInfo가 진짜 토큰을 받아온 다음 다시 일어나요.)
+    const claims = decodeJwtPayload<{ pending?: boolean }>(token);
+    if (claims?.pending) {
+      setCustomer(null);
       setLoading(false);
       return;
     }
