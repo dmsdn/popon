@@ -1,10 +1,5 @@
 // lib/useScrollLock.ts
-//
-// [신규] 모달 열려있는 동안 배경(뒤쪽 화면)이 스크롤되던 문제 - 처음엔
-// body에 overflow: hidden만 걸었는데, 그것만으로는 모바일에서 터치 스크롤이
-// 새는 경우가 있었어요. body를 position: fixed로 고정하고(스크롤 위치는
-// top 음수값으로 보존) 닫을 때 원래 스크롤 위치로 되돌리는, 좀 더 확실한
-// 방식으로 바꿨어요.
+//모달 등에서 배경 스크롤을 막는 공용 훅
 import { useEffect } from "react";
 
 export function useScrollLock() {

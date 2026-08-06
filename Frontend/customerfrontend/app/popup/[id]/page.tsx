@@ -1,8 +1,9 @@
+// app/popup/[id]/page.tsx
+// 팝업 상세 페이지
 "use client";
 
-// 팝업 상세 페이지 - 정보/댓글·후기 탭, 예약·웨이팅 버튼, 상세이미지, SNS링크, 이용안내 등 팝업의 거의 모든 정보를 보여주는 핵심 페이지.
-
 import { use, useEffect, useMemo, useState } from "react";
+import useEmblaCarousel from "embla-carousel-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Footer } from "@/components/layout/Footer";
@@ -72,10 +73,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   const [showWaiting, setShowWaiting] = useState(false);
   const [slots, setSlots] = useState<PopupSlot[]>([]);
 
-  // [신규] 찜 목록 카드의 "웨이팅하기"/"예약하기" 버튼에서 ?action=waiting 또는
-  // ?action=reservation으로 들어오면, 해당 모달을 자동으로 열어줘요. 로그인
-  //안 했으면 그냥 아무것도 안 해요(각 모달을 열 때 원래 하던 로그인 확인은
-  // StickyActionBar 버튼 쪽에서 이미 하고 있어서, 여기선 로그인된 경우만 열어요).
+  // ?action=waiting/reservation 쿼리로 진입 시 해당 모달 자동 오픈 (로그인 시에만)
   useEffect(() => {
     if (!customer) return;
     const action = searchParams.get("action");
@@ -83,26 +81,20 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     else if (action === "reservation") setShowReservation(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customer]);
-  // [수정] 후기 작성 후 돌아올 때 "?tab=review"를 붙여서 보내주면, 새로고침 없이도
-  // 곧바로 후기 탭이 선택된 상태로 상세페이지가 열려요.
+  // ?tab=review 쿼리로 후기 탭 자동 선택
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>(
     searchParams.get("tab") === "review" ? "후기" : "정보"
   );
   const [myReviewsForPopup, setMyReviewsForPopup] = useState<Review[]>([]);
   const [popupReviews, setPopupReviews] = useState<Review[]>([]);
-  // [수정] 내가 쓴 후기 삭제 - 성공하면 화면에서도 바로 빼줘요.
-  // 이전엔 myReviewsForPopup에서만 지워서, popupReviews(전체 후기 목록)엔 그대로
-  // 남아있었어요. otherReviewsAsItems가 popupReviews를 "내 후기 id에 없는 것만"
-  // 걸러서 보여주다 보니, 방금 지운 후기가 오히려 "다른 사람 후기"인 것처럼
-  // 다시 나타나 보였고 새로고침(재조회)해야만 진짜로 사라졌어요.
+  // 후기 삭제 시 myReviewsForPopup + popupReviews 둘 다 갱신
   const handleDeleteReview = (reviewId: number) => {
     setMyReviewsForPopup((prev) => prev.filter((r) => r.id !== reviewId));
     setPopupReviews((prev) => prev.filter((r) => r.id !== reviewId));
   };
   const [reviewSort, setReviewSort] = useState<"latest" | "recommended">("latest");
   const [photoOnly, setPhotoOnly] = useState(false);
-  // [수정] "방문 인증만" 체크박스 하나로는 "댓글만 보기"가 안 됐어요 - 전체/인증된
-  // 후기/댓글 3단 필터로 바꿨어요.
+  // 후기 필터 - 전체/인증된 후기/댓글 3단
   const [reviewFilter, setReviewFilter] = useState<"all" | "verified" | "comment">("all");
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [imageModal, setImageModal] = useState<{ reviewIndex: number; photoIndex: number } | null>(null);
@@ -112,36 +104,34 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   const [waitTime, setWaitTime] = useState<PopupWaitTime | null>(null);
   const [queueCount, setQueueCount] = useState<number | null>(null);
   const [images, setImages] = useState<PopupImage[]>([]);
-  // [수정] 대표/상세 이미지를 "배열 순서"가 아니라 실제 type으로 갈라요.
-  // 상세 이미지 1장만 등록되고 대표(썸네일)가 비어있는 팝업에서, 그 상세
-  // 이미지가 대표 자리에 뜨고 정작 상세 섹션은 비어버리는 버그가 있었어요.
-  // (sortOrder가 THUMBNAIL/DETAIL 각각 0부터 시작해서, 대표를 images[0]로
-  // 잡으면 어느 쪽이 먼저 올지 id 순서에 좌우됐어요.)
-  const coverImage = useMemo(
-    () => images.find((img) => img.type === "THUMBNAIL") ?? images[0],
+  // 대표 이미지 캐러셀 - 여러 장 등록 시 전부 표시(기존엔 한 장만 쓰고 나머지 누락)
+  const thumbnailImages = useMemo(
+    () => images.filter((img) => img.type === "THUMBNAIL"),
     [images]
   );
   const detailImages = useMemo(() => images.filter((img) => img.type === "DETAIL"), [images]);
+  const [heroEmblaRef, heroEmblaApi] = useEmblaCarousel({ loop: false, align: "start" });
+  const [heroIndex, setHeroIndex] = useState(0);
+
+  useEffect(() => {
+    if (!heroEmblaApi) return;
+    const onSelect = () => setHeroIndex(heroEmblaApi.selectedScrollSnap());
+    heroEmblaApi.on("select", onSelect);
+    onSelect();
+    return () => {
+      heroEmblaApi.off("select", onSelect);
+    };
+  }, [heroEmblaApi]);
   const [waitingTeams, setWaitingTeams] = useState<number | null>(null);
   const [wishlistCount, setWishlistCount] = useState<number | undefined>(undefined);
-  // [신규] 별점을 누르거나 "댓글만 남기기"를 눌렀을 때, 이미 이 팝업에 후기/댓글을
-  // 남긴 상태라면 후기 작성 페이지로 넘어가지 않고 바로 안내 팝업을 띄워요.
-  // (예전엔 페이지로 넘어가서 내용까지 다 쓰고 등록 버튼을 눌러야만 "이미 남겼다"는
-  // 걸 알 수 있었고, 그때 쓴 내용은 사라졌어요.)
+  // 이미 작성한 경우 안내 모달 표시 여부
   const [showAlreadyReviewedNotice, setShowAlreadyReviewedNotice] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setLoadError(false);
-    // [수정 8/5] 다른 팝업 상세페이지로 이동해도(같은 /popup/[id] 라우트라 컴포넌트가
-    // 리마운트되지 않고 재사용됨) id만 바뀌고 popup state는 그대로 남아있었어요.
-    // 새 데이터가 도착하기 전까지 짧은 시간 동안 "화면은 새 id인데 popup.id는 이전
-    // 팝업" 상태가 됐고, 그 사이에 리뷰 목록 조회(popup.id 기준)나 리뷰/댓글 작성
-    // 버튼 클릭이 일어나면 이전 팝업의 id로 잘못 나갔어요(다른 팝업 리뷰가 섞여
-    // 보이거나, 엉뚱한 팝업에 리뷰가 저장되는 원인). id가 바뀌는 즉시 popup을
-    // 비워서, 그 사이엔 로딩 화면만 보이고 이전 팝업 데이터를 참조할 방법이
-    // 없게 했어요.
+    // id 변경 즉시 popup/리뷰 state 초기화 (다른 팝업 데이터 잔존 방지)
     setPopup(null);
     setMyReviewsForPopup([]);
     setPopupReviews([]);
@@ -151,13 +141,9 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         if (!cancelled) {
           setPopup(data);
           recordPopupView(data.id);
-          // [신규 7/31] 서버에도 클릭을 남긴다 — 주최자 성과 대시보드의 「예약 전환율」 분모다.
-          // 그전에는 아무도 이 API를 부르지 않아 전환율이 늘 이상하게 나왔다(클릭 2·예약 4 → 200%).
-          // 집계용이라 실패는 무시한다 (logPopupClick 안에서 catch).
+          // 클릭 로그 기록 (예약 전환율 분모)
           logPopupClick(data.id, customer?.id ?? null);
-          // [수정] 백엔드 API 대신 프론트에 직접 넣어둔 지역별 데이터에서 바로 찾아요
-          // (data/hotplaces.ts 참고). 관리자용 업로드 화면이 없는 지금 상황에선
-          // 이게 훨씬 빨라요 - SQL 안 만지고 코드에 몇 줄 추가하면 바로 반영돼요.
+          // 주변 핫플 - 프론트 로컬 데이터(data/hotplaces.ts) 사용
           setHotPlaces(getHotPlacesForRegion(data.regionName, data.location));
         }
       })
@@ -169,7 +155,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         if (!cancelled) setLoading(false);
       });
 
-    // [신규] 찜 개수는 별도 엔드포인트라 따로 조회해요.
+    // 찜 개수 조회 (별도 엔드포인트)
     getPopupWishlistCount(id)
       .then((res) => {
         if (!cancelled) setWishlistCount(res.wishlistCount);
@@ -188,7 +174,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     };
   }, [id]);
 
-  // SLOT 방식 팝업이면 예약 모달에서 고를 시간대 목록을 미리 받아둡니다.
+  // SLOT 방식 팝업이면 예약 모달에서 고를 시간대 목록을 미리 받아둠
   useEffect(() => {
     if (!popup || popup.reservationMode !== "SLOT") return;
     let cancelled = false;
@@ -204,7 +190,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     };
   }, [popup]);
 
-  // 실시간 혼잡도 - 팝업 정보 아래 있던 사전예약/웨이팅 박스 자리에 대신 보여줍니다.
+  // 실시간 혼잡도 - 팝업 정보 아래 있던 사전예약/웨이팅 박스 자리에 대신 보여줌
   useEffect(() => {
     if (!popup) return;
     let cancelled = false;
@@ -220,7 +206,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     };
   }, [popup]);
 
-  // [신규] 예상 대기시간 - "지금 가면 대략 N분 대기"를 보여줍니다.
+  // 예상 대기시간 조회
   useEffect(() => {
     if (!popup) return;
     let cancelled = false;
@@ -236,8 +222,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     };
   }, [popup]);
 
-  // [신규] 통합 대기열 총 인원 (사전예약자+현장웨이팅자 합산). 개인정보 노출 우려로
-  // totalCount만 받아와요 (lib/api/popups.ts 주석 참고).
+  // 통합 대기열 총 인원 (사전예약+현장웨이팅 합산, totalCount만 수신)
   useEffect(() => {
     if (!popup) return;
     let cancelled = false;
@@ -253,8 +238,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     };
   }, [popup]);
 
-  // [수정] 대기팀 수를 다시 조회합니다 - 이번엔 삭제된 정보 박스가 아니라
-  // 하단 고정 액션바의 "웨이팅" 버튼에 표시해요.
+  // 대기팀 수 조회 (하단 액션바 "웨이팅" 버튼 표시용)
   useEffect(() => {
     if (!popup) return;
     let cancelled = false;
@@ -270,8 +254,8 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     };
   }, [popup]);
 
-  // 후기 탭: 내가 쓴 리뷰(getMyReviews)와 이 팝업에 달린 전체 후기(getPopupReviews)를
-  // 각각 불러와 합칩니다. (lib/api/reviews.ts: 실 API 우선 → 실패 시 localStorage mock)
+  // 후기 탭: 내가 쓴 리뷰(getMyReviews)와 이 팝업에 달린 전체 후기(getPopupReviews)를 불러와 합침
+  // (lib/api/reviews.ts: 실 API 우선 → 실패 시 localStorage mock)
   useEffect(() => {
     if (!popup) return;
     let cancelled = false;
@@ -285,9 +269,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         console.error("내 리뷰 조회 실패", err);
       });
 
-    // [수정] 이 팝업에 달린 모든 사용자의 후기를 실제로 불러옵니다.
-    // 이전엔 이 호출이 아예 없어서, 다른 사람이 쓴 진짜 후기는 화면에 절대 안 보이고
-    // 내 후기 + 이름이 우연히 겹치는 정적 mock 후기만 보였어요.
+    // 팝업 전체 후기 조회
     getPopupReviews(popup.id)
       .then((list) => {
         if (!cancelled) setPopupReviews(list);
@@ -301,9 +283,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     };
   }, [popup]);
 
-  // [수정] 백엔드에 /api/popups/{id}/similar 엔드포인트가 실제로는 없어서 404가
-  // 나고 있었어요(전체 백엔드 코드를 다시 찾아봐도 "similar" 관련 코드 자체가
-  // 없었어요) - 원래 있던 해시태그/지역 겹침 점수 계산 방식으로 되돌렸어요.
+  // 비슷한 팝업 - 해시태그/지역 겹침 점수 계산 (백엔드 similar API 없음)
   useEffect(() => {
     if (!popup) return;
     let cancelled = false;
@@ -346,8 +326,6 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  // ⚠️ 공지/혜택/소개/이용정보/SNS 영역은 백엔드 PopupResponse에 없는 필드가 섞여 있어서
-  //    지금도 일부는 화면 구조만 맞춘 자리예요. (description, capacity 등은 실제 값입니다)
   const myReviewsAsItems: ReviewItem[] = myReviewsForPopup.map((r) => ({
     id: `me-${r.id}`,
     reviewId: r.id,
@@ -363,7 +341,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     isMine: true,
   }));
   const myReviewIds = new Set(myReviewsForPopup.map((r) => r.id));
-  // ⚠️ 백엔드 ReviewResponse에 작성자 닉네임이 없어서 "방문자"로만 표시해요. (백엔드 요청사항 참고)
+  // 백엔드 ReviewResponse에 작성자 닉네임이 없어서 "방문자"로만 표시해요. (백엔드 요청사항 참고)
   const otherReviewsAsItems: ReviewItem[] = popupReviews
     .filter((r) => !myReviewIds.has(r.id))
     .map((r) => ({
@@ -380,7 +358,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     likedByMe: r.likedByMe,
     }));
   const relatedReviews = [...myReviewsAsItems, ...otherReviewsAsItems];
-  // [신규] 정렬(최신순/추천순) + 사진 리뷰만 보기 필터
+  // 정렬(최신순/추천순) + 사진 리뷰만 보기 필터
   const visibleReviews = [...relatedReviews]
     .filter((r) => !photoOnly || (r.photos && r.photos.length > 0))
     .filter((r) => {
@@ -393,14 +371,12 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         ? (b.likeCount ?? 0) - (a.likeCount ?? 0)
         : b.date.localeCompare(a.date)
     );
-  // [수정] 로드된 후기 목록(페이지네이션으로 최대 20개까지만)으로 평균을 내던 걸,
-  // 백엔드가 DB 전체 후기 기준으로 미리 계산해서 내려주는 popup.avgRating으로 교체.
+  // 평균 별점 - 백엔드 전체 집계값(popup.avgRating) 사용
   const averageRating = popup.avgRating;
 
   return (
     <main className="min-h-screen flex flex-col w-full mobile:max-w-[1000px] mobile:mx-auto pb-24">
-      {/* [신규] 웹 버전에서는 다른 페이지처럼 상단바를 보여줘요 (모바일은 자체
-          뒤로가기 줄을 그대로 써요, 상단바 대신 하단바를 살려요). */}
+      {/* 웹 버전 상단바 (모바일은 자체 뒤로가기 줄 + 하단바) */}
       <div className="hidden mobile:block">
         <Header />
       </div>
@@ -416,12 +392,32 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         </button>
       </div>
 
-      {/* [수정] 대표 이미지 - 여백 없이 화면 꽉 채우도록 padding 있는 컨테이너 밖으로
-          뺐어요. 높이는 450px 고정, 가운데 정렬(object-center)로 잘려요.
-          찜 버튼은 하단바에 이미 있어서 여기서는 뺐어요. */}
+      {/* 대표 이미지 캐러셀 (450px 고정, 여러 장 시 스와이프) */}
       <div className="relative w-full h-[450px] bg-gray-100 dark:bg-[#282B32] overflow-hidden">
-        {coverImage ? (
-          <ImageWithFallback src={coverImage.imageUrl} className="w-full h-full object-contain" />
+        {thumbnailImages.length > 0 ? (
+          <>
+            <div className="w-full h-full overflow-hidden" ref={heroEmblaRef}>
+              <div className="flex h-full">
+                {thumbnailImages.map((img) => (
+                  <div key={img.id} className="relative flex-none w-full h-full">
+                    <ImageWithFallback src={img.imageUrl} className="w-full h-full object-contain" />
+                  </div>
+                ))}
+              </div>
+            </div>
+            {thumbnailImages.length > 1 && (
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                {thumbnailImages.map((img, i) => (
+                  <span
+                    key={img.id}
+                    className={`w-1.5 h-1.5 rounded-full ${i === heroIndex ? "bg-white" : "bg-white/40"}`}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        ) : detailImages[0] ? (
+          <ImageWithFallback src={detailImages[0].imageUrl} className="w-full h-full object-contain" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
             등록된 이미지가 없어요
@@ -430,9 +426,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <div className="px-4 mobile:px-8 py-6">
-        {/* [수정] 별점을 팝업 제목 줄에서 브랜드명 줄로 옮겼어요 - 모바일에서
-            제목이 길면 별점이랑 같이 있을 때 줄바꿈이 이상하게 됐었어요.
-            오른쪽에 고정으로 둬요. */}
+        {/* 별점 - 브랜드명 줄 오른쪽 고정 */}
         <div className="flex items-center justify-between mb-2">
           <Link href={`/brand/${popup.businessId}`} className="text-sm text-gray-400 inline-block">
             {popup.companyName} ›
@@ -448,16 +442,14 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         {/* 제목 - 폰트 굵기 한 단계 얇게(bold→semibold) */}
         <h1 className="text-3xl font-semibold mb-2">{popup.title}</h1>
 
-        {/* [수정] "진행중" 표시를 제목 옆에서 날짜 옆으로 옮겼어요. */}
+        {/* 상태 배지 - 날짜 옆 */}
         <p className="flex items-center gap-2 text-sm text-gray-500 mb-1">
           {new Date(popup.startDate).toLocaleDateString("ko-KR")} ~{" "}
           {new Date(popup.endDate).toLocaleDateString("ko-KR")}
           <StatusBadge status={toPopupItem(popup).status} />
         </p>
 
-        {/* [수정] 상세주소가 "태그"로 잘못 들어가 있었어요 - 날짜 밑으로 옮기고,
-            누르면(브라우저 기본 confirm 대신 주소 바로 아래에 작은 팝업으로) 네이버
-            지도 길찾기로 연결되게 했어요. */}
+        {/* 위치 - 클릭 시 네이버 지도 길찾기 팝업 */}
         {popup.location && (
           <div className="relative mb-3">
             <button
@@ -471,7 +463,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
 
             {showMapConfirm && (
               <>
-                {/* [신규] 창 밖(배경)을 눌러도 닫히도록 투명 오버레이를 깔았어요. */}
+                {/* 배경 클릭 시 닫힘 */}
                 <div className="fixed inset-0 z-10" onClick={() => setShowMapConfirm(false)} />
                 <div className="absolute left-0 top-full mt-1.5 z-20 bg-white dark:bg-[#282B32] border border-gray-200 dark:border-[#282B32] rounded-lg shadow-md p-3 w-64">
                 <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
@@ -502,11 +494,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        {/* [수정] 상세주소 대신 진짜 태그(지역/카테고리/해시태그)를 가져와요.
-            [수정] keywordNames/hashtags가 응답에 없어도(undefined) 죽지 않게 방어 코드 추가 -
-            이게 없으면 여기서 에러가 나서 페이지 전체가 안 그려질 수 있었어요.
-            [수정] 태그를 눌러도 아무 반응이 없었어요 - 누르면 해당 키워드로
-            검색한 결과 화면으로 넘어가도록 링크를 걸었어요. */}
+        {/* 지역/카테고리/해시태그 - 클릭 시 검색 결과로 이동, undefined 방어 */}
         {(popup.regionName || (popup.keywordNames ?? []).length > 0 || (popup.hashtags ?? []).length > 0) && (
           <div className="flex flex-wrap gap-2 mb-6">
             {popup.regionName && (
@@ -538,10 +526,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        {/* [수정] 실시간 혼잡도 + 예상 대기시간을 하나의 카드로 합쳤어요. "전화로
-            문의하기" 버튼도 여기 같이 넣었어요 - 기존 1:1 문의(마이페이지) 폼 대신,
-            주최자 전화번호(businessPhone)로 바로 통화 연결돼요. 전화번호가 없으면
-            버튼을 숨겨요. */}
+        {/* 혼잡도+예상대기시간 카드, 전화문의 버튼(businessPhone 있을 때만) */}
         <div className="border border-gray-200 dark:border-[#282B32] rounded-lg px-4 py-4 mb-8 flex flex-col gap-4">
           {liveStatus ? (
             <LiveCongestionPanel status={liveStatus} />
@@ -571,9 +556,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           )}
 
-          {/* [수정] 예약/웨이팅 둘 다 지원 안 하는 팝업은 여기서 문의하기를
-              빼고, 대신 하단 고정 액션바(StickyActionBar)에 넣었어요 - 거기가
-              원래 예약/웨이팅 버튼이 뜨던 자리라, 그 자리가 비어보이지 않게요. */}
+          {/* 전화문의 버튼 - 예약/웨이팅 미지원 팝업은 StickyActionBar로 이동 */}
           {(popup.queueMode === "PRERESERVATION_ONLY" ||
             popup.queueMode === "ONSITE_WAITING_ONLY" ||
             popup.queueMode === "BOTH") &&
@@ -606,12 +589,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                 router.push("/login");
                 return;
               }
-              // [수정] "같은 날짜"라는 이유만으로 무조건 막고 있었는데, 그러면
-              // 같은 날 다른 시간대 예약까지 막혀버려서 요청과 안 맞았어요.
-              // 진짜 막아야 하는 건 "완전히 같은 예약을 중복으로 넣는 것"이라,
-              // 같은 팝업 + 같은 날짜 + 같은 시간대일 때만 막도록 좁혔어요.
-              // [신규] 달력에서 휴무 요일은 이미 선택 자체가 막혀있지만, 혹시 모를
-              // 이중 방어로 제출 시점에도 한 번 더 확인해요.
+              // 중복 예약 검사 - 같은 팝업+날짜+시간대만 차단. 휴무일 제출 시 재확인(이중 방어)
               if (isDateClosed(popup.operatingHours, date)) {
                 await appAlert("휴무일에는 예약할 수 없어요. 다른 날짜를 선택해주세요.");
                 return;
@@ -642,10 +620,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                   partySize: count,
                 });
                 setShowReservation(false);
-                // [신규] 예약이 끝나자마자 바로 예약 상세로 튕겨버려서, 이
-                // 팝업을 더 둘러보고 싶어도 뒤로가기를 눌러야 했어요. 완료
-                // 안내와 함께 "예약 상세 보기 / 계속 둘러보기"를 선택하게
-                // 했어요.
+                // 예약 완료 후 상세보기/계속 둘러보기 선택
                 const goToDetail = await appChoice(
                   "예약이 완료됐어요!",
                   "예약 확인하기",
@@ -681,8 +656,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                 await appAlert("웨이팅 등록에는 전화번호가 필요해요. 마이페이지 > 내 정보에서 먼저 등록해주세요.");
                 return;
               }
-              // [수정] 여러 팝업에 동시에 대기하는 건 이제 허용해요 - 대신 "같은 팝업"에
-              // 이미 웨이팅 중인데 또 등록하는 것만 막아요 (중복 줄서기 방지).
+              // 같은 팝업 중복 웨이팅만 차단 (여러 팝업 동시 대기는 허용)
               try {
                 const activeWaitings = await getMyActiveWaitings(customer.id);
                 const already = activeWaitings.find((w) => w.popupId === popup.id);
@@ -692,7 +666,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                 }
               } catch (err) {
                 console.error("활성 웨이팅 확인 실패", err);
-                // 확인 자체가 실패해도 등록은 계속 진행해요 (막는 게 목적이 아니라 안내가 목적)
+                // 확인 자체가 실패해도 등록은 계속 진행 (막는 게 목적이 아니라 안내가 목적)
               }
               try {
                 const waiting = await registerWaiting(popup.id, customer.id, {
@@ -701,21 +675,11 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                 });
                 addMyWaitingId(waiting.id);
                 setShowWaiting(false);
-                // [수정 8/5] "웨이팅 등록하고 계속 둘러보기를 누르면 하단
-                // '대기중 N팀' 표시가 새로고침 전까지 그대로다"라는 신고 확인 -
-                // 이 배지(waitingTeams)는 팝업이 처음 로드될 때 딱 한 번만
-                // getWaitingBoard로 채워지고, 그 뒤로 다시 불러오는 곳이
-                // 없었어요. 방금 등록해서 실제로 대기 인원이 늘었으니, 등록
-                // 성공 직후 현황판을 다시 불러와서 화면에 바로 반영해요.
+                // 등록 성공 직후 대기 현황 재조회 (waitingTeams 배지 즉시 갱신)
                 getWaitingBoard(popup.id)
                   .then((board) => setWaitingTeams(board.totalWaitingTeams))
                   .catch((err) => console.error("대기 현황 재조회 실패", err));
-                // [수정 8/5] "웨이팅 등록했는데 몇 팀인지 안 나온다"는 신고 확인 -
-                // 등록 직후 안내가 인원수(count)만 말하고 정작 몇 번째 대기인지
-                // (waiting.teamNumber)는 안 보여주고 있었어요. 체크인 앱(태블릿)
-                // 확인 모달엔 "대기번호 N번"이 있는데, 이 앱만 빠져 있었던
-                // 거예요. 백엔드 응답에 teamNumber가 이미 있어서 문구에 추가만
-                // 하면 돼요.
+                // 등록 완료 안내에 대기번호(teamNumber) 표시
                 const goToDetail = await appChoice(
                   `웨이팅 ${waiting.teamNumber}번째로 등록됐어요! (${count}명)`,
                   "웨이팅 확인하기",
@@ -741,8 +705,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
           />
         )}
 
-        {/* [신규] 별점/댓글 버튼을 눌렀는데 이미 이 팝업에 댓글/후기를 남긴 경우 -
-            후기 작성 페이지로 보내지 않고 여기서 바로 알려줘요. */}
+        {/* 이미 작성한 경우 안내 모달 */}
         {showAlreadyReviewedNotice && (
           <div
             className="fixed inset-0 bg-black/40 flex items-center justify-center px-6 z-50"
@@ -784,10 +747,10 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
 
         {activeTab === "정보" && (
           <div className="flex flex-col divide-y divide-gray-100 dark:divide-[#282B32] [&>*:not(:first-child)]:pt-8">
-            {/* [신규] SNS/홈페이지 - popup_sns_link, 정보 탭 맨 위에 배치 */}
+            {/* SNS/홈페이지 링크 */}
             <PopupSnsLinks links={popup.snsLinks} />
 
-            {/* [수정] 백엔드에 요일별 운영시간 데이터가 새로 생겨서 연결했어요. */}
+            {/* 요일별 운영시간 */}
             <OperatingHoursSection hours={popup.operatingHours} />
 
             <section>
@@ -805,11 +768,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
 
             <section>
               <h2 className="text-sm font-semibold mb-2">상세 이미지</h2>
-              {/* [수정] 이미지를 16:9로 강제로 잘라내던 걸(object-cover) 없애고, 올린
-                  사이즈 그대로(원본 비율 그대로) 보여주도록 바꿨어요. 대신 이미지
-                  전체를 하나로 묶어서 봤을 때 처음 200px 정도까지만 보이게 하고,
-                  아래쪽에 그라데이션(위 투명 → 아래 흰색)과 "더보기" 버튼을 얹었어요.
-                  누르면 전체가 펼쳐져요. */}
+              {/* 상세 이미지 - 원본 비율, 200px 접힘+더보기 */}
               {detailImages.length > 0 ? (
                 <div className="relative">
                   <div
@@ -822,11 +781,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                       ))}
                     </div>
 
-                    {/* [수정] "이용 안내사항"을 상세 이미지 펼침 영역 맨 아래로 옮겼어요 -
-                        접혀있을 땐(더보기 누르기 전) 이미지랑 같이 숨겨져 있다가, 더보기를
-                        누르면 이미지들 아래에 나타나고, 다시 접으면 같이 숨겨져요.
-                        주최측이 남긴 안내(popup.notice)가 있으면 그걸, 없으면 일반적인
-                        기본 안내로 대체해요. */}
+                    {/* 이용 안내사항 - 상세이미지 펼침 영역 하단, notice 없으면 기본값 */}
                     <section className="px-4 mobile:px-0 py-6">
                       <h2 className="text-sm font-semibold mb-2">이용 안내사항</h2>
                       {popup.notice ? (
@@ -864,11 +819,9 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
 
         {activeTab === "후기" && (
           <section>
-            {/* [수정] 로그인 안 했을 때 카드 자체를 숨기던 것에서, 카드는 보여주되
-                별점을 누르면 후기 작성 대신 로그인 페이지로 보내는 방식으로 바꿨어요. */}
+            {/* 후기 작성 유도 카드 - 비로그인도 표시, 별점 클릭 시 로그인으로 */}
             <div className="flex flex-col items-center mb-6">
-              {/* [수정] 카메라 아이콘 빼고, 말풍선 모양으로 만들어서 아래 별점 쪽으로
-                  꼬리가 이어지게 했어요. */}
+              {/* 말풍선 모양 안내 카드 */}
               <div className="relative bg-gray-100 dark:bg-[#282B32] rounded-2xl px-5 py-3 animate-float">
                 <p className="text-base font-medium text-center">
                   다녀오셨나요? 방문하신 후기를 남겨주세요
@@ -884,8 +837,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                       router.push("/login");
                       return;
                     }
-                    // [수정] 이미 후기/댓글을 남긴 경우, 후기 작성 페이지로 넘어가지
-                    // 않고 여기서 바로 안내해요.
+                    // 이미 작성한 경우 바로 안내
                     if (myReviewsForPopup.length > 0) {
                       setShowAlreadyReviewedNotice(true);
                       return;
@@ -895,8 +847,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                   size={48}
                 />
               </div>
-              {/* [신규] 웨이팅/예약 없이도 후기를 남기고 싶은 사람을 위한 버튼 -
-                  별점 없이 바로 댓글 작성 화면으로 가요. */}
+              {/* 별점 없이 댓글만 작성 (웨이팅/예약 불필요) */}
               <button
                 type="button"
                 onClick={() => {
@@ -905,8 +856,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                     router.push("/login");
                     return;
                   }
-                  // [수정] 이미 후기/댓글을 남긴 경우, 후기 작성 페이지로 넘어가지
-                  // 않고 여기서 바로 안내해요.
+                  // 이미 작성한 경우 바로 안내
                   if (myReviewsForPopup.length > 0) {
                     setShowAlreadyReviewedNotice(true);
                     return;
@@ -992,11 +942,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
             {relatedReviews.length === 0 ? (
               <EmptyState message="아직 후기가 없어요." />
             ) : visibleReviews.length === 0 ? (
-              // [수정 8/5] "사진이 있는 후기가 없어요."로 고정돼 있었어요 - photoOnly
-              // 체크가 원인일 때만 맞는 문구인데, reviewFilter(전체/인증된 후기/댓글)
-              // 탭 때문에 0개가 된 경우(예: "인증된 후기" 탭인데 댓글만 있는 경우)에도
-              // 똑같이 "사진" 탓을 해서 사용자가 엉뚱한 이유로 오해했어요. 지금 켜진
-              // 필터 조합에 맞는 문구로 정확히 안내해요.
+              // 필터 조합별 빈 상태 문구 분기
               <EmptyState
                 message={
                   reviewFilter === "verified"
@@ -1081,18 +1027,13 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
           setWishlistCount((prev) => (prev === undefined ? prev : Math.max(0, prev + (nextActive ? 1 : -1))));
         }}
         onReserve={async () => {
-          // [수정] 이전엔 로그인 여부 확인 없이 바로 모달이 열려서, 폼을 다 채운 뒤에야
-          // (제출 시점에) 로그인하라고 튕겨서 입력한 내용이 다 날아갔어요. 버튼을
-          // 누르는 즉시 확인하도록 앞으로 옮겼어요.
+          // 로그인 확인 - 모달 열기 전(제출 시점 아님)
           if (!customer) {
           saveRedirectTarget(`/popup/${id}`);
           router.push("/login");
           return;
         }
-        // [수정] SLOT 모드 팝업인데 slots가 비어있으면(아직 시간대가 하나도 등록 안 됨),
-        // 모달이 자유입력(FREE) UI로 잘못 보여지면서 결국 slotId 없이 제출돼서
-        // "slotId를 입력해주세요" 에러가 나는 문제가 있었어요. 슬롯이 실제로 없는
-        // 경우엔 애초에 예약할 수 없는 상태라, 모달을 열지 않고 바로 안내해요.
+        // SLOT 모드인데 slots 비어있으면 모달 대신 안내
         if (popup.reservationMode === "SLOT" && slots.length === 0) {
           await appAlert("아직 예약 가능한 시간대가 등록되지 않았어요. 잠시 후 다시 시도해주세요.");
           return;
@@ -1105,8 +1046,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
           router.push("/login");
           return;
         }
-        // [신규] 버튼은 disabled로 막아뒀지만, 자정 넘어가는 시점 등 데이터가
-        // 잠깐 안 맞을 때를 대비한 이중 방어예요.
+        // 휴무일 이중 방어 (disabled 버튼 우회 대비)
         if (isTodayClosed(popup.operatingHours)) {
           appAlert("오늘은 휴무일이라 웨이팅을 등록할 수 없어요.");
           return;

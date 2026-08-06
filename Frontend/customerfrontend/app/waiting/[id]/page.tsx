@@ -1,6 +1,6 @@
+// app/waiting/[id]/page.tsx
+// 웨이팅 상세 페이지 - 대기 순번, QR, 취소
 "use client";
-
-// 웨이팅 상세 페이지 - 대기 순번, QR, 취소를 처리해요.
 
 import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -29,22 +29,14 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
   const { customer, loading: authLoading } = useAuth();
 
   const [waiting, setWaiting] = useState<Waiting | null>(null);
-  // [신규] "백엔드 없이 1등 되면 입장 알림을 줄 수 있어?"라는 요청 - 백엔드가
-  // 알림을 "보내주는" 방식(안 보고 있어도 알림함에 남는 방식)은 서버가 없으면
-  // 못 만들지만, 지금 이미 4초마다 내 순번을 다시 물어보고 있어서(아래
-  // useEffect), 그 값이 바뀌는 순간을 프론트에서 직접 감지해서 "지금 이 화면을
-  // 보고 있는 동안"만이라도 바로 모달을 띄워줄 수 있어요. 대신 이 화면을 나가
-  // 있으면(앱을 꺼두거나 다른 화면에 가 있으면) 못 띄워요 - 그런 경우까지
-  // 커버하려면 결국 서버가 실제로 알림을 만들어서 보내줘야 해요.
-  // teamsAhead가 0보다 컸다가(=아직 순서 아님) 0이 되는(=바로 다음 차례) 그
-  // "순간"만 딱 한 번 잡아내려고, 직전 값을 기억해뒀다가 비교해요.
+  // 내 차례 감지(화면 보는 동안만) - 폴링 값 변화 순간 포착, 진동+알림
   const prevTeamsAheadRef = useRef<number | null>(null);
   useEffect(() => {
     if (!waiting || waiting.status !== "WAITING") return;
     const prev = prevTeamsAheadRef.current;
     prevTeamsAheadRef.current = waiting.teamsAhead;
     if (prev !== null && prev > 0 && waiting.teamsAhead === 0) {
-      // 진동으로도 알려줘요 - 지원 안 하는 기기/브라우저면 조용히 무시돼요.
+      // 진동으로도 알려줌 - 지원 안 하는 기기/브라우저면 조용히 무시
       if (typeof navigator !== "undefined" && "vibrate" in navigator) {
         navigator.vibrate?.([200, 100, 200]);
       }
@@ -52,8 +44,7 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
     }
   }, [waiting]);
 
-  // [신규] 대기중/호출됨 상태일 때 입장 처리가 됐는지 몇 초마다 확인해서,
-  // 처리되면 QR 대신 "입장 처리 완료" 안내로 자동 전환해요.
+  // 입장 처리 여부 폴링 (4초 주기)
   useEffect(() => {
     if (!waiting || (waiting.status !== "WAITING" && waiting.status !== "CALLED")) return;
     const interval = setInterval(() => {
@@ -109,8 +100,7 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
 
   const handleShare = async () => {
     if (!popup) return;
-    // [수정] 예약 상세와 같은 문제 - 내 웨이팅 상세페이지 대신, 친구도 볼 수
-    // 있는 팝업 공개 페이지 링크를 보내요.
+    // 공유 링크 - 팝업 공개 페이지(내 웨이팅 상세 아님)
     const shareData = {
       title: popup.title,
       text: `${popup.title} 같이 갈래?`,
@@ -184,8 +174,7 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
           <Row label="등록 시간" value={new Date(waiting.registeredAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} />
         </section>
 
-        {/* [수정] "내 순서가 됐을 때만(CALLED) QR을 보여준다"는 제한을 뺐어요 -
-            대기중(WAITING)이어도 언제든 입장 QR을 볼 수 있게 다시 열었어요. */}
+        {/* 입장 QR - 대기중/호출됨 상태 모두 표시 */}
         {(waiting.status === "WAITING" || waiting.status === "CALLED") && (
           <section className="border border-gray-200 dark:border-[#282B32] rounded-xl p-5 flex flex-col items-center">
             <p className="text-sm font-semibold mb-3">입장 QR</p>
@@ -193,7 +182,7 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
           </section>
         )}
 
-        {/* [신규] 방금 입장 처리가 된 경우 QR 대신 완료 안내를 보여줘요. */}
+        {/* 입장 완료 안내 */}
         {waiting.enteredAt && (
           <section className="border border-gray-200 dark:border-[#282B32] rounded-xl p-5 flex flex-col items-center">
             <div className="w-16 h-16 mb-3 rounded-full border-2 border-point flex items-center justify-center text-point text-3xl">
@@ -212,8 +201,7 @@ export default function WaitingDetailPage({ params }: { params: Promise<{ id: st
           </ul>
         </section>
 
-        {/* [수정] 혼자 웨이팅한 경우엔 이 버튼을 숨기고, 취소 버튼보다 위로
-            옮겼어요. */}
+        {/* 함께 갈 친구에게 공유 - 2인 이상만 */}
         {waiting.partySize > 1 && (
           <button type="button" onClick={handleShare} className="w-full rounded-full py-3 text-base font-medium border border-gray-300 dark:border-[#282B32]">
             함께 갈 친구에게 보내기

@@ -1,6 +1,6 @@
+// components/home/ReviewDetailModal.tsx
+// 후기 카드를 눌렀을 때 뜨는 "크게 보기" 모달 - 사진 위주로 넘겨보는 뷰어
 "use client";
-
-// 후기 카드를 눌렀을 때 뜨는 "크게 보기" 모달 - 사진 위주로 넘겨보는 뷰어.
 
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -12,12 +12,6 @@ import { StarRatingDisplay } from "@/components/ui/StarRatingDisplay";
 
 const DRAG_THRESHOLD = 50;
 
-/**
- * 후기 카드를 눌렀을 때 뜨는 "크게 보기" 모달입니다.
- * [수정] 팝업 상세페이지의 후기 크게보기(ReviewImageModal)와 같은 구성으로 통일했어요 -
- * 사진 위주로 크게 보여주고, 화살표 하나로 사진→사진→다음 후기 순서로 넘어가요.
- * createPortal로 document.body에 붙여서 캐러셀의 transform/overflow 영향을 안 받아요.
- */
 export function ReviewDetailModal({
   reviews,
   initialIndex,
@@ -151,8 +145,6 @@ export function ReviewDetailModal({
 
         {/* 팝업 정보 + 후기 내용 - 넓게 잡아서 읽기 편하게 */}
         <div className="p-5">
-          {/* [수정] "팝업 보러가기" 버튼 대신, 팝업 정보 자체를 카드로 보여주고
-              카드를 누르면 이동하도록 바꿨어요. */}
           <Link
             href={`/popup/${review.popupId}`}
             className="flex items-center gap-3 mb-4 border border-gray-200 dark:border-[#282B32] rounded-xl p-3"

@@ -1,6 +1,7 @@
+// components/layout/Header.tsx
+// 웹(데스크톱) 전용 상단바 - 검색창, 웨이팅·예약/알림 아이콘(배지 포함), 마이페이지 링크
 "use client";
 
-// 웹(데스크톱) 전용 상단바 - 검색창, 웨이팅·예약/알림 아이콘(배지 포함), 마이페이지 링크.
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
@@ -61,8 +62,7 @@ export function Header({ initialQuery = "" }: { initialQuery?: string }) {
             }}
           />
         </>
-        {/* [신규] 활성 웨이팅/예약 개수를 동그란 말풍선 배지로 - 다른 말풍선처럼
-            살짝 동동 뜨는 애니메이션을 넣었어요. */}
+        {/* 활성 웨이팅/예약 개수 - 애니메이션 있는 배지 */}
         {activeQueueCount > 0 && (
           <span className="animate-float absolute -top-1.5 -right-1.5 min-w-[20px] h-[20px] px-1 rounded-full bg-point text-white text-sm font-bold flex items-center justify-center leading-none">
             {activeQueueCount}
@@ -77,9 +77,6 @@ export function Header({ initialQuery = "" }: { initialQuery?: string }) {
           </span>
         )}
       </Link>
-      {/* [수정 8/5] 공개 메뉴(화면 설정 등)가 /login 페이지 안으로 옮겨가서,
-          마이페이지는 다시 로그인 전용이에요. 로그아웃 상태면 그 메뉴가 있는
-          /login으로 보내요. */}
       <Link href={isLoggedIn ? "/mypage" : "/login"} aria-label="마이페이지">
         {isLoggedIn && customer?.profileImage ? (
           // eslint-disable-next-line @next/next/no-img-element

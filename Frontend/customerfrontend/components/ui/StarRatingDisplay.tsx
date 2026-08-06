@@ -1,6 +1,5 @@
 // components/ui/StarRatingDisplay.tsx
-//
-// [수정] 팀에서 주신 star_active.svg(빨강)/star_inactive.svg(회색) 파일로 교체했어요.
+// 별점을 읽기 전용으로 보여주는 별 아이콘 컴포넌트(star_active/inactive svg 사용)
 
 export function StarRatingDisplay({ rating, size = 14 }: { rating: number; size?: number }) {
   const rounded = Math.round(rating);

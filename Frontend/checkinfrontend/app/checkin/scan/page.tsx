@@ -1,14 +1,9 @@
+// app/checkin/scan/page.tsx
+// QR 입장 찍기 전용 화면
 "use client";
 
-// app/checkin/scan/page.tsx
-// QR 입장 찍기 전용 화면 - 직원이 카메라로 입장 QR을 스캔해서 예약/웨이팅
-// 손님을 입장 처리해요. 손님 셀프 등록 화면(/checkin)과는 완전히 분리된
-// 화면이에요 - select-popup에서 "웨이팅 시작하기"와 "QR 입장 찍기"를 각각
-// 누르면 서로 다른 이 두 화면으로 연결돼요.
-//
-// QR 스캔 로직은 popupfrontend(주최자센터) 대기열·인원 관제 화면
-// (WaitingControl.tsx)의 "통합 QR 체크인" 기능을 그대로 가져왔어요.
-
+// 직원이 카메라로 입장 QR을 스캔 (예약/웨이팅 손님 입장 처리)
+// QR 스캔 로직은 popupfrontend(주최자센터) 대기열·인원 관제 화면(WaitingControl.tsx)의 "통합 QR 체크인" 기능
 import { useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { getToken } from "@/lib/auth";
@@ -33,9 +28,7 @@ function ScanPageInner() {
       .catch((err) => console.error("팝업 정보 조회 실패", err));
   }, [popupId]);
 
-  // 스캔·입력값에서 토큰만 뽑아요 - 손님이 보여주는 QR엔 토큰이 아니라
-  // "{origin}/qr/{token}" 형태의 주소가 들어있는 경우가 많아서(문자·메일로
-  // 발송되는 형식과 동일), 주소든 토큰이든 둘 다 받아서 토큰만 추출해요.
+  // 스캔·입력값에서 토큰만
   const extractQrToken = (raw: string) => {
     const v = raw.trim();
     const m = v.match(/\/qr\/([^/?#\s]+)/);
@@ -51,9 +44,7 @@ function ScanPageInner() {
       return;
     }
     try {
-      // 통합 QR 체크인 - 예약/웨이팅 QR 구분 없이 서버가 판별해서 입장 처리해요.
-      // popupId를 같이 보내야 "지금 이 팝업"의 QR인지까지 검증돼요 - 안 보내면
-      // 팝업을 여러 개 운영하는 주최자가 다른 팝업 손님의 QR도 입장 처리해버려요.
+      // 통합 QR 체크인 - QR 종류는 서버가 알아서 판별하고, popupId로 현재 팝업의 QR인지까지 검증해 안전하게 체크인
       const res = await fetch("/api/queue/checkin/qr", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -73,8 +64,8 @@ function ScanPageInner() {
     }
   };
 
-  // 화면이 뜨면 곧바로 카메라를 켜고, 프레임마다 jsQR로 디코드해서 값이
-  // 잡히면 바로 입장 처리해요. (원본: popupfrontend WaitingControl.tsx)
+  // QR 입장 화면이 열리면 카메라를 자동으로 실행 (프레임 단위로 실시간 분석)
+  // 즉시 서버에 체크인 요청을 보내 입장 처리 (원본: popupfrontend WaitingControl.tsx)
   useEffect(() => {
     setCamError("");
     setQrMsg(null);

@@ -1,5 +1,5 @@
 // components/home/PopupCard.tsx
-// 팝업 카드 컴포넌트 - 여러 섹션(캐러셀, 검색 결과 등)에서 재사용되는 기본 카드. 순위 배지, 찜 버튼 포함.
+// 팝업 카드 컴포넌트 - 여러 섹션(캐러셀, 검색 결과 등)에서 재사용되는 기본 카드. 순위 배지, 찜 버튼 포함
 
 import Link from "next/link";
 import { PopupItem } from "@/data/mockPopups";
@@ -19,7 +19,6 @@ export function PopupCard({
 }: PopupItem & { rank?: number }) {
   return (
     <Link href={`/popup/${id}`} className="flex-none w-[190px] flex flex-col gap-2">
-      {/* 이미지: 카드 테두리 없이 이미지 자체에만 4~8px 라운드 */}
       <div className="relative h-[190px] rounded-md overflow-hidden bg-gray-100 dark:bg-[#282B32] flex items-center justify-center text-sm text-gray-400">
         {imageUrl ? (
           <ImageWithFallback src={imageUrl} className="w-full h-full object-cover" />
@@ -48,7 +47,6 @@ export function PopupCard({
         <StatusBadge status={status} className="self-start mb-0.5" />
         <p className="text-base font-medium text-gray-900 dark:text-white truncate">{name}</p>
         {dateRange && <p className="text-sm text-gray-400">{dateRange}</p>}
-        {/* [수정] 지역 글자가 다른 회색 텍스트(날짜 등)와 구분이 잘 안 됐어요 - 포인트 컬러로 눈에 띄게 했어요. */}
         {location && <p className="text-sm text-gray-400">{location}</p>}
       </div>
     </Link>

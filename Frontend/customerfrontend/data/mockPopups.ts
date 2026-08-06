@@ -2,30 +2,29 @@ export type PopupItem = {
   id: string;
   name: string;
   category?: string; // 검색 필터용 카테고리 (뷰티/패션/애니/푸드/스포츠/라이프/굿즈)
-  hashtags?: string[]; // 실제 백엔드 popup_hashtag 데이터 (있으면 category보다 이걸 우선 씀)
-  keywordNames?: string[]; // [신규] 표준 카테고리 이름들 - 검색에서 카테고리로도 찾을 수 있게
+  hashtags?: string[]; // 실제 백엔드 popup_hashtag 데이터 (있으면 category보다 우선적으로)
+  keywordNames?: string[]; // [신규] 표준 카테고리 이름들 - 카테고리로 검색
   regionId?: number | null; // 실제 백엔드 region(동네 단위) id - 정확한 지역 필터링용
   dateRange?: string;
   location?: string;
   badge?: string;
   brandId?: string; // data/mockBrands.ts의 Brand.id와 연결
-  brandName?: string; // [신규] 실 데이터의 companyName(주최사명) - 검색에서 브랜드 이름으로도 찾을 수 있게
+  brandName?: string; // [신규] 실 데이터의 companyName(주최사명) - 브랜드 이름으로 검색
   status?: "예정" | "진행중" | "종료";
-  imageUrl?: string; // [신규] 팝업 대표 이미지 - 목록 카드에서 실제 썸네일을 보여줄 때 씀
-  avgRating?: number | null; // [신규] 평균 평점 - 검색 별점 필터에 씀
+  imageUrl?: string; // [신규] 팝업 대표 이미지 - 목록 카드에서 실제 썸네일을 보여줄 때
+  avgRating?: number | null; // [신규] 평균 평점 - 검색 별점 필터
 };
 
 export type ReviewItem = {
   id: string;
-  reviewId: number; // [신규] 실제 후기 id (숫자). "id"는 "me-123"/"pop-456"처럼 화면 표시/구분용
-  // 접두어가 붙어있어서 신고 기능처럼 진짜 숫자 id가 필요한 곳에선 이걸 써야 해요.
-  popupId: string; // 상세페이지(/popup/[id])로 이동할 때 씀
+  reviewId: number; // [신규] 실제 후기 id (숫자). (신고 기능처럼 숫자 id가 필요할 때)
+  // "id"는 "me-123"/"pop-456"처럼 화면 표시/구분용 접두어가 붙어있음
+  popupId: string; // 상세페이지(/popup/[id])로 이동할 때
   popupName: string;
   nickname: string;
   content: string;
   date: string;
-  // [수정] 방문 인증(예약/웨이팅 체크인) 안 한 사람은 별점 없이 댓글만 남길 수
-  // 있게 백엔드가 바뀌어서, rating이 null일 수 있어요.
+  // [수정] 인증후기 - 방문 인증(예약/웨이팅 체크인) 한 사람 (number) / 댓글 - 안 한 사람 (null)
   rating: number | null;
   photos?: string[]; // 사진 URL 배열 (없으면 사진 없는 후기)
   status?: PopupItem["status"]; // 이 후기가 달린 팝업의 현재 상태 (예정/진행중/종료)
@@ -149,14 +148,13 @@ export const reviews: ReviewItem[] = [
   { id: "4", reviewId: 4, popupId: "3", popupName: "탬버린즈", nickname: "향수덕후", content: "향 체험존이 인상적이었어요", date: "26.07.07", rating: 4.6, status: "진행중", region: "홍대", category: "뷰티", reviewCount: 20 },
 ];
 
-// TODO(백엔드 연동): 실제 리뷰 생성 API로 교체해주세요.
-// 지금은 백엔드 없이도 화면 흐름(작성 → 목록 반영)을 확인할 수 있도록
-// 메모리상의 mock 배열에 바로 추가합니다. (새로고침하면 초기화돼요)
+// TODO(백엔드 연동): 실제 리뷰 생성 API로 교체
+// 백엔드 없이도 화면 흐름(작성 → 목록 반영)을 확인할 수 있도록 메모리상의 mock 배열에 바로 추가 (새로고침하면 초기화)
 export function addReview(review: ReviewItem) {
   reviews.unshift(review);
 }
 
-/** 특정 브랜드에 속한 팝업들을 진행중/완료로 나눠 반환합니다. */
+/** 특정 브랜드에 속한 팝업들을 진행중/완료로 나눠서 반환 */
 export function getPopupsByBrand(brandId: string): {
   ongoing: PopupItem[];
   ended: PopupItem[];

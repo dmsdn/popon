@@ -1,9 +1,7 @@
 // lib/api/banners.ts
+// 베너 연결
 //
-// [신규 연결] 관리자가 이미지 업로드로 관리하는 실제 배너 API가 생겼어요
-// (GET /api/banners, 공개). 이전엔 홈 화면 프로모션 캐러셀이 진행중 팝업 데이터를
-// 그대로 재활용해서 흉내만 내고 있었는데, 이제 진짜 배너 이미지/링크로 보여줍니다.
-
+// [신규 연결] 관리자가 이미지 업로드로 관리하는 실제 배너 API (GET /api/banners, 공개)
 import { apiFetch } from "./client";
 
 export interface Banner {

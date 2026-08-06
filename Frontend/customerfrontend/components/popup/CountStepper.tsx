@@ -1,6 +1,7 @@
+// components/popup/CountStepper.tsx
+// 인원수 +/- 조절 스테퍼 (예약/웨이팅 모달에서 사용)
 "use client";
 
-// 인원수 +/- 조절 스테퍼 (예약/웨이팅 모달에서 사용).
 
 import { useState } from "react";
 
@@ -9,15 +10,10 @@ interface CountStepperProps {
   onChange: (value: number) => void;
   min?: number;
   max?: number;
-  // [신규] 숫자를 눌러서 직접 입력했는데 최대 인원을 넘긴 경우 호출돼요.
-  // 부모 컴포넌트가 안내 메시지를 띄울 수 있게 max값을 그대로 넘겨줘요.
   onExceedMax?: (max: number) => void;
 }
 
 export function CountStepper({ value, onChange, min = 1, max = 10, onExceedMax }: CountStepperProps) {
-  // [신규] 숫자(가운데) 부분을 누르면 +/- 버튼 대신 직접 타이핑해서 원하는
-  // 인원수를 바로 입력할 수 있어요. 최대 인원을 넘는 값을 입력하면 최대값으로
-  // 되돌리고, onExceedMax로 부모에게 알려서 안내 메시지를 띄울 수 있게 해요.
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(value));
 

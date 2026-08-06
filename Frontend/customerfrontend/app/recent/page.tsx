@@ -1,6 +1,6 @@
+// app/recent/page.tsx
+// 최근 본 팝업 더보기 페이지
 "use client";
-
-// 최근 본 팝업 더보기 페이지.
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -14,8 +14,7 @@ import type { PopupItem } from "@/data/mockPopups";
 import { LoadingState, EmptyState } from "@/components/ui/EmptyState";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 
-// 이 브라우저에서 실제로 들어가봤던 팝업 상세페이지 기록 기준이에요 (lib/recentlyViewed.ts).
-// 로그인 계정 기준 서버 저장이 아니라 브라우저 기준이라, 다른 기기에서는 안 보여요.
+// 이 브라우저에서 실제로 들어가봤던 팝업 상세페이지 기록 기준 (lib/recentlyViewed.ts)
 export default function RecentListPage() {
   const router = useRouter();
   const [items, setItems] = useState<PopupItem[]>([]);
