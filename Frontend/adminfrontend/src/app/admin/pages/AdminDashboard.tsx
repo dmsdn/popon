@@ -8,8 +8,7 @@ import {
   type Popup, type ReportItem, type Region,
 } from "../../lib/api";
 
-// 관리자 대시보드 — GET /api/admin/dashboard 실데이터 (방문자 추이·승인 대기·CS·회원 집계)
-// 7/31 실시간 운영 지표 3종 추가: 오늘 체크인(이벤트 로그 집계)·신고 처리 현황·지역별 팝업 분포
+// 관리자 대시보드 — 방문자 추이·승인 대기·CS·회원 집계, 오늘 체크인·신고 처리 현황·지역별 팝업 분포를 보여준다.
 
 const toDateStr = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -17,7 +16,7 @@ const toDateStr = (d: Date) =>
 export default function AdminDashboard() {
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState("");
-  // 7/31 운영 지표 — 각각 독립 로드. 하나가 실패해도 나머지는 떠야 하므로 상태를 분리한다
+  // 운영 지표 — 각각 독립 로드. 하나가 실패해도 나머지는 떠야 하므로 상태를 분리한다
   const [popups, setPopups] = useState<Popup[]>([]);
   const [reports, setReports] = useState<ReportItem[] | null>(null);
   const [regions, setRegions] = useState<Region[]>([]);
@@ -110,8 +109,8 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* 7/31 — items-start 제거. 그리드 기본값(stretch)이라 같은 줄 카드가 같은 높이로
-          늘어나 아랫변이 직사각형으로 맞는다. 그전에는 내용 길이대로 높이가 달라 들쭉날쭉했다. */}
+      {/* items-start를 주지 않아 그리드 기본값(stretch)이 적용된다 — 같은 줄 카드가 같은 높이로
+          늘어나 아랫변이 직사각형으로 맞는다. */}
       <div className="grid lg:grid-cols-3 gap-3">
         {/* 플랫폼 방문자 추이 (실데이터) */}
         <div className="bg-card border border-border rounded-sm p-4 lg:col-span-2">
@@ -159,9 +158,8 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* 8/3 — 매출 추이(계약금) 카드 제거. 빈 자리는 오늘 체크인 카드를 올려 채운다 —
-            4 KPI / 차트(2)+체크인(1) / 신고+지역(2분할)로 줄마다 직사각형이 맞는다 */}
-        {/* 오늘 체크인 — 팝업 상세의 이벤트 로그(감사 원장)를 플랫폼 단위로 합산 */}
+        {/* 오늘 체크인 — 팝업 상세의 이벤트 로그(감사 원장)를 플랫폼 단위로 합산.
+            4 KPI / 차트(2)+체크인(1) / 신고+지역(2분할)로 줄마다 카드 높이가 직사각형으로 맞는다 */}
         <div className="bg-card border border-border rounded-sm p-4">
           <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
             <QrCode size={13} /> 오늘 체크인 (플랫폼 전체)
@@ -181,7 +179,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* 실시간 운영 지표 (7/31) — 신고·지역 마스터 집계. 8/3 — 2분할로 아랫줄 직사각형 유지 */}
+      {/* 실시간 운영 지표 — 신고·지역 마스터 집계. 2분할 레이아웃으로 아랫줄 카드 높이를 직사각형으로 유지 */}
       <div className="grid lg:grid-cols-2 gap-3">
         {/* 신고 처리 현황 — 접수/반려/수용 3상태 비율 */}
         <div className="bg-card border border-border rounded-sm p-4">
