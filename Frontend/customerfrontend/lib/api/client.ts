@@ -1,4 +1,7 @@
-// 기본은 상대 경로("") — next.config.ts rewrites가 /api/* 를 통합 백엔드(8080)로 프록시한다.
+// lib/api/client.ts
+// 백엔드 API를 호출할 때 공통으로 사용하는 API 클라이언트
+
+// 기본은 상대 경로("") — next.config.ts rewrites가 /api/* 를 통합 백엔드(8080)로 프록시
 // (구 8081 소비자 백엔드는 통합되어 더 이상 없음)
 import { markBackendDown, markBackendUp } from "@/lib/backendStatus";
 
@@ -17,19 +20,16 @@ export function clearToken() {
   localStorage.removeItem("accessToken");
 }
 
-// [신규] 401이 오면 지금까지는 localStorage의 토큰만 지웠어요 - React 쪽
-// customer 상태, 찜 목록 캐시 등은 그대로 남아있어서 화면상으론 로그인된
-//것처럼 계속 보였어요. AuthContext가 앱 시작 시 이 콜백을 등록해두면,
-// apiFetch가 401을 받을 때마다 진짜 "전체 로그아웃"을 실행할 수 있어요.
+// [신규] 401 인증 오류 발생 시 React의 인증 상태와 찜 목록 등 관련 상태까지 함께 초기화하는 전체 로그아웃 처리로 개선
+// AuthContext가 앱 시작 시 콜백을 등록하고, apiFetch가 401 응답을 받으면 실제 로그아웃 처리가 실행되도록 연결
 let onForceLogout: (() => void) | null = null;
 export function registerForceLogoutHandler(handler: () => void) {
   onForceLogout = handler;
 }
 
-// [수정] 지금까지 에러를 그냥 Error(message)로만 던져서, mock 대체 로직(withMockFallback)이
-// "백엔드가 아예 안 떠있음"과 "백엔드는 정상인데 이 데이터가 없음(404 등)"을 구분할
-// 방법이 없었어요. 그래서 존재하지 않는 팝업 같은 정상적인 404까지도 mock 데이터로
-// 조용히 덮어버리는 문제가 있었어요. status/isNetworkError를 실어서 구분 가능하게 했습니다.
+// [수정] API 에러에 HTTP 상태 코드(status)와 네트워크 연결 실패 여부(isNetworkError)를 추가
+// 백엔드 연결 장애와 실제 API 오류(예: 404)를 구분할 수 있도록 수정
+// withMockFallback이 백엔드가 연결되지 않은 경우에만 목업 데이터로 대체하고, 존재하지 않는 팝업 등의 정상적인 404 응답은 그대로 처리
 export class ApiError extends Error {
   status?: number;
   isNetworkError: boolean;
@@ -49,6 +49,9 @@ export async function apiFetch<T>(
   let res: Response;
   try {
     res = await fetch(`${API_BASE}${path}`, {
+      // [수정] fetch()의 GET 응답이 브라우저에 캐싱되는 것을 방지하도록 기본 캐시를 사용하지 않게 수정
+      // 웨이팅 현황처럼 실시간으로 변경되는 데이터를 다시 요청할 때 항상 최신 응답을 받아오도록 개선
+      cache: "no-store",
       ...options,
       headers: {
         "Content-Type": "application/json",
@@ -71,14 +74,12 @@ export async function apiFetch<T>(
       clearToken();
       onForceLogout?.();
     }
-    // 500 응답에 아무 message도 없는 건 지금까지 겪어본 바로는 대부분
-    // "백엔드가 제대로 안 떠있거나 막 재시작 중"일 때 나오는 패턴이었어요.
-    // (진짜 서버 로직 버그로 인한 500도 이 신호를 탈 수 있긴 하지만,
-    //  화면이 조용히 mock으로 대체되고 배너로 알려주는 편이 아무 반응 없는 것보단 나아요.)
+    // [수정] 500 응답에 에러 메시지가 없는 경우에는 백엔드가 정상적으로 실행되지 않았거나 재시작 중인 상황으로 판단해, 
+    // 화면을 목업 데이터로 대체하고 연결 상태를 안내하도록 처리
+    // 임시 데이터로 화면을 유지하면서 사용자에게 상태를 알려주도록 개선
+    // *주의* 실제 서버 로직 오류로 인한 500도 포함될 수 있음
     const rawText = await res.text().catch(() => "");
-    // 백엔드(GlobalExceptionHandler)는 에러를 { "message": "..." } 형태의 JSON으로 내려주는데,
-    // 지금까지는 이 JSON을 그대로 문자열로 써서 화면/로직에 원본 JSON이 그대로 노출됐어요.
-    // (예: "이미 이 팝업에 리뷰를 작성하셨어요." 대신 {"message":"이미 이 팝업에 리뷰를 작성하셨어요."} 가 통째로 표시됨)
+    // [수정] JSON 전체가 화면에 노출되지 않도록 message 필드의 실제 오류 내용만 추출해 사용자에게 자연스러운 에러 메시지가 표시되도록 개선
     let message = rawText;
     try {
       const parsed = JSON.parse(rawText);
@@ -96,11 +97,8 @@ export async function apiFetch<T>(
 
   markBackendUp();
   if (res.status === 204) return undefined as T;
-  // [수정 7/31] 204 말고 **200인데 본문이 빈** 응답도 있어요. 스프링에서
-  // ResponseEntity.ok().build() 로 끝내는 엔드포인트가 그래요 (예: 클릭 로그 기록
-  // POST /api/popups/{id}/click). 이걸 그대로 res.json()에 넘기면
-  // "Unexpected end of JSON input"이 나서, 서버는 200으로 잘 처리했는데 프론트만
-  // 실패로 인식했어요. 빈 본문이면 undefined로 돌려줘요.
+  // [수정] 응답 본문이 비어 있으면 undefined를 반환하도록 처리
+  // 서버의 정상 응답을 프론트에서도 성공으로 인식하도록 개선
   const text = await res.text();
   if (!text) return undefined as T;
   return JSON.parse(text) as T;

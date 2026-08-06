@@ -1,17 +1,11 @@
+// app/signup/info/page.tsx
+// 회원가입 완료 후 관심사 선택(preferences) 페이지로 보내는 리다이렉트 전용 페이지
 "use client";
-
-// 회원가입 완료 후 관심사 선택(preferences) 페이지로 보내는 리다이렉트 전용 페이지.
 
 import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LoadingState } from "@/components/ui/EmptyState";
 
-/**
- * [신규] 백엔드가 신규 소셜 로그인 사용자를 여기(/signup/info?pendingToken=...)로
- * 리다이렉트하고 있었는데, 이 경로 자체가 프론트에 없어서 계속 404가 났어요.
- * 실제 "회원정보 입력" 화면(pendingToken 처리 로직 포함)은 /signup에 다 있어서,
- * 여긴 pendingToken을 그대로 들고 /signup으로 넘겨주는 얇은 통로예요.
- */
 export default function SignupInfoRedirectPage() {
   return (
     <Suspense fallback={<LoadingState message="불러오는 중..." />}>

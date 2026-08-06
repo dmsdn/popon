@@ -1,6 +1,6 @@
+// app/signup/preferences/page.tsx
+// 가입 직후 관심 카테고리·관심 지역을 선택하는 온보딩 페이지
 "use client";
-
-// 가입 직후 관심 카테고리·관심 지역을 선택하는 온보딩 페이지.
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -11,10 +11,7 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { consumeRedirectTarget } from "@/lib/postLoginRedirect";
 import { appAlert } from "@/lib/ui/alertStore";
 
-// [수정] 예전엔 백엔드 region이 서울/경기/부산 같은 시/도 단위라 이 앱이 쓰는 성수/홍대
-// 같은 동네 단위 선택이랑 안 맞아서 로컬 저장으로만 처리했었는데, 백엔드가 이제
-// AdminRegionController로 관리자가 동네 단위 지역을 직접 관리하는 구조로 바뀌었어요.
-// 관심 카테고리(키워드)와 동일한 패턴으로 실제 API에 연결합니다.
+// 관심 지역 - 백엔드 관리자(AdminRegionController) 동네 단위 지역 API 연결 (키워드와 동일 패턴)
 
 export default function PreferencesPage() {
   const router = useRouter();
@@ -87,7 +84,7 @@ export default function PreferencesPage() {
 
       {regions.length > 0 && (
         <section className="mb-8">
-          <h2 className="text-sm font-semibold text-gray-800 mb-3">관심 지역</h2>
+          <h2 className="text-sm font-semibold text-gray-800 dark:text-white mb-3">관심 지역</h2>
           <div className="flex flex-wrap gap-2">
             {regions.map((r) => (
               <button
@@ -96,7 +93,7 @@ export default function PreferencesPage() {
                 onClick={() => toggleRegion(r.id)}
                 className={`px-4 py-2 rounded-full text-sm border ${
                   selectedRegions.includes(r.id)
-                    ? "bg-gray-900 text-white border-gray-900"
+                    ? "border-point text-[#218B09]"
                     : "border-gray-200 dark:border-[#282B32] text-gray-600 dark:text-gray-400"
                 }`}
               >
@@ -109,7 +106,7 @@ export default function PreferencesPage() {
 
       {keywords.length > 0 && (
         <section className="mb-10">
-          <h2 className="text-sm font-semibold text-gray-800 mb-3">관심 카테고리</h2>
+          <h2 className="text-sm font-semibold text-gray-800 dark:text-white mb-3">관심 카테고리</h2>
           <div className="flex flex-wrap gap-2">
             {keywords.map((kw) => (
               <button
@@ -118,7 +115,7 @@ export default function PreferencesPage() {
                 onClick={() => toggleKeyword(kw.id)}
                 className={`px-4 py-2 rounded-full text-sm border ${
                   selectedKeywords.includes(kw.id)
-                    ? "bg-gray-900 text-white border-gray-900"
+                    ? "border-point text-[#218B09]"
                     : "border-gray-200 dark:border-[#282B32] text-gray-600 dark:text-gray-400"
                 }`}
               >
@@ -134,7 +131,7 @@ export default function PreferencesPage() {
           type="button"
           disabled={submitting || !hasAnySelection}
           onClick={() => finish(false)}
-          className="w-full rounded-full py-3.5 text-sm font-medium bg-gray-900 text-white disabled:opacity-50"
+          className="w-full rounded-full py-3.5 text-sm font-medium bg-point text-gray-900 dark:text-white disabled:opacity-50"
         >
           {submitting ? "저장하는 중..." : "선택 완료"}
         </button>

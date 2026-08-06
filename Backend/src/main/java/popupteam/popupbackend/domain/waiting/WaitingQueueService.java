@@ -38,6 +38,12 @@ public class WaitingQueueService {
         Popup popup = popupRepository.findById(popupId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 팝업입니다."));
 
+        // 버그 수정: queueMode가 PRERESERVATION_ONLY(사전예약만)인 팝업인데도 웨이팅 등록 API를
+        // 그대로 호출하면 웨이팅이 생성되고 있었음 (찜 목록 화면 등에서 이 API로 그대로 뚫려 있었음).
+        if (popup.getQueueMode() == popupteam.popupbackend.domain.popup.QueueMode.PRERESERVATION_ONLY) {
+            throw new IllegalArgumentException("사전예약만 가능한 팝업입니다. 현장 웨이팅을 이용할 수 없습니다.");
+        }
+
         if (popup.getMaxPartySizePerTeam() != null && request.getPartySize() > popup.getMaxPartySizePerTeam()) {
             throw new IllegalArgumentException(
                     "팀당 최대 인원은 " + popup.getMaxPartySizePerTeam() + "명입니다. 입력하신 인원(" + request.getPartySize() + "명)이 초과되었습니다.");

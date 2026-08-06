@@ -1,6 +1,6 @@
+// app/map/page.tsx
+// 지도로 팝업 찾기 페이지 - 네이버 지도 마커, 선택 팝업 카드 하단 표시
 "use client";
-
-// 지도로 팝업 찾기 페이지 - 네이버 지도에 마커를 찍고, 선택한 팝업 카드를 하단에 보여줘요.
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -12,26 +12,9 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { StarRatingDisplay } from "@/components/ui/StarRatingDisplay";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 
-// [수정] 네이버 지도 - 핀에 팝업 이름 라벨을 붙이고, 핀을 누르면 이미지 참고하신
-// 형태(썸네일+상태+이름+주소+기간)의 카드가 뜨도록 다시 만들었어요. 카드 전체를
-// 누르면 해당 팝업 상세페이지로 이동해요.
-//
-// ⚠️ NEXT_PUBLIC_NAVER_MAP_CLIENT_ID 환경변수가 필요해요.
-// NCP 콘솔 > Service > Application Services > Maps > Application에서
-// 애플리케이션 등록 후 Client ID를 확인하세요. (Client Secret은 백엔드 지오코딩용이라
-// 프론트에는 필요 없어요 — Client ID만 있으면 됩니다.)
-//   .env.local에 추가:
-//   NEXT_PUBLIC_NAVER_MAP_CLIENT_ID=발급받은_Client_ID
-//
-// "운영예정(BEFOR)" 팝업도 지도에 같이 보여줄지는 아직 정해지지 않아서, 기본은
-// 끔(진행중만 표시) + 토글 버튼으로 켤 수 있게 해뒀어요.
 const DEFAULT_SHOW_UPCOMING = false;
 
-// [신규] 같은 건물처럼 좌표가 사실상 같은 팝업이 여러 개 있으면 핀이 완전히
-// 겹쳐서 뒤에 있는 핀은 누를 수가 없었어요. 좌표를 살짝 반올림해서 그룹으로
-// 묶고, 한 그룹에 2개 이상이면 주변에 무작위로 흩어 놓아서 각각 보이고
-// 눌리게 만들었어요. (매번 다른 위치로 튀면 헷갈리니까, 같은 항목은 항상
-// 같은 자리에 오도록 좌표 기반으로 "고정된" 무작위값을 만들어요.)
+// 좌표 동일(같은 건물) 팝업 겹침 방지 - 그룹화 후 고정 시드 기반 무작위 분산 배치
 function seededRandom(seed: string): number {
   let hash = 0;
   for (let i = 0; i < seed.length; i++) {
@@ -46,7 +29,7 @@ function spreadOverlappingPositions<T extends { latitude: number; longitude: num
 ): (T & { displayLat: number; displayLng: number })[] {
   const groups = new Map<string, T[]>();
   for (const item of items) {
-    // 소수점 4자리 ≈ 약 11m 반경 - 이 정도면 "같은 건물"로 취급해도 될 거리예요.
+    // 소수점 4자리 ≈ 약 11m 반경
     const key = `${item.latitude.toFixed(4)},${item.longitude.toFixed(4)}`;
     const group = groups.get(key) ?? [];
     group.push(item);
@@ -59,9 +42,7 @@ function spreadOverlappingPositions<T extends { latitude: number; longitude: num
       result.push({ ...group[0], displayLat: group[0].latitude, displayLng: group[0].longitude });
       continue;
     }
-    // 여러 개면 반경 약 9~22m 사이 랜덤한 거리·방향으로 흩어 놔요. 원형으로
-    // 가지런히 배치하면 너무 기계적으로 보인다는 피드백이 있어서, 대신
-    // 자연스럽게 흩뿌려진 느낌이 나도록 바꿨어요.
+    // 반경 9~22m 랜덤 거리·방향 분산 (원형 배치는 기계적으로 보여 제외)
     group.forEach((item, i) => {
       const seed = `${key}_${i}`;
       const angle = seededRandom(`${seed}_angle`) * 2 * Math.PI;
@@ -76,12 +57,7 @@ function spreadOverlappingPositions<T extends { latitude: number; longitude: num
   return result;
 }
 
-// [신규] 화면이 조금만 줄어들어도(축소돼도) 핀들이 서로 겹쳐서 원하는 팝업을
-// 고르기 어렵다는 피드백을 반영했어요. 위/경도 거리가 아니라 "지금 화면에
-// 실제로 보이는 픽셀 거리"를 기준으로 가까운 핀들을 하나의 클러스터(숫자
-// 뱃지)로 묶고, 그 뱃지를 누르면 그 위치로 확대해서 각 핀이 다시 따로
-// 눌릴 수 있게 퍼지도록 했어요. 지도를 옮기거나 확대/축소할 때마다(idle
-// 이벤트) 다시 계산돼요.
+// 화면 축소 시 핀 겹침 방지 - 픽셀 거리 기준 클러스터링(숫자 뱃지), 클릭 시 확대. idle 이벤트마다 재계산
 const CLUSTER_PIXEL_SIZE = 60;
 
 function clusterByScreenDistance<T extends { displayLat: number; displayLng: number }>(
@@ -95,9 +71,7 @@ function clusterByScreenDistance<T extends { displayLat: number; displayLng: num
     const offset = projection.fromCoordToOffset(
       new window.naver.maps.LatLng(item.displayLat, item.displayLng)
     );
-    // 픽셀 좌표를 CLUSTER_PIXEL_SIZE 크기의 격자로 나눠서, 같은 칸에 들어오면
-    // 같은 클러스터로 묶어요. 격자 방식이라 아주 드물게 경계에 걸친 두 핀이
-    // 다른 칸으로 나뉠 수 있지만, 대부분의 경우엔 충분히 잘 묶여요.
+    // CLUSTER_PIXEL_SIZE 격자 단위로 클러스터 그룹화
     const key = `${Math.floor(offset.x / CLUSTER_PIXEL_SIZE)}_${Math.floor(offset.y / CLUSTER_PIXEL_SIZE)}`;
     const bucket = buckets.get(key) ?? { items: [], sumLat: 0, sumLng: 0 };
     bucket.items.push(item);
@@ -150,22 +124,14 @@ export default function MapPage() {
   }, [selected]);
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  // [신규] 검색 결과 목록을 바텀시트로 보여줄지 여부. 검색어를 입력하면 자동으로
-  // 열리고, 목록에서 팝업을 고르거나 지도에서 마커를 누르면 닫혀요(그 팝업
-  // 카드만 보여주기 위해). X 버튼으로 직접 닫을 수도 있어요.
+  // 검색 결과 바텀시트 표시 여부 - 검색어 입력 시 자동 오픈, 선택/X버튼으로 닫힘
   const [showSearchSheet, setShowSearchSheet] = useState(false);
-  // [신규] 지도를 옮기거나(드래그) 확대/축소할 때마다 값이 바뀌어서, 아래
-  // 마커/클러스터 렌더링 이펙트가 다시 실행되게 만드는 트리거예요. 데이터
-  // 자체는 안 바뀌지만 "화면에서 핀들이 얼마나 가까워 보이는지"는 바뀌니까
-  // 클러스터를 다시 계산해야 해요.
+  // 지도 이동/줌 시 마커·클러스터 재계산 트리거
   const [viewTick, setViewTick] = useState(0);
 
   const clientId = process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID;
 
-  // [수정] 네이버 지도는 인증 실패 시에도 스크립트 자체는 로드되지만 naver.maps가
-  // null이 돼서, 그대로 new naver.maps.LatLng(...)를 호출하면 화면이 통째로
-  // 하얗게 죽어버렸어요(Uncaught TypeError). 인증 실패를 감지하는 전역 콜백을
-  // 등록해서, 실패하면 지도 대신 안내 문구를 보여주게 했어요.
+  // 지도 인증 실패 감지 콜백 (실패 시 naver.maps가 null이라 화면 통째로 깨지던 문제 방지)
   useEffect(() => {
     (window as any).navermap_authFailure = () => setSdkAuthFailed(true);
   }, []);
@@ -174,9 +140,7 @@ export default function MapPage() {
   const visibleOpen = q ? openPopups.filter((p) => p.title.toLowerCase().includes(q)) : openPopups;
   const visibleUpcoming = q ? upcomingPopups.filter((p) => p.title.toLowerCase().includes(q)) : upcomingPopups;
 
-  // [신규] 검색어를 입력하면 바텀시트를 열고, 특정 팝업 선택은 해제해요
-  // (검색 중엔 "이 검색어에 맞는 전체 목록"을 보여주는 게 우선이라).
-  // 검색어를 지우면 바텀시트도 같이 닫혀요.
+  // 검색어 입력 시 바텀시트 오픈 + 선택 해제, 검색어 삭제 시 닫힘
   useEffect(() => {
     if (q) {
       setShowSearchSheet(true);
@@ -200,8 +164,7 @@ export default function MapPage() {
     };
   }, []);
 
-  // 선택한 팝업이 바뀔 때마다 대표 이미지 하나만 가져와요 (핀마다 미리 다 가져오면
-  // 요청이 너무 많아져서, 선택했을 때만 lazy하게 불러와요).
+  // 선택한 팝업이 바뀔 때마다 대표 이미지 하나만
   useEffect(() => {
     if (!selected) {
       setSelectedImageUrl(null);
@@ -210,9 +173,7 @@ export default function MapPage() {
     let cancelled = false;
     getPopupImages(selected.id)
       .then((images) => {
-        // [수정] 배열 맨 앞 대신 type === "THUMBNAIL"로 대표 이미지를 골라요.
-        // (상세 이미지만 있는 팝업에서 배열 순서에 따라 상세 이미지가 대표
-        // 자리에 뜨는 버그 방지. 옛 데이터 대비 폴백은 유지)
+        // 대표 이미지 - type === "THUMBNAIL" 우선, 없으면 첫 이미지로 폴백
         const cover = images.find((img) => img.type === "THUMBNAIL") ?? images[0];
         if (!cancelled) setSelectedImageUrl(cover?.imageUrl ?? null);
       })
@@ -232,14 +193,14 @@ export default function MapPage() {
         ? new window.naver.maps.LatLng(openPopups[0].latitude, openPopups[0].longitude)
         : new window.naver.maps.LatLng(37.5665, 126.978); // 기본값: 서울시청 근방
     mapInstance.current = new window.naver.maps.Map(mapRef.current, { center, zoom: 14 });
-    // [신규] 드래그/확대/축소가 끝날 때마다(idle) 클러스터를 다시 계산해요.
+    // idle(드래그/확대축소 종료) 시 클러스터 재계산
     window.naver.maps.Event.addListener(mapInstance.current, "idle", () => {
       setViewTick((v) => v + 1);
     });
   }, [sdkReady, openPopups]);
 
-  // 마커 렌더링 - 진행중(검정 핀)이 우선, 운영예정(회색 핀)은 토글 켰을 때만.
-  // 핀마다 팝업 이름을 작은 라벨로 같이 보여줘요.
+  // 마커 렌더링 - 진행중(검정 핀)이 우선, 운영예정(회색 핀)은 토글 켰을 때만
+  // 핀마다 팝업 이름을 작은 라벨로 같이 보여줌
   useEffect(() => {
     if (!sdkReady || !window.naver?.maps || !mapInstance.current) return;
     markersRef.current.forEach((m) => m.setMap(null));
@@ -250,9 +211,7 @@ export default function MapPage() {
       ...(showUpcoming ? visibleUpcoming.map((p) => ({ popup: p, active: false })) : []),
     ].map((t) => ({ ...t, latitude: t.popup.latitude!, longitude: t.popup.longitude! })));
 
-    // [신규] 좌표만으로는 "화면에서 얼마나 가까워 보이는지"를 알 수 없어서,
-    // 실제 픽셀 거리로 다시 그룹을 묶어요. 한 그룹에 핀이 1개뿐이면 지금까지
-    // 처럼 이름표 붙은 핀으로, 2개 이상이면 숫자 뱃지(클러스터)로 보여줘요.
+    // 픽셀 거리 기준 재그룹화 - 1개면 이름표 핀, 2개 이상이면 클러스터 뱃지
     const clusters = clusterByScreenDistance(targets, mapInstance.current);
 
     clusters.forEach((cluster) => {
@@ -274,8 +233,7 @@ export default function MapPage() {
             anchor: new window.naver.maps.Point(20, 20),
           },
         });
-        // 클러스터를 누르면 그 위치로 확대해서 핀들이 각자 눌릴 수 있을
-        // 만큼 퍼지게 해요. (선택 자체는 하지 않고, 확대까지만.)
+        // 클러스터를 누르면 그 위치로 확대해서 핀들이 각자 눌릴 수 있을 만큼 퍼지게 함
         window.naver.maps.Event.addListener(clusterMarker, "click", () => {
           const map = mapInstance.current;
           map.setCenter(new window.naver.maps.LatLng(cluster.centerLat, cluster.centerLng));
@@ -294,9 +252,7 @@ export default function MapPage() {
       const marker = new window.naver.maps.Marker({
         position,
         map: mapInstance.current,
-        // [수정] 검색 시 겹쳐있던 마커들 사이에서 선택된 마커가 다른 마커에
-        // 가려지던 문제 - 렌더링 순서에만 의존하지 않고 zIndex를 명시적으로
-        // 줘서, 선택된 마커가 항상 맨 위에 그려지도록 했어요.
+        // 선택된 마커 zIndex 명시 - 겹칠 때 항상 맨 위에 표시
         zIndex: isSelected ? 200 : active ? 100 : 50,
         icon: {
           content: `
@@ -326,13 +282,7 @@ export default function MapPage() {
     });
   }, [sdkReady, visibleOpen, visibleUpcoming, showUpcoming, selected?.id, viewTick]);
 
-  // [수정] "팝업을 선택하면 지도가 축소된다"는 문제의 원인을 찾았어요 - 검색 시
-  // 지도 중심을 옮기는 코드가 마커 렌더링 이펙트 안에 있었는데, 그 이펙트가
-  // selected?.id 변화에도 다시 실행되고 있었어요. 그래서 검색어를 입력해둔
-  // 상태에서 마커/목록을 눌러 "선택"만 해도 이 블록이 다시 돌면서 확대 수준을
-  // 강제로 15로 되돌리고 있었던 거예요. 이제 검색어(q) 자체가 바뀔 때만
-  // 실행되는 별도 이펙트로 분리해서, 팝업을 선택하는 동작은 지도 확대/위치에
-  // 전혀 영향을 안 주도록 했어요.
+  // 지도 중심 이동 - 검색어(q) 변경 시에만 실행되는 별도 이펙트로 분리 (선택 시 지도 축소되던 문제 방지)
   useEffect(() => {
     if (!sdkReady || !window.naver?.maps || !mapInstance.current || !q) return;
     const targets = [...visibleOpen, ...(showUpcoming ? visibleUpcoming : [])];
@@ -407,8 +357,7 @@ export default function MapPage() {
         </button>
       </div>
 
-      {/* [신규] 검색 결과 바텀시트 - 검색어에 맞는 팝업이 여러 개면 전체를
-          목록으로 보여줘요. 화면을 꽉 채우지 않고 아래에서 올라오는 시트로만. */}
+      {/* 검색 결과 바텀시트 */}
       {showSearchSheet && (
         <div className="absolute bottom-0 left-0 right-0 max-h-[55vh] flex flex-col bg-white dark:bg-[#282B32] rounded-t-2xl shadow-[0_-4px_16px_rgba(0,0,0,0.15)]">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-[#17181a] flex-none">
@@ -437,10 +386,7 @@ export default function MapPage() {
                     onClick={() => {
                       setSelected(popup);
                       setShowSearchSheet(false);
-                      // [수정] 여기서도 setCenter/setZoom을 강제로 걸고 있어서,
-                      // 목록에서 팝업을 고르기만 해도 지도가 축소/이동됐어요.
-                      // 이제 선택은 지도 확대/위치에 전혀 영향을 안 줘요 - 보고
-                      // 있던 화면 그대로 유지돼요.
+                      // 선택은 지도 확대/위치에 영향 없음
                     }}
                     className="w-full flex flex-col items-start gap-1 px-4 py-3 border-b border-gray-50 dark:border-[#17181a] text-left"
                   >
@@ -471,7 +417,7 @@ export default function MapPage() {
               ✕
             </button>
             <Link href={`/popup/${selected.id}`} className="flex items-stretch gap-3 p-3">
-              {/* [수정] 이미지가 너무 작아서 80px → 112px로 키웠어요. */}
+              {/* 이미지 크기 112px */}
               <div className="w-28 h-28 flex-none rounded-lg overflow-hidden bg-gray-100 dark:bg-[#282B32]">
                 {selectedImageUrl ? (
                   <ImageWithFallback src={selectedImageUrl} className="w-full h-full object-cover" />
@@ -489,8 +435,7 @@ export default function MapPage() {
                   )}
                 </div>
                 <p className="text-base font-semibold truncate">{selected.title}</p>
-                {/* [수정] 별점/찜 개수를 상태·지역 줄에 끼워 넣지 않고, 이름 바로
-                    아래에 독립된 줄로 분리해서 눈에 잘 띄게 했어요. */}
+                {/* 별점/찜 개수 - 이름 아래 독립된 줄 */}
                 {(selectedItem.avgRating != null || selectedWishlistCount !== null) && (
                   <div className="flex items-center gap-3">
                     {selectedItem.avgRating != null && (

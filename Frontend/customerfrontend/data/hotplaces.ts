@@ -1,23 +1,17 @@
 // data/hotplaces.ts
+// 프론트에서 지역별 핫플 데이터를 직접 관리
 //
-// [결정] popup_hot_place는 백엔드 테이블+API가 있지만, 관리자용 업로드 화면이 없어서
-// 데이터를 넣으려면 매번 SQL을 직접 만져야 했어요. 몇 개 안 되는 데이터를 지역
-// 기준으로만 보여주면 되는 지금 요구사항엔 백엔드까지 갈 필요가 없다고 판단해서,
-// 프론트 코드에 직접 데이터를 넣어두는 방식으로 바꿨어요.
+// 현재처럼 데이터가 적은 단계에서는 SQL 작업 없이 배열에 항목을 추가·수정하고 배포하면 바로 반영
+// 추후 데이터 규모가 커지거나 비개발자 관리가 필요해지면 기존 popup_hot_place 테이블과 백엔드 API 방식으로 전환할 수 있도록 구성
 //
-// 나중에 데이터가 많아지거나 비개발자가 직접 관리해야 하는 시점이 오면, 그때
-// popup_hot_place + 백엔드 API(이미 만들어둔 패치 있음)로 옮기면 돼요. 지금은
-// 여기 배열에 항목 추가/수정하고 배포만 하면 바로 반영돼요.
-//
-// 매칭 기준: 팝업의 regionName(성수/강남/홍대 등, PopupDetail.regionName)과
-// 아래 키가 일치하면 그 지역 리스트를 보여줍니다.
+// 매칭 기준: 팝업의 regionName(성수/강남/홍대 등, PopupDetail.regionName)과 아래 키가 일치하면 그 지역 리스트 제공
 
 export interface HotPlace {
   category: string; // "카페" | "음식점" | "패션잡화" 등 자유 텍스트
   name: string;
   distance?: string; // 예: "114m" - 없으면 화면에 거리 표시 생략
   linkUrl?: string; // 네이버 지도 등 외부 링크
-  imageUrl?: string; // 없으면 회색 placeholder로 자동 대체됨
+  imageUrl?: string; // 없으면 회색 placeholder로 자동 대체
 }
 
 export const hotPlacesByRegion: Record<string, HotPlace[]> = {
@@ -137,9 +131,8 @@ export function getHotPlacesForRegion(
   regionName?: string | null,
   location?: string | null
 ): HotPlace[] {
-  // [수정] regionName(addressKeyword FK)이 최근에 생긴 필드라, 기존 팝업들은 대부분
-  // 아직 이 값이 비어있고 location(자유 텍스트)만 채워져 있어요. regionName이 없으면
-  // location 문자열 안에 지역 이름이 포함되어 있는지로 한 번 더 시도합니다.
+  // [수정] regionName(addressKeyword FK) 값을 불러옴
+  // 없으면 location 문자열 안에 지역 이름이 포함되어 있는지 한 번 더 시도
   if (regionName && hotPlacesByRegion[regionName]) {
     return hotPlacesByRegion[regionName];
   }

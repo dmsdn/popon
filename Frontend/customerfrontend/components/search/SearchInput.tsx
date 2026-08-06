@@ -1,4 +1,6 @@
 // components/search/SearchInput.tsx
+// 검색어 입력창 컴포넌트 - 포커스 상태를 부모에 알리고, 검색 시 최근 검색어에 기록
+
 "use client";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -12,16 +14,15 @@ export function SearchInput({
 }: {
   autoFocus?: boolean;
   initialQuery?: string;
-  // 입력창 포커스/블러 시점을 부모에게 알려줘요 - 검색결과 화면에서 다시 검색하려고
-  // 입력창을 탭했을 때, 최근검색어/추천검색어를 다시 보여주는 데 씁니다.
+  // 입력창 포커스/블러 시점을 부모에게 알려줌
+  //  > 검색결과 화면에서 다시 검색하려고 입력창을 탭했을 때, 최근검색어/추천검색어를 다시 보여줌
   onFocusChange?: (focused: boolean) => void;
 }) {
   const [value, setValue] = useState(initialQuery);
   const router = useRouter();
   const isTyping = value.length > 0;
 
-  // /search?q=... 가 바뀌었는데(예: 추천 검색어 클릭, 뒤로가기 등) 이 컴포넌트는
-  // 그대로 유지되는 경우 입력창 값도 같이 맞춰줍니다.
+  // /search?q=... 가 바뀌었는데(예: 추천 검색어 클릭, 뒤로가기 등) 이 컴포넌트는 그대로 유지되는 경우 입력창 값도 같이 맞춰줌
   useEffect(() => {
     setValue(initialQuery);
   }, [initialQuery]);
@@ -29,9 +30,7 @@ export function SearchInput({
   function handleSearch() {
     const trimmed = value.trim();
     onFocusChange?.(false);
-    // [수정] 검색어가 없으면 아예 아무 반응이 없었어요 - 이제 검색어 없이
-    // 눌러도 "전체 보기"로 검색 결과 화면에 들어갈 수 있게 했어요. 최근검색어에는
-    // 실제로 입력한 검색어가 있을 때만 남겨요.
+    // 검색어 없이 눌러도 "전체 보기"로 검색 결과 화면에 들어갈 수 있음
     if (!trimmed) {
       router.push(`/search?all=1`);
       return;
@@ -51,9 +50,6 @@ export function SearchInput({
             height={24}
             className="absolute left-3 top-1/2 -translate-y-1/2 dark:hidden"
           />
-          {/* [수정] Bar_Search_active_Dark.svg 파일이 아직 없어서 깨진 이미지로 뜨고
-              있었어요 - 다크 전용 파일 로드에 실패하면(onError) 라이트 파일로
-              바꾸고 invert 필터를 씌워서 최소한 아이콘은 보이게 했어요. */}
           <Image
             src="/icons/ui/Bar_Search_active_Dark.svg"
             alt=""
@@ -74,7 +70,7 @@ export function SearchInput({
         onChange={(e) => setValue(e.target.value)}
         onFocus={() => onFocusChange?.(true)}
         onBlur={() => {
-          // 추천/최근 검색어를 누르는 클릭이 먼저 처리되도록 살짝 지연 후 닫아요.
+          // 추천/최근 검색어를 누르는 클릭이 먼저 처리되도록 살짝 지연 후 닫음
           setTimeout(() => onFocusChange?.(false), 150);
         }}
         onKeyDown={(e) => {

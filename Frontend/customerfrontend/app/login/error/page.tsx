@@ -1,17 +1,12 @@
+// app/login/error/page.tsx
+// 소셜 로그인 실패 시 보여주는 에러 안내 페이지
 "use client";
-
-// 소셜 로그인 실패 시 보여주는 에러 안내 페이지.
 
 import { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { LoadingState } from "@/components/ui/EmptyState";
 
-/**
- * [신규] 백엔드가 정지된 계정으로 로그인 시도하면 여기(/login/error?message=...)로
- * 리다이렉트하는데, 이 경로 자체가 프론트에 없어서 404가 났어요.
- * (/signup/info와 같은 종류의 문제 - 백엔드 리다이렉트 대상 3곳 중 이것만 빠져있었어요)
- */
 export default function LoginErrorPage() {
   return (
     <Suspense fallback={<LoadingState message="불러오는 중..." />}>

@@ -1,6 +1,6 @@
+// app/more/page.tsx
+// "바로가기" 페이지 - 카테고리별/지역별 바로가기 목록 (하단바의 바로가기 탭)
 "use client";
-
-// "바로가기" 페이지 - 카테고리별/지역별 바로가기 목록 (하단바의 바로가기 탭).
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -25,14 +25,10 @@ export default function MorePage() {
   const router = useRouter();
   const { isLoggedIn, customer } = useAuth();
 
-  // [수정] 하드코딩된 REGIONS 목록과 getPreferredRegions(죽은 로컬 저장소)를 쓰고
-  // 있었어요. 마이페이지 수정 화면에서 저장한 진짜 관심 지역(백엔드)이 여기엔
-  // 전혀 반영이 안 됐던 버그라, 카테고리와 동일하게 실제 지역 API로 교체했어요.
+  // 지역 목록 - 하드코딩 대신 실 API 연결(관심 지역 반영)
   const [allRegions, setAllRegions] = useState<Region[]>([]);
   const [myRegionIds, setMyRegionIds] = useState<number[]>([]);
-  // [수정] CATEGORIES(하드코딩 목록)와 getPreferredCategories(죽은 로컬 저장소)를
-  // 쓰고 있었어요 - 실제 키워드는 이제 관리자가 추가/삭제하는 백엔드 목록이라
-  // 하드코딩된 목록은 실제 값과 어긋날 수 있고, 관심 표시도 항상 비어 보였어요.
+  // 카테고리 목록 - 하드코딩 대신 실 API 연결(관심 표시 반영)
   const [allKeywords, setAllKeywords] = useState<Keyword[]>([]);
   const [myKeywordIds, setMyKeywordIds] = useState<number[]>([]);
 

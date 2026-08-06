@@ -1,6 +1,6 @@
+// app/reservations/[id]/page.tsx
+// 예약 상세 페이지 - QR 확인, 일정 변경, 취소를 여기서 처리
 "use client";
-
-// 예약 상세 페이지 - QR 확인, 일정 변경, 취소를 여기서 처리해요.
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
@@ -40,8 +40,7 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
   const [loading, setLoading] = useState(true);
   const [showQr, setShowQr] = useState(false);
 
-  // [신규] QR 모달이 열려있는 동안 입장(체크인) 처리가 됐는지 몇 초마다
-  // 확인해서, 처리되면 QR 대신 "입장 처리 완료" 안내로 자동 전환해요.
+  // QR 모달이 열려있는 동안 입장(체크인) 처리 확인 (처리되면 QR 대신 "입장 처리 완료" 안내로 자동 전환)
   useEffect(() => {
     if (!showQr || !customer || reservation?.entryStatus === "CHECKED_IN") return;
     const interval = setInterval(() => {
@@ -98,11 +97,6 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
 
   const handleShare = async () => {
     if (!popup) return;
-    // [수정] window.location.href(지금 보고 있는 "내 예약 상세" 페이지 주소)를
-    // 그대로 공유하고 있었어요 - 이 페이지는 로그인한 본인 예약만 볼 수 있는
-    // 개인 페이지라, 친구가 링크를 눌러도 로그인 화면이나 "정보를 찾을 수
-    // 없어요"만 보게 돼요. 친구가 실제로 볼 수 있는 팝업 공개 상세페이지
-    // 주소로 바꿨어요.
     const shareData = {
       title: popup.title,
       text: `${popup.title} 같이 갈래?`,
@@ -135,8 +129,6 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
       return slot ? `${slot.slotDate} ${slot.startTime.slice(0, 5)}` : "시간대 예약";
     }
     if (!reservation.reservationDate) return "-";
-    // [수정] reservationTime을 안 붙이고 있었어요 - 백엔드에 시간 컬럼을 새로 추가한 값이라
-    // 이 부분도 같이 고쳐야 실제로 시간이 화면에 보여요.
     return reservation.reservationTime
       ? `${reservation.reservationDate} ${reservation.reservationTime.slice(0, 5)}`
       : reservation.reservationDate;
@@ -197,9 +189,6 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
 
         {!isCancelled && (
           <>
-            {/* [수정] 혼자 예약한 경우엔 "같이 갈 친구"가 없으니 이 버튼 자체를
-                숨겨요. [수정] 취소/일정변경보다 위, 즉 더 먼저 보이는 위치로
-                옮겼어요. */}
             {reservation.partySize > 1 && (
               <button
                 type="button"
@@ -210,7 +199,7 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
               </button>
             )}
 
-            {/* [수정] 예약 취소를 왼쪽, 일정 변경을 오른쪽으로 순서를 바꿨어요. */}
+            {/* 예약 취소 / 일정 변경 */}
             <div className="flex gap-2">
               <button
                 type="button"
@@ -243,8 +232,6 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
                 <p className="text-sm font-medium mb-6">입장 처리 됐어요. 즐거운 시간 보내세요!</p>
               </>
             ) : (
-              // [수정] 예약 날짜 전엔 QR을 못 보게 막았었는데, 요청으로 다시
-              // 언제든(입장 처리 전까지) 볼 수 있게 열었어요.
               <>
                 <div className="flex justify-center mb-4">
                   <QRCodeDisplay qrToken={reservation.qrToken} />

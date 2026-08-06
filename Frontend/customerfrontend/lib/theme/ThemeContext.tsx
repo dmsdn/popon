@@ -1,3 +1,5 @@
+// lib/theme/ThemeContext.tsx
+// 다크모드/라이트모드 상태를 앱 전체에 제공하는 테마 Context
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
@@ -14,7 +16,7 @@ const STORAGE_KEY = "theme";
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>("dark");
 
-  // 처음 켜질 때 localStorage에 저장된 값을 읽어와요 (없으면 다크 모드가 기본값이에요).
+  // 처음 켜질 때 localStorage에 저장된 값을 읽어옴 (없으면 다크 모드가 기본값)
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved === "dark" || saved === "light") {
@@ -22,7 +24,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // theme이 바뀔 때마다 <html>에 .dark 클래스를 붙였다 뗐다 하고, localStorage에도 저장해요.
+  // theme이 바뀔 때마다 <html>에 .dark 클래스를 붙였다 뗐다, localStorage에도 저장
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     localStorage.setItem(STORAGE_KEY, theme);

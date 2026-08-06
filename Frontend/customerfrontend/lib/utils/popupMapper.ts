@@ -1,6 +1,5 @@
 // lib/utils/popupMapper.ts
-// 백엔드 PopupResponse(getPopup/searchPopups 응답)를 화면 카드가 쓰는
-// PopupItem 모양(data/mockPopups.ts)으로 변환합니다.
+// 백엔드 PopupResponse(getPopup/searchPopups 응답)를 화면 카드가 쓰는 PopupItem 모양(data/mockPopups.ts)으로 변환
 
 import type { PopupDetail } from "@/lib/api/popups";
 import type { PopupItem } from "@/data/mockPopups";
@@ -28,21 +27,15 @@ export function toPopupItem(popup: PopupDetail): PopupItem {
   return {
     id: String(popup.id),
     name: popup.title,
-    // [수정] 백엔드에 popup_hashtag 실 데이터가 생겨서, 이제 진짜 태그로 카테고리를 채워요.
     category: popup.hashtags?.[0],
     hashtags: popup.hashtags,
     keywordNames: popup.keywordNames,
     regionId: popup.regionId,
     dateRange: `${formatDate(popup.startDate)} ~ ${formatDate(popup.endDate)}`,
-    // [수정] regionName(동네 단위 정식 지역명)이 있으면 그걸 우선 쓰고, 없으면 기존
-    // location 자유텍스트로 대체
-    location: popup.regionName ?? popup.location ?? undefined,
+    location: popup.regionName ?? popup.location ?? undefined, // regionName(지역)이 있으면 그걸 우선 쓰고, 없으면 기존 location 자유텍스트로 대체
     status: STATUS_MAP[popup.status],
-    // [신규] 백엔드가 이제 팝업 응답에 썸네일 이미지를 바로 실어줘서, 목록 카드에서
-    // "이미지" 텍스트 placeholder 대신 진짜 이미지를 보여줄 수 있어요.
     imageUrl: popup.thumbnailImages?.[0],
     avgRating: popup.avgRating,
-    // [신규] 브랜드(주최사) 이름으로도 검색되게 - 백엔드가 companyName을 내려줘요.
     brandName: popup.companyName,
   };
 }

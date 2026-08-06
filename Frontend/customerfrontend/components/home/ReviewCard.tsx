@@ -1,6 +1,6 @@
+// components/home/ReviewCard.tsx
+// 홈 화면 "실시간 후기 모음"용 후기 카드
 "use client";
-
-// 홈 화면 "실시간 후기 모음"용 후기 카드 - 팝업 썸네일과 후기 내용을 같이 보여줘요.
 
 import { useState } from "react";
 import Link from "next/link";
@@ -10,13 +10,7 @@ import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 import { StarRatingDisplay } from "@/components/ui/StarRatingDisplay";
 import { ReviewDetailModal } from "./ReviewDetailModal";
 
-/**
- * 홈 "실시간 후기 모음" 카드.
- * [수정] 팝업정보 / 후기내용 / 사진, 세 부분을 각각 카드로 나눠서 서로 구분이
- * 잘 되게 했어요(예전엔 다 붙어있어서 뭐가 뭔지 안 보인다는 피드백이 있었어요).
- * 후기내용 카드엔 최소/최대 높이를 줘서 너무 짧거나 길어서 카드 크기가
- * 들쭉날쭉하지 않게 했어요. 폰트도 한 단계씩 키웠어요.
- */
+// 홈 "실시간 후기 모음" 카드
 export function ReviewCard({
   review,
   allReviews,

@@ -1,17 +1,13 @@
+// app/select-popup/page.tsx
+// 로그인한 주최측이 운영중인 팝업 목록
 "use client";
 
-// app/select-popup/page.tsx
-// 로그인한 주최측이 운영중인 팝업 목록을 보여주고, "웨이팅 시작하기"를 누르면
-// 그 팝업의 웨이팅 등록 화면(/checkin?popupId=X)으로 이동해요.
-
+// "웨이팅 시작하기"를 누르면 그 팝업의 웨이팅 등록 화면(/checkin?popupId=X)으로 이동
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getToken, getBusinessInfo, saveSelectedPopup, clearSession } from "@/lib/auth";
 
-// [수정] 실제 백엔드(PopupResponse)가 내려주는 status는 "예정"/"진행중"/"종료"
-// 같은 한글이 아니라 PENDING/REJECTED/BEFOR/OPEN/CLOSED/SUSPENDED 영문
-// 코드예요. 프론트가 한글 문자열이라고 잘못 가정하고 있어서 비교(===)가
-// 한 번도 안 맞아 상태 표시/필터가 전부 죽어있었어요 - 실제 값으로 고쳤어요.
+// [수정] 팝업 상태값을 백엔드 실제 값에 맞게 수정하여 상태 표시 및 필터 기능이 정상적으로 작동하도록 개선
 type RawStatus = "PENDING" | "REJECTED" | "BEFOR" | "OPEN" | "CLOSED" | "SUSPENDED";
 
 interface MyPopup {
@@ -22,40 +18,8 @@ interface MyPopup {
   endDate: string;
 }
 
-const STATUS_LABEL: Record<RawStatus, string> = {
-  PENDING: "심사중",
-  REJECTED: "반려됨",
-  BEFOR: "오픈예정",
-  OPEN: "진행중",
-  CLOSED: "종료",
-  SUSPENDED: "운영중단",
-};
-
-// [수정] 모든 상태가 같은 남색 배경이라 구분이 잘 안 됐어요. 상태 성격에 맞게
-// 디자인을 다르게 나눴어요:
-// - 진행중/오픈예정: 포인트 컬러 테두리 (지금 주목해야 할 상태)
-// - 종료: 밝은 회색 테두리 (더 이상 진행 안 함, 톤 다운)
-// - 반려됨: 붉은색 톤 (부정적인 상태라 눈에 띄게)
-// - 심사중/운영중단: 각자 다른 색의 옅은 배경 (진행중/종료와는 또 다른, "대기/보류" 느낌)
-function statusBadgeClass(status: RawStatus): string {
-  switch (status) {
-    case "OPEN":
-    case "BEFOR":
-      return "bg-transparent text-point border border-point";
-    case "CLOSED":
-      return "bg-transparent text-gray-300 border border-gray-400";
-    case "REJECTED":
-      return "bg-red-500/15 text-red-400 border border-red-500/40";
-    case "PENDING":
-      return "bg-amber-500/15 text-amber-400 border border-transparent";
-    case "SUSPENDED":
-      return "bg-slate-500/20 text-slate-300 border border-transparent";
-  }
-}
-
-// [신규] 계정 탭 - 브랜드 로고 이미지 + 아이디(이메일) + 로그아웃 버튼을 한 덩어리로
-// 묶어서 팝업 목록과 시각적으로 구분해요. 이미지 로드에 실패하거나 아직 없으면
-// 회사명 첫 글자로 된 이니셜 아바타로 대체돼요.
+// [신규] 계정 탭 - 계정 탭에 브랜드 로고, 아이디(이메일), 로그아웃 기능을 추가 
+// (로고가 없거나 로드되지 않을 경우 회사명 이니셜 아바타로 대체)
 function AccountTab({
   companyName,
   email,
@@ -105,28 +69,19 @@ export default function SelectPopupPage() {
   const router = useRouter();
   const [popups, setPopups] = useState<MyPopup[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // [신규] 웨이팅/예약할지 정말지 지금 진행중(OPEN)인 팝업 아니면 애초에 필요가
-  // 없다는 피드백 - 오픈예정/종료/심사중 등은 목록에서 아예 빼고, 상태 필터
-  // 탭도 통째로 없앴어요(고를 상태가 하나뿐이라 필터가 무의미해졌어요). 정렬은
-  // 사용자가 고르는 대신 이름 가나다순 → 같은 이름이면 시작일 순으로 고정했어요.
-  // [신규] "웨이팅 시작하기"를 눌렀을 때 비밀번호를 한 번 더 확인받기 위한 상태.
-  // 브랜드 계정 비밀번호(로그인할 때 쓴 것과 동일)로 확인해요 - 실제로는
-  // 로그인 API에 같은 이메일+새로 입력한 비밀번호로 다시 호출해서, 성공하면
-  // 맞는 비밀번호라고 판단해요(새 검증 API를 따로 안 만들어도 돼요).
+  // [신규] 지금 진행중(OPEN)인 팝업만 목록에 노출
+  //  > 상태 필터 탭도 제거(고를 상태가 하나뿐이라 무의미). 정렬은 이름 가나다순 → 같은 이름이면 시작일 순 고정
+  // [신규] "웨이팅 시작하기" 전 비밀번호 재확인 상태 - 브랜드 계정 비밀번호(로그인과 동일)로 확인
+  //  > 로그인 API를 같은 이메일+새 비밀번호로 재호출해 성공 여부로 판단
   const [pendingPopup, setPendingPopup] = useState<MyPopup | null>(null);
-  // [신규] "웨이팅 시작하기"(손님 셀프 등록 화면)와 "QR 입장 찍기"(직원 QR
-  // 스캔 화면)를 별도 버튼·별도 화면으로 나눴어요. 비밀번호 확인은 공통으로
-  // 거치되, 확인 후 어느 화면으로 보낼지만 이 값으로 구분해요.
+  // [신규] "웨이팅 시작하기"(손님 셀프 등록)와 "QR 입장 찍기"(직원 스캔)를 별도 버튼·화면으로 분리
+  // 비밀번호 확인은 공통, 확인 후 이동할 화면만 이 값으로 구분
   const [pendingTarget, setPendingTarget] = useState<"/checkin" | "/checkin/scan">("/checkin");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [confirmSubmitting, setConfirmSubmitting] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
-  // [수정] getBusinessInfo()를 렌더링 중에 바로 호출하면, sessionStorage가 없는
-  // 서버에서는 null이 나오고 클라이언트(하이드레이션 후)에서는 실제 값이 나와서
-  // 서버/클라이언트 렌더 결과가 달라져 하이드레이션 에러가 났어요. useEffect
-  // 안에서 클라이언트 마운트 후에만 읽도록 옮겼어요 - 이러면 최초 렌더는
-  // 서버/클라이언트 둘 다 "아직 없음(null)"으로 동일하고, 마운트 직후에만
-  // 실제 값으로 업데이트돼요.
+  // [수정] getBusinessInfo()를 렌더링 중 직접 호출하면 서버/클라이언트 결과가 달라 하이드레이션 에러 발생
+  // > useEffect 안에서 마운트 후에만 읽도록 이동
   const [business, setBusiness] = useState<{
     businessId: number;
     companyName: string;
@@ -203,7 +158,7 @@ export default function SelectPopupPage() {
   };
 
   // [수정] 상태 필터·정렬 선택 UI를 없애고, "진행중(OPEN)"만 남긴 뒤 이름
-  // 가나다순 → 같은 이름이면 시작일이 빠른 순으로 고정 정렬했어요.
+  // 가나다순 → 같은 이름이면 시작일이 빠른 순으로 고정 정렬
   const filteredPopups = (popups ?? [])
     .filter((p) => p.status === "OPEN")
     .sort((a, b) => {
@@ -240,17 +195,17 @@ export default function SelectPopupPage() {
           {filteredPopups.map((popup) => (
             <div key={popup.id} className="bg-card rounded-2xl p-6 flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <span className={`text-sm font-medium px-2.5 py-1 rounded-full ${statusBadgeClass(popup.status)}`}>
-                  {STATUS_LABEL[popup.status]}
+                {/* [수정] filteredPopups가 이미 OPEN만 통과시켜서 상태값이 항상 "진행중"으로 고정
+                     > 배지도 고정 텍스트+고정 스타일로 단순화, STATUS_LABEL/statusBadgeClass 제거 */}
+                <span className="text-sm font-medium px-2.5 py-1 rounded-full bg-transparent text-point border border-point">
+                  진행중
                 </span>
               </div>
               <p className="text-lg font-bold">{popup.title}</p>
               <p className="text-sm text-gray-400">
                 {popup.startDate} ~ {popup.endDate}
               </p>
-              {/* [수정] "웨이팅 시작하기"(손님 셀프 등록 화면)와 "QR 입장 찍기"
-                  (직원 QR 스캔 화면)를 한 버튼에 몰아넣지 않고 각각 눌러서
-                  원하는 화면으로 바로 갈 수 있게 나눴어요. */}
+              {/* [수정] "웨이팅 시작하기"와 "QR 입장 찍기"를 한 버튼에 몰아넣지 않고 분리 */}
               <div className="mt-2 flex gap-2">
                 <button
                   type="button"
@@ -272,8 +227,7 @@ export default function SelectPopupPage() {
         </div>
       )}
 
-      {/* [신규] 웨이팅 시작하기/QR 입장 찍기 전 비밀번호 확인 모달 - 어느
-          버튼을 눌렀는지에 따라 안내 문구와 확인 버튼 문구가 달라져요. */}
+      {/* [신규] 웨이팅 시작하기/QR 입장 찍기 전 비밀번호 확인 모달 - 버튼에 따라 문구가 달라짐 */}
       {pendingPopup && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center px-8 z-50">
           <div className="bg-card rounded-2xl px-8 py-8 w-full max-w-sm">

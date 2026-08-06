@@ -1,6 +1,6 @@
+// components/ui/TermsModal.tsx
+// 약관 1개를 팝업창으로 보여주는 모달 (Footer의 4개 링크에서 사용)
 "use client";
-
-// 약관 1개를 팝업창으로 보여주는 모달 (Footer의 4개 링크에서 사용).
 
 import { createPortal } from "react-dom";
 import type { TermsSection } from "@/data/termsContent";

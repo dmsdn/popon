@@ -1,18 +1,13 @@
 // components/popup/PlaceCard.tsx
-// 핫플레이스(주변 카페/공원 등) 카드 컴포넌트.
+// 핫플레이스(주변 카페/공원 등) 카드 컴포넌트
 
 import Link from "next/link";
 import { getCategoryIcon } from "@/lib/utils/categoryIcon";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 
-/**
- * 주변 핫플 / 비슷한 팝업 섹션에서 공용으로 쓰는 카드입니다.
- * [수정] 1:1에 가깝던 이미지를 4:3 가로형으로 바꾸고 전체 크기도 키웠어요.
- * 카테고리 텍스트 앞에는 회색 라인 아이콘을 붙여줘요.
- * imageUrl이 있으면 실제 이미지를, 없으면 기존처럼 "이미지" placeholder를 보여줘요.
- * href가 있으면 카드 전체가 링크로 동작해요 - internal=true면 같은 탭에서 이동하는
- * 앱 내부 페이지(Next.js Link)로, 아니면(기본값) 네이버 지도 같은 외부 링크로 새 탭에 열려요.
- */
+// 주변 핫플 / 비슷한 팝업 섹션에서 공용으로 쓰는 카드
+// > 4:3, imageUrl이 있으면 실제 이미지를, 없으면 기존처럼 "이미지" placeholder
+// href가 있으면 카드 전체가 링크로 동작
 export function PlaceCard({
   category,
   name,

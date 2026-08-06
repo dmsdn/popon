@@ -1,4 +1,6 @@
 // app/notifications/page.tsx
+// 알림함 페이지
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -15,7 +17,7 @@ import { getMyReservations } from "@/lib/api/reservations";
 import { getMyWaitingIds, getMyWaitingStatus } from "@/lib/api/waiting";
 
 const TABS: ("전체" | NotificationType)[] = ["전체", "공지", "웨이팅/예약", "찜"];
-
+// 알림이 생성된 시간을 현재 시점 기준 상대 시간으로 표시
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(diffMs / 60000);
@@ -26,14 +28,14 @@ function timeAgo(iso: string): string {
   return `${Math.floor(hours / 24)}일 전`;
 }
 
+// 알림 유형별 아이콘
 const TYPE_ICON: Record<NotificationType, string> = {
   공지: "/icons/ui/notice.svg",
   찜: "/icons/ui/heart_alarm.svg",
   "웨이팅/예약": "/icons/ui/alarm.svg",
 };
 
-// [신규] 알림 목록 → 알림 설정 화면으로 이동하는 톱니바퀴 아이콘. 별도 svg
-// 파일 없이 인라인으로 그려서 새 아이콘 파일 추가 없이 바로 쓸 수 있게 했어요.
+// 알림 설정 화면으로 이동할 때 사용하는 설정 아이콘
 function SettingsGearIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -62,20 +64,14 @@ export default function NotificationsPage() {
       });
   }, [customer]);
 
-  // [신규] 알림을 누르면 읽음 처리 - 화면은 먼저 바꾸고(낙관적 업데이트), 실패해도
-  // 사용자 경험엔 큰 영향 없어서 조용히 무시해요.
+  // 알림을 읽은 상태로 변경하고 화면에서도 즉시 읽음 상태로 반영
   const handleReadNotification = (id: string) => {
     if (!customer) return;
     setNotifications((prev) => prev?.map((n) => (n.id === id ? { ...n, read: true } : n)) ?? prev);
     markNotificationRead(id, customer.id).catch((err) => console.error("알림 읽음 처리 실패", err));
   };
 
-  // [신규] 알림 내용을 누르면 관련 화면으로 이동해요.
-  // - 공지: 해당 공지 상세페이지로
-  // - 찜: 해당 팝업 상세페이지로
-  // - 웨이팅/예약: 같은 팝업의 내 예약/웨이팅 중 하나를 찾아서 그 상세페이지로
-  //   (여러 개면 가장 최근 걸로 이동, 못 찾으면 팝업 상세로 대체)
-  // router.push로 이동하니 뒤로가기를 누르면 자연스럽게 다시 이 알림 목록으로 돌아와요.
+  // 알림 유형에 따라 관련 상세 화면으로 이동
   const handleNotificationClick = async (item: AppNotification) => {
     if (!item.read) handleReadNotification(item.id);
 
@@ -89,11 +85,6 @@ export default function NotificationsPage() {
       return;
     }
 
-    // [신규] "찜한/예약한/웨이팅 중인 팝업 정보 변경" 알림(NoticeService.notifyPopupUpdated)은
-    // 카테고리가 웨이팅/예약이어도, 예약·웨이팅 상태 자체가 아니라 "팝업 내용이
-    // 바뀌었다"는 안내라서 예약/웨이팅 상세 대신 팝업 상세페이지로 바로 보내는 게
-    // 맞아요. 반면 순번 알림("5번째가 됐어요" 등)처럼 진짜 웨이팅/예약 상태에 대한
-    // 알림은 계속 그 예약/웨이팅 상세로 보내야 해서, 제목으로 구분해요.
     if (item.type === "웨이팅/예약" && item.title.includes("정보 변경")) {
       if (item.popupId) router.push(`/popup/${item.popupId}`);
       return;
@@ -143,8 +134,6 @@ export default function NotificationsPage() {
             <img src="/icons/ui/back_arrow.svg" alt="" width={24} height={24} className="dark:invert" />
           </button>
           <h1 className="text-lg font-bold flex-1">알림</h1>
-          {/* [신규] 알림 목록에서 바로 알림 설정 화면으로 갈 수 있도록 톱니바퀴
-              아이콘을 넣었어요. */}
           <Link href="/mypage?menu=알림 설정" aria-label="알림 설정" className="text-gray-500 dark:text-gray-400">
             <SettingsGearIcon />
           </Link>
@@ -158,7 +147,7 @@ export default function NotificationsPage() {
         </Link>
       </div>
 
-      {/* 탭 - 실제로 눌러서 필터링됩니다 */}
+      {/* 탭 - 실제로 눌러서 필터링 */}
       <div className="flex gap-1 px-4 mobile:px-8 py-3 border-b border-gray-100 dark:border-[#282B32] overflow-x-auto scrollbar-hide">
         {TABS.map((t) => (
           <button
@@ -196,9 +185,6 @@ export default function NotificationsPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 mb-0.5">
                   {!item.read && <span className="w-1.5 h-1.5 rounded-full bg-point flex-none" />}
-                  {/* [수정] 읽은 알림은 안 읽은 알림과 구분되게 글자색을 옅게
-                      죽였어요. 안 읽은 알림의 회색 배경은 뺐어요 - 점 표시만으로도
-                      구분이 충분했고, 다크모드에서 특히 배경이 지저분해 보였어요. */}
                   <p className={`text-sm font-semibold truncate ${item.read ? "text-gray-300 dark:text-gray-600" : ""}`}>
                     {item.title}
                   </p>

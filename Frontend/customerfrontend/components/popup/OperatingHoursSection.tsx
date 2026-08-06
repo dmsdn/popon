@@ -1,4 +1,6 @@
 // components/popup/OperatingHoursSection.tsx
+// 팝업 상세페이지의 요일별 운영시간 표 컴포넌트
+
 "use client";
 
 import { useState } from "react";

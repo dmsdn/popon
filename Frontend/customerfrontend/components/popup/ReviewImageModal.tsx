@@ -1,6 +1,6 @@
+// components/popup/ReviewImageModal.tsx
+// 팝업 상세페이지 후기 사진을 크게 보는 모달
 "use client";
-
-// 팝업 상세페이지 후기 사진을 크게 보는 모달.
 
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -10,13 +10,6 @@ import { StarRatingDisplay } from "@/components/ui/StarRatingDisplay";
 
 const DRAG_THRESHOLD = 50;
 
-/**
- * 후기 이미지를 크게(약 500x500) 보여주는 모달.
- * [수정] 예전엔 "사진 넘기기"랑 "후기 넘기기"가 버튼이 따로 있었는데(이미지 위 화살표 +
- * 카드 바깥 화살표), 헷갈린다는 피드백이 있었어요. 이제 화살표 하나로 통일해서 -
- * 지금 후기의 사진을 먼저 넘기다가, 마지막 사진이면 다음(이전) 후기의 사진으로
- * 자연스럽게 이어지도록 바꿨어요.
- */
 export function ReviewImageModal({
   reviews,
   initialReviewIndex,
@@ -34,9 +27,6 @@ export function ReviewImageModal({
   const review = reviews[reviewIndex];
   const photos = review?.photos ?? [];
 
-  // [신규] 사진 넘기기와 후기 넘기기를 하나로 합친 이동 로직.
-  // 지금 후기 안에 사진이 더 있으면 그 사진으로, 없으면(마지막/처음 사진이면)
-  // 다음/이전 후기로 넘어가면서 그 후기의 첫(다음일 땐) 또는 마지막(이전일 땐) 사진을 보여줘요.
   const canGoNext = photoIndex < photos.length - 1 || reviewIndex < reviews.length - 1;
   const canGoPrev = photoIndex > 0 || reviewIndex > 0;
 

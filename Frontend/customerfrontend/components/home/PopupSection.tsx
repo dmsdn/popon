@@ -1,5 +1,5 @@
 // components/home/PopupSection.tsx
-// "제목 + 더보기 링크 + 가로 캐러셀" 패턴을 재사용하는 공용 섹션 래퍼.
+// "제목 + 더보기 링크 + 가로 캐러셀" 패턴을 재사용하는 공용 섹션 래퍼
 
 import Link from "next/link";
 import { PopupItem } from "@/data/mockPopups";
@@ -14,10 +14,8 @@ export function PopupSection({
 }: {
   title: string;
   items: PopupItem[];
-  /** 섹션에 보여줄 최대 개수 (기본 8개) */
-  limit?: number;
-  /** "더보기" 클릭 시 이동할 경로. 없으면 그냥 비활성 텍스트로만 표시 */
-  moreHref?: string;
+  limit?: number; // 섹션에 보여줄 최대 개수 (기본 8개)
+  moreHref?: string; // "더보기" 클릭 시 이동할 경로 (없으면 그냥 비활성 텍스트로만 표시)
 }) {
   const visibleItems = items.slice(0, limit);
 

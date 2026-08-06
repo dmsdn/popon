@@ -1,18 +1,9 @@
 // lib/utils/topRegions.ts
-//
-// [신규] "인기 추천 팝업" 지역 탭이 성수/여의도/홍대로 고정되어 있었는데, 지금
-// 진행중인 팝업이 가장 많은 지역 3개를 동적으로 계산하도록 바꿔요. 예를 들어
-// 잠실에 진행중 팝업이 많아지면 잠실이 올라오고, 덜 활발한 지역은 자연스럽게
-// 빠지게 돼요.
+// 진행 중인 팝업 데이터를 기준으로 인기 지역과 추천 검색 키워드를 동적으로 계산
 
 import type { PopupItem } from "@/data/mockPopups";
 
 export function getTopRegions(openPopups: PopupItem[], count = 3): string[] {
-  // [수정] regionId가 있는 팝업만 집계했더니, searchPopups() 응답에 regionId가
-  // 아예 없는 경우(목록 API가 상세조회와 달리 이 필드를 안 내려주는 경우)
-  // 지역 순위가 통째로 비어버렸어요. regionId가 하나라도 있는 팝업이 있으면
-  // 그 기준으로 정확하게 집계하고, 정말 하나도 없으면(=이 응답엔 애초에
-  // regionId가 없는 것) location 전체로 폴백해요.
   const anyHasRegionId = openPopups.some((p) => p.regionId != null);
   const counts = new Map<string, number>();
   for (const p of openPopups) {
@@ -26,15 +17,7 @@ export function getTopRegions(openPopups: PopupItem[], count = 3): string[] {
     .map(([region]) => region);
 }
 
-// [신규] 검색창 "추천 키워드"용 - 지역과 카테고리를 한데 모아서, 지금 진행중인
-// 팝업이 가장 많은 순으로 상위 N개를 뽑아요. "더현대"처럼 특정 브랜드명이
-// 고정되어 있던 것도 이걸로 대체해요 - 실제로 활발한 지역/카테고리가 자동으로
-// 올라와요.
-// [신규] 팝업 이름에 들어간 단어(브랜드명 등)도 추천 키워드 후보에 넣어요. 완벽한
-// 형태소 분석은 아니고, 공백으로 쪼갠 뒤 "팝업"/"스토어" 같은 흔한 일반 단어와
-// 너무 짧은 단어(1글자)를 걸러내는 단순한 방식이에요 - 가끔 애매한 단어가
-// 섞일 수 있지만, 백엔드 없이도 "아디다스 ○○ 팝업"에서 "아디다스"처럼 자주
-// 나오는 브랜드명이 자연스럽게 상위로 올라와요.
+// 걸러낼 단어
 const GENERIC_TITLE_WORDS = new Set([
   "팝업",
   "팝업스토어",

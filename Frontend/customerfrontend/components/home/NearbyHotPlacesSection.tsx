@@ -1,21 +1,13 @@
+// components/home/NearbyHotPlacesSection.tsx
+// "내 주변 핫플" 섹션 - 팝업 근처의 카페/공원 등 핫플레이스 추천
 "use client";
-
-// "내 주변 핫플" 섹션 - 팝업 근처의 카페/공원 등 핫플레이스 추천.
 
 import { useEffect, useState } from "react";
 import { getHotPlacesForRegion, findNearestRegion, type HotPlace } from "@/data/hotplaces";
 import { HorizontalCarousel } from "@/components/ui/HorizontalCarousel";
 import { PlaceCard } from "@/components/popup/PlaceCard";
 
-/**
- * 브라우저 위치 권한을 물어보고, 허용하면 제일 가까운 동네의 핫플을 보여줘요.
- * 권한을 거부하거나 위치를 못 가져오면 그냥 조용히 섹션 자체를 안 보여줍니다
- * (에러 메시지나 재요청 팝업 없음 - 홈 화면에서 위치 권한을 강요하는 느낌을 주지
- * 않으려고 최소한으로만 시도해요).
- *
- * [수정] 카드 마크업을 따로 두지 않고 PlaceCard를 그대로 재사용해요 - 팝업 상세페이지
- * 핫플 카드랑 크기/비율/아이콘이 항상 자동으로 같이 맞춰지게 됩니다.
- */
+// 현재 위치를 기준으로 가까운 지역의 핫플레이스를 추천
 export function NearbyHotPlacesSection() {
   const [region, setRegion] = useState<string | null>(null);
   const [places, setPlaces] = useState<HotPlace[]>([]);

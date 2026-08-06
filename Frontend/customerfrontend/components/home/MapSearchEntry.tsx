@@ -1,11 +1,9 @@
 // components/home/MapSearchEntry.tsx
-// 홈 화면의 "지도로 찾기" 진입 배너.
+// 홈 화면의 "지도로 찾기" 진입 배너
 
 import Link from "next/link";
 
-/**
- * [신규] 홈 화면에서 지도 검색(/map)으로 바로 갈 수 있는 진입 카드예요.
- */
+// 홈 화면에서 지도 검색(/map)으로 바로 갈 수 있는 진입 카드
 export function MapSearchEntry() {
   return (
     <div className="px-4 mobile:px-8 mb-14 mobile:mb-16">

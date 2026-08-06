@@ -1,6 +1,6 @@
+//components/popup/ReservationModal.tsx
+// 사전예약 등록/일정변경 모달 - 달력 선택, 시간대(슬롯) 선택, 인원, 이용안내를 포함하는 큰 컴포넌트
 "use client";
-
-// 사전예약 등록/일정변경 모달 - 달력 선택, 시간대(슬롯) 선택, 인원, 이용안내를 포함하는 큰 컴포넌트.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CountStepper } from "./CountStepper";
@@ -20,21 +20,15 @@ interface ReservationModalProps {
   slots?: PopupSlot[];
   minDate: Date;
   maxDate: Date;
-  /** [수정 8/5] 팀당 최대 인원(popup.maxPartySizePerTeam) - 슬롯을 아직 안
-      고르거나 슬롯이 없는(FREE 모드) 팝업에서 인원 스테퍼의 최대값으로 써요.
-      capacity(공간 전체 동시 수용 인원)와는 다른 개념이라 최대 인원 기준으로
-      쓰면 안 돼요. 없는 팝업(옛 데이터)은 capacity로 대체, 그것도 없으면
-      기본값(10명). 슬롯을 골랐으면 slot.remaining(그 시간대 잔여 인원)과
-      이 값 중 더 작은 쪽을 써요 - 잔여 인원이 남아 있어도 팀당 정원을
-      넘겨 예약할 수는 없으니까요. */
+
   maxPartySizePerTeam?: number | null;
-  /** @deprecated maxPartySizePerTeam이 없을 때의 대체값으로만 남겨둠. */
+  // @deprecated maxPartySizePerTeam이 없을 때의 대체값으로만 남겨둠
   capacity?: number;
-  // [신규] 예약 생성과 일정 변경이 같은 모달을 재사용하는데, 버튼이 항상 "예약하기"라고만
-  // 떠서 일정 변경 화면에서도 새로 예약하는 것처럼 보였어요. mode로 문구를 구분합니다.
+  // 예약 생성과 일정 변경이 같은 모달을 재사용 
+  // > 버튼이 항상 "예약하기"라고만 떠서 일정 변경 화면에서도 새로 예약하는 것처럼 보이는 문제 
+  // > mode로 문구를 구분
   mode?: "create" | "change";
-  // [신규] 팝업 요일별 휴무일 - 달력에서 휴무 요일은 아예 선택 못 하게 막아요
-  // (사전예약을 휴무일로 넣어버리는 걸 원천 차단).
+  // 팝업 요일별 휴무일 - 달력에서 휴무 요일은 아예 선택 못 하게 막음 (사전예약을 휴무일로 넣어버리는 걸 원천 차단)
   operatingHours?: OperatingHours;
 }
 
@@ -78,8 +72,7 @@ export function ReservationModal({
   mode = "create",
   operatingHours,
 }: ReservationModalProps) {
-  // [수정] 단순 overflow:hidden만으로는 모바일 터치 스크롤이 새는 경우가 있어서,
-  // body를 고정하는 더 확실한 방식으로 바꿨어요.
+  // [수정] 단순 overflow:hidden만으로는 모바일 터치 스크롤이 새는 경우가 있어서, body를 고정하는 더 확실한 방식으로
   useScrollLock();
 
   const today = useMemo(() => startOfDay(new Date()), []);
@@ -115,8 +108,7 @@ export function ReservationModal({
     monthSectionRefs.current[index]?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  // [신규] 스크롤할 때 상단 "OOOO.MM" 표시가 안 바뀌던 문제 - 스크롤 위치가
-  // 박스 절반을 넘어간 달로 자동 전환되도록 스크롤 이벤트를 붙였어요.
+  // 스크롤 위치가 박스 절반을 넘어간 달로 자동 전환되도록 스크롤 이벤트
   const handleCalendarScroll = () => {
     const box = scrollBoxRef.current;
     if (!box) return;
@@ -135,7 +127,7 @@ export function ReservationModal({
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [count, setCount] = useState(1);
 
-  // [신규] 휴무 요일은 기간(minDate~maxDate) 안에 있어도 선택 못 하게 막아요.
+  // 휴무 요일은 기간(minDate~maxDate) 안에 있어도 선택 못 하게
   function isClosedDay(year: number, month: number, day: number): boolean {
     return isDateClosed(operatingHours, new Date(year, month, day));
   }
@@ -161,17 +153,14 @@ export function ReservationModal({
 
   const selectedSlot = slotsForSelectedDay.find((s) => s.id === selectedSlotId);
 
-  // [신규] 날짜는 지난 날짜가 막히는데 시간대(슬롯)는 그대로 선택 가능했던
-  // 문제 - 오늘 날짜를 골랐을 때, 이미 지나간 시작 시각의 슬롯은 막아요.
+  // 오늘 날짜를 골랐을 때, 이미 지나간 시작 시각의 슬롯은 막음
   const isPastSlot = (slot: PopupSlot): boolean => {
     if (!selectedDate || selectedDate.getTime() !== today.getTime()) return false;
     const now = new Date();
     const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:00`;
     return slot.startTime <= nowTime;
   };
-  // [수정] 시간대(슬롯)를 아직 안 골랐을 때 무조건 "최대 1명"으로 떠서
-  // 마치 정원이 1명인 것처럼 보였어요. 슬롯을 고르기 전엔 팝업 전체 정원을
-  // 기본으로 보여주고, 슬롯을 고르면 그 시간대의 실제 잔여 인원으로 좁혀요.
+
   const perTeamCap = maxPartySizePerTeam ?? capacity ?? 10;
   const maxCount = hasSlots
     ? selectedSlot
@@ -206,7 +195,7 @@ export function ReservationModal({
     onSubmit(selectedDate, count, selectedSlotId ?? undefined, selectedTime ?? undefined);
   };
 
-  // 시간 선택 영역이 보이면(=날짜를 골랐으면) 모바일에서는 화면 전체를 써요.
+  // 시간 선택 영역이 보이면(=날짜를 골랐으면) 모바일에서는 화면 전체
   const expanded = selectedDate !== null;
 
   return (
@@ -220,19 +209,16 @@ export function ReservationModal({
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* [수정] 예약하기 버튼이 스크롤 영역 맨 아래에 있어서, 날짜/시간대가
-            많아 내용이 길어지면 버튼을 보려고 끝까지 스크롤해야 했어요. 버튼을
-            스크롤 영역 밖으로 빼서 모달 하단에 항상 고정되도록 했어요. */}
+
         <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6 pt-6">
         <div className="flex items-center justify-between mb-5">
-          {/* [수정] 팝업 이름이 잘 안 보인다는 피드백 - text-base → text-lg로 키웠어요. */}
           <p className="text-lg font-bold">{popupName}</p>
           <button type="button" onClick={onClose} aria-label="닫기" className="text-gray-400 text-lg">
             ✕
           </button>
         </div>
 
-        {/* [신규] 웨이팅 모달과 같은 팝업 정보 카드 */}
+        {/* 웨이팅 모달과 같은 팝업 정보 카드 */}
         {(dateRange || location) && (
           <div className="border border-gray-200 dark:border-[#282B32] rounded-lg px-4 py-3 mb-6">
             <p className="text-sm text-gray-400">
@@ -272,7 +258,7 @@ export function ReservationModal({
           )}
         </div>
 
-        {/* 이번 달 아래로 스크롤(또는 위 버튼)로 다음 달까지 이어서 볼 수 있어요 */}
+        {/* 이번 달 아래로 스크롤(또는 위 버튼)로 다음 달까지 이어서 볼 수 있음 */}
         <div ref={scrollBoxRef} onScroll={handleCalendarScroll} className="max-h-[220px] overflow-y-auto scrollbar-hide mb-6 pr-1">
           <div className="grid grid-cols-7 gap-y-1 text-center mb-1">
             {WEEKDAYS.map((wd) => (
@@ -310,7 +296,7 @@ export function ReservationModal({
                   if (isToday && selectable && !isSelected) {
                     textClass = "text-orange-500 font-bold";
                   }
-                  // [신규] 휴무 요일은 기간 안이어도 흐리게 + 취소선으로 구분해요.
+                  // 휴무 요일은 기간 안이어도 흐리게 + 취소선으로 구분
                   if (closedDay) {
                     textClass = "text-gray-300 dark:text-gray-700 line-through";
                   }
@@ -327,7 +313,7 @@ export function ReservationModal({
                       >
                         {day}
                       </button>
-                      {/* 휴무가 아닌 날짜도 같은 높이를 갖도록 invisible로 자리만 잡아요 (행 높이 흔들림 방지) */}
+                      {/* 행 높이 흔들림 방지 */}
                       <span
                         className={`text-[9px] leading-none ${
                           closedDay ? "text-gray-300 dark:text-gray-600" : "invisible"
@@ -418,7 +404,7 @@ export function ReservationModal({
           />
         </div>
 
-        {/* [신규] 인원 설정 아래에 예약 전용 이용 안내사항을 넣었어요. */}
+        {/* 인원 설정 아래에 예약 전용 이용 안내사항 */}
         <div className="mb-8">
           <p className="text-sm font-semibold mb-2">이용 안내사항</p>
           {notice ? (
@@ -433,7 +419,7 @@ export function ReservationModal({
         </div>
         </div>
 
-        {/* [수정] 스크롤 영역 밖, 모달 하단에 항상 보이도록 고정한 예약하기 버튼. */}
+        {/* 스크롤 영역 밖, 모달 하단에 항상 보이도록 고정한 예약하기 버튼 */}
         <div className="flex-none px-6 pt-3 pb-8 border-t border-gray-100 dark:border-[#17181a]">
         <button
           type="button"
