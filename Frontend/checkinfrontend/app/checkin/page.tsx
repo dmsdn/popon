@@ -1,19 +1,16 @@
+// app/page.tsx
+// 현장 웨이팅 등록 메인 화면 - 태블릿 가로 레이아웃
 "use client";
 
-// app/page.tsx
-// 현장 웨이팅 등록 메인/유일 화면 - 태블릿 가로 레이아웃.
-// 왼쪽: 로고 + 실시간 대기 팀 수(5초마다 갱신). 오른쪽: 이메일(아이디+도메인
-// 드롭다운)/전화번호 입력 + 이용동의 체크 + 웨이팅하기 버튼.
-// 제출 시 백엔드 POST /api/popups/{popupId}/waiting(비회원 등록)을 호출하고,
-// 성공하면 동동 뜨는 애니메이션과 함께 확인 모달을 띄워요.
+
+// 좌측: 로고 + 실시간 대기 팀 수(5초마다 갱신). 오른쪽: 이메일(아이디+도메인 드롭다운)/전화번호 입력 + 이용동의 체크 + 웨이팅하기 버튼.
+// 제출 시 백엔드 POST /api/popups/{popupId}/waiting(비회원 등록)을 호출, 성공하면 확인 모달 제공
 
 import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { consumerReservationUrl, consumerWaitingUrl, consumerPopupUrl } from "@/lib/siteUrls";
 
-// [참고] customerfrontend의 lib/utils/formatPhone.ts와 완전히 동일한 로직이에요.
-// 프로젝트가 분리되어 있어서 그대로 복사해왔어요 - 소비자 앱에서 이 파일을
-// 수정하면 여기도 같이 맞춰주세요.
+// [참고] customerfrontend의 lib/utils/formatPhone.ts와 완전히 동일한 로직
 function formatPhoneInput(raw: string): string {
   const digits = raw.replace(/\D/g, "").slice(0, 11);
   if (digits.length < 4) return digits;
@@ -24,8 +21,7 @@ function isValidPhone(value: string): boolean {
   return /^01[0-9]-\d{3,4}-\d{4}$/.test(value);
 }
 
-// [참고] customerfrontend의 components/ui/EmailInput.tsx와 완전히 동일한
-// 로직/디자인이에요. 프로젝트가 분리되어 있어서 그대로 복사해왔어요.
+// [참고] customerfrontend의 components/ui/EmailInput.tsx와 완전히 동일한 로직/디자인
 const EMAIL_DOMAINS = ["gmail.com", "naver.com", "daum.net", "kakao.com", "nate.com", "직접 입력"];
 
 function splitEmail(value: string): [string, string] {
@@ -39,8 +35,7 @@ function EmailInput({ value, onChange }: { value: string; onChange: (v: string) 
   const [customDomain, setCustomDomain] = useState(false);
   const [local, domain] = splitEmail(value);
 
-  // [신규] 드롭다운 스크롤바를 없애는 대신, 마우스를 누른 채로 위아래로 끌면
-  // 스크롤되도록 만들었어요(터치스크린 태블릿에서도 손가락으로 그대로 됨).
+  // [신규] 드롭다운 스크롤바를 없애는 대신, 마우스를 누른 채로 위아래로 끌면 스크롤(터치스크린 태블릿에서도 손가락으로 그대로 됨)
   const listRef = useRef<HTMLDivElement>(null);
   const dragState = useRef<{ dragging: boolean; startY: number; startScroll: number }>({
     dragging: false,
@@ -132,8 +127,7 @@ function EmailInput({ value, onChange }: { value: string; onChange: (v: string) 
   );
 }
 
-// [참고] customerfrontend의 data/termsContent.ts에 있는 "privacy" 항목을
-// 그대로 가져왔어요.
+// [참고] customerfrontend의 data/termsContent.ts에 있는 "privacy" 항목
 const PRIVACY_CONTENT = `애지중지(이하 "회사")는 이용자의 개인정보를 중요시하며, 「개인정보 보호법」 등 관련 법령을 준수하고 있습니다.
 
 1. 수집하는 개인정보 항목
@@ -164,16 +158,11 @@ const PRIVACY_CONTENT = `애지중지(이하 "회사")는 이용자의 개인정
 interface BoardResponse {
   popupId: number;
   totalWaitingTeams: number;
-  // [신규] 정확한 대기시간 계산에는 "대기 팀 수"가 아니라 "대기 인원 수"가
-  // 필요해요(정원은 사람 수 기준이라). 각 대기 항목의 인원수를 더해서 써요.
+  // [신규] 정확한 대기시간 계산에는 "대기 팀 수"가 아니라 "대기 인원 수"가 필요(정원은 사람 수 기준)
   waitingList: { partySize: number }[];
 }
 
-// [신규] "외국어는 한중일영으로 하자"는 요청을 반영했어요 - 한국어/영어 두
-// 언어였던 걸 중국어·일본어까지 더해 4개 언어로 늘렸어요. 이 화면은 손님이
-// 직접 입력하는 셀프 등록 화면이라, 화면에 보이는 문구 전체를 4개 언어로
-// 준비해두고 우측 상단 선택 메뉴로 바로 전환할 수 있게 했어요. 새 번역
-// 라이브러리를 추가하는 대신 이 파일 안에 작은 사전 하나로 충분해서 이렇게 뒀어요.
+// [신규] 외국어는 한중일영 > 우측 상단 선택 메뉴로 바로 전환 (내용이 많이 없어서 전체 입력해둠)
 const TEXT = {
   ko: {
     langLabel: "한국어",
@@ -319,20 +308,15 @@ function CheckinPageInner() {
   const [popupTitle, setPopupTitle] = useState<string | null>(null);
   const [avgExperienceMinutes, setAvgExperienceMinutes] = useState<number | null>(null);
   const [maxPartySize, setMaxPartySize] = useState<number | null>(null);
-  // [신규] 팀당 최대 인원(maxPartySizePerTeam)과는 다른 개념이에요 - capacity는
-  // "동시에 공간에 들어갈 수 있는 전체 인원"이에요. 대기시간 계산엔 이게 필요해요.
+  // [신규] 대기시간 계산 > capacity는 "동시에 공간에 들어갈 수 있는 전체 인원"
   const [capacity, setCapacity] = useState<number | null>(null);
-  // [신규 8/5] 팝업마다 사전예약/현장웨이팅 지원 여부가 달라요(queueMode) - 웨이팅만
-  // 받는 팝업엔 애초에 "사전예약" 자체가 없어서, 그런 팝업에서 예약 QR을 보여주면
-  // 손님이 스캔해도 열 수 없는 기능으로 안내하는 셈이 돼요. 소비자 앱(StickyActionBar)이
-  // 이미 같은 필드로 예약 가능 여부를 판단하고 있어서 그 기준을 그대로 따라요.
+  // [신규] 사전예약/현장웨이팅 지원 여부가 다름(queueMode) - 소비자 앱(StickyActionBar)이 같은 필드로 예약 가능 여부를 판단하고 있어서 그 기준을 그대로 따름
   const [queueMode, setQueueMode] = useState<"PRERESERVATION_ONLY" | "ONSITE_WAITING_ONLY" | "BOTH" | null>(null);
   const [totalWaitingTeams, setTotalWaitingTeams] = useState<number | null>(null);
   const [totalWaitingPeople, setTotalWaitingPeople] = useState<number | null>(null);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  // [신규] 웨이팅 인원 - 예전엔 화면에 아예 없고 항상 1명으로 고정 전송하고
-  // 있었어요. 연락처를 입력하기 전에 먼저 인원을 크게 고르는 단계를 추가했어요.
+  // [신규] 연락처를 입력하기 전에 먼저 인원을 고르는 단계 추가
   const [partySize, setPartySize] = useState(1);
   const [step, setStep] = useState<"party" | "contact">("party");
   const [agreed, setAgreed] = useState(false);
@@ -341,17 +325,11 @@ function CheckinPageInner() {
   const [error, setError] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [teamNumber, setTeamNumber] = useState<number | null>(null);
-  // [신규] 외국인 손님을 위한 언어 선택 (한국어/영어).
+  // [신규] 외국인 손님을 위한 언어 선택 (한국어 기본, 영어/중/일은 text 가져오기)
   const [lang, setLang] = useState<Lang>("ko");
   const t = TEXT[lang];
 
-  // [신규 8/5] QR 주소. 오늘 두 사람이 각자 고친 것을 합쳤어요.
-  //  ① 목적지가 팝업의 queueMode에 따라 3갈래로 갈려요 (아래 렌더부 주석 참고).
-  //  ② 소비자 앱 오리진은 현재 접속 주소에서 유도해요(lib/siteUrls.ts). 그건 브라우저에서만
-  //     알 수 있어서, 렌더 중이 아니라 여기서 만들어요. 이 앱은 output:"export"라 빌드 시점에
-  //     HTML이 한 번 만들어지는데 그때는 window가 없어요 - 렌더 중에 만들면 그 순간의
-  //     값(로컬 기본값)으로 QR이 한 번 그려졌다가 하이드레이션 후에 바뀌고, 그 찰나에 스캔한
-  //     손님은 열리지 않는 주소를 받아요. 정해지기 전에는 null로 둬서 QR 자리를 비워요.
+  // [신규] 팝업의 운영 방식에 맞는 소비자용 QR 주소를 현재 접속 환경 기준으로 안전하게 생성
   const [reservationQrSrc, setReservationQrSrc] = useState<string | null>(null);
   useEffect(() => {
     if (!popupId || !queueMode) {
@@ -392,12 +370,8 @@ function CheckinPageInner() {
       .then((data) => {
         if (!cancelled) {
           setPopupTitle(data.title ?? null);
-          // [수정] 소비자 앱이 실제로 쓰는 대기시간 공식(PopupWaitTimeService)을
-          // 확인해보니, 단순히 "팀 수 × 체류시간"이 아니라 정원(capacity) 기준
-          // 배치(batch) 회전 계산식이었어요:
-          //   대기시간(분) = 체류시간 × (⌈대기인원/정원⌉ - 1) / 2
-          // 팀 수가 아니라 "인원 수" 기준이고, 한 번에 여러 팀이 동시에 들어갈 수
-          // 있다는 걸 반영해요. capacity도 같이 가져와서 이 공식을 그대로 써요.
+          // [수정] 소비자 앱과 동일한 정원·회전율 기반 대기시간 계산 로직으로 통일
+          // 대기시간(분) = 체류시간 × (⌈대기인원/정원⌉ - 1) / 2
           setAvgExperienceMinutes(data.avgExperienceMinutes ?? null);
           setMaxPartySize(data.maxPartySizePerTeam ?? null);
           setCapacity(data.capacity ?? null);
@@ -415,8 +389,7 @@ function CheckinPageInner() {
   }, [popupId]);
 
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  // [수정] 전화번호와 이메일을 둘 다 요구하던 걸, 둘 중 하나만 유효해도
-  // 제출할 수 있도록 바꿨어요.
+  // [수정] 전화번호와 이메일을 둘 다 요구하던 걸, 둘 중 하나만 유효해도 제출할 수 있도록 수정
   const hasValidContact = isValidPhone(phone) || isValidEmail;
   const canSubmit = hasValidContact && agreed && !submitting && !!popupId;
 
@@ -425,12 +398,7 @@ function CheckinPageInner() {
     setSubmitting(true);
     setError(null);
     try {
-      // [수정] 백엔드 WaitingQueueService.register()가 비회원 등록 시 name+email을
-      // 필수로 요구하고, WaitingCreateRequest는 phoneNumber도 필수(@NotBlank)예요.
-      // 화면은 전화번호/이메일 중 하나만 받아도 되게 바꿨는데, 둘 다 백엔드
-      // 필수값이라 비어있는 쪽은 placeholder로 채워서 보내요.
-      // ⚠️ 참고: 순번 호출 문자 안내는 전화번호로 가니, 실제 운영에서는 가능하면
-      // 전화번호를 받는 걸 권장드려요.
+      // [수정] 사용자는 전화번호나 이메일 중 하나만 입력해도 되지만, 백엔드의 필수값 조건을 만족하도록 누락된 정보를 자동 보완하는 처리
       const emailToSend = isValidEmail ? email : `${phone.replace(/\D/g, "")}@walkin.popon.local`;
       const phoneToSend = isValidPhone(phone) ? phone : "010-0000-0000";
       const res = await fetch(`/api/popups/${popupId}/waiting`, {
@@ -485,17 +453,7 @@ function CheckinPageInner() {
     );
   }
 
-  // [수정 8/5] 팝업의 queueMode(사전예약만/웨이팅만/둘 다)에 따라 QR이 가리키는
-  // 화면과 문구를 3갈래로 나눠요. 예전엔 BOTH(둘 다 가능)인 팝업도 무조건
-  // "사전예약" 문구+예약 화면으로만 보내서, 이 QR로 웨이팅도 할 수 있다는 걸
-  // 손님이 알 방법이 없었어요.
-  //  - PRERESERVATION_ONLY: 예약 화면(?action=reservation)
-  //  - ONSITE_WAITING_ONLY: 앱 웨이팅 등록 화면(?action=waiting) - 이미 태블릿에서
-  //    등록 가능한 손님에게 앱 사용을 홍보하는 용도
-  //  - BOTH: 어느 한쪽을 강제로 열지 않고 팝업 상세페이지로 보내서 손님이 직접 골라요
-  // 주소 자체를 만드는 일은 위쪽 useEffect(reservationQrSrc)가 맡아요 - 소비자 앱
-  // 오리진을 브라우저에서만 알 수 있어서 렌더 중에 만들면 안 되기 때문이에요.
-  // 여기서는 문구만 고릅니다.
+  // [수정] 팝업의 예약·웨이팅 운영 방식에 맞춰 QR코드가 적절한 화면으로 연결되도록 개선
   const isWaitingOnly = queueMode === "ONSITE_WAITING_ONLY";
   const isBoth = queueMode === "BOTH";
   const qrTitle = isWaitingOnly ? t.appWaitingQrTitle : isBoth ? t.bothQrTitle : t.reservationQrTitle;
@@ -503,8 +461,7 @@ function CheckinPageInner() {
 
   return (
     <main className="h-full flex flex-col landscape:flex-row relative overflow-y-auto landscape:overflow-hidden scrollbar-hide">
-      {/* [수정] 로고를 화면 최상단 좌측에 고정, 앱에서 쓰는 실제 SVG 파일로 교체.
-          세로 모드에서는 현황 섹션과 겹치지 않도록 살짝 작고 위쪽에 맞춰요. */}
+      {/* [수정] 로고를 화면 최상단 좌측에 고정, 앱에서 쓰는 실제 SVG 파일로 교체 */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/icons/LOGO_Dark.svg"
@@ -512,8 +469,7 @@ function CheckinPageInner() {
         className="absolute top-4 left-4 w-16 h-auto z-10 landscape:top-6 landscape:left-6 landscape:w-24"
       />
 
-      {/* [수정] 외국인 손님을 위한 언어 선택을 한/영 2개에서 한/중/일/영
-          4개로 늘렸어요. */}
+      {/* [수정] 외국인 손님을 위한 언어 선택을 한/영 2개에서 한/중/일/영 4개로 늘림 */}
       <div className="absolute top-4 right-4 z-10 landscape:top-6 landscape:right-6 flex bg-card rounded-full p-1 gap-0.5">
         {LANG_ORDER.map((l) => (
           <button
@@ -529,20 +485,13 @@ function CheckinPageInner() {
         ))}
       </div>
 
-      {/* 왼쪽(가로)/위(세로): 현황 */}
+      {/* 좌측 : 팝업 정보 */}
       <section className="w-full landscape:w-[38%] landscape:h-full flex flex-col items-center gap-6 bg-card px-8 py-10 pt-16 landscape:py-8 landscape:pt-8 flex-none">
-        {/* [수정] QR 블록을 하단에 고정하면서 justify-between을 쓰다 보니 위쪽
-            내용(팝업 이름·대기 현황)이 화면 맨 위로 붙어버렸어요. 이 블록에
-            flex-1 + justify-center를 줘서, QR 블록 위 남은 공간 안에서 다시
-            세로 가운데로 오도록 했어요. */}
         <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-6">
-          {/* [수정] 팝업 이름 한 단계 굵게 (font-normal → font-semibold) */}
           {popupTitle && <p className="text-xl font-semibold text-gray-100 text-center">{popupTitle}</p>}
 
           <div className="flex flex-col items-center gap-1 mt-4">
             <span className="text-sm text-gray-400">{t.currentWaitingTeams}</span>
-            {/* [수정] 굵기를 extrabold(800)에서 중간 정도(semibold, 600)로,
-                크기는 더 키우고, "팀"을 아래 대신 숫자 옆에 붙였어요. */}
             <span className="flex items-baseline gap-2">
               <span className="text-7xl landscape:text-8xl font-semibold text-point">
                 {totalWaitingTeams === null ? "-" : totalWaitingTeams}
@@ -551,9 +500,9 @@ function CheckinPageInner() {
             </span>
           </div>
 
-          {/* [수정] 실제 백엔드 공식(정원 기준 배치 회전)으로 계산해요:
+          {/* [수정] 실제 백엔드 공식(정원 기준 배치 회전)으로 계산
               대기시간(분) = 체류시간 × (⌈대기인원/정원⌉ - 1) / 2
-              정원(capacity) 정보가 없는 팝업은 정확한 계산이 안 돼서 안 보여줘요. */}
+              정원(capacity) 정보가 없는 팝업은 정확한 계산이 안 돼서 안 보여줌 */}
           {totalWaitingPeople !== null && avgExperienceMinutes != null && capacity != null && capacity > 0 && (
             <div className="flex items-baseline gap-2 mt-2">
               <span className="text-sm text-gray-400">{t.estimatedWait}</span>
@@ -567,18 +516,7 @@ function CheckinPageInner() {
           )}
         </div>
 
-        {/* [수정 8/5] 예약/웨이팅 QR - 아직 등록 안 한 손님이 자기 휴대폰으로
-            스캔하면 소비자 앱으로 바로 연결돼요. 설명은 QR 오른쪽에 둬요.
-            (입장 QR 스캔은 /checkin/scan 화면으로 분리했어요.)
-            사전예약 가능한 팝업은 예약 화면(?action=reservation)으로, 웨이팅만
-            받는 팝업(queueMode === "ONSITE_WAITING_ONLY")은 이 QR을 숨기는 대신
-            앱 웨이팅 등록 화면(?action=waiting)으로 보내고 문구도 "앱으로도
-            웨이팅할 수 있어요"로 바꿔요 - 이미 태블릿에서 등록할 수 있는
-            손님에게 앱 사용을 자연스럽게 홍보하는 용도예요.
-            queueMode를 아직 못 받아왔거나(null) 사전예약/웨이팅 둘 다 지원 안
-            하는 팝업이면 보여줄 화면이 없으니 QR 자체를 숨겨요.
-            그리고 주소가 확정되기 전(빌드 시점 HTML)에도 QR을 안 그려요 - 틀린 QR을
-            잠깐이라도 띄우면 그 사이에 스캔한 손님이 안 열리는 주소를 받아요. */}
+        {/* [수정] 팝업의 운영 방식에 맞는 예약·웨이팅 QR을 보여주고, 스캔 시 소비자 앱의 적절한 화면으로 바로 연결*/}
         {queueMode && (
           <div className="w-full flex items-center gap-4 bg-[#17181a] rounded-xl px-4 py-4 flex-none">
             {reservationQrSrc ? (
@@ -595,11 +533,10 @@ function CheckinPageInner() {
         )}
       </section>
 
-      {/* 오른쪽(가로)/아래(세로): 등록 폼 */}
+      {/* 우측 : 등록 폼 */}
       <section className="flex-1 w-full landscape:h-full flex flex-col items-center justify-center px-8 landscape:px-12 py-10 landscape:py-0 gap-6">
         {step === "party" ? (
-          // [신규] 인원 선택 단계 - 크게, 손가락으로 누르기 쉽게. 이걸 먼저
-          // 고르고 나서 연락처 입력 단계로 넘어가요.
+          // [신규] 인원 선택 단계
           <div className="w-full max-w-md flex flex-col items-center gap-10">
             <div className="text-center">
               <p className="text-xl font-bold">{t.howManyPeople}</p>
@@ -639,14 +576,13 @@ function CheckinPageInner() {
           </div>
         ) : (
         <div className="w-full max-w-md flex flex-col gap-6">
-          {/* [수정] 가운데 정렬이던 걸 좌측 정렬로, 전화번호/이메일 중 하나만
-              입력해도 등록할 수 있다는 걸 안내에 반영했어요. */}
+          {/* [수정] 전화번호/이메일 중 하나만 입력해도 등록할 수 있다는 걸 안내에 반영 */}
           <div className="text-left mb-2 flex items-center justify-between">
             <div>
               <p className="text-xl font-bold">{t.waitingRegisterTitle}</p>
               <p className="text-sm text-gray-400 mt-1">{t.waitingRegisterDesc}</p>
             </div>
-            {/* [신규] 인원 선택 단계로 돌아가서 다시 고를 수 있게 */}
+            {/* [신규] 인원 선택 단계로 돌아가기 */}
             <button
               type="button"
               onClick={() => setStep("party")}
@@ -684,7 +620,7 @@ function CheckinPageInner() {
                 />
                 {t.privacyAgree}
               </label>
-              {/* [신규] 옆에 화살표를 눌러서 실제 개인정보처리방침 내용을 볼 수 있게 */}
+              {/* [신규] 개인정보처리방침 내용 */}
               <button
                 type="button"
                 onClick={() => setShowTerms((prev) => !prev)}

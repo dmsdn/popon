@@ -1,14 +1,12 @@
+// app/notice/[id]/page.tsx
+// 공지사항 상세 페이지
 "use client";
-
-// 공지사항 상세 페이지.
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { getAnnouncements, type Announcement } from "@/lib/api/announcements";
 import { LoadingState, EmptyState } from "@/components/ui/EmptyState";
 
-// [수정] 목업(data/notices.ts) 대신 실제 API에서 목록을 받아 id로 찾아요.
-// 단건 조회 API는 없고 목록 API만 있어서, 목록을 받아 그 안에서 찾는 방식이에요.
 export default function NoticeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [notice, setNotice] = useState<Announcement | null | undefined>(undefined);

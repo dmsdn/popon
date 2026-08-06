@@ -1,8 +1,9 @@
+// app/page.tsx
+// 첫 화면
 "use client";
 
-// app/page.tsx
-// 첫 화면 - 로고 + "현장 웨이팅" 문구 + 주최측(business) 로그인 폼.
-// 로그인 성공하면 토큰을 저장하고 팝업 선택 화면(/select-popup)으로 보내요.
+// 로고 + "현장 웨이팅" 문구 + 주최측(business) 로그인 폼.
+// 로그인 성공하면 토큰을 저장하고 팝업 선택 화면(/select-popup)으로
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -32,9 +33,7 @@ export default function StaffLoginPage() {
         body: JSON.stringify({ email, password }),
       });
     } catch {
-      // [신규] 여기서 실패하면 백엔드에 연결 자체가 안 된 거예요(백엔드가 꺼져있거나,
-      // next.config.ts의 프록시 설정이 안 맞는 경우) - "이메일/비밀번호가 틀렸다"는
-      // 메시지와 헷갈리지 않도록 원인을 구분해서 보여줘요.
+      // [신규] 백엔드 연결 실패와 로그인 정보 오류를 구분해 안내하도록 에러 처리 개선
       setError("서버에 연결할 수 없어요. 백엔드(8080 포트)가 켜져있는지 확인해주세요.");
       setSubmitting(false);
       return;
@@ -45,9 +44,8 @@ export default function StaffLoginPage() {
         throw new Error(body.message || `로그인에 실패했어요. (${res.status})`);
       }
       const data = await res.json();
-      // [신규] 계정 탭용 이메일/로고 이미지 - 백엔드 응답 필드명이 아직 확정 전이라
-      // email/logoImageUrl/profileImageUrl 등 흔히 쓰는 이름들을 순서대로 찾아보고,
-      // 없으면 입력했던 이메일로 대체해요(이미지는 없으면 이니셜 아바타로 대체).
+      // [신규] 계정 탭용 이메일/로고 이미지 - 계정 정보 필드명을 유연하게 처리해 이메일·로고 정보를 안정적으로 표시
+      // > 값이 없을 경우 입력 이메일과 이니셜 아바타로 대체
       saveSession({
         accessToken: data.accessToken,
         businessId: data.businessId,

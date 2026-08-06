@@ -1,6 +1,6 @@
+// components/popup/ImageCropModal.tsx
+// 프로필 사진 등 업로드 시 원형으로 잘라내는 크롭 모달
 "use client";
-
-// 프로필 사진 등 업로드 시 원형으로 잘라내는 크롭 모달.
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -8,11 +8,9 @@ import { createPortal } from "react-dom";
 const VIEWPORT_SIZE = 280; // 크롭 화면에 보이는 정사각형 크기(px)
 const OUTPUT_SIZE = 800; // 실제로 업로드되는 이미지 고정 크기(px, 정사각형)
 
-/**
- * 후기 사진 첨부 시 뜨는 이미지 자르기 화면.
- * 정사각형(1:1) 고정 비율로, 드래그해서 위치를 옮기고 슬라이더로 확대/축소할 수 있어요.
- * 확인을 누르면 화면에 보이는 부분만 잘라서 항상 800x800px 크기로 고정해 내보냅니다.
- */
+// 후기 사진 첨부 시 뜨는 이미지 자르기 화면
+// 정사각형(1:1) 고정 비율로, 드래그해서 위치를 옮기고 슬라이더로 확대/축소할 수 있음
+// 확인을 누르면 화면에 보이는 부분만 잘라서 항상 800x800px 크기로 고정해 내보냄
 export function ImageCropModal({
   file,
   onCancel,
@@ -70,7 +68,7 @@ export function ImageCropModal({
 
   const handleZoomChange = (nextZoom: number) => {
     setZoom(nextZoom);
-    // 확대/축소해도 뷰포트 중심 기준을 유지하면서 범위 안으로 다시 당겨줍니다.
+    // 확대/축소해도 뷰포트 중심 기준을 유지하면서 범위 안으로 다시 당겨줌
     setOffset((prev) => clampOffset(prev.x, prev.y));
   };
 
@@ -87,7 +85,7 @@ export function ImageCropModal({
         setProcessing(false);
         return;
       }
-      // 뷰포트에 보이는 영역을 원본 이미지 좌표로 역산해서, 그 부분만 OUTPUT_SIZE로 그려요.
+      // 뷰포트에 보이는 영역을 원본 이미지 좌표로 역산해서, 그 부분만 OUTPUT_SIZE로
       const sx = -offset.x / scale;
       const sy = -offset.y / scale;
       const sSize = VIEWPORT_SIZE / scale;

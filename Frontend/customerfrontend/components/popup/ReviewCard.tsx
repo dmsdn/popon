@@ -1,6 +1,6 @@
+// components/popup/ReviewCard.tsx
+// 팝업 상세페이지의 개별 후기 카드 - 별점(또는 방문 미인증 댓글), 사진, 500px 확장/스크롤, 수정·삭제 버튼
 "use client";
-
-// 팝업 상세페이지의 개별 후기 카드 - 별점(또는 방문 미인증 댓글), 사진, 500px 확장/스크롤, 수정·삭제 버튼.
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -37,7 +37,7 @@ export function ReviewCard({
   const isLong = content.length > CONTENT_PREVIEW_LENGTH;
 
   const handleToggleLike = async () => {
-    // [신규] 내가 쓴 후기는 스스로 추천할 수 없게 막아요.
+    // 내가 쓴 후기는 스스로 추천할 수 없게
     if (isMine) return;
     if (!isLoggedIn) {
       saveRedirectTarget(window.location.pathname);
@@ -83,7 +83,6 @@ export function ReviewCard({
 
   return (
     <div className="border-b border-gray-100 dark:border-[#282B32] py-5">
-      {/* [수정] 수정/삭제 버튼을 오른쪽 위(닉네임/별점 줄)로 옮기고 크기를 키웠어요. */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium text-gray-600 dark:text-gray-400 flex-none">
@@ -93,14 +92,12 @@ export function ReviewCard({
             <p className="text-sm font-medium truncate">{nickname}</p>
             <p className="flex items-center gap-1.5 text-sm text-gray-400">
               {date}
-              {/* [신규] 예약/웨이팅으로 실제 방문 인증된 후기에만 붙는 문구 */}
+              {/* 예약/웨이팅으로 실제 방문 인증된 후기에만 붙는 문구 */}
               {rating != null && <span className="text-point">· 방문 인증</span>}
             </p>
           </div>
         </div>
         <div className="flex flex-col items-end gap-1.5 flex-none">
-          {/* [수정] 별점이 너무 작다는 피드백 - 12→16으로 키웠어요.
-              [수정] 방문 미인증 댓글은 별점이 없어요 - 있을 때만 표시해요. */}
           {rating != null && (
             <span className="flex items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300">
               <StarRatingDisplay rating={rating} size={16} /> {rating}
@@ -151,7 +148,7 @@ export function ReviewCard({
         </div>
       )}
 
-      {/* [수정] 추천/신고 버튼을 사진 아래로 옮기고 크기를 키웠어요. */}
+      {/* 추천/신고 버튼 */}
       <div className="flex items-center gap-4 mt-3">
         <button
           type="button"

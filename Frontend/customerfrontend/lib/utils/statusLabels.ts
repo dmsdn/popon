@@ -1,7 +1,6 @@
 // lib/utils/statusLabels.ts
-//
-// [수정] 예약/웨이팅 목록에 백엔드 상태 enum("CONFIRMED", "CANCELLED", "WAITING" 등)이
-// 번역 없이 그대로 노출되고 있었어요. 한글 라벨로 바꿔서 보여줍니다.
+// 예약·웨이팅·입장 상태의 백엔드 enum 값을 화면에서 사용할 한글 상태명으로 변환
+// 등록되지 않은 상태값은 원래 값을 그대로 반환
 
 export const RESERVATION_STATUS_LABEL: Record<string, string> = {
   CONFIRMED: "예약 확정",

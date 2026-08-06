@@ -1,9 +1,5 @@
 // lib/api/regions.ts
-//
-// [신규 연결] 예전엔 백엔드 region이 서울/경기/부산 같은 시/도 단위라 이 앱이 실제로 쓰는
-// 동네 단위(성수/강남/홍대)랑 안 맞아서 로컬 저장으로만 처리해뒀었는데, 백엔드가
-// AdminRegionController로 관리자가 동네 단위 지역을 직접 관리하는 구조로 바뀌었어요.
-// 이제 진짜 API로 연결합니다.
+// 지역 목록 조회, 사용자 관심 지역 저장 및 조회, 관심지역 기준으로 팝업 목록 가져오는 API
 
 import { apiFetch } from "./client";
 
@@ -23,7 +19,7 @@ export function saveMyRegions(regionIds: number[]) {
   });
 }
 
-// [신규] 마이페이지 수정 화면에서 기존 선택값을 미리 체크해줄 방법이 없어서 추가.
+// 기존에 선택한 관심 지역을 불러와 내 정보 수정 화면에 표시
 export function getMyRegions() {
   return apiFetch<{ regionIds: number[] }>("/api/customer/regions/mine");
 }

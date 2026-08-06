@@ -1,23 +1,6 @@
+// app/qr/[token]/page.tsx
+// 웨이팅 등록 시 문자로 오는 입장 QR 페이지
 "use client";
-
-// 웨이팅 등록 시 문자로 오는 입장 QR 페이지 - 로그인 없이 토큰만으로 내 대기 상태를 확인할 수 있어요.
-
-// 입장 QR 페이지 (7/31 신설)
-//
-// 웨이팅을 접수하면 백엔드가 문자·메일로 이 주소를 보낸다.
-//
-//   "팝업스토어 입장 QR: https://{소비자앱}/qr/{token}"
-//   → WaitingQueueService.register()
-//
-// 그런데 **이 페이지가 없어서 열면 404였다.** 링크만 보내고 받을 곳을 안 만든 상태였다.
-//
-// 처음에는 QR만 띄우는 정적 화면으로 만들었는데, 그러면 **직원이 QR을 찍어 입장 처리를 해도
-// 손님 화면에는 아무 변화가 없다.** 들어가도 되는지 손님이 알 방법이 없어서
-// 상태를 3초마다 확인해 화면을 바꾸도록 고쳤다 (GET /api/waiting/qr/{token}, 7/31 백엔드 신설).
-//
-// 이 화면은 서버에 대기 상태만 묻는다 — **토큰 자체가 곧 자격 증명**이라 로그인이 필요 없고,
-// 그래서 비회원(/walkin으로 접수한 사람)도 그대로 쓸 수 있다.
-// 회원용 웨이팅 상세(/waiting/[id])는 로그인이 필요해 비회원이 못 들어간다.
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
@@ -41,11 +24,8 @@ export default function EntryQrPage({ params }: { params: Promise<{ token: strin
         if (!alive) return;
         setStatus(s);
         setNotFound(false);
-        // 입장·취소·미입장으로 끝난 대기는 더 물어볼 이유가 없다 — 폴링을 멈춘다.
         if (s.status === "ENTERED" || s.status === "CANCELLED" || s.status === "NO_SHOW") return;
       } catch {
-        // 없는 토큰이거나 서버가 잠깐 죽은 경우. 화면은 QR을 계속 보여 주고
-        // (직원이 스캔하는 데는 서버 응답이 필요 없다) 안내만 바꾼다.
         if (alive) setNotFound(true);
       }
       if (alive) timer = setTimeout(tick, POLL_MS);
@@ -60,7 +40,6 @@ export default function EntryQrPage({ params }: { params: Promise<{ token: strin
 
   const entered = status?.status === "ENTERED";
   const cancelled = status?.status === "CANCELLED";
-  // 미입장(8/4) — 직원 노쇼 처리 또는 자정 리셋. 자정을 넘겨 페이지를 켜 둔 경우에 온다.
   const noShow = status?.status === "NO_SHOW";
   const called = status?.status === "CALLED";
 
@@ -135,7 +114,7 @@ export default function EntryQrPage({ params }: { params: Promise<{ token: strin
           )}
 
           {/* 카메라가 없거나 QR 이미지가 안 뜨는 환경(오프라인 등)을 위한 폴백.
-              직원 화면에는 토큰을 손으로 입력하는 칸이 있으므로 이 값만 불러 주면 입장할 수 있다. */}
+              직원 화면에는 토큰을 손으로 입력하는 칸이 있으므로 이 값만 불러 주면 입장할 수 있음 */}
           <section className="w-full max-w-sm">
             <p className="text-sm text-gray-400 mb-1.5">
               QR이 안 보이면 아래 번호를 직원에게 알려 주세요.

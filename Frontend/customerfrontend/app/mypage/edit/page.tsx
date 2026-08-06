@@ -1,6 +1,6 @@
+// app/mypage/edit/page.tsx
+// 내 정보 수정 페이지 - 닉네임/전화번호/이메일/생년월일/성별/프로필사진 편집
 "use client";
-
-// 내 정보 수정 페이지 - 닉네임/전화번호/이메일/생년월일/성별/프로필사진 편집.
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -33,7 +33,7 @@ export default function EditProfilePage() {
   const [submitting, setSubmitting] = useState(false);
   const [nicknameError, setNicknameError] = useState<string | null>(null);
 
-  // [신규] 프로필 사진 수정 - 파일 선택 → 정사각형으로 자르기 → 업로드 → 저장
+  // 프로필 사진 수정 상태 (선택 → 크롭 → 업로드)
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -48,9 +48,7 @@ export default function EditProfilePage() {
   useEffect(() => {
     if (!customer) return;
     setNickname(customer.nickname);
-    // [수정] 저장된 전화번호가 하이픈 없이("01012345678") 들어있으면 isValidPhone
-    // 검증(010-0000-0000 형식만 허용)을 못 통과해서 "저장하기" 버튼이 계속 비활성화
-    // 상태로 남아있었어요. 불러올 때 항상 포맷을 맞춰줍니다.
+    // 전화번호 포맷 통일 (하이픈 없는 저장값도 010-0000-0000 형식으로 변환)
     setPhone(formatPhoneInput(customer.phone ?? ""));
     setEmail(customer.email ?? "");
     setGender(customer.gender ?? "UNKNOWN");
@@ -58,10 +56,7 @@ export default function EditProfilePage() {
     setProfileImage(customer.profileImage ?? null);
   }, [customer]);
 
-  // [수정] "관심 카테고리"가 로컬 전용 목록을 쓰고 있어서, 회원가입 때 저장한 실제
-  // 관심 키워드(백엔드)랑 완전히 따로 놀았어요. 이제 signup/preferences와 동일하게
-  // 진짜 keyword API를 쓰고, 새로 생긴 GET /api/customer/interests로 기존 선택값도
-  // 미리 체크된 상태로 보여줍니다.
+  // 관심 카테고리 - 백엔드 keyword API 연결, 기존 선택값 프리필(GET /api/customer/interests)
   useEffect(() => {
     getKeywords()
       .then(setKeywords)
@@ -71,9 +66,7 @@ export default function EditProfilePage() {
       .catch((err) => console.error("내 관심 키워드 조회 실패", err));
   }, []);
 
-  // [수정] 관심 지역도 백엔드가 이제 동네 단위(성수/강남/홍대)로 관리되기 시작해서,
-  // 로컬 저장 대신 실제 API로 연결했어요. 기존 선택값도 GET .../regions/mine으로
-  // 미리 채웁니다.
+  // 관심 지역 - 동네 단위 지역 API 연결, 기존 선택값 프리필(GET .../regions/mine)
   useEffect(() => {
     getRegions()
       .then(setRegions)
@@ -92,7 +85,7 @@ export default function EditProfilePage() {
 
   const canSubmit = nickname.trim().length > 0 && isValidPhone(phone);
 
-  // [신규] 크롭 완료된 이미지를 업로드하고, 미리보기도 바로 바꿔줘요.
+  // 크롭 완료 이미지 업로드 + 미리보기 갱신
   const handleCropConfirm = async (blob: Blob) => {
     setCropFile(null);
     setUploadingPhoto(true);
@@ -111,9 +104,7 @@ export default function EditProfilePage() {
 
   const handleSubmit = async () => {
     setNicknameError(null);
-    // [수정] 전화번호가 선택값이었는데, 회원가입 때는 필수로 받으면서 여기선 안 받으면
-    // 나중에 웨이팅 등록처럼 전화번호가 꼭 필요한 기능에서 막히는 사람이 생겨요.
-    // 필수로 바꾸고, 형식도 010-0000-0000으로 맞춰야 저장되게 검증을 추가했어요.
+    // 전화번호 필수화 + 형식 검증 (회원가입과 통일, 웨이팅 등록 등에서 누락 방지)
     if (!isValidPhone(phone)) {
       setPhoneError("전화번호를 010-0000-0000 형식으로 입력해주세요.");
       return;
@@ -140,7 +131,6 @@ export default function EditProfilePage() {
     } catch (err) {
       console.error("정보 수정 실패", err);
       const message = err instanceof Error ? err.message : "수정에 실패했어요. 잠시 후 다시 시도해주세요.";
-      // 백엔드가 닉네임 중복이면 "이미 사용 중인 닉네임이에요." 메시지를 내려줘요
       if (message.includes("닉네임")) {
         setNicknameError(message);
       } else {
@@ -162,10 +152,9 @@ export default function EditProfilePage() {
         <h1 className="text-lg font-bold">내 정보 수정</h1>
       </div>
 
-      {/* [신규] 프로필 사진 수정 - 눌러서 파일 선택하면 정사각형으로 자른 뒤 업로드돼요. */}
+      {/* 프로필 사진 수정 - 선택 시 정사각형 크롭 후 업로드 */}
       <div className="flex flex-col items-center mb-8">
-        {/* [수정] overflow-hidden이 바깥(label)에 있어서 카메라 버튼이 원 밖으로
-            잘리고 있었어요 - 이미지를 감싸는 안쪽 div로 옮겼어요. */}
+        {/* overflow-hidden을 안쪽 div로 이동 (편집 버튼이 원 밖으로 잘리던 문제) */}
         <label className="relative w-24 h-24 cursor-pointer">
           <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-[#282B32] overflow-hidden">
             {profileImage && (
@@ -304,8 +293,6 @@ export default function EditProfilePage() {
           </div>
         </div>
 
-        {/* [수정] 백엔드 region이 이제 동네 단위(성수/강남/홍대)라, 하드코딩 목록 대신
-            실제 GET /api/regions로 받아온 목록을 씁니다. */}
         <div>
           <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">관심 지역</span>
           <div className="flex flex-wrap gap-2">

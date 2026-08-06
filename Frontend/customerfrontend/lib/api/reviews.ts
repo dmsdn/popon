@@ -1,13 +1,8 @@
 // lib/api/reviews.ts
-//
-// 백엔드 ReviewController(/api/customer/reviews)와 동일한 요청/응답 스키마를 사용합니다.
+// 후기 정보를 관리하는 API
+
+// 백엔드 ReviewController(/api/customer/reviews)와 동일한 요청/응답 스키마를 사용
 // (ReviewRequest / ReviewResponse 참고: popupId, rating, content, imageUrls / id, likeCount, likedByMe, createdAt, updatedAt)
-//
-// 지금은 실 API를 시도해보고, 실패하면(백엔드 미배포·CORS 등) 개발 모드에서만
-// localStorage 기반 mock으로 "진짜로" 저장/조회/수정/삭제/좋아요가 되도록 대체합니다.
-// → 새로고침해도 데이터가 남아있어요.
-// → 나중에 백엔드가 정상 연동되면 이 파일을 건드릴 필요 없이 자동으로 실 API를 씁니다.
-//   (withMockFallback 로직만 지워도 되고, 그냥 둬도 실 API가 성공하는 순간부터는 mock이 안 탑니다)
 //
 // lib/auth/AuthContext.tsx의 loginAsTestUser / getMyInfo 실패 시 mock 대체 패턴과 동일합니다.
 
@@ -17,8 +12,6 @@ export interface Review {
   id: number;
   popupId: number;
   nickname?: string; // [신규] 작성자 닉네임 - 없으면 프론트에서 "방문자"로 대체 표시
-  // [수정] 백엔드가 "방문 인증된 사람=별점 있는 후기 / 방문 안 한 사람=별점 없는
-  // 댓글"로 구분하도록 바뀌었어요. rating이 null이면 방문 인증 없이 남긴 댓글이에요.
   rating: number | null; // 0.5 ~ 5.0, 방문 미인증이면 null
   content: string;
   imageUrls: string[];
@@ -27,17 +20,12 @@ export interface Review {
   visitDate: string | null; // "YYYY-MM-DD", 다녀간 날짜 (예약/웨이팅 방문 기록에서 자동 채움)
   createdAt: string; // ISO datetime
   updatedAt: string; // ISO datetime
-  // [수정] mock(localStorage) 저장소에서만 쓰는 내부 필드예요. 실 API 응답엔 없어요.
-  // "내가 쓴 리뷰"와 "이미 이 팝업에 리뷰를 남겼는지"를 로그인 계정(토큰) 기준으로
-  // 정확히 가려내려고 추가했어요. (예전엔 이 구분이 없어서 mock 저장소에 저장된
-  // 리뷰가 "누구 것이든" 전부 내 리뷰처럼 취급됐고, 그래서 seed 데이터가 있는
-  // 팝업에서는 처음 남기는 사람도 "이미 리뷰를 작성하셨어요" 오류를 봤어요.)
-  ownerToken?: string;
+  ownerToken?: string;   // 목업 데이터에서 리뷰 작성자를 구분하기 위한 내부 값
 }
 
 export interface ReviewCreatePayload {
   popupId: number;
-  rating?: number; // [수정] 방문 미인증 댓글은 별점 없이 보낼 수 있어요 (백엔드가 자동으로 무시함)
+  rating?: number; // [수정] 방문 미인증 댓글은 별점 없이
   content: string;
   imageUrls?: string[]; // 최대 5장
   visitDate?: string; // "YYYY-MM-DD", 방문 기록에서 자동으로 채워진 값 (기록 없으면 생략)
@@ -108,7 +96,7 @@ function nextMockId(reviews: Review[]): number {
 }
 
 function validateRating(rating: number | undefined) {
-  // [수정] 방문 미인증 댓글은 rating 자체가 없어요 - 그 경우엔 검증을 건너뛰어요.
+  // [수정] 방문 미인증 댓글은 rating 자체가 없어 검증을 건너뜀
   if (rating === undefined) return;
   if (rating < 0.5 || rating > 5) {
     throw new Error("별점은 0.5점에서 5점 사이여야 해요.");
@@ -128,9 +116,7 @@ function mockCreateReview(payload: ReviewCreatePayload): Review {
   const reviews = readMockReviews();
   const ownerToken = getToken() ?? "anonymous";
 
-  // 백엔드와 동일하게 "내가 이미 이 팝업에 리뷰를 남겼는지"만 체크합니다.
-  // [수정] 이전엔 작성자 구분 없이 "이 팝업에 리뷰가 하나라도 있는지"를 봐서,
-  // seed 데이터 등 다른 사람 리뷰가 있으면 나는 처음 남기는데도 막혔어요.
+  // 백엔드와 동일하게 "내가 이미 이 팝업에 리뷰를 남겼는지"만 체크
   if (reviews.some((r) => r.popupId === payload.popupId && r.ownerToken === ownerToken)) {
     throw new Error("이미 이 팝업에 리뷰를 작성하셨어요.");
   }
@@ -155,9 +141,7 @@ function mockCreateReview(payload: ReviewCreatePayload): Review {
 }
 
 function mockGetMyReviews(): Review[] {
-  // [수정] 저장소에 있는 리뷰 전부가 아니라, 지금 로그인한 계정(토큰)이 작성한
-  // 것만 "내 리뷰"로 걸러요. (예전엔 전부 다 "내 리뷰"로 취급돼서, 다른 팝업의
-  // seed 리뷰까지 내가 이미 쓴 것처럼 보였어요.)
+  // [수정] 지금 로그인한 계정(토큰)이 작성한 것만 "내 리뷰"
   const ownerToken = getToken();
   return readMockReviews()
     .filter((r) => r.ownerToken === ownerToken)
@@ -211,12 +195,12 @@ function mockSetLike(id: number, liked: boolean): LikeResult {
   return { liked, likeCount: nextLikeCount };
 }
 
-/** 개발 중 mock 데이터를 초기 상태로 되돌리고 싶을 때 콘솔 등에서 호출하세요. */
+// 개발 중 mock 데이터를 초기 상태로 되돌리고 싶을 때 콘솔 등에서 호출
 export function resetMockReviews() {
   writeMockReviews(SEED_REVIEWS);
 }
 
-/** ISO datetime → 앱에서 쓰는 "26.07.10" 표기로 변환 */
+// ISO datetime → 앱에서 쓰는 "26.07.10" 표기로 변환
 export function toDisplayDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
@@ -241,7 +225,7 @@ async function withMockFallback<T>(realCall: () => Promise<T>, mockCall: () => T
   }
 }
 
-/** 리뷰 작성 */
+// 리뷰 작성 
 export function createReview(payload: ReviewCreatePayload) {
   return withMockFallback(
     () =>
@@ -253,7 +237,7 @@ export function createReview(payload: ReviewCreatePayload) {
   );
 }
 
-/** 내가 쓴 리뷰 목록 조회 */
+// 내가 쓴 리뷰 목록 조회
 export function getMyReviews() {
   return withMockFallback(
     () => apiFetch<Review[]>("/api/customer/reviews"),
@@ -261,12 +245,7 @@ export function getMyReviews() {
   );
 }
 
-// [신규 연결] GET /api/customer/reviews/popup/{popupId} — 팝업 상세페이지용 공개 후기 목록
-// (로그인 없이도 조회 가능, 이 팝업에 달린 "모든" 사용자의 후기).
-// ⚠️ 백엔드 참고: 응답(ReviewResponse)에 작성자 식별 정보(닉네임/customerId)가 전혀 없어서
-// 화면에 "누가" 썼는지 표시할 수 없어요. 지금은 임시로 "방문자"라고만 표시합니다.
-// [신규 연결] 홈 화면 "실시간 후기 모음"이 100% 목업 데이터였어요(API 시도조차 안 함).
-// 최근 작성된 후기를 전체 팝업 기준으로 가져오는 공개 API로 교체합니다.
+// 팝업 상세페이지용 공개 후기 목록
 export function getRecentReviews(limit = 10) {
   return withMockFallback(
     () => apiFetch<Review[]>(`/api/customer/reviews/recent?limit=${limit}`),
@@ -274,7 +253,7 @@ export function getRecentReviews(limit = 10) {
   );
 }
 
-// getMyReviews()로 가져온 내 리뷰 id와 겹치는 항목만 "나의 후기"로 구분해서 보여줘요.
+// getMyReviews()로 가져온 내 리뷰 id와 겹치는 항목만 "나의 후기"로
 export function getPopupReviews(popupId: number, page = 0, size = 20) {
   return withMockFallback(
     () => apiFetch<Review[]>(`/api/customer/reviews/popup/${popupId}?page=${page}&size=${size}`),
@@ -282,7 +261,7 @@ export function getPopupReviews(popupId: number, page = 0, size = 20) {
   );
 }
 
-/** 리뷰 수정 */
+// 리뷰 수정
 export function updateReview(id: number, payload: ReviewCreatePayload) {
   return withMockFallback(
     () =>
@@ -294,7 +273,7 @@ export function updateReview(id: number, payload: ReviewCreatePayload) {
   );
 }
 
-/** 리뷰 삭제 */
+// 리뷰 삭제
 export function deleteReview(id: number) {
   return withMockFallback(
     () => apiFetch<{ success: boolean }>(`/api/customer/reviews/${id}`, { method: "DELETE" }),
@@ -305,7 +284,7 @@ export function deleteReview(id: number) {
   );
 }
 
-/** 좋아요 누르기 */
+// 좋아요 누르기
 export function likeReview(id: number) {
   return withMockFallback(
     () =>
@@ -316,7 +295,7 @@ export function likeReview(id: number) {
   );
 }
 
-/** 좋아요 취소 */
+// 좋아요 취소 
 export function unlikeReview(id: number) {
   return withMockFallback(
     () =>

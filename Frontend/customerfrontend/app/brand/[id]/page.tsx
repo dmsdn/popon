@@ -1,6 +1,6 @@
+// app/brand/[id]/page.tsx
+// 브랜드(주최사) 상세 페이지
 "use client";
-
-// 브랜드(주최사) 상세 페이지 - 이 브랜드가 연 팝업 목록, 브랜드 소개를 보여줘요.
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
@@ -17,15 +17,6 @@ import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 
 const TABS = ["진행중인 팝업", "완료된 팝업"] as const;
 
-// [수정] 이전엔 이 페이지가 항상 로컬 mock 브랜드 데이터(data/mockBrands.ts)만 봤어요.
-// 그런데 실제 팝업 상세페이지의 businessId는 진짜 백엔드 숫자 id라서 서로 안 맞았고,
-// 애초에 이 페이지로 연결되는 링크 자체가 앱 어디에도 없었어요(팝업 상세의 업체명이
-// 그냥 텍스트였음). 팝업 목록 API(searchPopups)는 실제 데이터라 businessId로
-// 필터링하면 "이 업체의 팝업 목록"은 진짜 데이터로 보여줄 수 있어요. 그래서 실
-// 데이터를 먼저 시도하고, 못 찾으면(숫자가 아니거나 매칭되는 팝업이 없으면) 기존
-// mock 브랜드로 대체합니다.
-// [수정 8/5] 로고 이미지는 예전엔 백엔드에 조회 API가 없어서 항상 빈 박스였는데,
-// 이제 GET /api/business/{id}(로그인 불필요)가 생겨서 실제 이미지를 받아와요.
 export default function BrandDetailPage({
   params,
 }: {
@@ -39,14 +30,10 @@ export default function BrandDetailPage({
   const [realOngoing, setRealOngoing] = useState<PopupItem[]>([]);
   const [realEnded, setRealEnded] = useState<PopupItem[]>([]);
   const [realCompanyName, setRealCompanyName] = useState<string | null>(null);
-  // [신규 8/5] 백엔드에 소비자 공개용 브랜드 조회 API(GET /api/business/{id})가
-  // 새로 생겨서, 그동안 빈 회색 박스였던 로고 자리에 실제 이미지를 받아와요.
   const [profileImage, setProfileImage] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    // id가 숫자(진짜 백엔드 businessId)가 아니면(mock 브랜드 slug) 호출할 필요가
-    // 없어요 - 어차피 매칭되는 업체가 없어서 실패만 하니까요.
     if (!/^\d+$/.test(id)) return;
     getBrandInfo(id)
       .then((info) => {
@@ -114,8 +101,7 @@ export default function BrandDetailPage({
       </div>
 
       <div className="px-4 mobile:px-8 py-6">
-        {/* 브랜드 로고 - [수정 8/5] 실제 업체 프로필 이미지가 있으면 보여주고,
-            없으면(아직 등록 안 한 업체) 기존처럼 빈 박스로 대체돼요. */}
+        {/* 브랜드 로고 */}
         <div className="w-24 h-24 rounded-md bg-gray-100 dark:bg-[#282B32] border border-gray-200 dark:border-[#282B32] mb-4 overflow-hidden">
           {profileImage && <ImageWithFallback src={profileImage} className="w-full h-full object-cover" />}
         </div>
@@ -124,7 +110,6 @@ export default function BrandDetailPage({
         <div className="flex items-start justify-between mb-8">
           <div>
             <h1 className="text-xl font-bold">{displayName}</h1>
-            {/* 소개/찜 수는 실제 업체 프로필 API가 아직 없어서 mock 브랜드일 때만 표시돼요 */}
             {mockBrand && <p className="text-sm text-gray-500 mt-1">{mockBrand.tagline}</p>}
           </div>
           {mockBrand && (

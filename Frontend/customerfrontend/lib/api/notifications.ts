@@ -1,4 +1,5 @@
 // lib/api/notifications.ts
+// 알림 목록을 관리하는 API
 import { apiFetch } from "./client";
 
 export type NotificationType = "공지" | "찜" | "웨이팅/예약";
@@ -10,13 +11,12 @@ export interface AppNotification {
   message: string;
   createdAt: string; // ISO datetime
   read: boolean;
-  // [신규] 알림을 눌렀을 때 관련 화면으로 이동하기 위한 참조 정보 -
-  // 백엔드가 이미 내려주고 있었는데 여기서 놓치고 있었어요.
+  // 알림 클릭 시 관련 화면으로 이동하기 위한 참조 정보
   noticeId: number;
   popupId: number | null;
 }
 
-// [수정] 백엔드에 실제 알림 API가 생겨서 mock 대신 연결해요. (팀원분이 주신 코드 그대로)
+// 내 알림 목록 조회 및 알림 데이터를 앱 형식으로 변환
 export async function getNotifications(customerId: number): Promise<AppNotification[]> {
   const raw = await apiFetch<
     {
@@ -38,7 +38,7 @@ export async function getNotifications(customerId: number): Promise<AppNotificat
     WAITING: "웨이팅/예약",
   };
   return raw.map((n) => ({
-    id: String(n.recipientId), // 읽음처리 API가 recipientId 기준이라 이걸 id로 써야 함
+    id: String(n.recipientId), // 읽음처리 API가 recipientId 기준이라 이걸 id로
     type: typeMap[n.category] ?? "공지",
     title: n.title,
     message: n.content,
@@ -49,11 +49,7 @@ export async function getNotifications(customerId: number): Promise<AppNotificat
   }));
 }
 
-// [수정] 백엔드가 markAsRead(@PathVariable recipientId, @RequestParam customerId)로
-// customerId를 필수 쿼리파라미터로 요구하는데, 여기서 안 보내고 있었어요. 그래서
-// 매번 실패하고 있었는데 화면은 낙관적 업데이트로 읽음처리된 것처럼 보여서
-// (실제로는 반영이 안 되니 새로고침하면 다시 안읽음으로 돌아갔을 거예요)
-// "읽음처리가 안 된다"는 문제로 나타났던 거예요.
+// 알림을 읽음 상태로 변경
 export function markNotificationRead(recipientId: string | number, customerId: number) {
   return apiFetch<void>(`/api/notices/my/${recipientId}/read?customerId=${customerId}`, {
     method: "PATCH",

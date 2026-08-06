@@ -1,8 +1,6 @@
+// app/notice/page.tsx
+// 공지사항 목록 페이지
 "use client";
-
-// 공지사항 목록 페이지 - 로그인 페이지 하단 "공지사항"에서 들어와요.
-// [신규 8/5] 예전엔 마이페이지 사이드바 안에서만 목록을 볼 수 있었는데,
-// 로그인 페이지에서도 접근할 수 있게 되면서 독립된 화면으로 뺐어요.
 
 import { useEffect, useState } from "react";
 import Link from "next/link";

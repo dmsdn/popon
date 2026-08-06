@@ -5,7 +5,7 @@ export interface Brand {
   likeCount: number;
 }
 
-// TODO: 실제 서비스에서는 백엔드 브랜드 API로 교체해주세요.
+// TODO: 실제 서비스에서는 백엔드 브랜드 API로 교체
 export const brands: Brand[] = [
   { id: "musinsa", name: "무신사 스탠다드", tagline: "일상을 채우는 편안한 스탠다드", likeCount: 128 },
   { id: "sanrio", name: "산리오 카페", tagline: "귀여움 가득, 산리오와 함께하는 티타임", likeCount: 342 },

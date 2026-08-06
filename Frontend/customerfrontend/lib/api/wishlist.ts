@@ -1,4 +1,5 @@
 // lib/api/wishlist.ts
+// 찜 목록 API
 import { apiFetch, ApiError } from "./client";
 
 const MOCK_STORAGE_KEY = "mock_wishlist";
@@ -38,7 +39,7 @@ async function withMockFallback<T>(realCall: () => Promise<T>, mockCall: () => T
 
 // -------------------- 실 API 우선, 실패 시 mock --------------------
 
-/** 로그인한 고객이 찜한 팝업 id 목록 */
+// 로그인한 고객이 찜한 팝업 id 목록
 export function getWishlist() {
   return withMockFallback(
     () => apiFetch<number[]>("/api/customer/wishlist"),

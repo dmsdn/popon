@@ -1,6 +1,6 @@
+// app/easy-entry/page.tsx
+// "지금 입장하기 좋은 팝업" 더보기 목록 페이지
 "use client";
-
-// "지금 입장하기 좋은 팝업" 더보기 목록 페이지.
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -13,8 +13,6 @@ import type { PopupItem } from "@/data/mockPopups";
 import { LoadingState, EmptyState } from "@/components/ui/EmptyState";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 
-// 한 번에 너무 많은 팝업의 대기열을 조회하면 요청이 많아져서, 진행중 팝업 중
-// 앞쪽 40개까지만 확인해요 (홈 화면 미리보기는 8개만 봄).
 const MAX_CHECK = 40;
 
 export default function EasyEntryListPage() {

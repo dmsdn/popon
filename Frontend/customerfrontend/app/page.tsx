@@ -1,4 +1,6 @@
 // app/page.tsx
+// 홈 화면 - 프로모션 캐러셀, 카테고리, 주변 핫플, 지도 진입, 인기 랭킹 등 섹션을 모아 보여주는 메인 페이지
+
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -45,7 +47,7 @@ export default function Home() {
     let cancelled = false;
 
     // "최근 본 팝업" - 이 브라우저에서 실제로 들어가봤던 팝업 상세페이지 기록 기준
-    // (lib/recentlyViewed.ts, popup/[id]/page.tsx에서 방문 시 기록해요)
+    // (lib/recentlyViewed.ts, popup/[id]/page.tsx에서 방문 시 기록)
     const ids = getRecentlyViewedIds();
     Promise.all(
       ids.map((id) =>
@@ -59,10 +61,6 @@ export default function Home() {
       }
     });
 
-    // "내 관심 지역"/"관심 카테고리"/"실시간 혼잡도" 섹션 + [수정] "곧 오픈하는 팝업"
-    // 섹션이 예정 팝업은 아직 예약도 웨이팅도 열리지 않아 눌러도 할 게 없는 경우가
-    // 많았어요. 지금 바로 방문/예약 가능한 "진행중" 팝업으로 바꾸면서, 이미 같은
-    // status=OPEN으로 불러오고 있던 이 목록을 그대로 재사용해요 (중복 조회 방지).
     searchPopups({ status: "OPEN" })
       .then((list) => {
         if (cancelled) return;
@@ -78,9 +76,6 @@ export default function Home() {
               .then(([status, images]) => ({
                 item,
                 status,
-                // [수정] 대표 이미지를 배열 맨 앞이 아니라 type === "THUMBNAIL"로 골라요.
-                // (상세 이미지만 있고 썸네일이 없는 팝업에서 배열 순서에 따라 상세
-                // 이미지가 대표 자리에 뜨는 버그 방지. 옛 데이터 대비 폴백은 유지)
                 imageUrl: (images.find((img) => img.type === "THUMBNAIL") ?? images[0])?.imageUrl ?? null,
               }))
               .catch(() => null)
@@ -92,8 +87,8 @@ export default function Home() {
           setCongestionItems(valid);
         });
 
-        // [신규] 지금 입장하기 좋은 팝업 - 통합 대기열 총 인원이 적은 순. 개인정보
-        // 노출 우려로 totalCount만 씁니다 (lib/api/popups.ts getQueueBoardCount 참고).
+        // 지금 입장하기 좋은 팝업 - 통합 대기열 총 인원이 적은 순. 개인정보
+        // 노출 우려로 totalCount만 (lib/api/popups.ts getQueueBoardCount 참고)
         Promise.all(
           targets.map((item) =>
             getQueueBoardCount(item.id)
@@ -117,10 +112,6 @@ export default function Home() {
     };
   }, []);
 
-  // [수정] 관심 카테고리가 죽은 로컬 저장 함수(getPreferredCategories)를 읽고 있었어요 -
-  // signup/preferences·마이페이지수정에서 이미 실제 keyword API로 옮겨서 그 로컬
-  // 저장소엔 더 이상 아무것도 안 쓰여지고 있었고, 그래서 이 섹션이 항상 빈 채로
-  // 사라져 있었어요. 실제 API로 교체하고, 매칭도 해시태그 정확 매칭으로 바꿨어요.
   useEffect(() => {
     if (!customer) return;
     getKeywords()
@@ -131,9 +122,6 @@ export default function Home() {
       .catch((err) => console.error("내 관심 키워드 조회 실패", err));
   }, [customer]);
 
-  // [수정] "내 관심 지역 팝업" 섹션도 마찬가지로 죽은 로컬 저장 함수(getPreferredRegions)를
-  // 읽고 있어서, 마이페이지 수정화면에서 저장한 진짜 관심 지역이 전혀 반영이 안 되고
-  // 이 섹션이 항상 비어 있었어요. 실제 지역 API로 교체했어요.
   useEffect(() => {
     if (!customer) return;
     getRegions()
@@ -149,8 +137,6 @@ export default function Home() {
     return myRegionIds.map((id) => nameById.get(id)).filter((n): n is string => !!n);
   }, [allRegions, myRegionIds]);
 
-  // [신규] "내 관심 지역 팝업" 제목을 "OO에 이런 팝업이 열려요"로 바꾸면서, 관심
-  // 지역이 여러 개면 그 중 하나를 랜덤으로 골라 제목에 써요.
   const featuredRegion = useMemo(() => {
     if (preferredRegions.length === 0) return "";
     return preferredRegions[Math.floor(Math.random() * preferredRegions.length)];
@@ -164,11 +150,6 @@ export default function Home() {
     return myKeywordIds.map((id) => nameById.get(id)).filter((n): n is string => !!n).slice(0, 2);
   }, [allKeywords, myKeywordIds]);
 
-  // [수정] 제목은 관심 지역 중 하나(featuredRegion)만 보여주는데, 목록은
-  // preferredRegions 전체(여러 지역)를 기준으로 필터링하고 있었어요. 그래서
-  // 관심 지역을 여러 개 선택해두면 "OO에 이런 팝업이 열려요"라고 하나만
-  // 짚어놓고, 실제로는 다른 지역 팝업까지 섞여서 나왔어요. 제목이랑 똑같이
-  // featuredRegion 하나만 기준으로 필터링하도록 맞췄어요.
   const regionPopups = useMemo(() => {
     if (!featuredRegion) return [];
     return allOpenPopups.filter((p) => p.location?.toLowerCase().includes(featuredRegion.toLowerCase()));

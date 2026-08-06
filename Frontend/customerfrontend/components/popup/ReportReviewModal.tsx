@@ -1,6 +1,6 @@
+// components/popup/ReportReviewModal.tsx
+// 후기 신고 사유를 선택하는 모달
 "use client";
-
-// 후기 신고 사유를 선택하는 모달.
 
 import { createPortal } from "react-dom";
 import { useState } from "react";
@@ -17,10 +17,6 @@ const REASON_OPTIONS: { value: ReportReason; label: string }[] = [
   { value: "OTHER", label: "기타" },
 ];
 
-/**
- * 후기 카드 옆 "신고" 버튼을 누르면 뜨는 신고 사유 선택 모달.
- * 다른 모달들과 동일하게 캐러셀 안에서도 잘리지 않게 portal로 렌더링해요.
- */
 export function ReportReviewModal({ reviewId, onClose }: { reviewId: number; onClose: () => void }) {
   const { customer } = useAuth();
   const router = useRouter();

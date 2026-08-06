@@ -1,6 +1,6 @@
+// app/signup/preferences/page.tsx
+// 가입 직후 관심 카테고리·관심 지역을 선택하는 온보딩 페이지
 "use client";
-
-// 가입 직후 관심 카테고리·관심 지역을 선택하는 온보딩 페이지.
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -11,10 +11,7 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { consumeRedirectTarget } from "@/lib/postLoginRedirect";
 import { appAlert } from "@/lib/ui/alertStore";
 
-// [수정] 예전엔 백엔드 region이 서울/경기/부산 같은 시/도 단위라 이 앱이 쓰는 성수/홍대
-// 같은 동네 단위 선택이랑 안 맞아서 로컬 저장으로만 처리했었는데, 백엔드가 이제
-// AdminRegionController로 관리자가 동네 단위 지역을 직접 관리하는 구조로 바뀌었어요.
-// 관심 카테고리(키워드)와 동일한 패턴으로 실제 API에 연결합니다.
+// 관심 지역 - 백엔드 관리자(AdminRegionController) 동네 단위 지역 API 연결 (키워드와 동일 패턴)
 
 export default function PreferencesPage() {
   const router = useRouter();

@@ -1,6 +1,8 @@
 // lib/api/reservations.ts
+// 사용자의 예약 정보를 관리하는 API
 import { apiFetch } from "./client";
 
+// 예약 생성에 필요한 정보
 export interface ReservationCreatePayload {
   popupId: number;
   slotId?: number; // SLOT 모드 팝업이면 필수
@@ -9,6 +11,7 @@ export interface ReservationCreatePayload {
   partySize: number;
 }
 
+// 예약 정보
 export interface Reservation {
   id: number;
   popupId: number;
@@ -23,7 +26,7 @@ export interface Reservation {
   qrToken: string;
 }
 
-// ⚠️ 백엔드가 customerId를 JWT가 아니라 쿼리파라미터로 받아요 (ReservationController 기준).
+// 예약 생성
 export function createReservation(customerId: number, payload: ReservationCreatePayload) {
   return apiFetch<Reservation>(`/api/reservations?customerId=${customerId}`, {
     method: "POST",
@@ -31,11 +34,12 @@ export function createReservation(customerId: number, payload: ReservationCreate
   });
 }
 
+// 내 예약 목록 조회
 export function getMyReservations(customerId: number) {
   return apiFetch<Reservation[]>(`/api/reservations/me?customerId=${customerId}`);
 }
 
-// 백엔드에 "id로 단건 조회" API가 없어서, 내 예약 목록에서 찾아요.
+// 예약 상세 조회
 export async function getMyReservationById(customerId: number, reservationId: number) {
   const list = await getMyReservations(customerId);
   const found = list.find((r) => r.id === reservationId);
@@ -43,6 +47,7 @@ export async function getMyReservationById(customerId: number, reservationId: nu
   return found;
 }
 
+// 예약 변경에 필요한 정보
 export interface ReservationChangePayload {
   newSlotId?: number; // SLOT 모드면 필수
   newReservationDate?: string; // "YYYY-MM-DD", FREE 모드면
@@ -50,7 +55,7 @@ export interface ReservationChangePayload {
   partySize?: number;
 }
 
-// ✅ 고객 본인이 호출 가능 (ReservationService.change에서 customerId 소유자 검증)
+// 예약 변경
 export function changeReservation(reservationId: number, customerId: number, payload: ReservationChangePayload) {
   return apiFetch<Reservation>(`/api/reservations/${reservationId}/change?customerId=${customerId}`, {
     method: "PATCH",
@@ -58,9 +63,7 @@ export function changeReservation(reservationId: number, customerId: number, pay
   });
 }
 
-// [수정] 백엔드에 고객 본인 취소 전용 메서드(cancelByCustomer)가 추가됐어요.
-// 다만 customerId를 쿼리파라미터로 넘겨야 그 경로를 타고, 안 넘기면 여전히
-// 예전처럼 "사업자(business) 계정"인지 확인하는 경로로 빠져서 실패해요.
+// 예약 취소
 export function cancelReservation(reservationId: number, customerId: number, cancelReason?: string) {
   return apiFetch<Reservation>(`/api/reservations/${reservationId}/cancel?customerId=${customerId}`, {
     method: "PATCH",

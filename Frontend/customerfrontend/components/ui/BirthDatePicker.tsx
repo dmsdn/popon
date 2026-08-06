@@ -1,6 +1,6 @@
+// components/ui/BirthDatePicker.tsx
+// 생년월일을 년/월/일 드럼(휠)으로
 "use client";
-
-// 생년월일을 년/월/일 드럼(휠)으로 고르는 피커.
 
 import { createPortal } from "react-dom";
 import { useMemo, useState } from "react";
@@ -17,12 +17,7 @@ function toIsoDate(year: number, month: number, day: number): string {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-/**
- * [신규] 브라우저 기본 <input type="date"> 팝업은 OS/브라우저마다 생김새가 달라서
- * 앱이랑 안 어울려 보였어요. 앱 디자인(원형 선택 표시, 회색/검정 톤)에 맞춘
- * 커스텀 달력 팝업으로 대체했어요. 생년월일은 넓은 연도 범위를 훑어야 해서
- * 연도/월을 드롭다운으로 바로 점프할 수 있게 했습니다.
- */
+// 앱 디자인에 맞춘 커스텀 달력 피커 (연/월 드롭다운으로 빠르게 이동 가능)
 export function BirthDatePicker({
   value,
   onChange,
@@ -32,7 +27,7 @@ export function BirthDatePicker({
   value: string; // "YYYY-MM-DD" 또는 빈 문자열
   onChange: (value: string) => void;
   onClose: () => void;
-  title?: string; // 다른 날짜 선택(예: 후기의 "다녀간 날짜")에도 재사용할 수 있게
+  title?: string; // 다른 날짜 선택(예: 후기의 "다녀간 날짜")에도 재사용 가능
 }) {
   const today = useMemo(() => new Date(), []);
   const initial = value ? new Date(value) : today;

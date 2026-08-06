@@ -1,3 +1,5 @@
+// lib/auth/AuthContext.tsx
+// 로그인 상태(토큰/내 정보)를 앱 전체에 제공하는 인증 Context - 로그인/로그아웃/갱신을 담당
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
@@ -13,19 +15,15 @@ interface AuthContextValue {
   customer: CustomerInfo | null;
   refresh: () => Promise<void>;
   logout: () => void;
-  /** TODO(실제 카카오 연동 후 제거): CORS로 백엔드/카카오 로그인이 막혀있는 동안
-   *  "테스트 계정으로 계속하기" 버튼에서 호출해서 화면 흐름만 테스트합니다. */
   loginAsTestUser: () => void;
-  /** 회원정보 입력/취향 선택 단계에서 백엔드 저장이 실패해도
-   *  화면상 로그인 상태에 입력값을 반영해서 계속 진행할 수 있게 해줍니다. */
   updateMockCustomer: (patch: Partial<CustomerInfo>) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-
+// 개발용 테스트 로그인
 const MOCK_TOKEN = "TEST_MODE_TOKEN";
 const MOCK_STORAGE_KEY = "mock_customer";
-// 이메일/비밀번호로 만든 "여러 개의" 테스트 계정용 — 토큰이 "MOCK_ACCOUNT:이메일" 형태입니다.
+// 이메일/비밀번호로 생성한 여러 테스트 계정
 const MOCK_ACCOUNT_TOKEN_PREFIX = "MOCK_ACCOUNT:";
 const MOCK_ACCOUNTS_KEY = "mock_accounts";
 
@@ -62,8 +60,7 @@ function writeMockCustomer(customer: CustomerInfo | null) {
   }
 }
 
-// 이메일/비밀번호로 회원가입한 "여러 개의" 테스트 계정 저장소 (lib/api/auth.ts의
-// signupWithEmail/loginWithEmail이 여기에 쓰고 읽어요). 이메일을 key로 저장합니다.
+// 이메일을 key로 사용하는 테스트 계정 저장소
 function readMockAccounts(): Record<string, CustomerInfo & { password: string }> {
   try {
     const raw = window.localStorage.getItem(MOCK_ACCOUNTS_KEY);
@@ -86,8 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    // effect 본문과 같은 틱에서 setState가 동기적으로 실행되지 않도록
-    // 마이크로태스크 한 번을 거쳐서 시작합니다.
+    // effect와 같은 틱에서 상태가 바로 변경되지 않도록 한 번 지연
     await Promise.resolve();
 
     const token = getToken();
@@ -97,14 +93,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // 테스트 모드 토큰이면 백엔드 호출 없이 로컬에 저장된 테스트 유저를 그대로 씁니다.
+    // 기본 테스트 계정은 백엔드 대신 localStorage의 사용자 정보 사용
     if (token === MOCK_TOKEN) {
       setCustomer(readMockCustomer() ?? DEFAULT_MOCK_CUSTOMER);
       setLoading(false);
       return;
     }
 
-    // 이메일/비밀번호로 로그인한 테스트 계정 (여러 개 중 하나)
+    // 이메일/비밀번호 테스트 계정
     if (token.startsWith(MOCK_ACCOUNT_TOKEN_PREFIX)) {
       const email = token.slice(MOCK_ACCOUNT_TOKEN_PREFIX.length);
       const account = findMockAccountCustomer(email);
@@ -113,15 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // [수정 8/5] 회원가입 도중(소셜 로그인은 했지만 아직 회원정보 입력 전) 저장되는
-    // "가입대기 토큰"(pendingToken)은 백엔드가 claim("pending", true)만 넣고 customer
-    // id는 일부러 안 넣어요(가입 완료 전엔 customerId 자체가 없으니까). signup/page.tsx가
-    // 이 토큰을 localStorage에 저장해두는데, 그 순간 이 refresh()가 자동으로 실행되면서
-    // 그 토큰으로 GET /api/customer/me를 불렀다가 "토큰에 customer id 클레임이
-    // 없습니다" 오류로 실패하고 있었어요. pending 토큰은 애초에 이 API가 통할 수
-    // 없는(=아직 회원이 아닌) 정상 상태라서, 실패로 취급해 콘솔에 오류를 남기는 대신
-    // 조용히 "아직 로그인 안 됨"으로만 처리해요. (customer 조회는 signup 완료 후
-    // submitSignupInfo가 진짜 토큰을 받아온 다음 다시 일어나요.)
+    // 소셜 로그인 후 회원정보 입력 전의 가입대기 토큰은 customer id가 없어 /me API를 호출할 수 없으므로 로그인 상태로 처리하지 않음
     const claims = decodeJwtPayload<{ pending?: boolean }>(token);
     if (claims?.pending) {
       setCustomer(null);
@@ -131,9 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const info = await getMyInfo();
-      // [신규] 로그아웃 없이 다른 계정으로 바로 로그인되는 경우를 대비한 안전장치 -
-      // 새로 불러온 계정 id가 이전과 다르면 찜 목록 캐시도 같이 비워서, 이전 계정의
-      // 찜 목록이 새 계정 화면에 잘못 남아있지 않게 해요.
+      // 다른 계정으로 로그인한 경우 이전 계정의 찜 목록 캐시 초기화
       setCustomer((prev) => {
         if (prev && prev.id !== info.id) resetWishlistStore();
         return info;
@@ -157,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 }, [refresh]);
 
+ // 로그아웃 시 토큰, 사용자 정보, 찜 목록을 함께 초기화
   const logout = () => {
     clearToken();
     writeMockCustomer(null);
@@ -164,21 +151,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     resetWishlistStore();
   };
 
-  // [신규] apiFetch가 401을 받으면(토큰 자체가 무효/만료됐거나, 계정이 이미
-  // 탈퇴된 경우 등) 여기 등록해둔 핸들러가 불려서, localStorage 토큰뿐 아니라
-  // React의 customer 상태·찜 목록 캐시까지 한 번에 정리하고 로그인 화면으로
-  // 보내요. (참고: 탈퇴한 계정의 예전 토큰 자체는 서명/만료 여부만 검증되고
-  // "계정이 실제로 존재하는지"는 백엔드가 아직 확인 안 하고 있어서, 이 힘만으론
-  // 다른 기기의 세션이 "즉시" 끊기진 않아요 - 그 부분은 백엔드에서 JWT
-  // 검증 시 계정 존재 여부까지 확인하도록 고쳐주셔야 완전히 해결돼요.)
+  // API에서 401 응답을 받으면 강제 로그아웃 처리
   useEffect(() => {
     registerForceLogoutHandler(() => {
       logout();
       if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
-        // [수정] window.alert()는 동기라서 사용자가 확인을 누를 때까지 페이지
-        // 이동이 자동으로 미뤄졌는데, appAlert()는 비동기라 그냥 두면 모달이
-        // 뜨자마자 바로 로그인 화면으로 이동해버려요. .then()으로 모달을 닫은
-        // 뒤에 이동하도록 순서를 맞췄어요.
+        // 비동기 모달이 닫힌 뒤 로그인 페이지로 이동
         appAlert("로그인이 만료되었거나 계정 정보가 변경됐어요. 다시 로그인해주세요.").then(() => {
           window.location.href = "/login";
         });
@@ -187,6 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 기본 테스트 계정으로 로그인
   const loginAsTestUser = () => {
     setToken(MOCK_TOKEN);
     const next = readMockCustomer() ?? DEFAULT_MOCK_CUSTOMER;
@@ -195,10 +174,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     resetWishlistStore();
   };
 
+   // 테스트 계정의 사용자 정보 수정
   const updateMockCustomer = (patch: Partial<CustomerInfo>) => {
     const token = getToken();
 
-    // 이메일 계정으로 로그인 중이면 mock_accounts 쪽 데이터를 갱신해요.
+    // 이메일 계정으로 로그인 중이면 mock_accounts 쪽 데이터 갱신
     if (token?.startsWith(MOCK_ACCOUNT_TOKEN_PREFIX)) {
       const email = token.slice(MOCK_ACCOUNT_TOKEN_PREFIX.length);
       const accounts = readMockAccounts();
@@ -217,6 +197,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // 기본 테스트 계정 정보 갱신
     setCustomer((prev) => {
       const next = { ...(prev ?? DEFAULT_MOCK_CUSTOMER), ...patch };
       writeMockCustomer(next);
