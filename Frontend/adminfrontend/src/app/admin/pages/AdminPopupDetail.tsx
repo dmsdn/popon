@@ -6,12 +6,10 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { getPopup, approvePopup, rejectPopup, suspendPopup, resumePopup, getPopupEventLog, EventLogItem, Popup, PopupStatusCode, ApiError } from "../../lib/api";
-// SUSPEND_MARKER는 더 이상 쓰지 않는다 (8/4 전용 API로 교체) — 마커로 중지된 옛 데이터를
-// 「게시중지」로 알아보기 위해 isSuspended만 남긴다
 import { isSuspended } from "../../lib/adminPopupMeta";
 
 // 관리자 팝업 상세페이지 — 7/24 회의: 팝업 관리 목록에서 팝업명 클릭 시 진입,
-// 이 상세에서 심사(승인/반려)·게시중지·수정이 모두 동작한다.
+// 이 상세에서 심사(승인/반려)·게시중지·수정이 모두 동작
 
 const STATUS_LABEL: Record<PopupStatusCode, string> = {
   PENDING: "심사 대기",
@@ -106,14 +104,10 @@ export default function AdminPopupDetail() {
     }
   };
 
-  // 게시중지 ↔ 게시재개 (8/4 — 전용 API로 교체. 목록 화면은 7/31에 바꿨는데 여기만 남아 있었다).
-  //
-  // 그전에는 reject를 재사용하며 사유 앞에 [게시중지] 마커를 붙였다. 그래서 **같은 팝업이라도
-  // 어디서 중지했느냐에 따라 DB 상태가 갈렸다** — 목록에서 누르면 SUSPENDED, 상세에서 누르면
-  // REJECTED. 상세에서 중지한 건은 관리자 목록의 「게시중지」 필터에 안 잡히고 「반려」로 떴다.
-  //
-  // 재개도 approve가 아니라 resume을 쓴다. approve는 무조건 BEFOR로 만들어서, 이미 시작된
-  // 팝업을 재개하면 「오픈예정」으로 되돌아갔다. resume은 날짜를 보고 BEFOR/OPEN을 알아서 고른다.
+// 팝업의 게시중지 및 게시재개를 처리한다.
+//
+// 게시중지는 전용 suspend API를 사용해 상태를 SUSPENDED로 통일한다.
+// 게시재개는 resume API를 사용하며, 팝업 일정에 따라 BEFOR 또는 OPEN 상태로 복구한다.
   const toggleSuspend = async () => {
     if (!popup) return;
     const suspended = isSuspended(popup.status, popup.rejectReason);

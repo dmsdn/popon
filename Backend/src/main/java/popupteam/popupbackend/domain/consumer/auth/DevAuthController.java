@@ -11,8 +11,6 @@ import java.util.Map;
 /**
  * 개발/테스트 전용 로그인.
  * 실제 카카오/구글 계정을 계속 새로 만들 필요 없이, 이 API로 진짜 Customer row + 진짜 JWT를 발급받아 쓴다.
- * 프론트에서 "Bearer TEST_MODE_TOKEN" 같은 가짜 문자열을 직접 만들어 보내면 절대 안 됨 —
- * 그건 실제 JWT가 아니라서 백엔드가 파싱하다 그냥 에러남. 반드시 이 API를 호출해서 받은 토큰을 써야 함.
  *
  * app.dev-login.enabled=true 로 켜져 있을 때만 동작 (운영 환경에서 실수로 열려있지 않도록 기본값 false).
  */

@@ -5,8 +5,7 @@ import { STAGE_FLOW, stageIndex, nextStage } from "../../lib/contractStages";
 
 // 공간 대관·계약 관리 — 승인된 팝업의 파트너 공간 대관 계약을 관리자가 등록·진행.
 // 계약체결 → 제작/시공 → 운영 중 → 철거/정산 4단계이며, 단계 확인·전환은 관리자의 의무/권한.
-// 실연동: 계약금 등록(PUT /api/admin/popups/{id}/contract)·단계 전환(PATCH .../contract/stage)·조회
-// 7/23: 백엔드 ContractStage에 OPERATING 추가 — 4단계 전부 서버 값 (로컬 「운영 중」 플래그 제거)
+// 계약금 등록(PUT /api/admin/popups/{id}/contract)·단계 전환(PATCH .../contract/stage)·조회 API와 연동.
 
 const fmtWon = (n: number) => n.toLocaleString("ko-KR") + "원";
 
@@ -67,7 +66,7 @@ export default function AdminContracts() {
     }
   };
 
-  // 다음 단계 전환 — 4단계 전부 서버 PATCH (7/23 백엔드 OPERATING enum 추가로 로컬 플래그 제거)
+  // 다음 단계로 전환 — 4단계 모두 서버 PATCH로 처리
   const advance = async (row: Row) => {
     if (!row.contract) return;
     const next = nextStage(row.contract.stage);

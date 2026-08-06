@@ -8,8 +8,6 @@ import {
 
 // 문의 및 신고관리 — 소비자 CS(/api/admin/cs)·주최자 문의(/api/admin/inquiries)·후기 신고(/api/admin/reports) 실데이터
 // 신고 접수 입구(리뷰 옆 신고 버튼)는 소비자 프론트(pew) 영역 — POST /api/reports
-// 7/30 jsw 신고 대개편 반영 — 「처리완료」 단일 버튼이 반려(후기 유지)·후기 가리기(마스킹) 두 갈래로 나뉨.
-// 응답에 신고 대상 후기의 본문·별점이 실려 와서, 후기를 따로 찾아보지 않고 이 자리에서 판단한다.
 
 type Tab = "cs" | "inquiry" | "report";
 

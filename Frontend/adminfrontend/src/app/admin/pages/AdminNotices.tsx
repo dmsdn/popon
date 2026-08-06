@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Megaphone, Send, CheckCircle2, Loader2 } from "lucide-react";
 import { getBusinessAccounts, sendNoticeToBusiness, BusinessAccount, AdminNoticeResult } from "../../lib/api";
 
-// 관리자 → 주최자 공지 발송 — 7/29 신설 (POST /api/admin/notices/business)
 // 특정 주최자에게 공지를 보내면 주최자센터 벨 알림 수신함(notice_recipient)으로 전달된다.
 
 export default function AdminNotices() {
