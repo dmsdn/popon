@@ -1,6 +1,5 @@
 package popupteam.popupbackend.domain.consumer.auth;
 
-// [통합 수정] jjwt 0.12.6 → 0.11.5 API로 이식 (popupbackend와 클래스패스 통일, 동작 동일)
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -12,15 +11,12 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JwtUtil {
-   // 8/3 — 서명키를 직원용(security/JwtUtil)과 분리했다.
-   //
-   // 그전에는 둘 다 jwt.secret 하나로 서명해서, 관리자·주최자 토큰을 이 파서에 넣어도
-   // **서명 검증이 통과**했다. "우리 토큰이 아니면 파싱에서 예외가 난다"는 전제가
-   // 무너진 상태였고, 실제로 8/3에 CustomerAuthCheckFilter가 관리자 토큰의 없는
-   // id 클레임을 읽다 NPE → 두 콘솔 전체 500으로 터졌다.
-   // 키가 다르면 남의 토큰은 SignatureException으로 파싱 단계에서 튕긴다 —
-   // 신원 구분이 클레임 모양이 아니라 암호학으로 보장된다.
-   // 기본값 없음 = 설정이 빠지면 안 뜨는 게 의도다 (qr-base-url과 같은 원칙).
+   // 소비자 토큰 서명키를 직원용(security/JwtUtil)과 분리해서 사용한다.
+   // 키가 같으면 관리자·주최자 토큰도 이 파서의 서명 검증을 통과해버려서,
+   // "우리 토큰이 아니면 파싱에서 예외가 난다"는 전제가 깨진다.
+   // 키를 분리하면 남의 토큰은 서명 검증 단계(SignatureException)에서 걸러지므로,
+   // 토큰 신원 구분이 클레임 모양이 아니라 암호학적으로 보장된다.
+   // 기본값을 두지 않은 것은 의도적이다 — 설정이 빠지면 앱이 뜨지 않아야 한다(qr-base-url과 동일한 원칙).
    @Value("${jwt.consumer-secret}")
    private String secret;
    @Value("${jwt.expiration}")
@@ -47,16 +43,12 @@ public class JwtUtil {
       // id 값이 작으면 JJWT/Jackson이 Integer로 역직렬화해버려서 claims.get("id", Long.class)가
       // RequiredTypeException을 던짐. Number로 받아서 안전하게 long으로 변환.
       Number id = claims.get("id", Number.class);
-      // 8/3 — "id" 클레임이 없는 토큰이 들어오면 예전엔 여기서 NPE가 나 그대로 500으로 튀었다.
-      // (주최자·관리자 토큰은 security/JwtUtil이 발급하며 id 없이 subject에 이메일만 담는다.
-      //  당시엔 두 발급기가 jwt.secret 하나를 공유해서 **서명 검증이 통과**했고, 그래서
-      //  "우리 토큰이 아니면 파싱에서 예외가 난다"는 전제가 무너져 있었다. 위 consumer-secret
-      //  분리로 그 전제는 복구됐지만, 이 검사는 방어선으로 남긴다.)
-      //
-      // null 반환이 아니라 IllegalArgumentException을 던지는 쪽을 택했다 —
-      // 호출부(CustomerAuthCheckFilter 등)의 기존 catch (JwtException | IllegalArgumentException)가
-      // 그대로 받아 주고, 나머지 소비자 컨트롤러 15곳도 null이 findById로 흘러드는 대신
-      // GlobalExceptionHandler에서 깔끔히 처리된다.
+      // "id" 클레임이 없는 토큰(주최자·관리자 토큰 등, security/JwtUtil이 발급하며 id 없이
+      // subject에 이메일만 담는다)이 서명 검증까지 통과해 들어오는 경우를 막기 위한 방어선이다.
+      // null 반환이 아니라 IllegalArgumentException을 던지는 이유는, 호출부
+      // (CustomerAuthCheckFilter 등)의 catch (JwtException | IllegalArgumentException)가
+      // 그대로 받아 처리하고, 나머지 소비자 컨트롤러들도 null이 findById로 흘러드는 대신
+      // GlobalExceptionHandler에서 일관되게 처리되도록 하기 위함이다.
       if (id == null) {
          throw new IllegalArgumentException("토큰에 customer id(\"id\") 클레임이 없습니다.");
       }

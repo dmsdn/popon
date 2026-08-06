@@ -12,10 +12,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-/**
- * [통합 수정] 소비자용 체인 — securityMatcher로 담당 구역을 한정해 popupbackend 체인과 공존.
- * 스코프 밖의 모든 경로는 기존 popupbackend SecurityConfig 체인이 그대로 처리한다.
- */
+
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
