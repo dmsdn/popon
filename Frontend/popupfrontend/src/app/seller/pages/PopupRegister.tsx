@@ -43,10 +43,8 @@ const DAY_CODES: DayOfWeekCode[] = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY"
 const defaultDayHours = () =>
   DAYS.map((d) => ({ open: d === "토" || d === "일" ? "10:00" : "11:00", close: d === "토" || d === "일" ? "21:00" : "20:00", closed: false }));
 
-// SNS 플랫폼 선택지 (백엔드 SnsPlatform enum과 1:1)
-// 7/30 백엔드 enum 개편 반영 — FACEBOOK·TIKTOK 삭제, NAVERMAP 추가.
-// 요청 DTO의 platform이 enum 타입이라, 목록이 어긋난 값을 보내면 역직렬화 단계에서
-// 등록·수정 요청 "전체"가 400으로 거부된다 (SNS만 빠지는 게 아니라 팝업 저장 자체가 실패).
+// SNS 플랫폼 목록 (백엔드 SnsPlatform enum과 1:1 동기화 필수)
+// [7/30] FACEBOOK·TIKTOK 삭제, NAVERMAP 추가 — 어긋나면 등록/수정 전체가 400 에러
 const SNS_PLATFORMS: { code: SnsPlatformCode; label: string }[] = [
   { code: "INSTAGRAM", label: "인스타그램" },
   { code: "YOUTUBE", label: "유튜브" },
@@ -66,12 +64,9 @@ const SECTIONS = [
   { id: "entry", icon: Ticket, label: "예약·입장 정책" },
 ];
 
-// 이미지 업로드 제한: JPG만 · 장당 최대 10MB (7/24 회의 결정 — 형식 강제, 서버 리사이즈 파이프라인과 통일)
+// 이미지 업로드 제한: JPG만 · 장당 최대 10MB (형식 강제, 서버 리사이즈 파이프라인과 통일)
+// 아래 규격 값은 안내 문구 전용(프론트는 리사이즈 안 함) — 백엔드 resizeToJpeg 인자와 반드시 동일하게 유지
 const MAX_IMAGE_MB = 10;
-
-// 서버가 실제로 변환하는 규격 — 백엔드 PopupService.uploadImage의 resizeToJpeg 인자와 동일하게 유지할 것.
-// 프론트는 리사이즈하지 않고 원본을 그대로 올리므로, 이 값들은 "안내 문구 전용"이다.
-// 임의로 바꾸면 화면 안내와 실제 결과물이 어긋난다 (7/29 — 인스타 규격·가로780 같은 임의 표기를 실제 값으로 교체).
 const THUMB_SPEC = "800×800";   // THUMBNAIL — 목록·카드용 정사각
 const DETAIL_SPEC = "1080×1440"; // DETAIL — 상세 본문용 세로형(3:4)
 function filterJpegs(files: File[]): { ok: File[]; rejected: string[] } {
@@ -86,9 +81,7 @@ function filterJpegs(files: File[]): { ok: File[]; rejected: string[] } {
   return { ok, rejected };
 }
 
-// 폭 유틸(w-full)을 뺀 본체. 폭을 따로 지정해야 하는 칸은 이걸 쓴다.
-// inputCls(=w-full 포함)에 " w-36"을 덧붙이면 둘 다 width 유틸이라 CSS 파일 순서로 승자가 갈리는데,
-// 실제로 w-full이 이겨서 SNS 셀렉트가 행을 다 차지하고 옆 URL 칸이 26px로 찌그러졌다 (7/29).
+// 폭 지정 필요한 칸용 (inputCls에 w-36 붙이면 CSS 순서상 w-full이 이겨버림 — 7/29 SNS 셀렉트 찌그러짐 버그 원인)
 const inputBase =
   "px-3 py-2 text-[13px] border border-border rounded-sm bg-card focus:outline-none focus:border-accent placeholder:text-muted-foreground/60";
 const inputCls = `w-full ${inputBase}`;
@@ -108,9 +101,8 @@ function Section({ id, title, desc, children }: { id: string; title: string; des
   );
 }
 
-// 임시저장은 localStorage에 JSON으로 들어가는데 File 객체는 직렬화되지 않아 이미지만 빠진다.
-// IndexedDB로 옮겨 담는 방법도 있지만 초안 하나에 최대 200MB(10MB × 20장)를 브라우저에 쌓게 되어 접었다.
-// 대신 두 업로드 칸 아래에 눈에 띄게 알려서, 이어서 작성할 때 사진이 없어진 걸 그제야 알게 되는 일을 막는다. (7/31)
+// [7/31] 임시저장은 localStorage라 File 직렬화 불가 → 이미지 유실. IndexedDB는 용량 부담(최대 200MB)으로 보류,
+// 대신 업로드 칸 아래에 안내 문구로 표시
 function DraftImageNotice() {
   return (
     <p className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-sm px-2.5 py-1.5">
@@ -120,9 +112,7 @@ function DraftImageNotice() {
   );
 }
 
-// 서버에 이미 올라가 있는 이미지 한 장 (수정 모드 전용).
-// X를 눌러도 그 자리에서 서버 요청을 보내지 않는다 — 표시만 바꿔두고 「수정 저장」을 눌러야 실제로 지운다.
-// 그래야 실수로 눌렀을 때 되돌릴 수 있고, 저장을 취소하면 아무 일도 일어나지 않는다.
+// 서버 기존 이미지(수정 모드) — X눌러도 즉시 삭제 안 함, "수정 저장" 눌러야 반영 (실수 방지용)
 function ExistingImage({ img, removed, onRemove, onUndo }: {
   img: PopupImageItem; removed: boolean; onRemove: () => void; onUndo: () => void;
 }) {
@@ -144,11 +134,7 @@ function ExistingImage({ img, removed, onRemove, onUndo }: {
   );
 }
 
-// 8/5 — 등록과 수정이 같은 라우트(/seller/popups/new, 수정은 ?id=)를 쓴다.
-// 수정 화면에서 사이드바 「팝업 등록」을 누르면 쿼리만 사라질 뿐 라우트가 같아서
-// React가 컴포넌트를 리마운트하지 않는다 → 폼 state가 그대로 남아, 새 등록 폼에
-// 수정하던 팝업의 내용이 통째로 딸려 왔다.
-// key를 모드(id·draft)로 걸어, 등록↔수정↔임시저장이 오갈 때마다 폼을 백지에서 다시 만든다.
+// [8/5] 등록/수정이 같은 라우트라 리마운트 안 되던 문제 → key를 모드(id·draft)로 걸어 폼 강제 초기화
 export default function PopupRegister() {
   const [searchParams] = useSearchParams();
   const modeKey = `${searchParams.get("id") ?? "new"}:${searchParams.get("draft") ?? ""}`;
@@ -175,10 +161,8 @@ function PopupRegisterForm() {
   // 수정 모드에서 서버에 이미 올라가 있는 이미지 (7/29 신설).
   // images/detailImages는 File[]이라 "새로 고른 파일"만 담을 수 있어서 서버 이미지는 따로 들고 있어야 한다.
   // 이게 없던 동안은 수정 화면에 기존 이미지가 아예 안 보였고, 새로 올리면 교체가 아니라 위에 쌓였다.
-  // 수정 대상 팝업의 현재 심사 상태 (7/29).
-  // 반려(REJECTED)·게시중지(SUSPENDED)된 팝업은 "수정 저장"이 아니라 "재등록"으로 동작해야 한다 —
-  // 내용만 고치고 상태를 그대로 두면 관리자 심사 목록에 다시 올라오지 않아 영영 그 상태로 남는다.
-  // (7/29 결정: 관리자 직접 수정 기능은 탈락 — 관리자는 게시중지만 하고, 고치는 건 주최자가 여기서 한다)
+  // [7/29] 반려/게시중지 상태면 "수정 저장"이 아니라 "재등록"으로 동작해야 함 — 안 그러면 심사 목록에 영영 안 올라감
+  // (관리자 직접수정 기능 탈락 → 게시중지는 관리자, 수정은 항상 주최자가 여기서)
   const [editStatus, setEditStatus] = useState<PopupStatusCode | null>(null);
   const [rejectReason, setRejectReason] = useState<string | null>(null);
   const isSuspendedEdit = editStatus === "SUSPENDED";
@@ -401,10 +385,8 @@ function PopupRegisterForm() {
       .catch(() => {});
   }, [editId]);
 
-  // ── 임시저장 (7/30) — 진짜로 저장한다 ─────────────────────────────
-  // 그 전의 「임시저장」 버튼은 목록으로 이동만 하고 아무것도 저장하지 않는 장식이었다.
-  // 백엔드에 "작성 중" 상태가 없으므로(등록 즉시 PENDING 심사 대기) localStorage에 보관하고,
-  // 「팝업 조회/수정」 표가 이 목록을 함께 보여준다. 자세한 구조는 lib/popupDrafts.ts.
+  // [7/30] 임시저장 실제 구현 (전엔 장식 버튼, 저장 안 됐음)
+  // 백엔드에 "작성중" 상태 없어 localStorage 보관, 상세 구조는 lib/popupDrafts.ts 참고
   const draftParam = searchParams.get("draft");
   const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
   useEffect(() => {
@@ -481,10 +463,7 @@ function PopupRegisterForm() {
     }
   };
 
-  // 「주소 검색」 — 네이버 지오코딩 검색 패널을 바로 연다 (7/30).
-  // 그 전에는 다음 우편번호 팝업을 먼저 시도했는데, 키 없이 쓰는 외부 위젯이라 환경에 따라
-  // 로드가 자주 막혔고 성공해도 팝업 열기→검색→선택 3번을 눌러야 했다.
-  // 지금은 주소칸에 적힌 값으로 즉시 후보를 검색하므로: 버튼 1번 → 후보 선택 1번이면 끝.
+  // [7/30] "주소 검색" = 네이버 지오코딩 패널 즉시 오픈 (기존 다음 우편번호는 불안정+3단계라 폐지)
   const openAddressSearch = () => {
     setMapError("");
     setFallbackOpen(true);
@@ -539,17 +518,13 @@ function PopupRegisterForm() {
     if (!maxCapacity || maxCapacity < 1) return setError("최대 수용 정원을 입력해 주세요.");
     // 8/4 — 지역 필수. 비어 있으면 소비자의 관심지역 필터·지역별 추천에서 이 팝업만 빠진다
     if (regionId === "") return setError("지역을 선택해 주세요. 소비자의 지역 필터 노출에 사용됩니다.");
-    // 8/4 — 썸네일 필수. 없이 등록하면 목록·검색 카드가 빈 이미지로 나가는데 주최자는 알 수 없다.
-    // 게다가 소비자 상세는 「맨 앞 이미지」를 대표로 쓰므로, 썸네일이 없으면 상세 이미지가
-    // 대표 자리로 올라오고 정작 상세 본문에서는 사라진다(에스파 팝업 사례).
-    // 수정 모드에서는 남아 있는 서버 썸네일도 인정한다 — 파일을 다시 고를 이유가 없다.
+    // [8/4] 썸네일 필수 — 없으면 카드가 빈 이미지+상세이미지가 대표로 밀려 상세본문에서 사라짐(에스파 사례)
+    // 수정 모드는 기존 서버 썸네일도 인정(재업로드 불필요)
     if (keptServerThumbs.length + images.length === 0) {
       return setError("대표 이미지(썸네일)를 1장 이상 등록해 주세요. 목록·검색 카드와 상세페이지 대표 사진으로 쓰입니다.");
     }
 
-    // 요일별 운영시간 — 「모든 요일 동일」이면 7일 같은 값으로 펼쳐 전송한다.
-    // startDate·endDate의 시각 부분은 슬롯 생성 창으로 쓰이므로, 요일별 시간이 갈릴 때는
-    // 그 합집합(가장 이른 오픈 ~ 가장 늦은 마감)을 준다 — 슬롯은 요일 구분 없이 한 창으로 생성된다.
+    // 요일별 운영시간 — "모든 요일 동일"이면 7일 같은 값, 요일마다 다르면 합집합(가장 이른~가장 늦은)으로 전송
     const operatingHours: OperatingHoursItem[] = DAY_CODES.map((code, i) =>
       sameHours
         ? { dayOfWeek: code, openTime, closeTime, closed: false }
@@ -563,9 +538,7 @@ function PopupRegisterForm() {
     const latestClose = openDays.map((h) => h.closeTime!).reduce((a, b) => (a > b ? a : b));
 
     const payload = {
-      // 반려된 팝업을 다시 올릴 때만 상태를 PENDING으로 되돌려 심사 대기열에 다시 넣는다.
-      // 그 외(정상 수정)에는 status를 아예 보내지 않아 서버가 현재 상태를 그대로 유지하게 한다 —
-      // 게시중인(OPEN) 팝업을 고쳤다고 심사 대기로 내려가면 소비자 화면에서 사라진다.
+      // 반려 팝업 재등록 시만 status=PENDING 전송, 정상 수정은 미전송(현상태 유지 — 안 그러면 OPEN 팝업이 심사대기로 내려가 소비자 화면에서 사라짐)
       ...(isRejected ? { status: "PENDING" as PopupStatusCode } : {}),
       title: title.trim(),
       description: description.trim(),
@@ -594,23 +567,16 @@ function PopupRegisterForm() {
           : "BOTH") as "PRERESERVATION_ONLY" | "ONSITE_WAITING_ONLY" | "BOTH",
     };
 
-    // 중복 등록 차단 (8/4) — 은혼 팝업이 같은 내용으로 4개 만들어진 사고.
-    //
-    // disabled={submitting}만으로는 못 막는다. setSubmitting(true)는 **다음 렌더에서야**
-    // 반영되는데, 등록은 팝업 생성 → 이미지 업로드 루프 → 슬롯 수백 개 생성까지 이어져
-    // 응답이 느리다. 그래서 「안 눌렸나?」 하고 연타하면, 리렌더 전에 쌓인 클릭들이
-    // handleSubmit에 그대로 재진입한다. 버튼은 그때까지 멀쩡히 활성 상태다.
-    //
-    // ref는 동기적으로 즉시 바뀌므로 같은 틱에 들어온 두 번째 호출까지 확실히 막는다.
-    // state는 화면 표시(「전송 중…」)용으로 그대로 둔다 — 둘의 역할이 다르다.
+    // [8/4] 중복 등록 차단 (은혼 팝업 4개 중복 사고 재발방지)
+    // disabled={submitting} 단독으론 부족 — setSubmitting은 다음 렌더에야 반영되는데 등록 응답이 느려 그 사이 연타가 재진입함
+    // ref는 동기 반영이라 같은 틱의 재호출까지 막음, state는 "전송 중…" 표시 전용 (역할 분리)
     if (submittingRef.current) return;
     submittingRef.current = true;
     setSubmitting(true);
     try {
       const popup = editId ? await updatePopup(editId, payload) : await createPopup(payload);
       saveOpsMode(popup.id, opsMode); // 대기열·인원 관제가 이 값을 읽어 표시
-      // 수정 화면에서 X로 빼둔 기존 이미지를 먼저 지운다.
-      // 올리기 전에 지워야 서버가 매기는 sortOrder가 빈 자리 없이 이어진다.
+      // 기존 이미지 삭제를 업로드보다 먼저 실행 (서버 sortOrder가 빈 자리 없이 이어지게)
       for (const id of removedImageIds) {
         await deletePopupImage(popup.id, id);
       }
@@ -631,9 +597,7 @@ function PopupRegisterForm() {
       }
       // 임시저장으로 시작한 등록이 서버에 들어갔으면 초안은 소임을 다했다 — 목록에 유령으로 남지 않게 제거
       if (activeDraftId) removeDraft(activeDraftId);
-      // 8/3 — 이미 승인받은 팝업(게시중·오픈예정·종료·게시중지)의 수정은 심사를 다시 받지 않는다
-      // (payload가 status를 안 보내 상태 유지). 그런데 "승인 요청이 접수되었습니다" 화면이 떠서
-      // 재심사로 오해하게 했다 → 완료 화면 없이 팝업 조회/수정 목록으로 바로 돌려보낸다.
+      // [8/3] 이미 승인된 팝업 수정은 재심사 없음(status 미전송) — "승인요청 접수됨" 화면이 오해 유발해서 완료화면 없이 목록으로 바로 이동
       if (editId && editStatus && editStatus !== "PENDING" && editStatus !== "REJECTED") {
         navigate("/seller/popups");
         return;
@@ -643,8 +607,7 @@ function PopupRegisterForm() {
       setError(e instanceof Error ? e.message : "등록에 실패했습니다.");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } finally {
-      // 실패했을 때 다시 누를 수 있어야 하므로 ref도 함께 푼다.
-      // 성공 경로(게시중 수정)는 위에서 navigate로 빠져나가지만, finally는 그때도 실행된다.
+      // 실패 시 재시도 가능하게 ref도 해제 (성공 시 navigate로 빠져나가도 finally는 항상 실행됨)
       submittingRef.current = false;
       setSubmitting(false);
     }

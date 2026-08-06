@@ -1,8 +1,6 @@
-// 관리자의 팝업 상태 변경·수정 이력 기록
-// ※ 원래 관리자·주최자가 한 앱(5174)일 때 localStorage로 공유하던 데모 구현.
-//   관리자 콘솔이 adminfrontend(5175)로 분리되면서 origin이 갈라져, 관리자가 쓴 메모(editNote)는
-//   이 앱에서 더 이상 보이지 않는다(읽어도 빈 값 — 화면은 가드가 있어 조용히 생략됨).
-//   관리자 수정 메모 쓰기 API가 백엔드에 생기면 이 모듈은 삭제하고 서버 값으로 대체할 것.
+// 관리자의 팝업 상태변경·수정이력 기록
+// [분리 이후 무효화] 원래 관리자·주최자 한 앱(5174)일 때 localStorage 공유하던 데모구현 —
+// adminfrontend(5175) 분리로 origin 갈라져 관리자 메모(editNote) 안 보임(빈값, 화면가드로 조용히 생략) → 백엔드에 메모 쓰기 API 생기면 이 모듈 삭제하고 서버값 대체
 
 export type AdminPopupMeta = {
   statusDate?: string; // 관리자가 상태를 마지막으로 확정(승인/반려/게시중지/수정)한 날짜 YYYY-MM-DD
@@ -35,9 +33,8 @@ export function today(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// 게시중지 판별.
-// 7/27부터 백엔드에 전용 상태(SUSPENDED)가 생겨 그걸 우선 본다.
-// 그 전 데이터는 반려 API 재사용 + 사유 앞 마커 방식이라(REJECTED + "[게시중지]") 폴백으로 남겨둔다.
+// 게시중지 판별 — [7/27부터] 전용상태(SUSPENDED) 우선 확인
+// 그전 데이터는 반려API 재사용+사유앞마커 방식(REJECTED+"[게시중지]")이라 폴백으로 유지
 export const SUSPEND_MARKER = "[게시중지]";
 export const isSuspended = (status: string, rejectReason: string | null) =>
   status === "SUSPENDED" ||
