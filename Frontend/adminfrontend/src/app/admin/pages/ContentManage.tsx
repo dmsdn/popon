@@ -7,14 +7,12 @@ import {
 } from "../../lib/api";
 import { consumerPopupUrl } from "../../lib/siteUrls";
 
-// 배너·공지 관리 — 7/28 실연동 (banner·announcement 백엔드는 7/27 jsw 신설)
+// 배너·공지 관리
 // 배너: 소비자 홈 상단 캐러셀 / 공지 배너: 소비자 홈 공지줄
 //
 // 관리자가 '소비자에게 알리는' 창구는 이 화면의 공지 배너다 (announcement 테이블).
-// 관리자 → 소비자 개별 공지 발송 API는 없고, 만들지 않는다 —
 // 소비자 대상 안내는 전원이 보는 공지 배너로, 팝업별 안내는 주최자가
 // 자기 예약자에게 보내는 긴급공지(POST /api/popups/{id}/notices)로 나뉘어 있다.
-// 「주최자 공지 발송」(/admin/notices)은 주최자 1명에게 보내는 별개 화면.
 
 const fmtDate = (iso: string | null) => (iso ? iso.slice(0, 10) : "-");
 
@@ -27,9 +25,7 @@ export default function ContentManage() {
   const [error, setError] = useState("");
   const [actingId, setActingId] = useState<string | null>(null); // "banner:3" / "ann:1" — 두 목록 id 충돌 방지
 
-  // 배너 추가 폼 — 7/29부터 URL 직접 입력이 아니라 파일 업로드 (백엔드가 multipart를 받는다)
-  //
-  // 8/4 — 등록 방식이 둘로 갈렸다.
+  // 등록 방식은 둘로 나뉜다.
   //   POPUP : 승인된 팝업을 고르면 이미지·링크를 서버가 그 팝업에서 가져온다(POST .../from-popup).
   //           관리자가 같은 이미지를 다시 올릴 이유가 없고, 링크 형식도 서버가 단일 관리한다.
   //   URL   : 팝업과 무관한 배너(이벤트·외부 홍보). 기존처럼 제목·이미지·링크를 직접 받는다.
@@ -212,7 +208,7 @@ export default function ContentManage() {
 
             {showBannerForm && (
               <div className="px-4 py-3 border-b border-border bg-secondary/40 flex flex-col gap-3">
-                {/* 등록 방식 (8/4) — 팝업을 고르면 이미지·링크가 자동으로 채워진다 */}
+                {/* 등록 방식 — 팝업을 고르면 이미지·링크가 자동으로 채워진다 */}
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] text-muted-foreground">등록 방식</span>
                   {([["POPUP", "팝업 등록"], ["URL", "외부 URL 등록"]] as const).map(([v, label]) => (
@@ -340,7 +336,7 @@ export default function ContentManage() {
                   <img src={b.imageUrl} alt="" className="w-16 h-9 object-cover rounded-sm border border-border shrink-0 bg-secondary" onError={(e) => { (e.target as HTMLImageElement).style.visibility = "hidden"; }} />
                   <div className="flex-1 min-w-0">
                     <div className="text-[13px] font-medium truncate flex items-center gap-1.5">
-                      {/* 8/4 — 팝업 연동 배너와 외부 URL 배너를 구분한다. 연동 배너는 팝업이 내려가면
+                      {/* 팝업 연동 배너와 외부 URL 배너를 구분한다. 연동 배너는 팝업이 내려가면
                           링크가 빈 상세로 가므로, 어느 쪽인지 목록에서 바로 보여야 한다 */}
                       <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded-full border ${
                         b.popupId ? "bg-blue-50 text-blue-600 border-blue-200" : "bg-secondary text-muted-foreground border-border"

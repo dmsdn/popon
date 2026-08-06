@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Loader2, Search, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { getBusinessAccounts, getPopups, BusinessAccount, Popup } from "../../lib/api";
 
-// 주최자(사업자) 회원 관리 — 7/29 실연동 (GET /api/admin/businesses)
-// 계정 실데이터(이메일·사업자번호·연락처·가입일) + 팝업 등록 이력(GET /api/popups)에서 파생한 팝업 현황을 병합.
-// 검색(회사명·이메일·사업자번호) + 헤더 정렬(가나다·최신순)도 7/29 추가.
+// 주최자(사업자) 회원 관리 — 계정 목록(GET /api/admin/businesses)에
+// 팝업 등록 이력(GET /api/popups)에서 파생한 팝업 현황을 병합해 보여준다.
+// 검색(회사명·이메일·사업자번호)과 헤더 정렬(가나다·최신순)을 지원한다.
 
 type PopupStat = { total: number; published: number; pending: number; rejected: number };
 
@@ -78,7 +78,7 @@ export default function Businesses() {
 
       {error && <div className="bg-red-50 border border-red-200 rounded-sm px-4 py-3 text-xs text-red-600">{error}</div>}
 
-      {/* 검색 (7/29) */}
+      {/* 검색 */}
       <div className="bg-card border border-border rounded-sm p-3 flex items-center gap-2">
         <div className="relative flex-1 max-w-sm">
           <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />

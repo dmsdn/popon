@@ -11,14 +11,7 @@ export class ApiError extends Error {
 
 const TOKEN_KEY = "accessToken";
 
-// 비로그인 방문자를 구분하는 임의 id (7/31).
-//
-// 원래 crypto.randomUUID()를 그냥 불렀는데, 이 함수는 **보안 컨텍스트(HTTPS 또는 localhost)에서만
-// 존재한다.** 평문 HTTP로 배포하는 순간 undefined가 되어 TypeError가 나고, logVisit()이 앱 최초
-// 마운트에서 호출되기 때문에 렌더가 통째로 죽어 화면이 새까맣게 나왔다.
-// 개발 중에는 localhost가 예외적으로 보안 컨텍스트라 아무도 눈치채지 못했다.
-//
-// 이 값은 방문자 추이 집계용 구분자일 뿐 보안에 쓰이지 않으므로, 없으면 난수로 대체한다.
+// 비로그인 방문자를 구분하는 임의 id
 function randomId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
@@ -167,8 +160,6 @@ export function businessReconsent() {
 }
 
 // 약관 본문 조회 (permitAll)
-// 팝업 이벤트 로그 (7/29 연동) — 예약·웨이팅의 상태 변화가 자동 기록된다
-// (예: RESERVATION/ENTERED, WAITING/CALLED, 자동취소·자동퇴장 스케줄러 기록 포함)
 export type EventLogItem = {
   id: number;
   entityType: string; // "RESERVATION" | "WAITING"
@@ -311,11 +302,7 @@ export function rejectPopup(id: number | string, reason: string) {
   });
 }
 
-// 게시중지 · 게시재개 (7/31 연동).
-// 그전에는 전용 API가 없다고 보고 reject를 재사용하면서 사유 앞에 [게시중지] 마커를 붙였는데,
-// 그러면 DB에 status=REJECTED로 저장돼 **게시중지한 팝업이 「반려」 필터에 뜨고 「게시중지」 필터는 늘 비었다.**
-// 백엔드에는 7/27부터 전용 API가 있었다 — status를 SUSPENDED로 바로 바꾼다.
-// suspend는 BEFOR·OPEN에서만 허용되고, resume은 날짜를 보고 원래 있어야 할 상태로 되돌린다.
+// 게시중지 · 게시재개
 export function suspendPopup(id: number | string, reason: string) {
   return request<Popup>(`/api/admin/popups/${id}/suspend`, {
     method: "PUT",
@@ -444,12 +431,7 @@ export function getQueueBoard(popupId: number | string) {
 }
 
 // 통합 QR 체크인 — 예약 QR·웨이팅 QR 구분 없이 하나로 처리 (서버가 시각 기록)
-// 7/31 — popupId를 함께 보낸다.
-// 그전에는 qrToken만 보냈고, 서버는 「이 QR이 내 팝업 것인가」까지만 확인했다
-// (business email 비교). 그래서 **주최자가 같으면 지금 보고 있는 팝업이 아닌
-// 다른 내 팝업의 QR도 입장 처리가 됐다.** 현장에서 팝업을 여러 개 운영하면
-// 옆 매장 손님을 여기서 입장시켜 버리는 셈이라 명단이 어긋난다.
-// popupId를 함께 보내 서버가 「지금 이 팝업의 QR인가」까지 검증하게 한다.
+
 export function checkinUnifiedQr(qrToken: string, popupId: number | string) {
   return request<UnifiedEntry>("/api/queue/checkin/qr", {
     method: "POST",
@@ -457,9 +439,7 @@ export function checkinUnifiedQr(qrToken: string, popupId: number | string) {
   });
 }
 
-// 통합 QR 퇴장 처리 (7/23 신규) — 예약·웨이팅 구분 없이 qrToken으로 퇴장 시각(exitedAt) 기록.
-// 이 API로 관제의 체류 인원이 서버 기준으로 계산됨 (기존 localStorage 퇴장 기록 대체)
-// 퇴장도 같은 이유로 popupId를 함께 보낸다 (7/31)
+// 통합 QR 퇴장 처리 
 export function exitUnifiedQr(qrToken: string, popupId: number | string) {
   return request<UnifiedEntry>("/api/queue/exit/qr", {
     method: "POST",
@@ -469,7 +449,7 @@ export function exitUnifiedQr(qrToken: string, popupId: number | string) {
 
 // ── 계약 관리 (팝업 ↔ 파트너 공간 대관 계약) ──
 // 계약금 등록·단계 전환은 관리자 권한, 주최자는 본인 팝업 조회만
-
+// 제거된 기능
 export type ContractInfo = {
   popupId: number;
   popupTitle: string;
@@ -581,14 +561,10 @@ export function getMyInquiries() {
 }
 
 // ── 후기 신고 모더레이션 (popupbackend report 도메인) ──
-// 접수는 소비자 프론트에서 POST /api/reports?customerId= 로 이뤄짐 (pew 담당)
+// 접수는 소비자 프론트에서 POST /api/reports?customerId= 로 이뤄짐
 
 export type ReportReasonCode = "ABUSE" | "SPAM" | "FALSE_INFO" | "OTHER";
 
-// 7/30 jsw 신고 대개편 — 처리 방식이 「일괄 처리완료」에서 두 갈래로 나뉘었다.
-//   반려(reject): 신고가 부적절 — 후기는 그대로 둔다
-//   후기 가리기(hide-review): 신고 수용 — 후기 내용을 마스킹하고 작성자에게 알림 발송
-// 응답에는 신고 대상 후기의 맥락(본문·별점·작성자·가림 여부)이 함께 실려 목록에서 바로 판단할 수 있다.
 export type ReportStatusCode = "PENDING" | "REJECTED" | "HIDDEN";
 
 export type ReportItem = {
@@ -634,26 +610,13 @@ export function getKeywords() {
   return request<Region[]>("/api/keywords"); // 응답 형태 동일 {id, name}
 }
 
-// ── 마스터 관리 (관리자 전용) ──
-// 7/27 jmy가 AdminKeywordController·AdminRegionController를 만들어뒀는데 프론트 연결이 없어
-// 마스터 화면이 목업으로 남아 있었다. 7/29 연동.
-// ⚠ 수정(PUT)은 백엔드에 없다 — 이름을 바꾸려면 삭제 후 재등록해야 하고, 그러면 그 항목을
-//   고른 소비자의 관심 설정이 함께 지워진다. 화면에서 이 점을 안내한다.
-// iconUrl은 카테고리(keyword)에만 있다 — 지역은 아이콘을 쓰지 않는다 (8/4)
-// popupCount(8/5) — 이 항목을 선택한 팝업 수. 관심 소비자 수와 나란히 보여
-// 삭제·수정 전에 영향 범위를 표에서 바로 가늠할 수 있게 한다.
 export type MasterItem = { id: number; name: string; customerCount: number; popupCount?: number; iconUrl?: string | null };
 
 export function getAdminKeywords() {
   return request<MasterItem[]>("/api/admin/keywords");
 }
 
-// 카테고리 등록 (8/4 — 아이콘 첨부 지원).
-//
-// 아이콘은 **선택**이다. 안 올리면 소비자 앱이 기존 lucide 아이콘 규칙으로 폴백한다
-// (customerfrontend/lib/utils/popupCategoryIcon.ts) — 기존 8개 카테고리가 그 경로를 쓴다.
-// 파일이 붙으므로 JSON이 아니라 multipart로 보낸다. request()는 FormData면
-// Content-Type을 직접 지정하지 않는다(경계 문자열은 브라우저가 붙여야 한다).
+// 카테고리 등록
 export function createAdminKeyword(name: string, icon?: File | null) {
   const form = new FormData();
   form.append("name", name);
@@ -661,11 +624,7 @@ export function createAdminKeyword(name: string, icon?: File | null) {
   return request<MasterItem>("/api/admin/keywords", { method: "POST", body: form });
 }
 
-// 카테고리 수정 (jmy 8/4 PATCH 신설) — 이름·아이콘 중 **보낸 값만** 부분 수정한다.
-//
-// 이게 생기기 전에는 오타 하나 고치려 해도 삭제 후 재등록뿐이었고, 그러면 그 카테고리를
-// 관심으로 골라둔 소비자 설정(customer_keyword)과 팝업 매핑까지 함께 지워졌다.
-// 이제 매핑을 유지한 채 이름·아이콘만 갈아끼울 수 있다.
+// 카테고리 수정
 export function updateAdminKeyword(id: number, fields: { name?: string; icon?: File | null }) {
   const form = new FormData();
   if (fields.name) form.append("name", fields.name);
@@ -726,8 +685,7 @@ export function sendNoticeToBusiness(data: { businessId: number; popupId?: numbe
 }
 
 // ── 공간(venue) 마스터 ──
-// ※ 7/28 정리: 공간(대관처) 마스터 화면이 지역 마스터로 교체(7/24)되어 사용처 없음.
-//   백엔드 venue 도메인 정리(팀 합의) 시 이 블록도 함께 삭제할 것 — 그때까지 주석 보존.
+// 공간(대관처) 마스터 화면이 지역 마스터로 교체되어 사용처 없음.
 /*
 export type Venue = {
   id: number;
@@ -791,8 +749,6 @@ export function markNoShow(id: number) {
 }
 
 // QR 스캔 입장 — 사전예약자의 입장 QR(qrToken)을 스캔해 체크인 (서버가 입장 시각 기록)
-// popupId는 지금 화면에서 선택 중인 팝업 (7/31 추가). 없으면 서버가 「내 팝업인가」까지만 보므로
-// 팝업을 여러 개 운영하는 주최자가 다른 팝업 손님의 QR도 찍을 수 있다.
 export function checkinByQr(qrToken: string, popupId?: number | string) {
   return request<ReservationDetail>("/api/reservations/checkin/qr", {
     method: "POST",
@@ -800,7 +756,7 @@ export function checkinByQr(qrToken: string, popupId?: number | string) {
   });
 }
 
-// ── 배너 관리 (소비자 홈 상단 배너 — 7/28 실연동) ──
+// ── 배너 관리  ──
 
 export type Banner = {
   id: number; title: string; imageUrl: string; linkUrl: string | null;
@@ -811,7 +767,7 @@ export function getAdminBanners() {
   return request<Banner[]>("/api/admin/banners");
 }
 
-// ── 팝업 연동 배너 (jsw 8/4 신설) ──
+// ── 팝업 연동 배너 
 // 관리자가 승인된 팝업을 고르면 이미지·링크를 서버가 팝업에서 직접 가져와 배너를 만든다.
 // 이미지를 다시 업로드할 필요가 없고, 링크 형식(customer-base-url + /popup/{id})도 서버가 단일 관리한다.
 export type EligiblePopup = {
@@ -829,9 +785,7 @@ export function createBannerFromPopup(popupId: number, title: string, sortOrder?
     body: JSON.stringify({ popupId, title, sortOrder }),
   });
 }
-// 7/29 — 배너 등록·수정은 JSON이 아니라 multipart/form-data다.
-// 백엔드(BannerController)는 @RequestParam("file") MultipartFile을 받고 imageUrl은 서버가 만들어 돌려준다.
-// 이전에는 프론트가 {imageUrl:"..."} JSON을 보내고 있어서 아예 동작하지 않았다.
+
 // 서버가 1080×1440 JPEG으로 리사이즈하므로 프론트는 원본을 그대로 올린다.
 export type BannerFields = {
   title?: string; linkUrl?: string; sortOrder?: number;
