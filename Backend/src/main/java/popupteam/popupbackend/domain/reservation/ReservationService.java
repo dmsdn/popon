@@ -372,10 +372,18 @@ public class ReservationService {
         }
     }
 
+    // 회차 시작 몇 분 전부터 입장을 받아 줄 것인가.
+    // 0으로 두면 정각 전에는 아무도 못 들어와 문 앞에서 시계를 보고 있어야 하고,
+    // 회차 간격(30분)만큼 열어 두면 앞 회차와 정원이 통째로 겹친다. 그 사이를 잡았다.
+    private static final int CHECKIN_GRACE_MINUTES = 10;
+
     private ReservationDetailResponse doCheckin(Reservation reservation, String requesterEmail) {
         if (reservation.getEntryStatus() == EntryStatus.CHECKED_IN) {
             throw new IllegalArgumentException("이미 입장 처리된 예약입니다.");
         }
+        // [신규 8/6] 여기에 날짜·시각 검증이 하나도 없었다. 스캔만 되면 언제든 입장으로 찍혔다.
+        // 실제로 08:00 회차 예약이 07:33에 입장 처리된 건이 나왔다.
+        validateCheckinTiming(reservation);
 
         reservation.setEntryStatus(EntryStatus.CHECKED_IN);
         reservation.setCheckedInAt(LocalDateTime.now());
@@ -384,6 +392,48 @@ public class ReservationService {
                 "CHECKED_IN", requesterEmail, null);
 
         return ReservationDetailResponse.from(reservationRepository.save(reservation));
+    }
+
+    /**
+     * 입장 처리 가능한 시점인지 확인한다 (8/6 신설).
+     *
+     * <p>세 가지를 막는다.
+     * <ul>
+     *   <li><b>다른 날짜의 예약</b> — 내일 예약 QR을 오늘 들고 와 찍어도 통과했다. 통과하면
+     *       방문자 통계에 잡히고 후기에 「방문자」 배지까지 붙는다.</li>
+     *   <li><b>이미 미입장으로 닫힌 예약</b> — 자정 리셋이 NO_SHOW로 확정한 어제 건이 오늘
+     *       스캔 한 번에 입장으로 되살아났다. 확정된 어제 장부를 소급해 고치는 셈이다.
+     *       현장 웨이팅 쪽(enterByQr)은 이미 NO_SHOW를 거부하고 있어 예약만 비대칭으로 뚫려 있었다.</li>
+     *   <li><b>회차 시작 한참 전</b> — 회차 예약의 목적은 동시 수용 정원을 나누는 것인데,
+     *       앞당겨 들어오면 앞 회차와 겹쳐 그 목적이 무너진다.</li>
+     * </ul>
+     */
+    private void validateCheckinTiming(Reservation reservation) {
+        if (reservation.getEntryStatus() == EntryStatus.NO_SHOW) {
+            throw new IllegalArgumentException("미입장으로 확정된 예약입니다. 현장에서 새로 웨이팅을 등록해 주세요.");
+        }
+
+        LocalDate date = reservation.getSlot() != null
+                ? reservation.getSlot().getSlotDate()
+                : reservation.getReservationDate();
+        if (date == null) return;   // 날짜 없는 예약은 옛 데이터뿐이라 막지 않는다
+
+        LocalDate today = LocalDate.now();
+        if (!date.isEqual(today)) {
+            throw new IllegalArgumentException("오늘 예약이 아닙니다. (예약일 " + date + ")");
+        }
+
+        java.time.LocalTime start = reservation.getSlot() != null
+                ? reservation.getSlot().getStartTime()
+                : reservation.getReservationTime();
+        if (start == null) return;  // 시간을 안 고르는 팝업은 당일이기만 하면 통과
+
+        LocalDateTime openAt = LocalDateTime.of(date, start).minusMinutes(CHECKIN_GRACE_MINUTES);
+        if (LocalDateTime.now().isBefore(openAt)) {
+            throw new IllegalArgumentException(
+                    "아직 입장 시간이 아닙니다. " + start + " 회차는 "
+                            + CHECKIN_GRACE_MINUTES + "분 전부터 입장할 수 있습니다.");
+        }
     }
 
     // 소비자 본인이 예약 취소
