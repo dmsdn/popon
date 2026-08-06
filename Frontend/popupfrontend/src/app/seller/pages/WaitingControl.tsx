@@ -16,13 +16,12 @@ import { isSuspended } from "../../lib/adminPopupMeta";
 import { CONSUMER_SIGNUP_URL } from "../../lib/siteUrls";
 import { restoreSelectedPopup, saveSelectedPopup } from "../../lib/popupSelection";
 
-// 대기열·인원 관제 — 예약·웨이팅 통합관리 (jsw waiting·unified queue 백엔드 실연동)
-// 실연동: 통합 대기열 보드(서버가 사전예약 자동 편입·정렬), 웨이팅 등록/입장/취소, 예약 체크인/노쇼
-// 로컬로 남은 것: 운영 모드 저장 폴백(구 팝업 한정 — 신규는 서버 queueMode 사용)
-// ※ 퇴장 처리는 POST /api/queue/exit/qr로 실연동돼 있다 (7/29 주석 정정 — 예전 문구가 낡아 있었음)
+// 대기열·인원 관제 — 예약·웨이팅 통합관리, 백엔드 실연동(보드 자동편입, 등록/입장/취소/체크인/노쇼/퇴장)
+// 로컬 폴백은 운영모드 저장뿐(구 팝업 한정, 신규는 서버 queueMode)
 
 // 8/3 — QR 관련 UI(입장 스캔·비치용 QR 2종)는 현장 접수 웹(checkin 앱)으로 이관하기로 해
 // 화면에서 내렸다. 코드는 지우지 않고 이 플래그로 꺼 둔다 — 복구는 true 한 줄.
+// [WBS 101 - 진행률 50%] "QR 스캔(체크인) 화면" 항목이 이 플래그로 인해 50% 처리됨
 const SHOW_QR_TOOLS = false;
 
 const fmtTime = (t: string | null) => (t ? t.slice(0, 5) : "");
@@ -205,15 +204,10 @@ export default function WaitingControl() {
   // 예약 상세(슬롯·입장 시각)를 보드 행에 붙이기 위한 맵 — 보드 응답에는 refId(예약 id)만 있다
   const rosterById = useMemo(() => Object.fromEntries(roster.map((r) => [r.id, r])), [roster]);
 
-  // ── 8/3 전면 개편: 슬롯별 보기 폐지 ──
-  //
-  // 회차를 골라 보는 방식은 「웨이팅을 어느 회차에 매길 것인가」라는 답 없는 문제를
-  // 계속 만들었다 (7/31 joinedAt 오매칭 → 8/3 「이전 대기」 응급 구역까지).
-  // 현장 운영의 실제 단위는 회차가 아니라 **지금 줄** 하나다. 그래서
-  //   - 현장 대기열은 전체 대기 하나. 사전예약/현장 웨이팅 표 둘로만 나눈다
-  //   - 사전예약은 슬롯 시작 시각이 되면 서버 보드가 자동 편입한다 (기존 동작 그대로 —
-  //     아직 시작 전인 회차는 우측 「대기 현황」의 자동 편입 예고로 보인다)
-  //   - 입장·노쇼를 처리해도 행을 숨기지 않고 상태 배지로 남긴다 — 명단이 곧 당일 기록지다
+  // [8/3 전면개편] 슬롯별 보기 폐지 — "웨이팅을 어느 회차에?" 답없는 문제 반복(7/31 오매칭→8/3 응급구역까지) →
+  // 현장운영 단위는 회차가 아니라 "지금 줄" 하나로 재정의:
+  //   - 대기열은 전체 하나(사전예약/현장웨이팅 표 2개로만 분리), 사전예약은 슬롯시작시 서버가 자동편입
+  //   - 입장·노쇼 처리해도 행 안 지우고 상태배지로 남김(명단=당일 기록지)
   type QueueRow = {
     key: string;
     source: "RESERVATION" | "ONSITE_WAITING";
@@ -224,8 +218,7 @@ export default function WaitingControl() {
     joinedAt: string | null; // 웨이팅 = 등록 시각 (예약은 서버가 다른 의미로 채워 표기에 안 씀)
     slotLabel: string;       // 사전예약의 예약 회차 "MM-DD HH:MM" (웨이팅은 "-")
     enteredAt: string | null;
-    // 8/4 — 미입장(노쇼 버튼·자정 리셋)은 취소와 별도 상태다.
-    // 웨이팅에도 NO_SHOW가 생겨 예약과 같은 문자열로 판별한다.
+    // [8/4] 미입장(노쇼버튼·자정리셋)은 취소와 별도 상태 — 웨이팅에도 NO_SHOW 생겨 예약과 동일 문자열로 판별
     status: "WAITING" | "ENTERED" | "NO_SHOW" | "CANCELLED";
   };
 
@@ -276,10 +269,8 @@ export default function WaitingControl() {
     [reservationRows, walkinRows],
   );
 
-  // ── 운영 날짜 목록 (8/4) ──
-  // 팝업 등록 때 정한 운영기간을 하루 단위로 펼친다. 지난 날짜를 고르면 그날 명단을
-  // 기록 그대로 볼 수 있다(자정 리셋으로 미처리분이 「미입장」으로 확정돼 있다).
-  // 오늘이 운영기간 밖이면(운영 전·종료 후) 오늘도 목록에 넣어 화면이 비지 않게 한다.
+  // [8/4] 운영기간을 하루단위로 펼침 — 지난날짜 선택시 자정리셋으로 확정된 기록 그대로 조회
+  // 오늘이 운영기간 밖이어도(전/후) 오늘은 항상 목록에 포함(화면 안 비게)
   const todayStr = localDateStr(new Date(nowMs));
   const operatingDays = useMemo(() => {
     const days: string[] = [];
@@ -417,15 +408,9 @@ export default function WaitingControl() {
     }
   };
 
-  // 스캔·입력값에서 토큰만 뽑는다 (7/31).
-  //
-  // 손님이 보여 주는 QR에는 **토큰이 아니라 주소**가 들어 있다 —
-  // 소비자 앱의 QRCodeDisplay가 `{origin}/qr/{token}` 으로 만들고,
-  // 백엔드가 문자·메일로 보내는 안내도 같은 형식이다.
-  // 그런데 서버는 `findByQrToken(값)`으로 **토큰을 그대로** 찾는다.
-  // 스캔한 문자열을 그대로 보내면 URL 전체가 토큰으로 조회돼 항상 실패했다.
-  //
-  // 직원이 토큰만 손으로 입력하는 경우도 있으므로 **양쪽 다 받아** 준다.
+  // [7/31] 스캔값에서 토큰만 추출 — QR엔 토큰이 아니라 주소({origin}/qr/{token})가 들어있는데
+  // 서버는 findByQrToken()으로 토큰 그대로 조회해서, URL 그대로 보내면 항상 실패했음
+  // 직원이 토큰만 수동입력하는 경우도 있어 양쪽 다 받아 파싱
   const extractQrToken = (raw: string) => {
     const v = raw.trim();
     const m = v.match(/\/qr\/([^/?#\s]+)/); // ".../qr/{token}" 형태면 뒤쪽만
@@ -436,9 +421,7 @@ export default function WaitingControl() {
     const v = extractQrToken(raw);
     if (!v || !popupId) return;
     try {
-      // 통합 QR 체크인 — 예약·웨이팅 QR 모두 서버가 판별해 입장 처리·시각 기록
-      // popupId를 함께 보낸다 (7/31): 그러지 않으면 서버가 「내 팝업인가」까지만 보기 때문에
-      // 팝업을 여러 개 운영하는 주최자는 여기서 **다른 팝업 손님의 QR도 입장 처리**해 버린다.
+      // 통합 QR체크인(예약·웨이팅 서버가 판별) — [7/31] popupId 필수(안 그러면 다른 내 팝업 QR도 입장처리됨, lib/api.ts 참고)
       const entry = await checkinUnifiedQr(v, popupId);
       setQrMsg({ ok: true, text: `${entry.displayName}님(${entry.source === "RESERVATION" ? "사전예약" : "현장 웨이팅"}) 입장 처리 완료` });
       refreshBoard(popupId);

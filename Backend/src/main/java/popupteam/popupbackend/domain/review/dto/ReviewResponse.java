@@ -23,8 +23,6 @@ public class ReviewResponse {
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
-    // 7/30 머지 — jsw의 신고 숨김(maskIfHidden)과 jmy의 작성자 닉네임이 같은 생성자에서 만났다.
-    // 둘을 다 살리되, 기존 호출부가 깨지지 않게 오버로드 3개로 계단을 만들어 둔다.
 
     // 작성자 본인이 보는 경우(내가 쓴 리뷰 목록, 작성/수정 직후 응답)는 실제 내용 그대로 보여줌
     public ReviewResponse(Review review, List<String> imageUrls, long likeCount, boolean likedByMe) {

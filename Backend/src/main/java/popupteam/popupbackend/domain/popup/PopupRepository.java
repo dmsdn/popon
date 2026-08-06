@@ -9,6 +9,8 @@ import java.util.List;
 
 public interface PopupRepository extends JpaRepository<Popup, Long> {
 
+    // [미사용] 이 쿼리를 실제로 호출하는 컨트롤러가 없음. "브랜드별 팝업 기록" 전용 공개 API를 만들려고
+    // 준비했으나 지금은 프론트가 전체 팝업 목록에서 클라이언트단으로 필터링 중.
     List<Popup> findByBusinessIdOrderByCreatedAtDesc(Long businessId);
 
     @Query("SELECT p FROM Popup p JOIN FETCH p.business LEFT JOIN FETCH p.addressKeyword WHERE " +
