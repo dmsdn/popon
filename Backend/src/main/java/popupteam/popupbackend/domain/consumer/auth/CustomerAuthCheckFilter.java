@@ -40,15 +40,10 @@ public class CustomerAuthCheckFilter extends OncePerRequestFilter {
             try {
                 // 가입대기 토큰(소셜 가입 중, 아직 Customer row가 없는 상태)은 대상 밖 — 그대로 통과
                 if (!jwtUtil.isPendingSignupToken(token)) {
-                    // 8/3 — 소비자 토큰이 아니면(주최자·관리자) 여기서 손 뗀다.
-                    //
-                    // 이 필터는 소비자 체인 전용으로 만들어졌지만, @Component 라서 스프링 부트가
-                    // 서블릿 필터 체인에도 자동 등록한다 — 결국 **모든 요청**을 탄다.
-                    // 주최자·관리자 토큰에는 id 클레임이 없어서 이 자리에서 NPE가 났고,
-                    // 아래 catch는 JwtException 계열만 잡아서 그대로 500으로 나갔다.
-                    // 지금은 두 갈래로 막혀 있다 — 서명키가 분리돼 남의 토큰은 파싱에서
-                    // SignatureException으로 튕기고, 그래도 새면 getCustomerIdFromToken이
-                    // IllegalArgumentException을 던진다. 둘 다 아래 catch가 받아 통과시킨다.
+                    // 이 필터는 소비자 토큰 전용이다. 주최자·관리자 토큰에는 id 클레임이 없으므로,
+                    // 서명키가 분리되어 있어 우선 SignatureException으로 걸러지고, 혹시 새더라도
+                    // getCustomerIdFromToken에서 IllegalArgumentException으로 걸러진다 — 두 경우 모두
+                    // 아래 catch에서 잡아 그대로 통과시킨다.
                     Long customerId = jwtUtil.getCustomerIdFromToken(token);
                     Customer customer = customerRepository.findById(customerId).orElse(null);
 

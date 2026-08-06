@@ -1,9 +1,3 @@
-// [역할] 계약 진행 4단계의 화면 표현 매핑: 계약체결 → 제작/시공 → 운영 중 → 철거/정산.
-// 전제(백엔드): 견적·디자인 확정 후 파트너 공간과 주최자의 대관 계약이 체결된 시점부터 시작.
-// 단계 확인·전환은 플랫폼 관리자의 권한/의무 — 주최자 화면(Quotes)은 조회 전용.
-//
-// 7/23 백엔드 ContractStage에 OPERATING이 추가되어 4단계가 전부 서버 값이 됨.
-// (기존의 localStorage 「운영 중」 플래그(contractOperating)는 제거 — 서버 단일 소스)
 
 export type ContractStage = "CONTRACTED" | "IN_CONSTRUCTION" | "OPERATING" | "SETTLED";
 

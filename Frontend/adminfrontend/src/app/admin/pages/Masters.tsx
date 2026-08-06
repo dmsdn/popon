@@ -6,9 +6,7 @@ import {
   MasterItem,
 } from "../../lib/api";
 
-// 카테고리·지역 마스터 관리 — 7/29 실연동
-// (그 전까지 지역은 조회 전용, 카테고리는 하드코딩 목업이었다.
-//  7/27 jmy가 AdminKeywordController·AdminRegionController를 만들어뒀는데 프론트 연결이 없었다.)
+// 카테고리·지역 마스터 관리
 //
 // 여기서 관리하는 두 테이블이 서비스 전반에 쓰인다.
 //   keyword : 주최자 팝업등록의 카테고리 선택 + 소비자 관심 카테고리 + 목록 카테고리 필터
@@ -16,11 +14,8 @@ import {
 // 그래서 삭제는 조용히 넘어가면 안 되는 동작이다. 몇 명이 그 항목을 관심으로 골랐는지(customerCount)를
 // 같이 보여주고, 삭제 확인창에 그 숫자를 넣는다.
 //
-// 8/4 — 카테고리에 아이콘(icon_url)과 수정 API(PATCH)가 생겼다(jmy).
-//   그전에는 수정이 없어서 오타 하나 고치려 해도 삭제 후 재등록뿐이었고, 그러면 그 카테고리를
-//   관심으로 골라둔 소비자 설정과 팝업 매핑까지 함께 날아갔다. 이제 매핑을 유지한 채
-//   이름·아이콘만 갈아끼울 수 있다.
-// ⚠ 지역(region)은 아직 수정 API가 없다 — 삭제 후 재등록뿐이라 경고를 유지한다.
+// 카테고리는 아이콘(icon_url)과 수정 API(PATCH)를 지원한다. 이름·아이콘만 갈아끼울 수 있어,
+// 오타 하나를 고치더라도 그 카테고리를 관심으로 골라둔 소비자 설정과 팝업 매핑이 그대로 유지된다.
 
 type Tab = "regions" | "categories";
 
@@ -39,15 +34,14 @@ export default function Masters() {
   const [busy, setBusy] = useState<string | null>(null); // "add" | "del:3"
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // 카테고리 아이콘 (8/4) — 지금은 선택이다.
+  // 카테고리 아이콘 — 지금은 선택이다.
   // 안 올리면 소비자 앱이 이름 규칙으로 lucide 아이콘을 고른다(popupCategoryIcon.ts).
   // 기존 10개에 아이콘이 없어 그 폴백을 쓰는 중이라, 지금 필수로 만들면 그것들만 빈칸이 된다.
   // 10개를 다 채운 뒤 필수로 바꾸고 폴백 파일을 지우는 순서로 간다.
   //
-  // PNG·SVG만 받는다 (8/4 백엔드 함께 개정). 아이콘은 배경이 비어 있어야 하는 이미지인데,
-  // 그전 경로는 배너와 같은 JPEG 변환이라 투명 배경이 흰색으로 채워졌다 — 다크모드 기본인
-  // 소비자 홈에서 카테고리마다 흰 네모가 생긴다. 이제 PNG는 알파를 살려 128px로 줄이고,
-  // SVG는 벡터라 원본 그대로 저장한다.
+  // PNG·SVG만 받는다. 아이콘은 배경이 비어 있어야 하는 이미지인데, 배너와 같은 JPEG 변환을 쓰면
+  // 투명 배경이 흰색으로 채워져 다크모드 기본인 소비자 홈에서 카테고리마다 흰 네모가 생긴다.
+  // PNG는 알파를 살려 128px로 줄이고, SVG는 벡터라 원본 그대로 저장한다.
   const [iconFile, setIconFile] = useState<File | null>(null);
   const [iconPreview, setIconPreview] = useState<string | null>(null);
   const iconRef = useRef<HTMLInputElement>(null);
@@ -106,7 +100,7 @@ export default function Masters() {
     }
   };
 
-  // ── 인라인 수정 (8/4, 카테고리 전용) ──
+  // ── 인라인 수정 (카테고리 전용) ──
   // 삭제 후 재등록을 대체한다. 이름만 바꾸든 아이콘만 바꾸든, 보낸 값만 서버가 갈아끼우고
   // 팝업·관심 매핑은 그대로 유지된다.
   const [editId, setEditId] = useState<number | null>(null);
@@ -114,9 +108,9 @@ export default function Masters() {
   const [editIcon, setEditIcon] = useState<File | null>(null);
   const editIconRef = useRef<HTMLInputElement>(null);
 
-  // 8/5 — 고른 파일을 저장(체크) 전에 표에서 바로 보여 준다.
-  // 그전에는 행 아이콘이 서버의 iconUrl만 봐서, 파일을 바꿔도 체크를 누르기 전까지
-  // 옛 아이콘이 그대로 보였다. 「바꿨는데 안 바뀐다」로 읽히는 자리라 미리보기를 붙였다.
+  // 고른 파일을 저장(체크) 전에 표에서 바로 보여 준다.
+  // 행 아이콘이 서버의 iconUrl만 보면, 파일을 바꿔도 체크를 누르기 전까지 옛 아이콘이 그대로
+  // 보여 「바꿨는데 안 바뀐다」로 읽힐 수 있어 미리보기를 붙였다.
   // createObjectURL은 브라우저 메모리를 잡으므로 파일이 바뀌거나 편집을 끝낼 때 반드시 해제한다.
   const [editIconPreview, setEditIconPreview] = useState<string | null>(null);
   useEffect(() => {
@@ -229,7 +223,7 @@ export default function Masters() {
             placeholder={isRegion ? "추가할 지역 이름 (예: 성수)" : "추가할 카테고리 이름 (예: 라이프스타일)"}
             className="flex-1 min-w-0 px-3 py-1.5 text-xs border border-border rounded-sm bg-card focus:outline-none focus:border-accent"
           />
-          {/* 아이콘은 카테고리에만 붙는다 — 지역은 소비자 화면에서 아이콘을 쓰지 않는다 (8/4) */}
+          {/* 아이콘은 카테고리에만 붙는다 — 지역은 소비자 화면에서 아이콘을 쓰지 않는다 */}
           {!isRegion && (
             <>
               <input
@@ -289,8 +283,8 @@ export default function Masters() {
                 <span className="w-8 text-xs text-muted-foreground shrink-0" style={{ fontFamily: "'DM Mono', monospace" }}>
                   {item.id}
                 </span>
-                {/* 카테고리는 등록된 아이콘을 보여 준다 — 없으면 소비자 화면이 이름 규칙으로 폴백한다 (8/4)
-                    8/5 — 수정 중에 파일을 고르면 저장 전에도 그 이미지를 먼저 보여 준다. */}
+                {/* 카테고리는 등록된 아이콘을 보여 준다 — 없으면 소비자 화면이 이름 규칙으로 폴백한다.
+                    수정 중에 파일을 고르면 저장 전에도 그 이미지를 먼저 보여 준다. */}
                 {!isRegion && (() => {
                   const editing = editId === item.id;
                   const src = (editing && editIconPreview) || item.iconUrl;
@@ -309,7 +303,7 @@ export default function Masters() {
                     </span>
                   );
                 })()}
-                {/* 수정 중인 행은 이름 입력으로 바뀐다 (8/4 PATCH 연동) */}
+                {/* 수정 중인 행은 이름 입력으로 바뀐다 */}
                 {editId === item.id ? (
                   <input
                     autoFocus
@@ -330,7 +324,7 @@ export default function Masters() {
                 >
                   <Users size={11} /> {item.customerCount}
                 </span>
-                {/* 8/5 — 이 항목을 선택한 팝업 수. 관심 소비자 수만으로는 삭제·수정의
+                {/* 이 항목을 선택한 팝업 수. 관심 소비자 수만으로는 삭제·수정의
                     영향 범위가 안 보여서(팝업 매핑이 몇 개 걸려 있는지) 나란히 보여 준다 */}
                 <span
                   className="flex items-center gap-1 text-[11px] text-muted-foreground shrink-0"
@@ -338,7 +332,7 @@ export default function Masters() {
                 >
                   <Store size={11} /> {item.popupCount ?? 0}
                 </span>
-                {/* 카테고리만 수정 가능 — 지역은 아직 백엔드 PATCH가 없다 (8/4) */}
+                {/* 카테고리만 수정 가능 — 지역은 아직 백엔드 PATCH가 없다 */}
                 {!isRegion && (editId === item.id ? (
                   <>
                     <input
@@ -393,14 +387,7 @@ export default function Masters() {
         )}
       </div>
 
-      {/*<div className="flex items-start gap-1.5 px-4 py-3 bg-secondary/40 border border-border rounded-sm text-[11px] text-muted-foreground leading-relaxed">*/}
-      {/*  <Info size={12} className="mt-0.5 shrink-0" />*/}
-      {/*  <span>*/}
-      {/*    <strong className="text-foreground">이름 수정 기능은 없습니다.</strong> 오타를 고치려고 삭제하면 그 {unit}을(를)*/}
-      {/*    관심으로 고른 소비자의 설정까지 함께 지워집니다. 새로 추가하고 기존 것은 두는 편이 안전합니다.*/}
-      {/*    {isRegion && " 또한 팝업이 사용 중인 지역은 삭제되지 않습니다."}*/}
-      {/*  </span>*/}
-      {/*</div>*/}
+
     </div>
   );
 }

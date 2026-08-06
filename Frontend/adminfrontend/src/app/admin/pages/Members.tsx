@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Search, Loader2, Ban, RotateCcw, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { getCustomerAccounts, suspendCustomer, resumeCustomer, CustomerAccount } from "../../lib/api";
 
-// 소비자 회원 관리 — 7/29 실연동 (GET /api/admin/customers + 정지/해제 PATCH)
+// 소비자 회원 관리 — 실연동 (GET /api/admin/customers + 정지/해제 PATCH)
 // 검색(이메일·닉네임) + 헤더 정렬(가나다·최신순)
 
 const fmtDate = (iso: string | null) => (iso ? iso.slice(0, 10) : "-");

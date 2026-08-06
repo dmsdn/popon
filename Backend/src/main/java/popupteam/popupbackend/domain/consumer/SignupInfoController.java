@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
  * 카카오/구글은 전화번호를 안 줘서, 첫 로그인 직후 프론트가 "회원정보 입력" 화면으로
  * 보낸 뒤 이 API로 닉네임/전화번호/이메일/생년월일/성별/약관동의를 받아 저장한다.
  *
- * [정책 변경] 이제 소셜 로그인 시점엔 DB에 Customer row가 안 생긴다.
+ * 소셜 로그인 시점엔 DB에 Customer row가 아직 생기지 않는다.
  * - 신규 가입자: Authorization에 "가입대기 토큰"(pending)이 들어옴 -> 이 시점에 처음으로 Customer row 생성
  * - 이미 가입된 사람이 나중에 정보 수정: 평소처럼 진짜 토큰(customerId 있는) 들어옴 -> 기존 row 업데이트
  */
@@ -22,7 +22,7 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class SignupInfoController {
 
-    // 이메일 형식 검증 — CustomerController와 같은 규칙을 쓴다. (7/30 머지: jsw 버전 채택)
+    // 이메일 형식 검증 — CustomerController와 같은 규칙을 쓴다.
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
     private final CustomerAccountRepository customerRepository;

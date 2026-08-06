@@ -11,11 +11,8 @@ public class UnifiedQueueEntryResponse {
     private String phoneNumber;
     private Integer partySize;
     private String qrToken;
-    private String entryStatus;  // 공통 상태값으로 통일: WAITING/CALLED/CHECKED_IN/NO_SHOW/CANCELLED 등
-                                 // 웨이팅도 NO_SHOW가 생겨(8/4) 예약·웨이팅이 같은 문자열로 수렴한다. cancelReason 필드는 폐기.
-    // 퇴장 시각 (8/4). null이면 아직 체류 중.
-    // 보드가 하루치 명단을 전부 돌려주게 되면서 이 값이 필요해졌다 — entryStatus는 퇴장 후에도
-    // CHECKED_IN/ENTERED 그대로라, 이 필드 없이는 화면이 「입장했음」과 「지금 안에 있음」을 구분하지 못한다.
+    private String entryStatus;  
+  
     private LocalDateTime exitedAt;
     private LocalDateTime joinedAt; // 예약자는 슬롯 시작시각(입장 후에는 입장시각), 웨이팅자는 등록시각(입장 후에는 입장시각)
-}
+} 
