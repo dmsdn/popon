@@ -1,11 +1,7 @@
-// 외부 지도·주소 스크립트 로더 (팝업 등록의 위치·공간 섹션에서 사용)
-//
-// 두 가지를 쓴다 — 역할이 다르다.
-//  1) 다음(카카오) 우편번호 서비스 : 사용자가 "주소를 고르는" 검색 팝업. API 키 불필요.
-//  2) 네이버 클라우드 Maps        : 고른 주소를 지도에 핀으로 표시. Client ID 필요(공개 키).
-//     - geocoder 서브모듈을 같이 불러 주소 → 좌표 변환도 브라우저에서 처리한다.
-//
-// 스크립트는 앱 생애에 한 번만 붙이고, 같은 로더를 여러 번 불러도 같은 Promise를 돌려준다.
+// 외부 지도·주소 스크립트 로더 (팝업등록 위치섹션용)
+// 1) 다음 우편번호: 주소 검색팝업(키불필요) 
+// 2) 네이버맵: 지도핀 표시+geocoder로 좌표변환(Client ID필요)
+// 스크립트는 앱 생애 1회만 로드, 여러번 호출해도 같은 Promise 반환
 
 const DAUM_POSTCODE_SRC = "https://t1.daum.net/postcode/api/mapjsapi/postcode.v2.js";
 const NAVER_MAPS_BASE = "https://oapi.map.naver.com/openapi/v3/maps.js";
@@ -99,10 +95,8 @@ export function loadNaverMaps(): Promise<void> {
   return naverMapsPromise;
 }
 
-// 주소 → 좌표. 서버(GET /api/geocode)를 먼저 쓰고, 실패하면 브라우저 geocoder로 넘어간다.
-//  - 서버 경로(7/28 jsw): secret key가 서버 안에만 있고, 등록 시 서버가 좌표를 채우는 것과 같은 경로라
-//    미리보기 좌표와 저장 좌표가 어긋나지 않는다.
-//  - 브라우저 경로: 백엔드가 안 떠 있거나 구버전일 때의 안전망.
+// 주소→좌표: 서버(GET /api/geocode) 우선, 실패시 브라우저 geocoder로 폴백
+// [7/28] 서버경로는 secret key 보호+등록시 서버계산과 동일경로라 미리보기/저장 좌표 어긋남 없음, 브라우저경로는 백엔드 다운시 안전망
 export async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
   const fromServer = await geocodeViaServer(address);
   if (fromServer) return fromServer;

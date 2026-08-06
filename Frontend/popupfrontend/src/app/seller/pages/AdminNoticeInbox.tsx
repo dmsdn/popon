@@ -1,4 +1,4 @@
-// 관리자 공지 (7/30 신설) — 관리자가 주최자에게 보낸 공지를 확인하는 화면.
+// [7/30 신설] 관리자→주최자 공지 확인 화면.
 // 백엔드: NoticeBusinessController
 //   GET   /api/business/notices/my[?category=]   내가 받은 공지 목록
 //   GET   /api/business/notices/my/unread-count  안 읽은 개수

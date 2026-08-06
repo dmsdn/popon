@@ -46,9 +46,6 @@ public class ReservationService {
                 });
     }
 
-    // 버그 수정: FREE(당일 방문) 모드는 슬롯이 없어서, 팝업 등록 시 요일별로 설정한 운영시간
-    // (open_time~close_time)을 전혀 검증하지 않고 있었음 - 오후 5시까지로 등록해도 19:30 같은
-    // 시간이 그대로 예약되던 원인. 시간이 함께 들어온 경우에만 그 요일의 운영시간 범위를 확인한다.
     private void validateWithinOperatingHours(Long popupId, LocalDate date, LocalTime time) {
         if (time == null) {
             return;
@@ -176,7 +173,6 @@ public class ReservationService {
         Reservation saved = reservationRepository.save(reservation);
 
         // 알림 #1: 예약 완료 시 알림이 아예 없었던 부분 - 인앱 알림함 + QR 이메일/SMS 발송.
-        // 웨이팅은 이미 QR을 이메일/SMS로 보내고 있었는데 예약은 그조차 없었음.
         noticeService.notifyReservationCreated(saved);
         if (Boolean.TRUE.equals(customer.getReservationWaitingAgreed())) {
             String qrMessage = "팝업스토어 입장 QR: " + qrBaseUrl + "/qr/" + saved.getQrToken();

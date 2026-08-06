@@ -1,13 +1,9 @@
-// [역할] 대기열 운영 보조 저장 모듈 — 남은 것은 「운영 방식」 로컬 저장뿐.
+// [역할] 대기열 운영보조 로컬저장 — 남은건 "운영방식"뿐 (나머진 [7/23]부터 서버 이관됨)
+//  - 퇴장처리→POST /api/queue/exit/qr, 입장목록→통합보드 GET .../queue/board
+//    (구 localStorage키 reservationExits:*·enteredWaitings:* 는 미사용)
 //
-// 7/23 백엔드 추가로 대부분 서버로 이관됨:
-//  - 퇴장 처리      → POST /api/queue/exit/qr (lib/api.ts의 exitUnifiedQr)
-//  - 입장 완료 목록 → 통합 보드(GET /api/popups/{id}/queue/board)가 체류중(CHECKED_IN/ENTERED)도 반환
-//  (기존 localStorage 키 reservationExits:*, enteredWaitings:* 는 더 이상 사용하지 않음)
-//
-// ⚠ 운영 모드만 로컬 유지: 백엔드 Popup.queueMode·응답 노출은 생겼지만
-//    등록/수정 요청 DTO(PopupCreateRequest·PopupUpdateRequest)가 아직 값을 받지 않아
-//    저장 경로가 없음 → DTO에 queueMode 수신이 추가되면 이 모듈은 삭제 가능. (팀 전달 사항)
+// ⚠ 운영모드만 로컬유지 이유: 백엔드 Popup.queueMode는 응답엔 있지만 등록/수정 DTO가 아직 안 받음
+//    → DTO에 queueMode 수신 추가되면 이 모듈 삭제 가능 [팀 전달사항]
 
 export type OpsMode = "RESERVATION" | "WALKIN" | "BOTH";
 
