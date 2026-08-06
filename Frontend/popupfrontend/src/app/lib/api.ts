@@ -11,15 +11,9 @@ export class ApiError extends Error {
 
 const TOKEN_KEY = "accessToken";
 
-// 비로그인 방문자를 구분하는 임의 id (7/31).
-//
-// 원래 crypto.randomUUID()를 그냥 불렀는데, 이 함수는 **보안 컨텍스트(HTTPS 또는 localhost)에서만
-// 존재한다.** 평문 HTTP로 배포하는 순간 undefined가 되어 TypeError가 나고, logVisit()이 앱 최초
-// 마운트에서 호출되기 때문에 렌더가 통째로 죽어 화면이 새까맣게 나왔다.
-// 개발 중에는 localhost가 예외적으로 보안 컨텍스트라 아무도 눈치채지 못했다.
-//
-// 이 값은 방문자 추이 집계용 구분자일 뿐 보안에 쓰이지 않으므로, 없으면 난수로 대체한다.
-// (HTTPS를 붙이면 위쪽 분기로 돌아간다 — 그때도 이 폴백은 그대로 두는 게 맞다)
+// 비로그인 방문자 구분 id. crypto.randomUUID()는 보안 컨텍스트(HTTPS/localhost)에서만 존재 —
+// 평문 HTTP 배포시 undefined→TypeError로 앱 최초마운트에서 렌더가 죽는 사고 있었음(로컬은 예외라 못 알아챔)
+// 보안용 아닌 집계 구분자일 뿐이라 없으면 난수 폴백 (HTTPS 붙여도 폴백은 유지)
 function randomId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
@@ -107,11 +101,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       if (data?.message) message = data.message;
     } catch {
       if (res.status === 401 || res.status === 403) {
-        // 주의: 403+빈 본문은 두 경우가 있다.
-        //  a) Security 필터가 토큰을 거부(만료·무효) — 진짜 세션 문제
-        //  b) 백엔드 미처리 예외(FK 제약 위반 등)가 /error로 재디스패치됐는데 /error도 인증 필수라 403이 되는 스프링 함정
-        //     (예: 예약 슬롯이 연결된 팝업 DELETE — 자식 데이터 미정리로 DataIntegrityViolation)
-        // 로컬 토큰의 exp가 아직 유효하면 (b)로 판단해 로그아웃하지 않는다.
+        // 403+빈본문 두 케이스: a)토큰 만료/무효(진짜 세션문제) b)백엔드 미처리예외(FK위반 등)가 /error 재디스패치인데
+        // /error도 인증필수라 403되는 스프링 함정(예: 자식데이터 안지운 팝업 DELETE) → 로컬토큰 exp 유효하면 b)로 판단해 로그아웃 안 함
         if (isTokenLocallyValid()) {
           message = `요청을 처리하지 못했습니다. (${res.status}) 연결된 데이터(예약 슬롯·예약 등)가 있는 항목이거나 서버 오류일 수 있습니다.`;
         } else {
@@ -184,9 +175,7 @@ export function checkBusinessNumber(businessNumber: string) {
     `/api/business/auth/check-business-number?businessNumber=${encodeURIComponent(businessNumber)}`,
   );
 }
-
-// 대표 브랜드 사진 등록·교체 (7/29 연동 — API는 jsw가 만들어뒀는데 프론트 래퍼가 없었다)
-// 서버가 500×500 JPEG으로 리사이즈하므로 원본을 그대로 올린다. 응답은 갱신된 내 정보.
+//브랜드 사진 등록/교체 — 서버가 500×500 JPEG 리사이즈하니 원본 그대로 전송
 export function uploadBusinessProfileImage(file: File) {
   const form = new FormData();
   form.append("file", file);
@@ -257,8 +246,7 @@ export type Popup = {
 
 // ── SNS 링크 (7/28 jmy — 팝업과 함께 등록, 응답 snsLinks로 반환) ──
 
-// 7/30 백엔드 SnsPlatform enum 개편 — FACEBOOK·TIKTOK 삭제, NAVERMAP 추가.
-// 옛 코드를 보내면 서버가 enum 파싱에 실패해 400이 나므로 반드시 이 목록과 일치시킬 것.
+// [7/30] SnsPlatform enum 개편(FACEBOOK·TIKTOK삭제, NAVERMAP추가) — 어긋나면 400 에러
 export type SnsPlatformCode = "INSTAGRAM" | "YOUTUBE" | "X" | "BLOG" | "HOMEPAGE" | "NAVERMAP" | "ETC";
 export type SnsLinkInput = { platform: SnsPlatformCode; url: string; displayName?: string; sortOrder?: number };
 
@@ -347,8 +335,7 @@ export function deletePopup(id: number | string) {
   return request<void>(`/api/popups/${id}`, { method: "DELETE" });
 }
 
-// 팝업 이미지 업로드 — 7/29부터 type 구분 (THUMBNAIL=목록·카드용 800×800 정사각, DETAIL=상세 본문용 1080×1440 세로형)
-// 서버(ImageProcessingService)가 규격에 맞춰 리사이즈·크롭하므로 프론트는 원본을 그대로 보낸다.
+// [7/29] 이미지 업로드 type 구분(THUMBNAIL=800×800정사각/DETAIL=1080×1440세로) — 서버가 리사이즈, 프론트는 원본 전송
 export type PopupImageTypeCode = "THUMBNAIL" | "DETAIL";
 
 export function uploadPopupImage(id: number | string, file: File, type: PopupImageTypeCode = "THUMBNAIL") {
@@ -481,8 +468,7 @@ export function cancelWaiting(id: number) {
   return request<WaitingItem>(`/api/waiting/${id}/cancel`, { method: "PATCH" });
 }
 
-// 노쇼 처리 (8/4 신설) — 예약의 markNoShow와 대칭. 그전에는 웨이팅에 노쇼 상태가 없어
-// 취소 API로 대신 처리했는데, 손님 본인 취소와 구분이 안 돼 분리됐다.
+// [8/4 신설] 웨이팅 노쇼 처리(예약 markNoShow와 대칭) — 전엔 취소API로 대체해 본인취소와 구분 안 됐음
 export function noShowWaiting(id: number) {
   return request<WaitingItem>(`/api/waiting/${id}/no-show`, { method: "PATCH" });
 }
@@ -497,29 +483,21 @@ export type UnifiedEntry = {
   partySize: number;
   qrToken: string;
   entryStatus: string; // PENDING/CHECKED_IN/NO_SHOW(예약) · WAITING/ENTERED/CANCELLED/NO_SHOW(웨이팅)
-  // cancelReason 필드는 폐기(8/4) — 미입장이 별도 상태(NO_SHOW)가 되면서 사유 문자열 구분이 필요 없어졌다
-  // 퇴장 시각 (8/4). null이면 아직 체류 중.
-  // entryStatus는 퇴장 후에도 CHECKED_IN/ENTERED 그대로라, 체류 여부는 이 값으로 판단해야 한다.
+  // [8/4] cancelReason 폐기(NO_SHOW 상태분리로 불필요), 퇴장시각 null=체류중(entryStatus는 퇴장후에도 안 바뀌니 이 값으로 판단)
   exitedAt?: string | null;
   joinedAt: string; // 예약=슬롯 시작시각, 웨이팅=등록시각 (입장 후에는 둘 다 입장시각)
 };
 
-// 통합 대기열 보드 — 하루치 명단 (8/4).
-// date를 주면 그날, 안 주면 오늘. 처리된 건(입장·노쇼·취소)도 함께 오므로 화면은 행을 지우는
-// 대신 상태 배지를 붙인다 — 명단이 곧 그날의 기록지다.
+// [8/4] 통합 대기열 보드=하루치 명단(date 미지정시 오늘). 처리된 건도 함께 옴 → 행삭제 대신 상태배지 표시(명단=당일기록지)
 export function getQueueBoard(popupId: number | string, date?: string) {
   return request<{ popupId: number; totalCount: number; entries: UnifiedEntry[] }>(
     `/api/popups/${popupId}/queue/board${date ? `?date=${date}` : ""}`,
   );
 }
 
-// 통합 QR 체크인 — 예약 QR·웨이팅 QR 구분 없이 하나로 처리 (서버가 시각 기록)
-// 7/31 — popupId를 함께 보낸다.
-// 그전에는 qrToken만 보냈고, 서버는 「이 QR이 내 팝업 것인가」까지만 확인했다
-// (business email 비교). 그래서 **주최자가 같으면 지금 보고 있는 팝업이 아닌
-// 다른 내 팝업의 QR도 입장 처리가 됐다.** 현장에서 팝업을 여러 개 운영하면
-// 옆 매장 손님을 여기서 입장시켜 버리는 셈이라 명단이 어긋난다.
-// popupId를 함께 보내 서버가 「지금 이 팝업의 QR인가」까지 검증하게 한다.
+// 통합 QR 체크인(예약·웨이팅 구분없이 처리, 서버가 시각기록)
+// [7/31] popupId 필수 동봉 — 이전엔 qrToken만 보내 서버가 "내 팝업인가"(business단위)만 확인해서
+// 팝업 여러개 운영시 다른 내 팝업 QR도 입장처리되는 버그 있었음 → popupId로 "이 팝업의 QR인가"까지 검증
 export function checkinUnifiedQr(qrToken: string, popupId: number | string) {
   return request<UnifiedEntry>("/api/queue/checkin/qr", {
     method: "POST",
@@ -527,9 +505,8 @@ export function checkinUnifiedQr(qrToken: string, popupId: number | string) {
   });
 }
 
-// 통합 QR 퇴장 처리 (7/23 신규) — 예약·웨이팅 구분 없이 qrToken으로 퇴장 시각(exitedAt) 기록.
-// 이 API로 관제의 체류 인원이 서버 기준으로 계산됨 (기존 localStorage 퇴장 기록 대체)
-// 퇴장도 같은 이유로 popupId를 함께 보낸다 (7/31)
+// [7/23] 통합 QR 퇴장처리(qrToken으로 exitedAt 기록) — 체류인원이 이걸로 서버기준 계산됨(구 localStorage 대체)
+// [7/31] 퇴장도 같은 이유로 popupId 동봉
 export function exitUnifiedQr(qrToken: string, popupId: number | string) {
   return request<UnifiedEntry>("/api/queue/exit/qr", {
     method: "POST",
@@ -671,12 +648,10 @@ export type ReportItem = {
 export function getAdminReports(status?: "PENDING" | "PROCESSED") {
   return request<ReportItem[]>(`/api/admin/reports${status ? `?status=${status}` : ""}`);
 }
-// processReport는 8/4 삭제 — 존재하지 않는 /process 경로를 가리키던 죽은 함수.
-// 신고 처리는 7/30 개편으로 /reject·/hide-review 두 갈래가 됐고, 화면도 관리자 앱(5175)에 있다.
+// [8/4] processReport 삭제(존재안하는 /process 경로 가리키던 죽은함수) — 신고처리는 /reject·/hide-review 2갈래로 개편, 화면은 관리자앱(5175)
 
 // ── 공간(venue) 마스터 ──
-// ※ 7/28 정리: 파트너 공간 기능이 7/24 멘토 피드백으로 프론트에서 삭제되어 사용처 없음.
-//   백엔드 venue 도메인 정리(팀 합의) 시 이 블록도 함께 삭제할 것 — 그때까지 주석 보존.
+// [7/28] 파트너 공간 기능 7/24 멘토피드백으로 프론트 삭제, 사용처 없음 — 백엔드 venue 정리시 이 블록도 함께 삭제
 /*
 export type Venue = {
   id: number;
@@ -740,8 +715,7 @@ export function markNoShow(id: number) {
 }
 
 // QR 스캔 입장 — 사전예약자의 입장 QR(qrToken)을 스캔해 체크인 (서버가 입장 시각 기록)
-// popupId는 지금 화면에서 선택 중인 팝업 (7/31 추가). 없으면 서버가 「내 팝업인가」까지만 보므로
-// 팝업을 여러 개 운영하는 주최자가 다른 팝업 손님의 QR도 찍을 수 있다.
+// [7/31] popupId = 현재 선택된 팝업. 없으면 서버가 "내 팝업인가"만 확인해 여러 팝업 운영시 다른 팝업 QR도 찍힘
 export function checkinByQr(qrToken: string, popupId?: number | string) {
   return request<ReservationDetail>("/api/reservations/checkin/qr", {
     method: "POST",
@@ -807,8 +781,7 @@ export function getMyNoticeInbox(category?: NoticeCategoryCode) {
     `/api/business/notices/my${category ? `?category=${category}` : ""}`,
   );
 }
-// ⚠ 7/30 수정 — 서버는 { unreadCount } 로 주는데 타입이 { count } 였다.
-// 아직 쓰는 화면이 없어서 안 드러났던 불일치 (백엔드: Map.of("unreadCount", ...)).
+// ⚠[7/30 수정] 서버는 {unreadCount}인데 타입은 {count}였음 — 쓰는 화면 없어서 안 드러났던 불일치
 export function getMyNoticeUnreadCount() {
   return request<{ unreadCount: number }>("/api/business/notices/my/unread-count");
 }
