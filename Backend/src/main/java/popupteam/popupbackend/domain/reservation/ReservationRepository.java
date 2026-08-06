@@ -93,7 +93,6 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     // 그 날짜에 방문하기로 한 예약 전부 — 상태를 가리지 않는다 (8/4).
     // 슬롯 예약은 슬롯 날짜, 날짜 예약은 reservationDate 기준. 관제 화면의 「그날 명단」용이라
     // 입장·노쇼된 건도 함께 와야 처리 결과가 배지로 남는다.
-    // (8/4 머지에서 한 번 유실됐다가 복구 — UnifiedQueueService.getBoard가 쓴다)
     @Query("SELECT r FROM Reservation r LEFT JOIN r.slot s WHERE r.popup.id = :popupId " +
             "AND r.status = 'CONFIRMED' " +
             "AND ((s IS NOT NULL AND s.slotDate = :date) OR (s IS NULL AND r.reservationDate = :date)) " +
@@ -101,7 +100,6 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     List<Reservation> findDayRoster(@Param("popupId") Long popupId, @Param("date") LocalDate date);
 
     // 자정 리셋 대상 — 그날 방문 예정이었는데 입장·노쇼 처리 없이 남은 예약 (8/4)
-    // (8/4 머지에서 한 번 유실됐다가 복구 — DailyQueueResetScheduler가 쓴다)
     @Query("SELECT r FROM Reservation r LEFT JOIN r.slot s " +
             "WHERE r.status = 'CONFIRMED' AND r.entryStatus = 'PENDING' " +
             "AND ((s IS NOT NULL AND s.slotDate = :date) OR (s IS NULL AND r.reservationDate = :date))")
@@ -110,7 +108,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     List<Reservation> findByPopupIdAndStatus(Long popupId, ReservationStatus status);
 
     // 진짜 방문객(체크인 완료)의 연령 분포 통계용 - 예약만 하고 안 온 사람은 제외
-// 주의: birthDate가 NULL인 경우도 일부러 포함시킴 (미상 버킷으로 잡아서 성별 분포와 총 인원수를 맞추기 위함)
+    // 주의: birthDate가 NULL인 경우도 일부러 포함시킴 (미상 버킷으로 잡아서 성별 분포와 총 인원수를 맞추기 위함)
     @Query("SELECT r.customer.birthDate FROM Reservation r WHERE r.popup.id = :popupId " +
             "AND r.entryStatus = 'CHECKED_IN'")
     List<java.time.LocalDate> findBirthDatesOfCheckedInVisitors(@Param("popupId") Long popupId);

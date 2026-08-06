@@ -33,11 +33,9 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     List<Object[]> countAllGroupByPopupId();
 
     // 목록 응답에 별점을 실어 주기 위한 일괄 집계 (8/5).
-    // 그전에는 별점이 상세 조회(findById)에서만 채워져서, 관리자 별점순 정렬처럼
-    // 목록에서 별점이 필요한 화면이 만들 수 없었다. 팝업마다 단건 쿼리를 부르면
-    // N+1이라(공용 DB에서 이미 한 번 데인 패턴 - PopupSlotService 참고) GROUP BY 한 방으로 집계.
-    // hidden 필터는 단건 쿼리(findAverageRatingByPopupId)와 기준을 맞추기 위해 걸지 않는다 -
-    // 목록과 상세의 별점이 서로 달라지면 그게 더 큰 혼란이다.
+    // 팝업마다 단건 쿼리를 부르면 N+1이라 GROUP BY 한 방으로 집계.
+    // hidden 필터는 단건 쿼리(findAverageRatingByPopupId)와 기준을 맞추기 위해 걸지 않는다.
+
     @Query("SELECT r.popupId, AVG(r.rating), COUNT(r) FROM Review r GROUP BY r.popupId")
     List<Object[]> avgRatingAndCountGroupByPopupId();
 
