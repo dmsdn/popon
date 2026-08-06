@@ -74,6 +74,12 @@ public class ReservationService {
         Customer customer = customerRepository.findById(customerId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 소비자입니다."));
 
+        // 버그 수정: queueMode가 ONSITE_WAITING_ONLY(현장웨이팅만)인 팝업인데도 사전예약 API를
+        // 그대로 호출하면 예약이 생성되고 있었음 (찜 목록 화면 등에서 이 API로 그대로 뚫려 있었음).
+        if (popup.getQueueMode() == popupteam.popupbackend.domain.popup.QueueMode.ONSITE_WAITING_ONLY) {
+            throw new IllegalArgumentException("현장 웨이팅만 가능한 팝업입니다. 사전예약을 이용할 수 없습니다.");
+        }
+
         if (popup.getMaxPartySizePerTeam() != null && request.getPartySize() > popup.getMaxPartySizePerTeam()) {
             throw new IllegalArgumentException(
                     "팀당 최대 인원은 " + popup.getMaxPartySizePerTeam() + "명입니다. 입력하신 인원(" + request.getPartySize() + "명)이 초과되었습니다.");
