@@ -1,6 +1,6 @@
+// app/ranking/page.tsx
+// 인기 추천 팝업 더보기 페이지 - 지역별 탭으로 실제 인기순(찜+후기+클릭수) 랭킹
 "use client";
-
-// 인기 추천 팝업 더보기 페이지 - 지역별 탭으로 실제 인기순(찜+후기+클릭수) 랭킹을 볼 수 있어요.
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -14,10 +14,6 @@ import type { PopupItem } from "@/data/mockPopups";
 import { LoadingState, EmptyState } from "@/components/ui/EmptyState";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 
-// [수정] "고객 화면에 진짜 인기순 랭킹 API가 없다"고 알고 있었는데, 사실 백엔드에
-// GET /api/popups/popular?region=이 이미 공개돼 있었고(찜+후기+클릭수 합산),
-// 프론트가 그동안 안 쓰고 있었을 뿐이었어요. 이제 실제로 이 API를 써요.
-
 export default function RankingListPage() {
   return (
     <Suspense fallback={<LoadingState />}>
@@ -29,11 +25,7 @@ export default function RankingListPage() {
 function RankingListInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  // [수정] 홈 화면 "인기 추천 팝업"에서 특정 지역으로 더보기를 눌렀을 때, 그
-  // 지역이 바로 선택된 채로 열리도록 URL의 region 파라미터를 읽어요.
   const [keyword, setKeyword] = useState(searchParams.get("region") ?? "전체");
-  // [수정] "지금 진행중인 팝업이 많은 지역 3개"만 보여주던 걸, 지역 카탈로그
-  // (getRegions) 전체로 바꿨어요.
   const [keywords, setKeywords] = useState<string[]>(["전체", searchParams.get("region") ?? ""].filter(Boolean));
   const [popularIds, setPopularIds] = useState<number[]>([]);
   const [popupById, setPopupById] = useState<Map<number, PopupItem>>(new Map());

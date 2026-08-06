@@ -1,5 +1,7 @@
 // components/layout/MobileHeader.tsx
+// 모바일 전용 상단바 - 기본은 로고, 검색 화면에서는 뒤로가기+검색창으로 전환
 "use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -7,14 +9,10 @@ import { SearchInput } from "@/components/search/SearchInput";
 import { useUnreadNotificationCount } from "@/lib/useUnreadNotificationCount";
 
 interface MobileHeaderProps {
-  // 검색 결과 화면(/search)에서는 로고 대신 뒤로가기 + 검색창을 보여줍니다.
+  // 검색 결과 화면(/search)에서는 로고 대신 뒤로가기 + 검색창
   searchMode?: boolean;
   initialQuery?: string;
   onSearchFocusChange?: (focused: boolean) => void;
-  // [신규] 텍스트 검색어(q)는 없어도 지역/카테고리 같은 필터로 들어온 경우엔
-  // 검색창에 자동 포커스가 가면 안 돼요(포커스 가면 필터링된 결과 화면 대신
-  // "최근 검색어" 화면이 떠버렸어요 - 모바일에서 "관심 지역 더보기" 눌렀을 때
-  // 지역이 선택된 결과 화면 대신 검색 초기 화면으로 튕기던 버그의 원인이었어요).
   disableAutoFocus?: boolean;
 }
 

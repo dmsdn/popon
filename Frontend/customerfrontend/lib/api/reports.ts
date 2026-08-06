@@ -1,7 +1,5 @@
 // lib/api/reports.ts
-//
-// [신규 연결] 후기 신고 API(POST /api/reports)가 있는데 프론트에 "신고하기" 버튼
-// 자체가 없었어요.
+// 후기 신고 API
 
 import { apiFetch } from "./client";
 

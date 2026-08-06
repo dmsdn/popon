@@ -1,7 +1,5 @@
 // lib/api/visits.ts
-//
-// [신규 연결] POST /api/visits/log가 있어요 - 같은 visitorKey로 같은 날 다시 불러도
-// 서버에서 중복 기록 안 하게 처리해줘서, 프론트는 그냥 앱 켜질 때마다 불러도 안전해요.
+// 앱 방문 기록을 백엔드에 저장하는 API
 
 import { apiFetch } from "./client";
 

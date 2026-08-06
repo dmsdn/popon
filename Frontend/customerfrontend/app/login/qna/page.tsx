@@ -1,7 +1,6 @@
-"use client";
-
-// Q&A 페이지 - 로그인 페이지 하단 "Q&A"에서 들어와요.
-// [신규 8/5] 뒤로가기를 누르면 로그인 페이지로 돌아가요.
+// app/login/qna/page.tsx
+// Q&A 페이지
+"use client"
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";

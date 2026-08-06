@@ -1,6 +1,6 @@
+// components/home/NearbyRegionPopupSection.tsx
+// "지금 근처" 섹션 - 내 위치(또는 관심지역) 기준으로 가까운 팝업을 보여줌
 "use client";
-
-// "지금 근처" 섹션 - 내 위치(또는 관심지역) 기준으로 가까운 팝업을 보여줘요.
 
 import { useEffect, useState } from "react";
 import { findNearestRegion } from "@/data/hotplaces";
@@ -9,12 +9,7 @@ import { toPopupItem } from "@/lib/utils/popupMapper";
 import { PopupSection } from "@/components/home/PopupSection";
 import type { PopupItem } from "@/data/mockPopups";
 
-/**
- * [신규] "위치 동의하면 가까운 지역으로 고정" - 브라우저 위치 권한을 물어보고,
- * 허용하면 가장 가까운 동네(성수/강남/홍대 등)를 계산해서 그 지역 팝업을 보여줘요.
- * NearbyHotPlacesSection(핫플용)과 같은 방식이고, 팝업 버전이에요.
- * 권한 거부/실패하면 조용히 섹션을 숨겨요(위치 요청을 강요하지 않으려고).
- */
+// 위치 권한을 허용하면 현재 위치와 가장 가까운 지역을 찾음
 export function NearbyRegionPopupSection() {
   const [region, setRegion] = useState<string | null>(null);
   const [items, setItems] = useState<PopupItem[]>([]);

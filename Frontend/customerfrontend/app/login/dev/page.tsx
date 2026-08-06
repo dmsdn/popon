@@ -1,6 +1,6 @@
+// app/login/dev/page.tsx
+// 개발용 임시 로그인 페이지 - 실 로그인 없이 테스트 계정으로
 "use client";
-
-// 개발용 임시 로그인 페이지 - 실 로그인 없이 테스트 계정으로 바로 들어갈 수 있어요.
 
 import { useState } from "react";
 import Link from "next/link";
@@ -10,8 +10,6 @@ import { devLogin, getSignupStatus } from "@/lib/api/auth";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { consumeRedirectTarget } from "@/lib/postLoginRedirect";
 
-// 백엔드의 실제 개발용 로그인(POST /api/customer/dev-login)에 연결된 화면입니다.
-// testId를 다르게 입력하면 서로 다른 테스트 계정으로 로그인/가입돼요.
 export default function DevLoginPage() {
   const router = useRouter();
   const { refresh } = useAuth();
@@ -33,9 +31,6 @@ export default function DevLoginPage() {
 
       setToken(result.token);
       await refresh();
-      // [수정] 이전엔 무조건 홈으로 보냈는데, 그러면 방금 만든 신규 테스트 계정도
-      // 회원정보 입력 화면을 건너뛰어서 phone 등 필수값이 계속 비어있게 됐어요.
-      // 실제 가입완료 여부를 확인해서 그에 맞게 보냅니다.
       try {
         const { signupCompleted } = await getSignupStatus();
         router.push(signupCompleted ? consumeRedirectTarget() ?? "/" : "/signup");

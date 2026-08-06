@@ -1,4 +1,6 @@
 // app/search/page.tsx
+// 검색 결과 페이지 - 검색어/카테고리/지역/운영여부/별점 필터 적용
+
 "use client";
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
@@ -24,11 +26,7 @@ import { FilterPanel, type FilterTab } from "@/components/search/FilterPanel";
 
 const STATUSES = ["예정", "진행중", "종료"] as const;
 
-// [신규] "지도로 팝업 찾기" 진입 카드 - 모바일 검색 초기 화면에서 써요.
-// [수정] 카드 배경은 다크모드에서도 회색 톤이 나오게 하고, 아이콘은
-// 다크모드 반전 없이 항상 그대로 보이게 했어요(카드 배경과 아이콘 반전을
-// 헷갈려서 처음에 아이콘까지 같이 반전시켰었어요 - 아이콘만 빼고 배경만
-// 다크모드를 적용해요).
+// "지도로 팝업 찾기" 진입 카드 (모바일 검색 초기 화면)
 function MapFindCard() {
   return (
     <Link
@@ -50,17 +48,7 @@ function parseListParam(v: string | undefined): string[] {
   return v ? v.split(",").map((s) => s.trim()).filter(Boolean) : [];
 }
 
-// [수정] 진짜 원인을 찾았어요 - 이 페이지가 "use client"인데 searchParams를
-// Next.js가 넘겨주는 Promise prop(use(searchParams))으로 읽고 있었어요. 이
-// 방식은 클라이언트 컴포넌트에서는 "처음 이 페이지로 들어올 때" 딱 한 번만
-// 값이 들어오고, 이미 이 페이지에 있는 상태에서 router.push("/search?q=...")로
-// 쿼리스트링만 바꾸는 "같은 페이지 안 이동"에는 반응하지 않아요 - 그래서 최근
-// 검색어/추천 검색어를 눌러도 URL만 바뀌고 화면(query 값)은 그대로였던 거예요.
-// 필터 패널만 멀쩡했던 건 필터는 URL이 아니라 로컬 state(setCategories 등)를
-// 직접 바꾸는 방식이라 이 문제에 안 걸렸던 거고요.
-// useSearchParams() 훅으로 바꾸면 같은 페이지 안에서의 쿼리 변경에도 정상적으로
-// 반응해요. 이 훅은 Suspense 경계가 필요해서, 기존 컴포넌트를 SearchPageInner로
-// 옮기고 바깥에 Suspense로 감싸는 구조로 바꿨어요(다른 페이지들과 같은 패턴이에요).
+// useSearchParams() 훅 사용 (같은 페이지 내 쿼리스트링 변경 감지). Suspense 경계 필요해 SearchPageInner로 분리
 export default function SearchPage() {
   return (
     <Suspense fallback={<LoadingState />}>
@@ -76,9 +64,7 @@ function SearchPageInner() {
   const regionParam = searchParams.get("region") ?? undefined;
   const categoryParam = searchParams.get("category") ?? undefined;
   const minRatingParam = searchParams.get("minRating") ?? undefined;
-  // [신규] 검색어 없이 "검색"을 눌렀을 때 전체 결과를 보여주기 위한 표시.
-  // query가 빈 문자열이면 URL에 남지 않아서(파라미터 자체가 없는 것과
-  // 구분이 안 돼서), 별도 마커를 하나 둬요.
+  // 검색어 없이 "검색" 클릭 시 전체 결과 표시용 마커
   const showAllParam = searchParams.get("all") ?? undefined;
 
   const [categories, setCategories] = useState<string[]>([]);
@@ -89,12 +75,7 @@ function SearchPageInner() {
       .catch((err) => console.error("키워드 목록 조회 실패", err));
   }, []);
 
-  // [수정] 이제 카테고리/지역/운영여부를 여러 개 동시에 선택할 수 있어요(배열).
-  // URL에서 넘어온 값도 콤마로 구분된 여러 개를 한 번에 받아요.
-  // [수정] useState(() => ...) 형태의 초기값 함수는 첫 렌더링 때 딱 한 번만
-  // 실행돼요 - 그래서 categories만 useEffect로 URL 변경에 반응하고 있었고,
-  // regions/statuses/minRating은 같은 페이지 안에서 URL이 바뀌어도 안 따라가는
-  // 상태였어요. 같은 방식(useEffect)으로 통일했어요.
+  // 카테고리/지역/운영여부 다중 선택(배열), URL 콤마 구분 파싱. 전부 useEffect로 URL 변경 반응 통일
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   useEffect(() => {
     setSelectedRegions(parseListParam(regionParam));
@@ -116,8 +97,7 @@ function SearchPageInner() {
   const [loaded, setLoaded] = useState(false);
   const [openFilterTab, setOpenFilterTab] = useState<FilterTab | null>(null);
 
-  // [수정] 검색어 없이 "검색"을 눌러도 결과 화면(=전체 목록)으로 들어올 수
-  // 있게, all 마커도 조건에 포함시켰어요.
+  // 활성 필터 여부 - all 마커 포함
   const hasActiveFilter = Boolean(
     query || showAllParam || selectedStatuses.length || selectedRegions.length || categories.length || minRating
   );
@@ -137,12 +117,7 @@ function SearchPageInner() {
     };
   }, []);
 
-  // [수정] REGIONS를 "지금 불러온 팝업들의 regionId/location"에서 유추하고
-  // 있었는데, 마이페이지 "관심 지역"은 지역 카탈로그(getRegions)를 직접
-  // 불러와서 항상 전체 목록이 잘 뜨는 반면, 이 필터는 팝업 데이터에 의존하다
-  // 보니 regionId가 아직 안 채워진 팝업이 많으면 목록이 통째로 비어버렸어요.
-  // "관심 지역"과 똑같이 지역 카탈로그를 직접 불러오도록 바꿔서, 팝업 쪽
-  // 데이터 상태와 무관하게 항상 정확한 전체 지역 목록이 뜨게 했어요.
+  // 지역 목록 - 팝업 데이터 유추 대신 지역 카탈로그(getRegions) 직접 조회
   const [REGIONS, setRegions] = useState<string[]>([]);
   useEffect(() => {
     getRegions()
@@ -150,10 +125,8 @@ function SearchPageInner() {
       .catch((err) => console.error("지역 목록 조회 실패", err));
   }, []);
 
-  // 검색어 자체가 지역/운영여부 키워드와 그대로 일치하면 그 필터도 같이 켜줘요.
-  // [수정] 검색어가 "새로" 바뀌면(같은 화면에서 다시 검색) 이전에 골라뒀던 필터는
-  // 초기화하고, 새 검색어에 맞는 필터만 새로 적용해요. 처음 페이지에 들어올 때(URL에
-  // 이미 필터가 있는 경우)는 그대로 유지해요.
+  // 검색어 자체가 지역/운영여부 키워드와 그대로 일치하면 그 필터도 같이 켜줌
+  // 검색어 변경 시 기존 필터 초기화 후 재적용 (최초 진입 시엔 URL 필터 유지)
   const prevQueryRef = useRef(query);
   useEffect(() => {
     const queryChanged = prevQueryRef.current !== query;
@@ -187,13 +160,10 @@ function SearchPageInner() {
         (item.hashtags?.some((h) => h.toLowerCase().includes(q)) ?? false) ||
         (item.keywordNames?.some((k) => k.toLowerCase().includes(q)) ?? false) ||
         (item.location?.toLowerCase().includes(q) ?? false) ||
-        // [신규] 브랜드(주최사) 이름으로 검색하면 그 브랜드의 팝업이 검색되게.
-        (item.brandName?.toLowerCase().includes(q) ?? false);
+        (item.brandName?.toLowerCase().includes(q) ?? false); // 브랜드명 검색 지원
       if (!matchesQuery) return false;
 
-      // [수정] 필터 패널에 보여주는 카테고리 목록은 getKeywords()(표준 카테고리)인데,
-      // 실제 매칭은 hashtags(주최측이 자유롭게 입력한 해시태그)로 하고 있어서 대부분
-      // 안 걸리고 있었어요. keywordNames로 매칭하도록 고쳤어요.
+      // 카테고리 필터 매칭 - keywordNames 기준(hashtags 아님)
       if (categories.length > 0) {
         const matches = categories.some((c) => item.keywordNames?.includes(c));
         if (!matches) return false;
@@ -219,7 +189,7 @@ function SearchPageInner() {
 
   return (
     <main className="min-h-screen flex flex-col w-full pb-16 mobile:pb-0 mobile:max-w-[1000px] mobile:mx-auto">
-      {/* [신규] 검색바 + 필터 줄을 스크롤해도 상단에 붙어있게(sticky) 했어요. */}
+      {/* 검색바+필터 sticky 고정 */}
       <div className="sticky top-0 z-30 bg-white dark:bg-[#17181a]">
         <div className="hidden mobile:block">
           <Header initialQuery={query ?? ""} />
@@ -233,11 +203,7 @@ function SearchPageInner() {
           />
         </div>
 
-        {/* [수정] 필터 칩 바가 hasActiveFilter일 때만 보여서, 검색어도 필터도
-            하나도 없는 처음 화면에선 필터를 열 방법 자체가 없었어요(닭과 달걀
-            문제). 검색창에 타이핑 중이 아니면 항상 보이게 바꿨었는데, 그마저도
-            검색바를 탭(포커스)하면 사라져서 최근검색어를 보다가 필터를 못 열게
-            됐어요 - 이제 검색바 포커스 여부와 상관없이 항상 보여요. */}
+        {/* 필터 칩 바 - 검색바 포커스 여부와 무관하게 항상 표시 */}
         <div className="flex items-center gap-2 px-4 mobile:px-8 py-3 border-b border-gray-100 dark:border-[#282B32] overflow-x-auto scrollbar-hide">
             {filterChips.map(({ tab, label, count }) => (
               <button
@@ -268,8 +234,7 @@ function SearchPageInner() {
       <div className="flex-1">
       {hasActiveFilter && !mobileSearchFocused ? (
         <div>
-          {/* [수정] "\"검색어\" 검색 결과 N건"이라는 큰 문구 + "필터" 라벨을 없애고,
-              결과 개수는 필터 칩들 아래에 작게만 보여줘요. */}
+          {/* 검색 결과 개수 표시 */}
           <p className="text-sm text-gray-400 px-4 mobile:px-8 pt-2">
             {query ? `"${query}" 검색 결과 ` : ""}
             {loaded ? results.length : "..."}건
@@ -357,7 +322,7 @@ function SearchResultRow({ item }: { item: PopupItem }) {
               </span>
             )}
             {item.status && item.brandName && <span className="text-gray-300 dark:text-gray-600">·</span>}
-            {/* [신규] 검색 결과에서도 브랜드(주최사) 이름을 상태 옆에 보여줘요. */}
+            {/* 브랜드명 표시 */}
             {item.brandName && <span className="text-gray-400">{item.brandName}</span>}
           </p>
         )}

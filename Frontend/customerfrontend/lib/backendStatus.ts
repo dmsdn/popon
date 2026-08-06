@@ -1,8 +1,6 @@
 // lib/backendStatus.ts
-//
-// 백엔드가 꺼져있거나(연결 자체가 안 됨) 500을 뱉을 때, 화면 곳곳에서 콘솔에만
-// 조용히 에러가 찍히던 걸 상단 배너 하나로 눈에 보이게 알려주기 위한 아주 작은 전역 저장소예요.
-// (찜 기능의 wishlistStore.ts와 같은 방식 - useSyncExternalStore로 구독)
+// 백엔드 연결 상태를 전역에서 관리
+// 백엔드가 꺼져있거나(연결 자체가 안 됨) 500을 뱉을 때, 상단 배너 하나로 눈에 보이게 알려주기 위한 전역 저장소
 
 let isDown = false;
 const listeners = new Set<() => void>();

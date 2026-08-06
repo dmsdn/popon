@@ -1,6 +1,6 @@
+// app/signup/page.tsx
+// 회원가입 페이지 - 닉네임/전화번호/이메일/생년월일/성별 입력과 약관 동의
 "use client";
-
-// 회원가입 페이지 - 닉네임/전화번호/이메일/생년월일/성별 입력과 약관 동의.
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -45,9 +45,7 @@ function SignupPageInner() {
   const searchParams = useSearchParams();
   const { updateMockCustomer, refresh } = useAuth();
 
-  // [신규] 백엔드가 신규 소셜 가입자를 /signup/info?pendingToken=... 으로 보내고
-  // 있었는데, 이 페이지가 그 파라미터를 아예 처리하지 않고 있었어요 - 그래서
-  // "가입대기 토큰"으로 로그인 성공해도 회원정보 입력 화면 자체가 404였어요.
+  // pendingToken 처리 (신규 소셜 가입자 진입 파라미터)
   const pendingToken = searchParams.get("pendingToken");
 
   const [provider, setProvider] = useState<CustomerInfo["provider"] | null>(null);
@@ -64,11 +62,7 @@ function SignupPageInner() {
 
   useEffect(() => {
     if (pendingToken) {
-      // [신규] 가입대기 토큰은 아직 실제 회원이 아니라서 GET /api/customer/me가
-      // 통하지 않아요(백엔드에 아직 그 회원 row가 없음). 대신 토큰 자체에 카카오/구글이
-      // 준 닉네임이 이미 들어있어서, 그걸 그대로 읽어서 미리 채워줘요.
-      // 제출(submit) API를 부를 때 이 토큰을 같이 실어 보내야 하니 우선 저장해둬요 -
-      // 백엔드가 이 토큰을 보고 "신규 가입"인지 판단해서 이 시점에 회원을 만들어줘요.
+      // 가입대기 토큰 저장 + JWT payload에서 provider/닉네임 미리 채움
       setToken(pendingToken);
       const claims = decodeJwtPayload<{ provider?: string; nickname?: string }>(pendingToken);
       setProvider((claims?.provider as CustomerInfo["provider"]) ?? null);
@@ -116,14 +110,12 @@ function SignupPageInner() {
         locationAgreed: !!agreedTerms.location,
         marketingAgreed: !!agreedTerms.marketing,
       });
-      // [신규] 가입대기 토큰으로 제출한 거면, 이 시점에 백엔드가 방금 만든 진짜 회원의
-      // 진짜 토큰을 돌려줘요. 이걸 저장하고 인증 상태를 새로고침해야, 바로 다음 줄의
-      // updateMyInfo 호출이나 이후 화면들이 "로그인된 상태"로 정상 동작해요.
+      // 가입대기 토큰 제출 시 응답으로 온 진짜 토큰 저장 + 인증 상태 갱신
       if (result.token) {
         setToken(result.token);
         await refresh();
       }
-      // 생년월일/성별은 signup-info API가 아니라 /api/customer/me(PATCH)에서만 저장돼요.
+      // 생년월일/성별은 signup-info API가 아니라 /api/customer/me(PATCH)에서만 저장
       if (birthDate || gender !== "UNKNOWN") {
         await updateMyInfo({ birthDate: birthDate || undefined, gender });
       }
@@ -257,10 +249,7 @@ function SignupPageInner() {
 
         <div>
           <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">동의</span>
-          {/* [수정 8/5] "약관 더보기" 버튼 하나로 4개 문서를 한 모달에 몰아서 보여주던
-              방식 대신, 각 항목 오른쪽에 화살표를 붙여서 그 항목만 바로 펼쳐볼 수
-              있게 했어요. 또 체크박스 사이 간격이 너무 붙어있다는 피드백을 반영해서
-              각 줄에 위아래 패딩(py-3.5)을 주고 구분선으로 나눴어요. */}
+          {/* 약관 항목별 개별 펼치기(화살표) */}
           <div className="flex flex-col">
             {[...REQUIRED_TERMS, ...OPTIONAL_TERMS].map((term, i) => {
               const section = TERMS_SECTIONS.find((s) => s.id === term.id);
@@ -306,9 +295,7 @@ function SignupPageInner() {
           </div>
         </div>
 
-        {/* [신규] 버튼이 안 눌러질 때 "약관은 다 체크했는데 왜 안 되지?" 하는 혼란이
-            있었어요 - 닉네임/전화번호도 같이 채워야 하는데 그게 눈에 잘 안 띄었던
-            것 같아서, 정확히 뭐가 빠졌는지 바로 알려주는 안내를 넣었어요. */}
+        {/* 미입력 항목 안내 */}
         {!canSubmit && !submitting && (
           <p className="text-sm text-red-500 -mt-2">
             {[

@@ -1,4 +1,6 @@
 // components/search/SuggestedKeywords.tsx
+// 추천 검색어 컴포넌트 - 지금 진행중인 팝업이 많은 지역/카테고리를 자동 계산해 보여줌
+
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -9,8 +11,7 @@ import { getTopKeywords } from "@/lib/utils/topRegions";
 
 export function SuggestedKeywords({ onNavigate }: { onNavigate?: () => void }) {
   const router = useRouter();
-  // [수정] "더현대"/"성수"/"홍대"로 고정되어 있던 걸, 지금 진행중인 팝업이 가장
-  // 많은 지역/카테고리 5개를 자동으로 계산하도록 바꿨어요.
+  // 추천 검색어를 지금 진행중인 팝업이 가장 많은 지역·카테고리 5개 자동 계산
   const [suggested, setSuggested] = useState<string[]>([]);
 
   useEffect(() => {

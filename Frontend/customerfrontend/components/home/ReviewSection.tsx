@@ -1,6 +1,6 @@
+// components/home/ReviewSection.tsx
+// "실시간 후기 모음" 섹션
 "use client";
-
-// "실시간 후기 모음" 섹션 전체 - 여러 팝업의 최신 후기를 모아 보여줘요.
 
 import { useEffect, useState } from "react";
 import { getRecentReviews } from "@/lib/api/reviews";
@@ -11,11 +11,6 @@ import { ReviewCard } from "./ReviewCard";
 import { HorizontalCarousel } from "@/components/ui/HorizontalCarousel";
 import type { ReviewItem } from "@/data/mockPopups";
 
-/**
- * [수정] 100% 목업이던 걸 실제 최근 후기 API로 교체했어요. 후기 자체엔 팝업 이름이
- * 안 실려 있어서(popupId만 있음), 후기에 등장하는 팝업들의 정보를 한 번 더 가져와서
- * 이름/상태/지역을 붙여줘요.
- */
 export function ReviewSection() {
   const [items, setItems] = useState<ReviewItem[]>([]);
 

@@ -1,6 +1,6 @@
+// components/search/FilterPanel.tsx
+// 검색 필터 패널 - 카테고리/지역/상태/별점을 고르는 바텀시트
 "use client";
-
-// 검색 필터 패널 - 카테고리/지역/상태/별점을 고르는 바텀시트.
 
 import { useState } from "react";
 import { createPortal } from "react-dom";
@@ -16,12 +16,6 @@ const RATING_OPTIONS = [
 
 const ALL_LABEL = "전체";
 
-/**
- * [신규] 카테고리/지역/운영여부/별점을 하나의 패널에서 탭으로 전환하며 고를 수 있게
- * 만들었어요. 각 탭 안에서는 체크박스로 "여러 개" 선택 가능해요(예전엔 하나만
- * 선택 가능한 드롭다운이었어요). 별점만 "N점 이상" 기준이라 하나만 고를 수 있어요.
- * 특정 필터 칩을 누르면 그 탭이 먼저 보이게 initialTab으로 지정해요.
- */
 export function FilterPanel({
   initialTab,
   categories,
@@ -60,10 +54,6 @@ export function FilterPanel({
     setList(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
   };
 
-  // [신규] 각 탭에 "전체" 옵션을 추가했어요 - 특정 항목을 하나도 안 고른
-  // 상태(= 필터 없음)를 "전체"로 보여주고, "전체"를 누르면 그 탭의 선택을
-  // 전부 비워요. 반대로 특정 항목을 고르면 자연히 "전체" 체크는 풀려요
-  // (draft가 비어있을 때만 "전체"가 체크된 것으로 보이니까요).
   const toggleWithAll = (list: string[], setList: (v: string[]) => void, value: string) => {
     if (value === ALL_LABEL) {
       setList([]);
@@ -114,9 +104,6 @@ export function FilterPanel({
         <div className="px-5 pt-5">
           <h2 className="text-lg font-bold mb-4">필터</h2>
 
-          {/* 선택된 항목들 - 칩으로 보여주고 X로 바로 뺄 수 있음.
-              [수정] 다크모드에서 칩 배경(#282B32)이 패널 배경(#282B32)이랑
-              똑같아서 선택된 게 안 보였어요 - 눈에 띄는 색으로 분리했어요. */}
           {selectedChips.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-4">
               {selectedChips.map(({ group, value }) => (
@@ -238,8 +225,6 @@ export function FilterPanel({
 
         {/* 하단 버튼 */}
         <div className="flex items-center gap-2 p-5 border-t border-gray-100 dark:border-[#282B32]">
-          {/* [수정] 다크모드에서 테두리(#282B32)가 패널 배경이랑 같아서 버튼
-              윤곽이 아예 안 보였어요 - 항상 또렷하게 보이는 회색으로 바꿨어요. */}
           <button
             type="button"
             onClick={handleReset}
@@ -247,8 +232,6 @@ export function FilterPanel({
           >
             초기화
           </button>
-          {/* [수정] "상품보기" → "팝업 보기"로 문구 수정, 검정 배경 대신
-              포인트컬러로. */}
           <button
             type="button"
             onClick={handleApply}

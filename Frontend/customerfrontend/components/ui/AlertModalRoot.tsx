@@ -1,9 +1,6 @@
-"use client";
-
 // components/ui/AlertModalRoot.tsx
-// lib/ui/alertStore.ts의 요청을 구독해서 실제 모달 UI를 그려요.
-// app/layout.tsx에 한 번만 마운트하면, 앱 어디서든 appAlert()/appConfirm()을
-// 부르는 것만으로 이 모달이 떠요.
+// 전역 alert/confirm 모달
+"use client";
 
 import { useSyncExternalStore } from "react";
 import { getAlertSnapshot, resolveAlertRequest, subscribeAlertStore } from "@/lib/ui/alertStore";
@@ -17,7 +14,7 @@ export function AlertModalRoot() {
     <div
       className="fixed inset-0 bg-black/50 flex items-center justify-center px-6 z-[100]"
       onClick={() => {
-        // 바깥 영역을 눌러 닫는 건 "취소"와 같은 의미로 처리해요.
+        // 바깥 영역을 눌러 닫는 건 "취소"와 같은 의미로 처리
         resolveAlertRequest(false);
       }}
     >

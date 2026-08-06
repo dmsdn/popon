@@ -1,9 +1,6 @@
+// app/login/settings/page.tsx
+// 화면 설정 페이지 - 로그인 페이지 하단 "화면 설정"에서 들어오는 다크모드 토글 화면
 "use client";
-
-// 화면 설정 페이지 - 로그인 페이지 하단 "화면 설정"에서 들어와요.
-// [신규 8/5] 로그인 여부와 무관한 다크모드 토글이라 로그인 페이지에서 바로
-// 들어올 수 있는 독립된 화면으로 뺐어요. 뒤로가기를 누르면 로그인 페이지로
-// 돌아가요.
 
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";

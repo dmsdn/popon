@@ -1,14 +1,10 @@
+// components/ui/EmailInput.tsx
+// 이메일 입력 - 아이디 부분 입력창 + 도메인 드롭다운(gmail.com 등)
 "use client";
-
-// 이메일 입력 - 아이디 부분 입력창 + 도메인 드롭다운(gmail.com 등) 조합. 회원가입/정보수정에서 재사용돼요.
 
 import { useState } from "react";
 
-// components/ui/EmailInput.tsx
-//
-// [신규] 이메일 입력칸을 "아이디 부분"과 "도메인 드롭다운"으로 나눴어요.
-// 드롭다운 디자인/동작은 팝업 상세페이지의 정렬(최신순/추천순) 드롭다운과
-// 동일한 패턴이에요 - 클릭하면 열리고, 바깥을 누르면 닫혀요.
+// 이메일 입력을 "아이디"와 "도메인 드롭다운"으로 분리 구현
 
 const DOMAINS = ["gmail.com", "naver.com", "daum.net", "kakao.com", "nate.com", "직접 입력"];
 
@@ -17,7 +13,7 @@ export function EmailInput({
   onChange,
   placeholder = "이메일",
 }: {
-  /** "아이디@도메인" 형태의 전체 이메일 문자열 */
+  // "아이디@도메인" 형태의 전체 이메일 문자열
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;

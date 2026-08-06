@@ -1,4 +1,6 @@
 // components/search/RecentSearches.tsx
+// 최근 검색어 목록 컴포넌트 - localStorage 기반으로 개별/전체 삭제 지원
+
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -8,7 +10,7 @@ export function RecentSearches({ onNavigate }: { onNavigate?: () => void }) {
   const router = useRouter();
   const [recent, setRecent] = useState<string[]>([]);
 
-  // localStorage는 클라이언트에서만 읽을 수 있어서 마운트 이후에 불러옵니다. (SSR/hydration 불일치 방지)
+  // localStorage는 클라이언트에서만 읽을 수 있어서 마운트 이후에 불러옴 (SSR/hydration 불일치 방지)
   useEffect(() => {
     setRecent(getRecentSearches());
   }, []);

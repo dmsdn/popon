@@ -1,6 +1,6 @@
+// components/layout/BackendStatusBanner.tsx
+// 백엔드 연결이 끊겼을 때(mock 데이터로 대체 중일 때) 화면 상단에 뜨는 경고 배너
 "use client";
-
-// 백엔드 연결이 끊겼을 때(mock 데이터로 대체 중일 때) 화면 상단에 뜨는 경고 배너.
 
 import { useSyncExternalStore } from "react";
 import { subscribeBackendStatus, getBackendStatusSnapshot } from "@/lib/backendStatus";

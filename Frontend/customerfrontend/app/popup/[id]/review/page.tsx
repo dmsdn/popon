@@ -1,6 +1,6 @@
+// app/popup/[id]/review/page.tsx
+// 후기(또는 방문 미인증 댓글) 작성/수정 페이지
 "use client";
-
-// 후기(또는 방문 미인증 댓글) 작성/수정 페이지.
 
 import { use, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -26,21 +26,14 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
   const [loading, setLoading] = useState(true);
   const [mainImageUrl, setMainImageUrl] = useState<string | null>(null);
 
-  // [신규] 홈/상세페이지의 "다녀오셨나요?" 카드에서 별을 눌러서 넘어온 경우,
-  // ?rating=4 같은 쿼리로 별점을 미리 채운 채로 시작해요.
+  // ?rating 쿼리로 별점 초기값 설정
   const initialRating = Number(searchParams.get("rating")) || 0;
   const [rating, setRating] = useState(initialRating);
   const [content, setContent] = useState("");
 
-  // [신규] 후기 수정 모드 - /popup/{id}/review?editId=123 형태로 들어오면, 기존에
-  // 썼던 후기 내용(별점/글/사진)을 불러와서 미리 채워둬요. 제출할 때 새로 만들지
-  // (createReview) 않고 기존 걸 고치도록(updateReview) 분기해요.
+  // ?editId 쿼리 - 후기 수정 모드(기존 내용 프리필, updateReview 분기)
   const editId = searchParams.get("editId");
-  // [수정] "다녀간 날짜"를 직접 고르게 하던 걸 없앴어요. 이 팝업에 대해 내가 실제로
-  // 체크인 완료했거나(예약 - entryStatus === "CHECKED_IN" / 예약일이 이미 지남) 입장
-  // 완료한(웨이팅 - enteredAt) 기록이 있으면 그 중 가장 최근 날짜를 자동으로 채워서
-  // 읽기 전용으로 보여주고, 그런 기록이 하나도 없으면 이 항목 자체를 화면과 제출
-  // payload에서 완전히 뺍니다. (거짓으로 날짜를 입력할 수 있던 문제를 해소)
+  // 다녀간 날짜 - 체크인/입장 기록 기반 자동 산출(읽기전용), 기록 없으면 항목 자체 제외
   const [visitDate, setVisitDate] = useState<string | null>(null);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
 
@@ -64,12 +57,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
 
   useEffect(() => {
     let cancelled = false;
-    // [수정 8/5] popup/[id]/page.tsx와 같은 이유 - 같은 라우트 안에서 다른 팝업의
-    // 리뷰 작성 화면으로 이동해도 컴포넌트가 재사용돼서, id만 바뀌고 popup은 이전
-    // 팝업 데이터로 남아있는 창이 생겼어요. 그 사이 제출 버튼을 누르면
-    // createReview({popupId: popup.id, ...})가 이전 팝업 id로 나가는 게 실제
-    // 원인으로 보여요("은혼에서 쓴 리뷰가 에스파 id로 나간다"는 신고와 일치). id가
-    // 바뀌는 즉시 popup을 비워서 새 데이터가 올 때까지는 로딩 화면만 보이게 했어요.
+    // id 변경 즉시 popup state 초기화 (다른 팝업 데이터 잔존 방지)
     setPopup(null);
     setLoading(true);
     getPopup(id)
@@ -80,12 +68,9 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    // [신규] 상단에 대표 이미지를 보여주기 위한 조회
+    // 대표 이미지 조회 - type === "THUMBNAIL" 우선, 없으면 첫 이미지로 폴백
     getPopupImages(id)
       .then((images) => {
-        // [수정] 배열 맨 앞 대신 type === "THUMBNAIL"로 대표 이미지를 골라요.
-        // (상세 이미지만 있는 팝업에서 배열 순서에 따라 상세 이미지가 대표
-        // 자리에 뜨는 버그 방지. 옛 데이터 대비 폴백은 유지)
         const cover = images.find((img) => img.type === "THUMBNAIL") ?? images[0];
         if (!cancelled) setMainImageUrl(cover?.imageUrl ?? null);
       })
@@ -145,9 +130,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  // [수정] 파일을 고르면 바로 업로드하지 않고, 먼저 정사각형으로 잘라내는 화면을 띄웁니다.
-  // 크롭이 끝나면(ImageCropModal의 onConfirm) 항상 800x800px로 고정된 이미지가 나와서
-  // 그걸 업로드해요 - 후기 사진 크기가 들쭉날쭉하지 않게 통일됩니다.
+  // 사진 선택 시 크롭 모달 우선 표시, 확정 시 800x800 고정 업로드
   const handleFileSelected = (file: File | undefined) => {
     if (!file) return;
     if (imageUrls.length >= MAX_IMAGE_COUNT) return;
@@ -173,12 +156,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
     setImageUrls((prev) => prev.filter((u) => u !== url));
   };
 
-  // [수정] 상단 <img src="/icons/ui/back_arrow.svg" alt="" width={24} height={24} className="dark:invert" /> 버튼도 제출 성공 시와 동일하게 back()을 씁니다.
-  // 이전엔 <Link href={`/popup/${id}`}>라서 뒤로가기 버튼을 눌러도 "새 이동(push)"이
-  // 일어났어요. 그러면 히스토리가 [..., 상세, 후기작성, 상세(새로 push)]가 되어,
-  // 방금 뒤로가기로 나간 상세페이지에서 또 뒤로가기를 누르면 원래 오던 곳이 아니라
-  // 바로 직전의 후기 작성 페이지로 돌아가는 문제가 있었습니다. back()을 쓰면 새 항목을
-  // 쌓지 않고 원래 있던 상세페이지로 돌아가서 이 문제가 사라져요.
+  // 뒤로가기 - back() 사용 (Link push 방식은 히스토리 중복 쌓임)
   const handleBack = () => {
     if (typeof window !== "undefined" && window.history.length > 1) {
       router.back();
@@ -187,8 +165,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
     }
   };
 
-  // [신규] visitDate가 있으면(예약/웨이팅 체크인 기록이 있으면) "방문 인증된 후기",
-  // 없으면 "방문 미인증 댓글"이에요. 댓글은 별점 없이도 등록할 수 있어요.
+  // visitDate 있으면 방문 인증 후기, 없으면 미인증 댓글(별점 불필요)
   const isVisited = visitDate !== null;
 
   const handleSubmit = async () => {
@@ -220,36 +197,16 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
           visitDate: visitDate ?? undefined,
         });
       }
-      // [수정] 등록 성공 후에는 back() 대신 replace()로 상세페이지의 후기탭
-      // (?tab=review)으로 보냅니다.
-      // - back()만 쓰면 상세페이지가 "정보" 탭인 채로 돌아가서, 방금 등록한 후기를
-      //   보려면 사용자가 직접 후기 탭을 다시 눌러야 했어요. replace + ?tab=review로
-      //   보내면 곧바로 후기 탭이 선택된 상태로 열립니다.
-      // - replace()는 현재 히스토리 항목(이 후기 작성 페이지)을 "대체"할 뿐 새 항목을
-      //   추가하지 않아서, 상세페이지에서 뒤로가기를 눌러도 방금 작성을 끝낸 이
-      //   후기 작성 페이지로 다시 돌아가는 일이 없습니다.
+      // 등록 성공 시 replace()로 상세 후기탭(?tab=review) 이동 (히스토리 미추가)
       router.replace(`/popup/${id}?tab=review`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "후기 등록에 실패했어요.";
-      // [수정] "후기를 이미 남겼습니다"를 감지하려고 message.includes("이미")로
-      // 검사하고 있었는데, "이미지"(image)라는 단어도 "이미"로 시작해서 - 사진
-      // 업로드 관련 에러(예: "이미지 크기가 너무 큽니다")가 나면 전혀 상관없는데도
-      // "이미 후기를 남겼다"는 안내가 잘못 떴어요. "이미 " (뒤에 띄어쓰기까지)로
-      // 검사해서 "이미지"와는 확실히 구분되게 했어요.
+      // 중복 작성 감지 - "이미 "(공백 포함)로 검사해 "이미지"와 구분
       const looksLikeDuplicate =
         message.includes("이미 ") &&
         (message.includes("작성") || message.includes("리뷰") || message.includes("후기") || message.includes("댓글"));
 
-      // [수정 8/5] 예전엔 백엔드의 "이미 작성했다" 응답을 안 믿고 getMyReviews()로
-      // 다시 확인한 뒤에야 모달을 띄웠어요 - 그때 당시 백엔드가 "내용이 비어있어서
-      // 생긴 DB 오류"까지 전부 "이미 작성하셨어요"로 뭉뚱그려 보내던 버그가 있어서
-      // 넣은 방어 로직이었습니다. 그 버그는 백엔드(ReviewController)에서 원인별로
-      // 구분해서 이미 고쳤고, 지금은 이 메시지가 뜨면 진짜 (customer, popup) 유니크
-      // 제약 위반일 때만이에요. 그런데 이 재확인 호출이 실패하거나(네트워크 문제)
-      // 타이밍상 최신 목록을 못 받아오면 "진짜 중복인데도" 안내 없이 애매한 일반
-      // 오류로 빠지는 새 문제가 생겼어요(재확인 자체를 다시 안 믿을 이유가 없는데
-      // 오히려 실패 지점만 하나 늘어난 셈). 백엔드 메시지를 그대로 신뢰하도록
-      // 되돌렸어요.
+      // 백엔드 "이미 작성했다" 응답 그대로 신뢰 (재확인 로직 제거)
       if (looksLikeDuplicate) {
         setShowAlreadyReviewed(true);
       } else {
@@ -274,8 +231,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <div className="px-4 mobile:px-8 py-6 flex flex-col gap-6">
-        {/* [수정] 팝업 제목 한 줄만 있던 걸, 대표 이미지 + 기간/장소까지 보이는
-            카드로 바꿨어요 - 지금 어떤 팝업에 대한 후기를 쓰는지 더 명확하게 보여요. */}
+        {/* 대표 이미지+기간/장소 카드 */}
         <div className="flex items-center gap-3 border border-gray-200 dark:border-[#282B32] rounded-xl p-3">
           <div className="w-14 h-14 rounded-lg bg-gray-100 flex-none overflow-hidden">
             {mainImageUrl ? (
@@ -391,7 +347,7 @@ export default function WriteReviewPage({ params }: { params: Promise<{ id: stri
         />
       )}
 
-      {/* [신규] 이미 이 팝업에 댓글/후기를 남긴 경우 안내 팝업 */}
+      {/* 이미 작성한 경우 안내 모달 */}
       {showAlreadyReviewed && (
         <div
           className="fixed inset-0 bg-black/40 flex items-center justify-center px-6 z-50"
