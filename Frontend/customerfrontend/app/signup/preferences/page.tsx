@@ -87,7 +87,7 @@ export default function PreferencesPage() {
 
       {regions.length > 0 && (
         <section className="mb-8">
-          <h2 className="text-sm font-semibold text-gray-800 mb-3">관심 지역</h2>
+          <h2 className="text-sm font-semibold text-gray-800 dark:text-white mb-3">관심 지역</h2>
           <div className="flex flex-wrap gap-2">
             {regions.map((r) => (
               <button
@@ -96,7 +96,7 @@ export default function PreferencesPage() {
                 onClick={() => toggleRegion(r.id)}
                 className={`px-4 py-2 rounded-full text-sm border ${
                   selectedRegions.includes(r.id)
-                    ? "bg-gray-900 text-white border-gray-900"
+                    ? "border-point text-[#218B09]"
                     : "border-gray-200 dark:border-[#282B32] text-gray-600 dark:text-gray-400"
                 }`}
               >
@@ -109,7 +109,7 @@ export default function PreferencesPage() {
 
       {keywords.length > 0 && (
         <section className="mb-10">
-          <h2 className="text-sm font-semibold text-gray-800 mb-3">관심 카테고리</h2>
+          <h2 className="text-sm font-semibold text-gray-800 dark:text-white mb-3">관심 카테고리</h2>
           <div className="flex flex-wrap gap-2">
             {keywords.map((kw) => (
               <button
@@ -118,7 +118,7 @@ export default function PreferencesPage() {
                 onClick={() => toggleKeyword(kw.id)}
                 className={`px-4 py-2 rounded-full text-sm border ${
                   selectedKeywords.includes(kw.id)
-                    ? "bg-gray-900 text-white border-gray-900"
+                    ? "border-point text-[#218B09]"
                     : "border-gray-200 dark:border-[#282B32] text-gray-600 dark:text-gray-400"
                 }`}
               >
@@ -134,7 +134,7 @@ export default function PreferencesPage() {
           type="button"
           disabled={submitting || !hasAnySelection}
           onClick={() => finish(false)}
-          className="w-full rounded-full py-3.5 text-sm font-medium bg-gray-900 text-white disabled:opacity-50"
+          className="w-full rounded-full py-3.5 text-sm font-medium bg-point text-gray-900 dark:text-white disabled:opacity-50"
         >
           {submitting ? "저장하는 중..." : "선택 완료"}
         </button>

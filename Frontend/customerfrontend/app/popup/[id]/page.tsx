@@ -3,6 +3,7 @@
 // 팝업 상세 페이지 - 정보/댓글·후기 탭, 예약·웨이팅 버튼, 상세이미지, SNS링크, 이용안내 등 팝업의 거의 모든 정보를 보여주는 핵심 페이지.
 
 import { use, useEffect, useMemo, useState } from "react";
+import useEmblaCarousel from "embla-carousel-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Footer } from "@/components/layout/Footer";
@@ -112,16 +113,32 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   const [waitTime, setWaitTime] = useState<PopupWaitTime | null>(null);
   const [queueCount, setQueueCount] = useState<number | null>(null);
   const [images, setImages] = useState<PopupImage[]>([]);
-  // [수정] 대표/상세 이미지를 "배열 순서"가 아니라 실제 type으로 갈라요.
-  // 상세 이미지 1장만 등록되고 대표(썸네일)가 비어있는 팝업에서, 그 상세
-  // 이미지가 대표 자리에 뜨고 정작 상세 섹션은 비어버리는 버그가 있었어요.
-  // (sortOrder가 THUMBNAIL/DETAIL 각각 0부터 시작해서, 대표를 images[0]로
-  // 잡으면 어느 쪽이 먼저 올지 id 순서에 좌우됐어요.)
-  const coverImage = useMemo(
-    () => images.find((img) => img.type === "THUMBNAIL") ?? images[0],
+  // [수정 8/5] "대표 이미지가 여러 장이면 어떻게 되는지 확인 안 됨" 확인 결과 -
+  // 백엔드는 대표(THUMBNAIL) 이미지도 여러 장 등록을 허용하는데(주최자가 반복
+  // 업로드 가능, sortOrder로 순서 관리), 이 화면은 images.find(...)로 그중
+  // 딱 한 장만 쓰고 나머지는 그냥 화면에 안 보이게 조용히 버리고 있었어요 -
+  // 에러도 안 나고 목록에 있다는 표시도 없어서, 주최자가 여러 장 올려도
+  // 실제로는 하나만 노출되는 걸 아무도 눈치채기 어려운 상태였습니다.
+  // DETAIL 이미지는 이미 배열 그대로 다 보여주고 있었으니(detailImages),
+  // 대표 이미지도 똑같이 전부 보여주는 캐러셀로 바꿨어요 - 한 장뿐이면
+  // 지금까지와 똑같이 보이고, 여러 장이면 옆으로 넘겨볼 수 있어요.
+  const thumbnailImages = useMemo(
+    () => images.filter((img) => img.type === "THUMBNAIL"),
     [images]
   );
   const detailImages = useMemo(() => images.filter((img) => img.type === "DETAIL"), [images]);
+  const [heroEmblaRef, heroEmblaApi] = useEmblaCarousel({ loop: false, align: "start" });
+  const [heroIndex, setHeroIndex] = useState(0);
+
+  useEffect(() => {
+    if (!heroEmblaApi) return;
+    const onSelect = () => setHeroIndex(heroEmblaApi.selectedScrollSnap());
+    heroEmblaApi.on("select", onSelect);
+    onSelect();
+    return () => {
+      heroEmblaApi.off("select", onSelect);
+    };
+  }, [heroEmblaApi]);
   const [waitingTeams, setWaitingTeams] = useState<number | null>(null);
   const [wishlistCount, setWishlistCount] = useState<number | undefined>(undefined);
   // [신규] 별점을 누르거나 "댓글만 남기기"를 눌렀을 때, 이미 이 팝업에 후기/댓글을
@@ -418,10 +435,36 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
 
       {/* [수정] 대표 이미지 - 여백 없이 화면 꽉 채우도록 padding 있는 컨테이너 밖으로
           뺐어요. 높이는 450px 고정, 가운데 정렬(object-center)로 잘려요.
-          찜 버튼은 하단바에 이미 있어서 여기서는 뺐어요. */}
+          찜 버튼은 하단바에 이미 있어서 여기서는 뺐어요.
+          [수정 8/5] 대표 이미지가 여러 장이면 캐러셀로 전부 넘겨볼 수 있게
+          바꿨어요. 한 장이면 지금까지와 동일하게 보여요(스와이프 의미가
+          없으니 점 표시도 안 뜸). 대표 이미지가 하나도 없고 상세 이미지만
+          있으면, 예전처럼 상세 이미지 첫 장을 대신 보여줘요. */}
       <div className="relative w-full h-[450px] bg-gray-100 dark:bg-[#282B32] overflow-hidden">
-        {coverImage ? (
-          <ImageWithFallback src={coverImage.imageUrl} className="w-full h-full object-contain" />
+        {thumbnailImages.length > 0 ? (
+          <>
+            <div className="w-full h-full overflow-hidden" ref={heroEmblaRef}>
+              <div className="flex h-full">
+                {thumbnailImages.map((img) => (
+                  <div key={img.id} className="relative flex-none w-full h-full">
+                    <ImageWithFallback src={img.imageUrl} className="w-full h-full object-contain" />
+                  </div>
+                ))}
+              </div>
+            </div>
+            {thumbnailImages.length > 1 && (
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                {thumbnailImages.map((img, i) => (
+                  <span
+                    key={img.id}
+                    className={`w-1.5 h-1.5 rounded-full ${i === heroIndex ? "bg-white" : "bg-white/40"}`}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        ) : detailImages[0] ? (
+          <ImageWithFallback src={detailImages[0].imageUrl} className="w-full h-full object-contain" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
             등록된 이미지가 없어요

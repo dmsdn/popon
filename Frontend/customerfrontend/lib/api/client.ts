@@ -49,6 +49,15 @@ export async function apiFetch<T>(
   let res: Response;
   try {
     res = await fetch(`${API_BASE}${path}`, {
+      // [수정 8/5] "웨이팅 등록 직후 대기 현황 숫자가 새로고침 전까지 그대로다"
+      // 신고를 다시 보니, 프론트 state 갱신 코드는 정상인데도 안 바뀌는
+      // 경우였어요 - .next 캐시를 지워도 그대로였다는 게 결정적인 단서였습니다
+      // (그건 빌드 캐시 문제가 아니라는 뜻이니까요). fetch()에 cache 옵션을
+      // 아무것도 안 주면 브라우저가 GET 응답을 자체적으로 캐싱해서, 같은
+      // API를 다시 불러도 네트워크를 안 타고 방금 전 응답을 그대로 재사용할
+      // 수 있어요. 이 앱은 실시간성 있는 데이터를 계속 다시 받아와야 하니
+      // 기본적으로 캐시를 아예 안 쓰게 했어요.
+      cache: "no-store",
       ...options,
       headers: {
         "Content-Type": "application/json",
