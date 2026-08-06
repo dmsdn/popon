@@ -1315,7 +1315,7 @@ function MyPageContent() {
               {!isLoggedIn || !customer ? (
                 <Link
                   href="/login"
-                  className="block w-full text-center rounded-full py-3.5 text-sm font-medium bg-gray-900 text-white"
+                  className="block w-full text-center rounded-full py-3.5 text-sm font-medium bg-point text-gray-900 dark:text-white"
                 >
                   로그인하고 문의하기
                 </Link>
@@ -1341,7 +1341,7 @@ function MyPageContent() {
                     type="button"
                     onClick={handleSubmitCsRequest}
                     disabled={csSubmitting || !csTitle.trim() || !csContent.trim()}
-                    className="w-full rounded-full py-3.5 text-base font-medium bg-gray-900 text-white disabled:opacity-50"
+                    className="w-full rounded-full py-3.5 text-base font-medium bg-point text-gray-900 dark:text-white disabled:opacity-50"
                   >
                     {csSubmitting ? "등록하는 중..." : "문의하기"}
                   </button>
