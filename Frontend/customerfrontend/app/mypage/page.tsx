@@ -8,15 +8,16 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { getAnnouncements, type Announcement } from "@/lib/api/announcements";
 import { getMyReviews, deleteReview, toDisplayDate, type Review } from "@/lib/api/reviews";
-import { getPopup, HIDDEN_STATUSES, type PopupDetail } from "@/lib/api/popups";
+import { getPopup, getPopupSlots, HIDDEN_STATUSES, type PopupDetail, type PopupSlot } from "@/lib/api/popups";
 import { getMyReservations, type Reservation } from "@/lib/api/reservations";
-import { getMyWaitingStatus, getMyWaitingIds, getMyActiveWaitings, type Waiting, type MyActiveWaiting } from "@/lib/api/waiting";
+import { getMyWaitingStatus, getMyWaitingIds, getMyActiveWaitings, getWaitingBoard, type Waiting, type MyActiveWaiting } from "@/lib/api/waiting";
 import { createCsRequest, getMyCsRequests, type CsRequestItem } from "@/lib/api/cs";
 import { TERMS_SECTIONS } from "@/data/termsContent";
 import { StarRatingDisplay } from "@/components/ui/StarRatingDisplay";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { reservationStatusLabel, waitingStatusLabel } from "@/lib/utils/statusLabels";
+import { isTodayClosed } from "@/lib/utils/operatingHours";
 import { getNotificationSettings, updateNotificationSettings, type NotificationSettings } from "@/lib/api/notificationSettings";
 import { getRegions, getMyRegions } from "@/lib/api/regions";
 import { getKeywords, getMyInterests, withdrawCustomer } from "@/lib/api/customer";
@@ -28,6 +29,7 @@ import {
   toggleWishlist,
 } from "@/lib/wishlistStore";
 import { LoadingState, EmptyState } from "@/components/ui/EmptyState";
+import { HeartButton } from "@/components/ui/HeartButton";
 import { appAlert, appConfirm } from "@/lib/ui/alertStore";
 
 type MenuKey =
@@ -163,6 +165,12 @@ function MyPageContent() {
   // 찜 목록
   const wishlistIds = useSyncExternalStore(subscribeWishlist, getWishlistSnapshot, getServerWishlistSnapshot);
   const [wishlistPopups, setWishlistPopups] = useState<Record<number, PopupDetail>>({});
+  // 찜 목록에서 하트를 눌러 해제한 카드는 서버에서는 즉시 찜 해제되지만,
+  // 현재 화면에서는 새로고침/페이지 재진입 전까지 잠깐 남겨둡니다.
+  // 실수로 눌렀다면 같은 화면에서 다시 하트를 눌러 되돌릴 수 있어요.
+  const [locallyUnwishlistedIds, setLocallyUnwishlistedIds] = useState<Set<number>>(new Set());
+  const [wishlistWaitingTeams, setWishlistWaitingTeams] = useState<Record<number, number | null>>({});
+  const [wishlistSlots, setWishlistSlots] = useState<Record<number, PopupSlot[]>>({});
   // [신규] "다녀간 팝업" 탭에서 후기를 누르면 크게 보여줄 모달 상태
   const [openVisitedReview, setOpenVisitedReview] = useState<
     (VisitedItem & { review: NonNullable<VisitedItem["review"]> }) | null
@@ -180,7 +188,10 @@ function MyPageContent() {
   // 숫자(wishlistIds.size)는 게시중지/승인대기/반려 팝업까지 그대로 세고,
   // 바로 아래 목록은 hiddenPopupIds로 그 팝업들을 걸러내고 있어서 서로 기준이
   // 달랐던 거예요. 배지도 목록과 똑같은 기준으로 세도록 통일해요.
-  const visibleWishlistCount = [...wishlistIds].filter((id) => !hiddenPopupIds.has(id)).length;
+  const visibleWishlistIds = [...new Set([...wishlistIds, ...locallyUnwishlistedIds])].filter(
+    (id) => !hiddenPopupIds.has(id)
+  );
+  const visibleWishlistCount = visibleWishlistIds.length;
 
   useEffect(() => {
     if (isLoggedIn) ensureWishlistLoaded();
@@ -193,6 +204,28 @@ function MyPageContent() {
         .then((detail) => {
           setWishlistPopups((prev) => ({ ...prev, [popupId]: detail }));
           markIfHidden(popupId, detail.status);
+
+          // 상세페이지와 동일하게, 이 팝업이 실제로 지원하는 웨이팅/예약만
+          // 찜 목록 카드에 노출하고 웨이팅 버튼에는 현재 대기 팀 수도 표시해요.
+          if (detail.queueMode === "ONSITE_WAITING_ONLY" || detail.queueMode === "BOTH") {
+            getWaitingBoard(popupId)
+              .then((board) => {
+                setWishlistWaitingTeams((prev) => ({ ...prev, [popupId]: board.totalWaitingTeams }));
+              })
+              .catch(() => {
+                setWishlistWaitingTeams((prev) => ({ ...prev, [popupId]: null }));
+              });
+          }
+
+          if (detail.reservationMode === "SLOT") {
+            getPopupSlots(popupId)
+              .then((slotList) => {
+                setWishlistSlots((prev) => ({ ...prev, [popupId]: slotList }));
+              })
+              .catch(() => {
+                setWishlistSlots((prev) => ({ ...prev, [popupId]: [] }));
+              });
+          }
         })
         .catch(() => {
           /* 팝업이 삭제됐을 수도 있어요 */
@@ -865,61 +898,113 @@ function MyPageContent() {
               <EmptyState message="찜한 팝업이 없어요." />
             ) : (
               <div className="flex flex-col gap-3">
-                {[...wishlistIds].filter((popupId) => !hiddenPopupIds.has(popupId)).map((popupId) => {
-                  const p = wishlistPopups[popupId];
-                  // [수정] 진행 중이거나 예정인 팝업만 웨이팅/예약 버튼을 보여줘요
-                  // (종료된 팝업은 등록해봤자 의미가 없으니까요).
-                  const isActionable = p?.status === "OPEN" || p?.status === "BEFOR";
-                  return (
-                    <div key={popupId} className="relative flex flex-col gap-3 border border-gray-200 dark:border-[#282B32] rounded-xl p-4">
-                      <button
-                        type="button"
-                        onClick={() => toggleWishlist(popupId)}
-                        aria-label="찜 해제"
-                        className="absolute top-3 right-3 text-gray-300"
+                {visibleWishlistIds.map((popupId) => {
+                    const p = wishlistPopups[popupId];
+                    if (!p) return null;
+
+                    const supportsWaiting = p.queueMode === "ONSITE_WAITING_ONLY" || p.queueMode === "BOTH";
+                    const reservationSupportedByMode =
+                      p.queueMode === "PRERESERVATION_ONLY" || p.queueMode === "BOTH";
+                    const reservationSlotsReady =
+                      p.reservationMode !== "SLOT" ||
+                      (wishlistSlots[popupId] !== undefined && wishlistSlots[popupId].length > 0);
+                    const supportsReservation = reservationSupportedByMode && reservationSlotsReady;
+                    const waitingEnabled =
+                      supportsWaiting &&
+                      p.status === "OPEN" &&
+                      !isTodayClosed(p.operatingHours);
+                    const reservationEnabled =
+                      supportsReservation &&
+                      (p.status === "OPEN" || p.status === "BEFOR");
+                    const waitingTeams = wishlistWaitingTeams[popupId] ?? null;
+
+                    return (
+                      <div
+                        key={popupId}
+                        className="relative flex flex-col gap-3 border border-gray-200 dark:border-[#282B32] rounded-xl p-4"
                       >
-                        ✕
-                      </button>
-                      <div className="flex items-center gap-4">
-                        <Link href={`/popup/${popupId}`} className="flex items-center gap-4 flex-1 min-w-0 pr-6">
-                          {/* [수정] 썸네일 크기를 16→24로 키웠어요(너무 작다는 피드백) */}
-                          <div className="w-24 h-24 flex-none bg-gray-100 dark:bg-[#282B32] rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-sm">
-                            {p?.thumbnailImages?.[0] ? (
-                              <ImageWithFallback src={p.thumbnailImages[0]} className="w-full h-full object-cover" />
-                            ) : (
-                              "이미지"
+                        <div className="flex items-center gap-4">
+                          <Link href={`/popup/${popupId}`} className="flex items-center gap-4 flex-1 min-w-0 pr-10">
+                            <div className="w-24 h-24 flex-none bg-gray-100 dark:bg-[#282B32] rounded-lg overflow-hidden flex items-center justify-center text-gray-400 text-sm">
+                              {p.thumbnailImages?.[0] ? (
+                                <ImageWithFallback src={p.thumbnailImages[0]} className="w-full h-full object-cover" />
+                              ) : (
+                                "이미지"
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold truncate">{p.title}</p>
+                              {p.location && <p className="text-sm text-gray-400 mt-0.5">{p.location}</p>}
+                            </div>
+                          </Link>
+
+                          <div className="absolute top-3 right-3">
+                            <HeartButton
+                              popupId={popupId}
+                              className="w-8 h-8"
+                              onToggle={(nextActive) => {
+                                if (!nextActive) {
+                                  setLocallyUnwishlistedIds((prev) => {
+                                    const next = new Set(prev);
+                                    next.add(popupId);
+                                    return next;
+                                  });
+                                } else {
+                                  setLocallyUnwishlistedIds((prev) => {
+                                    const next = new Set(prev);
+                                    next.delete(popupId);
+                                    return next;
+                                  });
+                                }
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        {(supportsReservation || supportsWaiting) && (
+                          <div className="flex items-center gap-2">
+                            {supportsReservation && (
+                              <Link
+                                href={`/popup/${popupId}?action=reservation`}
+                                aria-disabled={!reservationEnabled}
+                                className={`flex-1 text-center rounded-full py-3 text-base font-medium border-2 border-point text-gray-900 dark:text-white ${
+                                  !reservationEnabled ? "opacity-40 pointer-events-none" : ""
+                                }`}
+                              >
+                                {reservationEnabled
+                                  ? "사전 예약"
+                                  : p.status === "CLOSED"
+                                  ? "종료된 팝업이에요"
+                                  : "예약 준비중"}
+                              </Link>
+                            )}
+
+                            {supportsWaiting && (
+                              <Link
+                                href={`/popup/${popupId}?action=waiting`}
+                                aria-disabled={!waitingEnabled}
+                                className={`flex-1 text-center rounded-full py-3 text-base font-medium bg-point text-gray-900 dark:text-white ${
+                                  !waitingEnabled ? "opacity-40 pointer-events-none" : ""
+                                }`}
+                              >
+                                {p.status === "CLOSED"
+                                  ? "종료된 팝업이에요"
+                                  : !waitingEnabled
+                                  ? isTodayClosed(p.operatingHours)
+                                    ? "오늘은 휴무일이에요"
+                                    : "웨이팅 준비중"
+                                  : waitingTeams !== null && waitingTeams > 0
+                                  ? `웨이팅 · ${waitingTeams}팀 대기중`
+                                  : "웨이팅"}
+                              </Link>
                             )}
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold truncate">{p?.title ?? `팝업 #${popupId}`}</p>
-                            {p?.location && <p className="text-sm text-gray-400 mt-0.5">{p.location}</p>}
-                          </div>
-                        </Link>
+                        )}
                       </div>
-                      {/* [신규] 팝업마다 바로 웨이팅/예약할 수 있는 버튼 - 누르면 상세페이지로
-                          가면서 해당 등록 화면이 바로 열려요. */}
-                      {isActionable && (
-                        <div className="flex items-center gap-2">
-                          <Link
-                            href={`/popup/${popupId}?action=waiting`}
-                            className="flex-1 text-center text-sm font-medium border border-gray-300 dark:border-[#282B32] text-gray-700 dark:text-gray-300 rounded-full py-2"
-                          >
-                            웨이팅하기
-                          </Link>
-                          <Link
-                            href={`/popup/${popupId}?action=reservation`}
-                            className="flex-1 text-center text-sm font-medium border border-gray-300 dark:border-[#282B32] text-gray-700 dark:text-gray-300 rounded-full py-2"
-                          >
-                            예약하기
-                          </Link>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  })}
               </div>
             ))}
-
           {activeMenu === "웨이팅 / 예약" && (
             <div className="flex flex-col gap-10">
               <section>
