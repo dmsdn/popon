@@ -15,4 +15,4 @@ public class UnifiedQueueEntryResponse {
   
     private LocalDateTime exitedAt;
     private LocalDateTime joinedAt; // 예약자는 슬롯 시작시각(입장 후에는 입장시각), 웨이팅자는 등록시각(입장 후에는 입장시각)
-}
+} 
