@@ -1,14 +1,26 @@
-# ── 개인 로컬 오버라이드 예시 ──
-# 이 파일을 같은 폴더에 application-local.yml 로 복사한 뒤 본인 값으로 수정하세요.
-# application-local.yml은 gitignore 대상이라 커밋되지 않습니다 (비밀번호를 application.yml에 직접 고치면 커밋 사고 위험).
-# 여기에 적은 키만 application.yml 값을 덮어씁니다 — 바꿀 것만 남기고 지워도 됩니다.
+# ─────────────────────────────────────────────────────────────
+# 개인 로컬 설정 예시 (선택)
+#
+# 팀이 같은 application.yml 을 공유할 때, 내 PC에서만 다른 값을 여기에 둡니다.
+# 사용법: 이 파일을 같은 폴더에 application-local.yml 로 복사 → 바꿀 값만 남기고 수정
+#        여기 적은 항목만 application.yml 값을 덮어씁니다.
+#        application-local.yml 은 커밋하지 않습니다 (.gitignore 대상).
+# ─────────────────────────────────────────────────────────────
 
 spring:
   datasource:
-    # 본인 MySQL root 비밀번호가 application.yml 기본값과 다르면 여기서 덮어쓰기
-    password: "<내 MySQL 비밀번호>"
+    password: <내 MySQL 비밀번호>
 
-  # 웨이팅 입장 QR 메일을 실제로 발송해보고 싶을 때만 (Gmail 앱 비밀번호 필요, 비워두면 발송 스킵)
+  # 입장 QR 메일을 실제로 보내보고 싶을 때만
   # mail:
-  #   username: "myaccount@gmail.com"
-  #   password: "<앱 비밀번호 16자리>"
+  #   username: <발송용 Gmail 주소>
+  #   password: <Gmail 앱 비밀번호 16자리>
+
+file:
+  upload-dir: <내 PC의 uploads 폴더 절대경로>
+
+# 지도 좌표 변환을 로컬에서 테스트할 때만
+# naver:
+#   maps:
+#     client-id: <NCP Maps Client ID>
+#     client-secret: <NCP Maps Client Secret>

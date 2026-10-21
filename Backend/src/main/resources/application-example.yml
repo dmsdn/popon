@@ -1,46 +1,61 @@
+# ─────────────────────────────────────────────────────────────
+# POPON 통합 백엔드 설정 예시
+#
+# 사용법: 이 파일을 같은 폴더에 application.yml 로 복사한 뒤 <...> 부분을 채우세요.
+#        application.yml 은 비밀값이 들어가므로 커밋하지 않습니다 (.gitignore 대상).
+#
+# 표시 안내
+#   [필수] 비어 있으면 서버가 시작되지 않음
+#   [선택] 비워두면 해당 기능만 동작하지 않음
+# ─────────────────────────────────────────────────────────────
+
 spring:
-  # 개인 로컬 설정(내 DB 비밀번호·메일 계정 등)은 application-local.yml에 두면 이 파일을 덮어씀 (gitignore 대상 — 커밋 안 됨)
+  # 개인 PC마다 다른 값(DB 비밀번호 등)은 application-local.yml 에 따로 두면 이 파일 값을 덮어씁니다.
   # 만드는 법: application-local-example.yml 복사 → application-local.yml → 값 수정
   config:
     import: "optional:classpath:application-local.yml"
 
-  # 팀 공용 Aiven 클라우드 MySQL 기준. 비밀번호는 커밋 금지 — 아래 password는 반드시 채워 넣어야 함.
-  # (application-local.yml에 password만 따로 두면 이 파일을 덮어써서 더 안전 — 하단 예시 참고)
+  # [필수] MySQL 접속 정보
   datasource:
-    url: jdbc:mysql://ibm-project1-ibmproject1.l.aivencloud.com:23648/popupdb?useSSL=true&requireSSL=true&serverTimezone=Asia/Seoul
-    username: avnadmin
-    password: "<Aiven DB 비밀번호 — 팀에서 공유받아 입력>"
+    url: jdbc:mysql://localhost:3306/popupdb?serverTimezone=Asia/Seoul
+    username: <DB 사용자명>
+    password: <DB 비밀번호>
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: update        # 엔티티 기준으로 테이블 자동 생성 · 수정
 
   servlet:
     multipart:
       max-file-size: 10MB
       max-request-size: 30MB
 
-  # 웨이팅 입장 QR 메일 발송용 (EmailNotificationService — host 없으면 기동 실패)
-  # username을 비워두면 발송은 스킵되고 로그만 남음. 실제 발송하려면 Gmail 앱 비밀번호 입력.
+  # 입장 QR 메일 발송 (Gmail SMTP)
+  # host 는 [필수] — 없으면 서버가 시작되지 않음
+  # username · password 는 [선택] — 비워두면 메일 발송을 건너뛰고 로그만 남김
   mail:
     host: smtp.gmail.com
     port: 587
-    username: ""
-    password: ""
+    username: ""              # 발송용 Gmail 주소
+    password: ""              # Gmail 앱 비밀번호 (16자리)
     properties:
       mail.smtp.auth: true
       mail.smtp.starttls.enable: true
 
-  # [통합] 소비자 카카오 소셜 로그인 (구 customerbackend에서 이관)
-  # 주의: 카카오 개발자 콘솔의 Redirect URI를 8081 → 8080 으로 재등록해야 동작함
-  #   http://localhost:8080/login/oauth2/code/kakao
+  # [필수] 소비자 소셜 로그인 (카카오 · 구글)
+  # 각 개발자 콘솔에 Redirect URI 를 등록해야 합니다.
+  #   카카오: http://localhost:8080/login/oauth2/code/kakao
+  #   구글  : http://localhost:8080/login/oauth2/code/google
+  # 구글은 리디렉션 URI 에 IP 주소를 허용하지 않으므로, 배포 시에는 도메인이 필요합니다.
+  # 구글 로그인을 쓰지 않는다면 google 블록 전체를 지우세요. (빈 값으로 두면 시작 실패)
   security:
     oauth2:
       client:
         registration:
           kakao:
-            client-id: "d2bb708c4eb5a39b31bafcde57cacbc4"
+            client-id: <카카오 REST API 키>
+            client-secret: <카카오 Client Secret>
             redirect-uri: "{baseUrl}/login/oauth2/code/kakao"
             authorization-grant-type: authorization_code
             client-authentication-method: client_secret_post
@@ -48,15 +63,9 @@ spring:
             scope:
               - profile_nickname
               - profile_image
-          # 구글 로그인 — 값이 비어 있으면 기동 자체가 실패한다
-          # ("Client id of registration 'google' must not be empty").
-          # 안 쓸 거면 이 google 블록 전체를 지울 것 — 빈 문자열로 두면 안 됨.
-          # Google Cloud Console 발급, redirect-uri는 {baseUrl} 템플릿이라 자동 계산됨.
-          # ※ 구글은 리디렉션 URI에 IP 주소를 허용하지 않는다(공개 최상위 도메인 필수) —
-          #   배포 환경에서 IP만 있다면 nip.io 같은 IP→도메인 매핑을 등록해 우회한다.
           google:
-            client-id: "여기에_구글_클라이언트_ID"
-            client-secret: "여기에_구글_클라이언트_시크릿"
+            client-id: <구글 OAuth 클라이언트 ID>
+            client-secret: <구글 OAuth 클라이언트 보안 비밀>
             redirect-uri: "{baseUrl}/login/oauth2/code/google"
             scope:
               - profile
@@ -68,69 +77,53 @@ spring:
             user-info-uri: https://kapi.kakao.com/v2/user/me
             user-name-attribute: id
 
+# [필수] JWT 서명키
+# 소비자 토큰과 직원(주최자 · 관리자) 토큰은 서로 다른 키로 서명합니다. 두 값은 반드시 달라야 합니다.
+# 생성 예: openssl rand -base64 64
 jwt:
-  # 8/3 — 서명키를 둘로 분리했다. 소비자 토큰과 직원(주최자·관리자) 토큰이 각자의
-  # 키로 서명된다. 하나였을 때는 서로의 파서를 서명 검증까지 통과해 버려서,
-  # 필터가 남의 토큰을 자기 것으로 착각하는 사고가 실제로 났다 (8/3, 콘솔 전체 500).
-  # 각자 `openssl rand -base64 64` 로 만들어 넣을 것. 두 키는 반드시 서로 달라야 한다.
-  consumer-secret: ""
-  staff-secret: ""
-  expiration: 86400000   # 24시간 (ms)
+  consumer-secret: <소비자용 랜덤 시크릿>
+  staff-secret: <직원용 랜덤 시크릿>
+  expiration: 86400000        # 토큰 유효시간 24시간 (ms)
 
+# [필수] 업로드 파일 저장
 file:
-  # ※ 반드시 절대경로로 적을 것. 상대경로(uploads)면 백엔드를 어디서 실행하느냐에 따라
-  #   저장 폴더가 갈린다 (IDE 실행 = 리포 루트/uploads, 터미널에서 Backend/ 진입 = Backend/uploads).
-  #   같은 기계인데도 방금 업로드한 이미지가 404가 되는 원인. 본인 경로로 바꿔 쓰세요.
-  upload-dir: C:/경로/popup-store-project/uploads
-  # 업로드된 파일의 URL 앞부분. 이 값이 DB(popup_image·banner·business·review_image)에
-  # 그대로 저장되므로 반드시 상대경로로 둔다 → "/uploads/xxx.jpg"
-  #
-  # 절대주소(http://localhost:8080/uploads)로 두면 안 된다. 서버 주소가 바뀔 때마다
-  # 기존 행 전체를 UPDATE해야 하고, 로컬에서 올린 이미지는 배포 환경에서 전부 깨진다.
-  # (7/30 EC2 배포에서 실제로 겪어 상대경로로 전환)
-  # 프론트 3개가 /uploads를 백엔드로 프록시하므로 상대경로로도 이미지가 정상 표시된다.
+  # 반드시 절대경로로 지정하세요.
+  # 상대경로면 실행 위치(IDE · 터미널)에 따라 저장 폴더가 달라져 이미지가 404가 될 수 있습니다.
+  upload-dir: <프로젝트 루트의 uploads 폴더 절대경로>   # 예: C:/dev/popon/uploads
+  # DB에 저장되는 이미지 URL 앞부분. 서버 주소가 바뀌어도 깨지지 않도록 상대경로를 유지하세요.
   base-url: /uploads
 
 app:
-  # 개발용 로그인(소셜 없이 테스트 계정 발급) — 로컬에서만 true. 운영 배포 시 반드시 false/삭제.
+  # 소셜 로그인 성공 후 돌아갈 소비자 앱 주소
+  frontend-base-url: http://localhost:5173
+  # [필수] 문자 · 메일로 보내는 입장 QR 링크의 앞부분 (소비자 앱 주소, /qr/{token} 으로 연결)
+  qr-base-url: http://localhost:5173
+  # [필수] 배너 링크 앞부분 (소비자 앱 주소 + /popup/{id})
+  customer-base-url: http://localhost:5173
+  # 소셜 로그인 없이 테스트 계정을 발급하는 개발용 로그인
+  # 로컬에서만 true. 외부에 공개되는 서버에서는 반드시 false
   dev-login:
     enabled: true
-  # ⚠ 아래 두 값은 로컬에서도 **배포 주소**를 쓴다 — localhost 금지.
-  #   위 frontend-base-url은 내 브라우저로 돌아오는 리다이렉트라 localhost가 맞지만,
-  #   아래 둘은 공용 DB에 저장되거나(배너 링크) 손님에게 발송된다(입장 QR 문자·메일).
-  #   팀이 DB를 공유하므로 localhost를 넣으면 깨진 링크가 모두에게 보인다.
-  #
-  # 웨이팅 등록 문자/메일에 넣는 입장 QR 링크의 앞부분 (WaitingQueueService 주입 — 없으면 부팅 실패)
-  # 반드시 소비자 앱 origin — /qr/{token} 페이지가 거기에만 있다
-  qr-base-url: https://3.35.16.87.nip.io
-  # 팝업 연동 배너의 링크 앞부분 (BannerService 주입 — 없으면 부팅 실패, jsw 8/4 추가)
-  # customer-base-url + "/popup/" + popupId 로 이어 붙여 banner.link_url에 저장한다.
-  customer-base-url: https://3.35.16.87.nip.io
 
-# ── 개인 로컬 오버라이드 예시 ──
-# 이 파일을 같은 폴더에 application-local.yml 로 복사한 뒤 본인 값으로 수정하세요.
-# application-local.yml은 gitignore 대상이라 커밋되지 않습니다 (비밀번호를 application.yml에 직접 고치면 커밋 사고 위험).
-# 여기에 적은 키만 application.yml 값을 덮어씁니다 — 바꿀 것만 남기고 지워도 됩니다.
-
-spring:
-  datasource:
-    # 팀에서 공유받은 Aiven DB 비밀번호를 여기에 (application.yml에 직접 넣지 말 것 — 커밋 사고 방지)
-    password: "<Aiven DB 비밀번호>"
-
-  # 웨이팅 입장 QR 메일을 실제로 발송해보고 싶을 때만 (Gmail 앱 비밀번호 필요, 비워두면 발송 스킵)
-  # mail:
-  #   username: "myaccount@gmail.com"
-  #   password: "<앱 비밀번호 16자리>"
-
-
-# ── 외부 API 키 (선택 — 없으면 해당 기능만 스킵) ──
-# 국세청 사업자 진위확인: data.go.kr "사업자등록정보 진위확인 및 상태조회" 활용신청 후 인증키
-nts:
-  api:
-    service-key: ""
-
-# 네이버 클라우드(NCP) Maps Geocoding: ncloud.com 콘솔 > Maps > Application 등록 후 발급
+# [선택] 네이버 클라우드 Maps — 주소를 좌표로 변환 (팝업 · 공간 등록 시)
+# NCP 콘솔 > Maps > Application 등록 후 발급
 naver:
   maps:
     client-id: ""
     client-secret: ""
+
+# [선택] 국세청 사업자등록 진위확인 — 주최자 회원가입 2단계
+# 공공데이터포털 "사업자등록정보 진위확인 및 상태조회" 활용신청 후 인증키
+nts:
+  api:
+    service-key: ""
+
+# [선택] 네이버 클라우드 SENS — 입장 QR 문자 발송
+# 비워두면 문자 발송을 건너뛰고 로그만 남김
+notification:
+  sms:
+    naver:
+      service-id: ""
+      access-key: ""
+      secret-key: ""
+      sender-phone: ""        # SENS 에 등록한 발신 번호 (숫자만)
