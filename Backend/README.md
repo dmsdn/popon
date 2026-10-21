@@ -1,7 +1,7 @@
 # 팝온 통합 백엔드 (Backend)
 
-소비자 · 주최자 · 관리자 · 현장 체크인, **4개 프론트엔드가 함께 쓰는 단일 API 서버**예요.
-처음에는 주최자·관리자용(8080)과 소비자용(8081) 두 개의 백엔드로 시작했다가, 개발 중반에 **하나의 Spring Boot 앱으로 통합**했어요.
+소비자 · 주최자 · 관리자 · 현장 체크인, **4개 프론트엔드가 함께 쓰는 단일 API 서버**.
+
 
 > 담당: 팀원 2명 (백엔드)
 
@@ -40,14 +40,14 @@ flowchart LR
     C -- 소셜 로그인 --> O --> B
 ```
 
-- 모든 프론트는 API를 상대경로 `/api`로 호출하고, 각자의 개발 서버 프록시(Vite proxy / Next rewrites)가 8080으로 전달해요. 그래서 브라우저 CORS 문제가 생기지 않아요.
-- 요청 흐름: `Controller → Service → Repository(JPA) → MySQL`, 응답은 Entity를 DTO로 변환해 반환해요.
+- 모든 프론트는 API를 상대경로 `/api`로 호출하고, 각자의 개발 서버 프록시(Vite proxy / Next rewrites)가 8080으로 전달합니다. 따라서 브라우저 CORS 문제가 생기지 않습니다.
+- 요청 흐름: `Controller → Service → Repository(JPA) → MySQL`, 응답은 Entity를 DTO로 변환해 반환합니다.
 
 <br>
 
 ## 인증 구조
 
-역할을 테이블이 아닌 **토큰 형식**으로 구분해요.
+역할을 테이블이 아닌 **토큰 형식**으로 구분합니다.
 
 | 역할 | 로그인 방식 | 토큰 |
 |---|---|---|
@@ -56,8 +56,8 @@ flowchart LR
 | 관리자 | 이메일 · 비밀번호 (가입 API 없음) | 직원용 서명키, subject = `admin:이메일` |
 | 비회원 | 없음 | 현장 웨이팅 등록 등 공개 API만 사용 |
 
-- 보안 필터 체인을 **소비자용 / 공통용 두 개**로 나누고, 서명키도 둘로 분리했어요. 키가 하나였을 때 서로의 토큰이 서명 검증을 통과해 필터가 다른 역할의 토큰을 자기 것으로 착각하는 문제가 있었기 때문이에요.
-- 두 백엔드를 합치면서 같은 이름의 클래스(SecurityConfig, JwtUtil)가 두 벌 생겨, 빈 이름을 패키지 전체 경로로 만드는 `FqnBeanNameGenerator`로 충돌을 해결했어요.
+- 보안 필터 체인을 **소비자용 / 공통용 두 개**로 나누고, 서명키도 둘로 분리했습니다. 키가 하나였을 때 서로의 토큰이 서명 검증을 통과해 필터가 다른 역할의 토큰을 자기 것으로 착각하는 문제가 있었기 때문입니다.
+- 두 백엔드를 합치면서 같은 이름의 클래스(SecurityConfig, JwtUtil)가 두 벌 생겨, 빈 이름을 패키지 전체 경로로 만드는 `FqnBeanNameGenerator`로 충돌을 해결했습니다.
 
 <br>
 
@@ -115,21 +115,25 @@ src/main/java/popupteam/popupbackend/
 
 ## 실행 방법
 
-**JDK 21**이 필요해요.
+필요한 것 : **JDK 21**과 **MySQL 8**
 
 ```powershell
-# 1. 설정 파일 만들기 (비밀번호 · 키는 커밋하지 않음)
+# 1. DB 만들기 (최초 1회)
+mysql -u root -p -e "CREATE DATABASE popupdb DEFAULT CHARACTER SET utf8mb4;"
+
+# 2. 설정 파일 만들기 (비밀번호 · 키는 커밋하지 않음)
 Copy-Item src/main/resources/application-example.yml src/main/resources/application.yml
 #    → DB 접속 정보, JWT 서명키 2개, OAuth 클라이언트 정보 입력
 
-# 2. 실행
+# 3. 실행 — 첫 실행 때 JPA가 테이블을 자동으로 만듭니다
 .\gradlew.bat bootRun
 
-# 3. 최초 1회: 테이블 생성 후 관리자 계정 · 기본 데이터 넣기
-mysql -u root -p popupdb < db-init.sql
+# 4. 최초 1회: 서버를 한 번 띄운 뒤, 관리자 계정 · 기본 키워드 넣기
+#    (PowerShell은 < 입력 연결을 지원하지 않아 cmd로 실행)
+cmd /c "mysql -u root -p --default-character-set=utf8mb4 popupdb < db-init.sql"
 ```
 
-서버는 `http://localhost:8080`에서 실행돼요. 테이블은 JPA가 엔티티 기준으로 자동 생성해요.
+서버는 `http://localhost:8080`에서 실행됩니다.
 
 ### 주요 설정 항목 (`application.yml`)
 
@@ -143,4 +147,4 @@ mysql -u root -p popupdb < db-init.sql
 | `nts.api.service-key` | 사업자 진위확인 키 (선택) |
 | `spring.mail.*` · `notification.sms.*` | 메일 · 문자 발송 계정 (비워두면 발송 생략, 로그만 남김) |
 
-통합 배경과 상세 결정 과정은 [UNIFICATION-README.md](UNIFICATION-README.md)에 정리되어 있어요.
+통합 배경과 상세 결정 과정은 [UNIFICATION-README.md](UNIFICATION-README.md)에 정리되어 있습니다.
