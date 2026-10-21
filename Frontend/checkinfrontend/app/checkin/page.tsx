@@ -476,7 +476,7 @@ function CheckinPageInner() {
             key={l}
             type="button"
             onClick={() => setLang(l)}
-            className={`text-sm px-3 py-1.5 rounded-full font-semibold whitespace-nowrap ${
+            className={`text-md px-3 py-1.5 rounded-full font-medium whitespace-nowrap ${
               lang === l ? "bg-point text-gray-900" : "text-gray-400"
             }`}
           >
@@ -488,10 +488,10 @@ function CheckinPageInner() {
       {/* 좌측 : 팝업 정보 */}
       <section className="w-full landscape:w-[38%] landscape:h-full flex flex-col items-center gap-6 bg-card px-8 py-10 pt-16 landscape:py-8 landscape:pt-8 flex-none">
         <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-6">
-          {popupTitle && <p className="text-xl font-semibold text-gray-100 text-center">{popupTitle}</p>}
+          {popupTitle && <p className="text-3xl font-medium text-gray-100 text-center">{popupTitle}</p>}
 
           <div className="flex flex-col items-center gap-1 mt-4">
-            <span className="text-sm text-gray-400">{t.currentWaitingTeams}</span>
+            <span className="text-xl text-gray-400">{t.currentWaitingTeams}</span>
             <span className="flex items-baseline gap-2">
               <span className="text-7xl landscape:text-8xl font-semibold text-point">
                 {totalWaitingTeams === null ? "-" : totalWaitingTeams}
@@ -505,7 +505,7 @@ function CheckinPageInner() {
               정원(capacity) 정보가 없는 팝업은 정확한 계산이 안 돼서 안 보여줌 */}
           {totalWaitingPeople !== null && avgExperienceMinutes != null && capacity != null && capacity > 0 && (
             <div className="flex items-baseline gap-2 mt-2">
-              <span className="text-sm text-gray-400">{t.estimatedWait}</span>
+              <span className="text-xl text-gray-400">{t.estimatedWait}</span>
               <span className="text-3xl font-semibold text-point">
                 {totalWaitingPeople <= capacity
                   ? 0
@@ -521,13 +521,13 @@ function CheckinPageInner() {
           <div className="w-full flex items-center gap-4 bg-[#17181a] rounded-xl px-4 py-4 flex-none">
             {reservationQrSrc ? (
               /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={reservationQrSrc} alt="" width={90} height={90} className="rounded-md flex-none bg-white" />
+              <img src={reservationQrSrc} alt="" width={90} height={90} className="rounded-md flex-none bg-white p-1" />
             ) : (
               <div className="w-[90px] h-[90px] rounded-md flex-none bg-[#282b32]" aria-hidden />
             )}
             <div className="text-left min-w-0">
-              <p className="text-sm font-semibold text-white">{qrTitle}</p>
-              <p className="text-sm text-gray-400 mt-1 leading-relaxed">{qrDesc}</p>
+              <p className="text-xl font-medium text-white">{qrTitle}</p>
+              <p className="text-md text-gray-400 mt-2 leading-relaxed">{qrDesc}</p>
             </div>
           </div>
         )}
@@ -539,8 +539,8 @@ function CheckinPageInner() {
           // [신규] 인원 선택 단계
           <div className="w-full max-w-md flex flex-col items-center gap-10">
             <div className="text-center">
-              <p className="text-xl font-bold">{t.howManyPeople}</p>
-              <p className="text-sm text-gray-400 mt-1">{t.selectPartySize}</p>
+              <p className="text-3xl font-semibold">{t.howManyPeople}</p>
+              <p className="text-xl text-gray-400 mt-4">{t.selectPartySize}</p>
             </div>
             <div className="flex items-center gap-8">
               <button
@@ -564,12 +564,12 @@ function CheckinPageInner() {
               </button>
             </div>
             {maxPartySize != null && (
-              <p className="text-sm text-gray-500">{t.maxPartyNote(maxPartySize)}</p>
+              <p className="text-xl text-gray-500">{t.maxPartyNote(maxPartySize)}</p>
             )}
             <button
               type="button"
               onClick={() => setStep("contact")}
-              className="w-full rounded-full py-4 text-lg font-bold bg-point text-gray-900"
+              className="w-full rounded-full py-4 text-xl font-bold bg-point text-gray-900"
             >
               {t.next}
             </button>
