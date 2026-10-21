@@ -1,6 +1,6 @@
 # 팝온 관리자 콘솔 (adminfrontend)
 
-플랫폼 운영팀이 **팝업 심사, 회원 · 콘텐츠 관리, CS 처리, 플랫폼 통계**를 다루는 관리자 전용 웹이에요.
+플랫폼 운영팀이 **팝업 심사, 회원 · 콘텐츠 관리, CS 처리, 플랫폼 통계**를 다루는 관리자 전용 웹.
 
 > 담당: 팀원 (주최자 · 관리자 프론트엔드)
 
@@ -16,7 +16,7 @@
 | 스타일 | Tailwind CSS 4, Radix UI 기반 컴포넌트 (shadcn/ui 구성) |
 | 차트 | Recharts |
 
-처음에는 주최자 앱(popupfrontend) 안의 `/admin` 경로였는데, 같은 origin에서 **관리자 토큰과 주최자 토큰이 localStorage에서 충돌**하는 문제가 있어 별도 앱으로 분리했어요.
+처음에는 주최자 앱(popupfrontend) 안의 `/admin` 경로였는데, 같은 origin에서 **관리자 토큰과 주최자 토큰이 localStorage에서 충돌**하는 문제가 있어 별도 앱으로 분리했습니다.
 
 <br>
 
@@ -61,9 +61,9 @@ npm install
 npm run dev
 ```
 
-`http://localhost:5175`에서 열려요. `/api`, `/uploads` 요청은 Vite 프록시가 통합 백엔드(`localhost:8080`)로 전달해요.
+`http://localhost:5175`에서 열립니다. `/api`, `/uploads` 요청은 Vite 프록시가 통합 백엔드(`localhost:8080`)로 전달합니다.
 
-관리자 계정은 회원가입 기능이 없어서, 백엔드의 `db-init.sql`로 생성한 계정으로 로그인해요.
+관리자 계정은 회원가입 기능이 없어서, 백엔드의 `db-init.sql`로 생성한 계정으로 로그인합니다.
 
 | 환경변수 | 필수 | 설명 |
 |---|---|---|
