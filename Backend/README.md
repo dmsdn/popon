@@ -1,99 +1,146 @@
-# 팝온[POP-ON] 통합 백엔드 (popupon-backend)
+# 팝온 통합 백엔드 (Backend)
 
-기존 `popupbackend`(8080, 주최자·관리자)와 `customerbackend`(8081, 소비자)를 **하나의 Spring Boot 앱**으로 통합한 백엔드.
-2026-07-22 팀 결정으로 도메인 패키지 통합안(구 unified-option2)을 채택. 통합 배경·대안 비교는 [UNIFICATION-README.md](UNIFICATION-README.md) 참고.
+소비자 · 주최자 · 관리자 · 현장 체크인, **4개 프론트엔드가 함께 쓰는 단일 API 서버**예요.
+처음에는 주최자·관리자용(8080)과 소비자용(8081) 두 개의 백엔드로 시작했다가, 개발 중반에 **하나의 Spring Boot 앱으로 통합**했어요.
 
-## 실행
+> 담당: 팀원 2명 (백엔드)
 
-빌드·실행에는 **JDK 21이 필수**다. build.gradle 툴체인이 21로 고정돼 있고, 배포 서버(EC2)의 JRE도 21이라
-다른 버전으로 빌드한 jar는 서버에서 아예 안 뜬다. IntelliJ로만 돌리면 내장 런타임 덕에 몰라도 됐지만,
-터미널 빌드(bootJar)는 JDK 21이 없으면 그 자리에서 실패한다 (7/30 실제 발생).
+<br>
 
-```
-winget install --id EclipseAdoptium.Temurin.21.JDK --source winget
-```
+## 기술 스택
 
-```
-# PowerShell
-$env:JAVA_HOME="C:\Program Files\Eclipse Adoptium\jdk-21.0.12.8-hotspot"; .\gradlew.bat bootRun
-```
+| 구분 | 사용 기술 |
+|---|---|
+| 언어 · 런타임 | Java 21 |
+| 프레임워크 | Spring Boot 4.1 (Web MVC, Data JPA, Security, OAuth2 Client, Validation, Mail) |
+| DB | MySQL |
+| 인증 | JWT (jjwt), 카카오 · 구글 OAuth2 |
+| 외부 API | 네이버 클라우드 Maps 지오코딩, 네이버 SENS(문자), 국세청 사업자 진위확인, Gmail SMTP |
+| 빌드 · 배포 | Gradle, AWS EC2 (systemd 서비스) |
 
-- 포트: **8080 단일** (8081은 더 이상 없음)
-- DB: MySQL `popupdb` (application.yml — 로컬 설정은 application-example.yml 참고)
-- 카카오 로그인: 개발자 콘솔 Redirect URI가 `http://localhost:8080/login/oauth2/code/kakao`로 등록되어 있어야 함
+<br>
 
-## 배포 (7/30~)
+## 아키텍처
 
-EC2 `3.35.218.209:8080`에 systemd 서비스(`popupon`)로 상시 구동 중이다. 배포 관리는 ljk 담당.
+```mermaid
+flowchart LR
+    C[소비자 웹<br/>Next.js :5173]
+    S[주최자 센터<br/>Vite React :5174]
+    A[관리자 콘솔<br/>Vite React :5175]
+    K[현장 체크인<br/>Next.js :5176]
+    B[통합 백엔드<br/>Spring Boot :8080]
+    D[(MySQL)]
+    O[카카오 · 구글 OAuth]
 
-- 재배포: 로컬에서 `gradlew bootJar -x test` → jar를 `/opt/popupon/popupon.jar`로 scp → `sudo systemctl restart popupon`
-- 서버 설정은 jar 밖 `/opt/popupon/config/application.yml` — 설정만 바꿀 땐 jar 재배포 불필요
-- 서버에서는 `app.dev-login.enabled=false` (8080이 공개라 dev-login은 무인증 토큰 발급기가 됨 — 켜지 말 것)
-- 소셜 로그인은 `http://3.35.218.209.nip.io:8080` 도메인 경유 (구글이 리디렉션 URI에 IP를 안 받아서)
-
-## 패키지 구조 (도메인 기준)
-
-```
-popupteam.popupbackend
-├── domain/
-│   ├── popup, reservation, waiting, venue, contract, business, admin,
-│   │   eventlog, report, cs, terms ...          ← 기존 popupbackend 그대로
-│   ├── consumer        ← 소비자 계정·관심 키워드 (구 customerbackend)
-│   │   └── auth        ← 카카오 OAuth·소비자 JWT·소비자 보안체인
-│   ├── review          ← 리뷰·리뷰 이미지·공감 (구 customerbackend)
-│   └── wishlist        ← 찜 (구 customerbackend)
-├── common/ (geocoding, exception, upload)
-├── config/ (SecurityConfig, WebConfig, FqnBeanNameGenerator)
-├── security/ (JwtUtil, JwtAuthenticationFilter — 주최자·관리자용)
-└── UnifiedApplication
+    C -- /api 프록시 --> B
+    S -- /api 프록시 --> B
+    A -- /api 프록시 --> B
+    K -- /api 프록시 --> B
+    B --> D
+    C -- 소셜 로그인 --> O --> B
 ```
 
-## 인증 체계 (역할 = 토큰 형식)
+- 모든 프론트는 API를 상대경로 `/api`로 호출하고, 각자의 개발 서버 프록시(Vite proxy / Next rewrites)가 8080으로 전달해요. 그래서 브라우저 CORS 문제가 생기지 않아요.
+- 요청 흐름: `Controller → Service → Repository(JPA) → MySQL`, 응답은 Entity를 DTO로 변환해 반환해요.
 
-| 역할 | 토큰 | 처리 체인 |
+<br>
+
+## 인증 구조
+
+역할을 테이블이 아닌 **토큰 형식**으로 구분해요.
+
+| 역할 | 로그인 방식 | 토큰 |
 |---|---|---|
-| 주최자 | subject = 사업자 이메일 | `config/SecurityConfig` (any-request 체인) |
-| 관리자 | subject = `admin:이메일` | 〃 (컨트롤러가 startsWith 검사) |
-| 소비자 | subject 없음, claim `id`(customerId) | `domain/consumer/auth/SecurityConfig` — `/oauth2/**`,`/login/**`,`/api/customer/**` 한정, 컨트롤러가 헤더 직접 파싱 |
+| 소비자 | 카카오 · 구글 OAuth | 소비자용 서명키, `id` 클레임 = 회원 ID |
+| 주최자 | 이메일 · 비밀번호 | 직원용 서명키, subject = 사업자 이메일 |
+| 관리자 | 이메일 · 비밀번호 (가입 API 없음) | 직원용 서명키, subject = `admin:이메일` |
+| 비회원 | 없음 | 현장 웨이팅 등록 등 공개 API만 사용 |
 
-JWT 시크릿은 하나이며 통합 전 발급 토큰도 그대로 유효하다.
+- 보안 필터 체인을 **소비자용 / 공통용 두 개**로 나누고, 서명키도 둘로 분리했어요. 키가 하나였을 때 서로의 토큰이 서명 검증을 통과해 필터가 다른 역할의 토큰을 자기 것으로 착각하는 문제가 있었기 때문이에요.
+- 두 백엔드를 합치면서 같은 이름의 클래스(SecurityConfig, JwtUtil)가 두 벌 생겨, 빈 이름을 패키지 전체 경로로 만드는 `FqnBeanNameGenerator`로 충돌을 해결했어요.
 
-## 담당(코드 오너십) — 포트가 아니라 패키지 기준
+<br>
 
-- jsw: `domain/popup·reservation·waiting·venue·contract·admin·eventlog ...` (기존 담당 그대로)
-- jmy: `domain/consumer·review·wishlist` (구 customerbackend 코드 — 위치만 이동, 내용 동일)
+## 주요 기능
 
-## 통합으로 달라진 규칙
+### 팝업 · 예약 · 웨이팅 (핵심 흐름)
+- **팝업 생애주기**: 등록(심사 대기) → 관리자 승인 / 반려 → 오픈 예정 → 진행 중 → 종료, 관리자 게시중지
+- **슬롯 자동 생성**: 운영 기간 × 요일별 운영시간 ÷ 슬롯 단위로 예약 슬롯을 한 번에 생성 (여러 번 호출해도 결과가 같은 멱등 처리)
+- **사전 예약**: 슬롯 정원 검증 후 확정, 입장용 QR 토큰(UUID) 발급
+- **현장 웨이팅**: 회원 · 비회원 등록, 당일 대기번호 발급, 입장 QR을 문자 · 메일로 발송
+- **통합 대기열**: 시작 시각이 된 예약을 현장 웨이팅과 합쳐 하나의 보드로 제공 (이름 마스킹)
+- **통합 QR 체크인**: 예약 QR과 웨이팅 QR을 하나의 엔드포인트로 입장 처리, 다른 팝업의 QR은 거부
+- **실시간 혼잡도 · 예상 대기시간**: 정원 대비 체류 인원으로 여유 / 보통 / 혼잡 판정
+- **거래 이벤트 로그**: 예약 · 웨이팅 상태가 바뀔 때마다 기록하는 감사 이력 (append-only)
 
-- **예약은 `domain/reservation` 단일 소유** — 구 customerbackend의 예약 CRUD는 삭제됨. 소비자 예약도 `/api/reservations` 사용.
-- 테이블당 엔티티 하나 원칙. 예외 2개(과도기): `domain/customer/Customer`(참조용)와 `domain/consumer/Customer`(@Entity명 `CustomerAccount`)가 같은 `customer` 테이블을 매핑 — 추후 단일화 예정.
-- 프론트: popupfrontend(주최자·5174)와 adminfrontend(관리자·5175)는 Vite proxy, customerfrontend(소비자·5173)는 Next rewrites — 셋 다 `/api` → 8080.
-- 업로드 파일: 리포 루트 `uploads/` (서버 실행 위치 기준 상대경로 — IntelliJ에서 실행 시 Working directory를 리포 루트가 아닌 `Backend`로 두면 `Backend/uploads`에 생성되니 주의)
+### 계정 · 콘텐츠 · 운영
+- 소비자: 소셜 로그인, 회원정보 · 관심 카테고리 · 관심 지역, 찜, 후기(사진 · 공감 · 신고), 알림 설정, 1:1 문의
+- 주최자: 회원가입(국세청 사업자 진위확인 · 약관 동의), 브랜드 정보 · 로고, 관리자 문의
+- 관리자: 대시보드 집계, 팝업 심사, 계약 단계 관리, 회원 정지, 카테고리 · 지역 마스터, 배너 · 공지, CS · 신고 처리, 통계
+- 이미지 업로드 시 서버에서 리사이즈 · JPEG 변환 (아이콘은 투명 배경 유지)
+- 주소 저장 시 지오코딩으로 위경도 자동 저장
 
-## 팀원 Pull 후 체크리스트 (unified 브랜치 최초 전환 시)
+### 스케줄러
+| 스케줄러 | 주기 | 역할 |
+|---|---|---|
+| PopupStatusScheduler | 5분 | 시작일 · 종료일에 맞춰 팝업 상태 자동 전환 |
+| AutoExitScheduler | 1분 | 평균 체험시간이 지난 입장객 자동 퇴장 처리 |
+| DailyQueueResetScheduler | 매일 00:05 | 그날 처리되지 않은 대기를 「미입장」으로 확정하고 다음 날 대기열을 0부터 시작 (기록은 보존) |
+| CongestionAlertScheduler | 5분 | 혼잡 상태가 된 팝업의 대기자에게 알림 |
+| ReservationTimeReminderScheduler | 10분 | 예약 시간 30분 전 알림 |
+| ReservationDayReminderScheduler | 매일 09:00 | 오늘 예약이 있는 소비자에게 알림 |
+| PopupDateReminderScheduler | 매일 09:00 | 팝업 오픈 · 종료 하루 전 알림 (찜한 소비자 등) |
 
-**0. 전환 전** — 작업 중인 변경이 있으면 반드시 커밋(또는 stash)부터. 구 `Backend/popupbackend`·`customerbackend` 안에 커밋 안 한 수정이 있으면 checkout이 거부되거나 날아갈 수 있음.
+<br>
 
-**1. IntelliJ 재연결** — `Could not set process working directory ... popupbackend (errno 2)` 오류가 나면:
-   1. Gradle 도구창에서 구 `popupbackend`(있다면 `customerbackend`도) 선택 → `-` (Unlink)
-   2. `+` → `Backend/build.gradle` 선택 → `popupon-backend`로 연결
-   3. Run → Edit Configurations에서 옛 실행 구성 전부 삭제 → `UnifiedApplication` 열어 ▶ 실행하면 새 구성 자동 생성
-      (이때 새 구성의 Environment variables 칸이 **비어 있는지** 확인 — 옛 구성에 JWT 시크릿 오버라이드가 숨어 있던 의심 사례 있음)
+## 패키지 구조
 
-**2. application.yml 생성 (필수— 이거 없으면 기동 실패)** — application.yml은 비밀번호 포함이라 gitignore 대상(커밋 안 됨), 각자 로컬에 만들어야 함:
-   `src/main/resources/application-example.yml` 복사 → 같은 폴더에 `application.yml` → datasource password만 본인 MySQL 비밀번호로 수정.
-   (구 popupbackend·customerbackend에서 이미 하던 방식과 동일. 이후 기기별 값 변경은 application.yml을 직접 고치거나, `application-local-example.yml` 복사 → `application-local.yml`로 부분 덮어쓰기 — 둘 다 커밋되지 않음)
+```
+src/main/java/popupteam/popupbackend/
+├── UnifiedApplication.java
+├── config/          # 공통 보안 체인, CORS, 정적 파일(/uploads) 서빙, 빈 이름 충돌 해결
+├── security/        # 주최자 · 관리자 JWT 발급 · 검증 필터
+├── common/          # 예외 처리, 지오코딩, 이미지 처리, 문자 · 메일 발송, 사업자 진위확인, 파일 저장
+└── domain/
+    ├── popup        # 팝업 · 슬롯 · 통합 대기열 · 혼잡도 · 대기시간 · 계약 · 대시보드
+    ├── reservation  # 예약 (단일 소스)
+    ├── waiting      # 현장 웨이팅, 자정 리셋
+    ├── consumer     # 소비자 계정 · 관심사 · 소셜 로그인(auth)
+    ├── review · wishlist · report · cs · inquiry
+    ├── business · admin · notice · announcement · banner
+    └── eventlog · visit · venue · terms
+```
 
-**3. DB 시드/정리** — 백엔드 1회 기동(테이블 자동 생성) 후:
-   ```
-   mysql -u root -p popupdb < db-init.sql
-   ```
-   관리자 공용 계정(admin@popupon.kr/admin1234)·키워드 8종 삽입 + 구 reservation 테이블 삭제 (여러 번 실행해도 안전)
+<br>
 
-**4. 프론트 의존성** — 세 프론트 모두 `npm install` (popupfrontend·adminfrontend: qrcode.react·jsqr 등 / customerfrontend: pew 신규 의존성)
+## 실행 방법
 
-**5. 포트** — 백엔드는 이제 **8080 하나**. 8081을 띄우는 옛 실행 구성·스크립트는 삭제. 프론트는 5173(소비자)/5174(주최자)/5175(관리자) — 관리자 콘솔이 `Frontend/adminfrontend` 별도 앱으로 분리됨(관리자·주최자 토큰이 한 origin의 localStorage에서 충돌하던 문제 해소).
+**JDK 21**이 필요해요.
 
-**6. 카카오 로그인 (선택)** — 카카오 개발자 콘솔 Redirect URI가 `http://localhost:8080/login/oauth2/code/kakao`로 재등록된 뒤부터 동작. 콘솔 권한자 1명이 처리하면 전원 적용.
+```powershell
+# 1. 설정 파일 만들기 (비밀번호 · 키는 커밋하지 않음)
+Copy-Item src/main/resources/application-example.yml src/main/resources/application.yml
+#    → DB 접속 정보, JWT 서명키 2개, OAuth 클라이언트 정보 입력
 
-**7. 옛 브랜치** — jsw/restart·jmy 등 기존 브랜치의 이후 커밋은 구 경로 기준이라 unified에 자동 병합 불가. 전환 후 새 작업은 unified에서 분기할 것. 소비자 코드 새 위치는 위 "패키지 구조" 참고.
+# 2. 실행
+.\gradlew.bat bootRun
+
+# 3. 최초 1회: 테이블 생성 후 관리자 계정 · 기본 데이터 넣기
+mysql -u root -p popupdb < db-init.sql
+```
+
+서버는 `http://localhost:8080`에서 실행돼요. 테이블은 JPA가 엔티티 기준으로 자동 생성해요.
+
+### 주요 설정 항목 (`application.yml`)
+
+| 항목 | 설명 |
+|---|---|
+| `spring.datasource.*` | MySQL 접속 정보 |
+| `jwt.consumer-secret` · `jwt.staff-secret` | 소비자용 · 직원용 서명키 (서로 달라야 함) |
+| `spring.security.oauth2.client.*` | 카카오 · 구글 OAuth 클라이언트 |
+| `file.upload-dir` | 업로드 파일 저장 경로 (절대경로) |
+| `naver.maps.*` | 지오코딩 키 (없으면 좌표 저장만 생략) |
+| `nts.api.service-key` | 사업자 진위확인 키 (선택) |
+| `spring.mail.*` · `notification.sms.*` | 메일 · 문자 발송 계정 (비워두면 발송 생략, 로그만 남김) |
+
+통합 배경과 상세 결정 과정은 [UNIFICATION-README.md](UNIFICATION-README.md)에 정리되어 있어요.
