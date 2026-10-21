@@ -52,3 +52,9 @@ target/
 build/
 *.class
 Thumbs.db
+
+# portfolio
+Frontend/customerfrontend/public/hotplaces/
+*.zip
+uploads/
+*.tsbuildinfo
