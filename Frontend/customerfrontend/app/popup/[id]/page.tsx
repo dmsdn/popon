@@ -393,7 +393,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* 대표 이미지 캐러셀 (450px 고정, 여러 장 시 스와이프) */}
-      <div className="relative w-full h-[450px] bg-gray-100 dark:bg-[#282B32] overflow-hidden">
+      <div className="relative w-full h-[300px] bg-gray-100 dark:bg-[#282B32] overflow-hidden">
         {thumbnailImages.length > 0 ? (
           <>
             <div className="w-full h-full overflow-hidden" ref={heroEmblaRef}>
@@ -440,7 +440,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         </div>
 
         {/* 제목 - 폰트 굵기 한 단계 얇게(bold→semibold) */}
-        <h1 className="text-3xl font-semibold mb-2">{popup.title}</h1>
+        <h1 className="text-2xl font-semibold mb-2">{popup.title}</h1>
 
         {/* 상태 배지 - 날짜 옆 */}
         <p className="flex items-center gap-2 text-sm text-gray-500 mb-1">
