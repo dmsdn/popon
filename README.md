@@ -170,19 +170,6 @@ popon/
 
 <br>
 
-## 실행 방법
-
-1. 백엔드: `Backend/src/main/resources/application-example.yml`을 `application.yml`로 복사해 DB · 키 정보를 채운 뒤 실행 → [자세히](Backend)
-2. 프론트엔드: 각 폴더에서 `npm install` → `npm run dev`
-
-| 앱 | 주소 |
-|---|---|
-| 소비자 웹 | http://localhost:5173 |
-| 주최자 센터 | http://localhost:5174 |
-| 관리자 콘솔 | http://localhost:5175 |
-| 현장 체크인 | http://localhost:5176 |
-| 백엔드 API | http://localhost:8080 |
-
 ## 배포
 
 프로젝트 기간 동안 AWS EC2에 배포해 실제 환경에서 운영했습니다.
@@ -201,3 +188,33 @@ popon/
 - 업로드 이미지 URL을 절대주소로 저장했다가 서버 주소가 바뀌면 이미지가 깨지는 문제 → 상대경로로 전환
 - 메모리 1GB 서버에 앱 여러 개를 올리기 위해, 서버 렌더링이 필요 없는 앱은 정적 파일로 배포
 - 배포된 QR 코드가 localhost를 가리키던 문제 → 접속 주소에서 소비자 앱 주소를 자동으로 계산
+
+<br>
+
+## 실행 방법
+
+필요한 것 : JDK 21, MySQL 8, Node.js
+
+```powershell
+# 1. 백엔드 — DB 생성, 설정 파일 복사 후 실행 (자세한 순서는 Backend README)
+cd Backend
+mysql -u root -p -e "CREATE DATABASE popupdb DEFAULT CHARACTER SET utf8mb4;"
+Copy-Item src/main/resources/application-example.yml src/main/resources/application.yml
+.\gradlew.bat bootRun
+
+# 2. 프론트엔드 — 각 폴더에서
+cd Frontend/customerfrontend   # checkinfrontend, popupfrontend, adminfrontend 도 동일
+npm install
+npm run dev
+```
+
+| 앱 | 주소 |
+|---|---|
+| 소비자 웹 | http://localhost:5173 |
+| 주최자 센터 | http://localhost:5174 |
+| 관리자 콘솔 | http://localhost:5175 |
+| 현장 체크인 | http://localhost:5176 |
+| 백엔드 API | http://localhost:8080 |
+
+- 백엔드를 처음 띄운 뒤 한 번, `Backend/db-init.sql`로 관리자 계정과 기본 데이터를 넣어야 합니다. → [Backend README](Backend)
+- 지도 기능은 네이버 지도 Client ID가 필요합니다. 각 프론트 폴더의 `.env.example`을 참고하세요.
